@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 
 const DEMO_EMAIL = process.env.NEXT_PUBLIC_DEMO_EMAIL ?? "demo@aapextechnology.com";
+const DEMO_HM_EMAIL = process.env.NEXT_PUBLIC_DEMO_HM_EMAIL ?? "demohm@aapextechnology.com";
 const DEMO_PASSWORD = process.env.NEXT_PUBLIC_DEMO_PASSWORD ?? "demo123456";
 
 export default function LoginPage() {
@@ -41,7 +42,7 @@ export default function LoginPage() {
     setDemoLoading(true);
     setDemoError("");
 
-    const demoEmail = role === "hrd" ? DEMO_EMAIL : DEMO_PASSWORD.replace("123456", "hm123456");
+    const demoEmail = role === "hrd" ? DEMO_EMAIL : DEMO_HM_EMAIL;
 
     const { error } = await supabase.auth.signInWithPassword({
       email: demoEmail,
