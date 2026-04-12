@@ -1,36 +1,113 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Talent Pool & Recruitment System
+
+Sistem Rekrutmen & Talent Pool untuk Aapex Technology.
+
+## Tech Stack
+
+- **Framework**: Next.js 14+ (App Router, fullstack)
+- **Database**: Supabase (PostgreSQL + Auth + Storage)
+- **Styling**: Tailwind CSS + shadcn/ui
+- **WhatsApp**: Fonnte API
+- **Email**: Resend
+- **Deployment**: Vercel
 
 ## Getting Started
 
-First, run the development server:
+### 1. Install Dependencies
+
+```bash
+npm install
+npm install resend
+```
+
+### 2. Setup Environment
+
+```bash
+cp .env.local.example .env.local
+# Fill in your API keys
+```
+
+### 3. Supabase Setup
+
+1. Buat project di [supabase.com](https://supabase.com)
+2. Jalankan migration SQL di `supabase/migrations/001_initial_schema.sql`
+3. Copy credentials ke `.env.local`
+
+### 4. Run Development Server
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Buka [http://localhost:3000](http://localhost:3000)
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Project Structure
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```
+src/
+├── app/
+│   ├── (auth)/login/           # Login page
+│   ├── (public)/portal/        # Public candidate application portal
+│   ├── (dashboard)/dashboard/  # Protected dashboard
+│   │   ├── candidates/          # Candidate management
+│   │   ├── pipeline/            # Kanban pipeline
+│   │   ├── talent-pool/        # Talent pool
+│   │   ├── analytics/          # Analytics & reporting
+│   │   └── settings/            # Brand & position settings
+│   └── api/                    # REST API endpoints
+│       ├── candidates/          # CRUD kandidat
+│       ├── positions/           # CRUD posisi
+│       ├── brands/              # CRUD outlet
+│       ├── interviews/          # CRUD interview
+│       └── notifications/send/ # Kirim WA/Email
+├── components/
+│   └── ui/                     # shadcn/ui components
+├── lib/
+│   ├── supabase/               # Supabase clients (browser/server/middleware)
+│   ├── fonnte/                 # Fonnte WhatsApp integration
+│   ├── resend/                 # Resend email integration
+│   └── utils/                  # Utility functions
+└── types/
+    └── index.ts                # TypeScript types
+```
 
-## Learn More
+## User Roles
 
-To learn more about Next.js, take a look at the following resources:
+| Role | Akses |
+|------|-------|
+| HRD | Full access: input kandidat, pipeline, talent pool, settings, notification |
+| Hiring Manager | Lihat & update kandidat divisinya, input interview scorecard |
+| Direksi | Read-only: analytics dashboard |
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## API Endpoints
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+| Method | Endpoint | Deskripsi |
+|--------|----------|-----------|
+| GET | `/api/candidates` | List kandidat (filter: status, brand_id, search) |
+| POST | `/api/candidates` | Tambah kandidat baru |
+| GET | `/api/candidates/[id]` | Detail kandidat |
+| PUT | `/api/candidates/[id]` | Update kandidat |
+| DELETE | `/api/candidates/[id]` | Hapus kandidat |
+| GET | `/api/positions` | List posisi |
+| POST | `/api/positions` | Tambah posisi |
+| GET | `/api/brands` | List outlet/brand |
+| POST | `/api/brands` | Tambah outlet |
+| GET | `/api/interviews` | List interview |
+| POST | `/api/interviews` | Buat interview (auto update status kandidat) |
+| POST | `/api/notifications/send` | Kirim WhatsApp / Email ke kandidat |
 
-## Deploy on Vercel
+## Database Schema
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+- `brands` — Outlet / subsidiary
+- `positions` — Job titles per brand
+- `users` — User profiles (extends auth.users)
+- `candidates` — Candidate data
+- `interviews` — Interview records with scorecard (JSONB)
+- `notifications_log` — Notification history
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Future Integrations
+
+- [ ] API integration ke Talenta by Mekari (Absensi & Payroll)
+- [ ] CV upload via Supabase Storage
+- [ ] WhatsApp notification with Fonnte (API key needed)
+- [ ] Email notification with Resend (API key needed)
