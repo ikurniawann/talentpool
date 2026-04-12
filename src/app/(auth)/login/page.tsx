@@ -4,6 +4,9 @@ import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 
+const DEMO_EMAIL = process.env.NEXT_PUBLIC_DEMO_EMAIL ?? "demo@aapextechnology.com";
+const DEMO_PASSWORD = process.env.NEXT_PUBLIC_DEMO_PASSWORD ?? "demo123456";
+
 export default function LoginPage() {
   const router = useRouter();
   const supabase = createClient();
@@ -11,7 +14,9 @@ export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [demoLoading, setDemoLoading] = useState(false);
   const [error, setError] = useState("");
+  const [demoError, setDemoError] = useState("");
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -26,6 +31,26 @@ export default function LoginPage() {
     if (error) {
       setError(error.message);
       setLoading(false);
+    } else {
+      router.push("/dashboard");
+      router.refresh();
+    }
+  };
+
+  const handleDemoLogin = async (role: "hrd" | "hiring_manager") => {
+    setDemoLoading(true);
+    setDemoError("");
+
+    const demoEmail = role === "hrd" ? DEMO_EMAIL : DEMO_PASSWORD.replace("123456", "hm123456");
+
+    const { error } = await supabase.auth.signInWithPassword({
+      email: demoEmail,
+      password: DEMO_PASSWORD,
+    });
+
+    if (error) {
+      setDemoError(`Demo ${role} tidak tersedia: buat user "${demoEmail}" di Supabase Auth dulu.`);
+      setDemoLoading(false);
     } else {
       router.push("/dashboard");
       router.refresh();
@@ -83,7 +108,44 @@ export default function LoginPage() {
             {loading ? "Memproses..." : "Masuk"}
           </button>
         </form>
+
+        {/* Demo Login Bypass */}
+        <div className="mt-6 pt-6 border-t border-gray-200">
+          <p className="text-xs text-gray-400 text-center mb-3">
+            Login cepat untuk demo — tidak perlu password
+          </p>
+
+          {demoError && (
+            <div className="p-3 mb-3 text-xs text-amber-700 bg-amber-50 rounded-lg">
+              {demoError}
+            </div>
+          )}
+
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={() => handleDemoLogin("hrd")}
+              disabled={demoLoading}
+              className="py-2 px-3 bg-gray-100 hover:bg-gray-200 text-gray-800 rounded-lg text-xs font-medium transition-colors disabled:opacity-50"
+            >
+              {demoLoading ? "..." : "Demo HRD"}
+            </button>
+            <button
+              type="button"
+              onClick={() => handleDemoLogin("hiring_manager")}
+              disabled={demoLoading}
+              className="py-2 px-3 bg-gray-100 hover:bg-gray-200 text-gray-800 rounded-lg text-xs font-medium transition-colors disabled:opacity-50"
+            >
+              {demoLoading ? "..." : "Demo Manager"}
+            </button>
+          </div>
+
+          <p className="text-[10px] text-gray-300 text-center mt-2">
+            Default: demo@aapextechnology.com / demo123456
+          </p>
+        </div>
       </div>
     </div>
   );
 }
+
