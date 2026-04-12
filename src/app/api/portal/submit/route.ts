@@ -26,6 +26,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Field wajib belum lengkap" }, { status: 400 });
     }
 
+    // --- Photo is required ---
+    if (!photoFile || photoFile.size === 0) {
+      return NextResponse.json({ error: "Pas foto wajib diupload" }, { status: 400 });
+    }
+
     // --- Upload files ---
     let cvUrl: string | null = null;
     let photoUrl: string | null = null;
@@ -39,8 +44,8 @@ export async function POST(request: NextRequest) {
       if (!validTypes.includes(cvFile.type)) {
         return NextResponse.json({ error: "CV harus format PDF atau DOC" }, { status: 400 });
       }
-      if (cvFile.size > 5 * 1024 * 1024) {
-        return NextResponse.json({ error: "CV maksimal 5MB" }, { status: 400 });
+      if (cvFile.size > 2 * 1024 * 1024) {
+        return NextResponse.json({ error: "CV maksimal 2MB" }, { status: 400 });
       }
       const result = await uploadFile("cv", cvFile, "candidates");
       if (result.error) {
@@ -102,7 +107,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Gagal simpan lamaran: " + insertError.message }, { status: 500 });
     }
 
-    // --- Send confirmation email ---
+    // --- Send confirmation email to candidate ---
     if (process.env.RESEND_API_KEY) {
       try {
         const resend = new Resend(process.env.RESEND_API_KEY);
@@ -121,8 +126,63 @@ export async function POST(request: NextRequest) {
           `,
         });
       } catch (emailError) {
-        console.error("Email send error:", emailError);
-        // Don't fail the submission if email fails
+        console.error("Candidate email error:", emailError);
+      }
+    }
+
+    // --- Send notification email to HRD ---
+    const HRD_EMAIL = process.env.HRD_EMAIL;
+    if (process.env.RESEND_API_KEY && HRD_EMAIL) {
+      try {
+        const resend = new Resend(process.env.RESEND_API_KEY);
+        await resend.emails.send({
+          from: FROM_EMAIL,
+          to: HRD_EMAIL,
+          subject: `[Talent Pool] Lamaran Baru — ${full_name} untuk ${positionTitle}`,
+          html: `
+            <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
+              <h2 style="color: #1a1a1a;">Lamaran Baru Masuk</h2>
+              <table style="width: 100%; border-collapse: collapse; margin-top: 16px;">
+                <tr>
+                  <td style="padding: 8px 0; color: #555; width: 140px;">Nama</td>
+                  <td style="padding: 8px 0; font-weight: 600; color: #1a1a1a;">${full_name}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 8px 0; color: #555;">Email</td>
+                  <td style="padding: 8px 0; color: #1a1a1a;"><a href="mailto:${email}">${email}</a></td>
+                </tr>
+                <tr>
+                  <td style="padding: 8px 0; color: #555;">No. WhatsApp</td>
+                  <td style="padding: 8px 0; color: #1a1a1a;"><a href="https://wa.me/${phone.replace(/\D/g, "")}">${phone}</a></td>
+                </tr>
+                <tr>
+                  <td style="padding: 8px 0; color: #555;">Domisili</td>
+                  <td style="padding: 8px 0; color: #1a1a1a;">${domicile}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 8px 0; color: #555;">Posisi</td>
+                  <td style="padding: 8px 0; color: #1a1a1a;">${positionTitle}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 8px 0; color: #555;">Outlet</td>
+                  <td style="padding: 8px 0; color: #1a1a1a;">${brandName}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 8px 0; color: #555;">Sumber</td>
+                  <td style="padding: 8px 0; color: #1a1a1a;">${source}</td>
+                </tr>
+                ${notes ? `<tr><td style="padding: 8px 0; color: #555;">Catatan</td><td style="padding: 8px 0; color: #1a1a1a;">${notes}</td></tr>` : ""}
+              </table>
+              <div style="margin-top: 24px;">
+                <a href="${process.env.NEXT_PUBLIC_APP_URL ?? "https://talentpool-murex.vercel.app"}/dashboard/candidates/${candidate.id}" style="background: #2563eb; color: #fff; padding: 10px 20px; border-radius: 6px; text-decoration: none; font-size: 14px; font-weight: 600;">Lihat di Dashboard</a>
+              </div>
+              <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;" />
+              <p style="color: #888; font-size: 12px;">Pesan ini dikirim otomatis dari sistem Talent Pool.</p>
+            </div>
+          `,
+        });
+      } catch (emailError) {
+        console.error("HRD email error:", emailError);
       }
     }
 

@@ -107,8 +107,8 @@ export default function PortalPage() {
       setFileError("CV harus format PDF atau DOC");
       return;
     }
-    if (file.size > 5 * 1024 * 1024) {
-      setFileError("CV maksimal 5MB");
+    if (file.size > 2 * 1024 * 1024) {
+      setFileError("CV maksimal 2MB");
       return;
     }
 
@@ -383,7 +383,7 @@ export default function PortalPage() {
                 <Label>
                   CV (PDF/DOC) <span className="text-red-500">*</span>
                 </Label>
-                <span className="text-xs text-gray-500">Maksimal 5MB</span>
+                <span className="text-xs text-gray-500">Maksimal 2MB</span>
 
                 {cvFile ? (
                   <div className="flex items-center gap-3 p-3 bg-emerald-50 border border-emerald-200 rounded-lg">
@@ -406,7 +406,7 @@ export default function PortalPage() {
                   <label className="flex flex-col items-center justify-center gap-2 p-6 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-blue-400 hover:bg-blue-50 transition-colors">
                     <Upload className="w-6 h-6 text-gray-400" />
                     <span className="text-sm text-gray-500">Klik untuk upload CV</span>
-                    <span className="text-xs text-gray-400">PDF atau DOC, maks 5MB</span>
+                    <span className="text-xs text-gray-400">PDF atau DOC, maks 2MB</span>
                     <input
                       type="file"
                       accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
@@ -419,7 +419,9 @@ export default function PortalPage() {
 
               {/* Photo Upload */}
               <div className="space-y-1.5">
-                <Label>Foto (JPG/PNG, opsional)</Label>
+                <Label>
+                  Pas Foto (JPG/PNG) <span className="text-red-500">*</span>
+                </Label>
                 <span className="text-xs text-gray-500">Maksimal 2MB</span>
 
                 {photoFile ? (
@@ -496,7 +498,7 @@ export default function PortalPage() {
           {/* Submit Button */}
           <Button
             type="submit"
-            disabled={loading || !cvFile}
+            disabled={loading || !cvFile || !photoFile}
             className="w-full bg-blue-600 hover:bg-blue-700"
           >
             {loading ? (
