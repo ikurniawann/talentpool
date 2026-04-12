@@ -3,7 +3,7 @@
 import React from "react";
 import { Resend } from "resend";
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 
 export interface EmailPayload {
   to: string;
@@ -13,13 +13,13 @@ export interface EmailPayload {
 }
 
 export async function sendEmail(payload: EmailPayload): Promise<boolean> {
-  if (!process.env.RESEND_API_KEY) {
+  if (!resend) {
     console.warn("RESEND_API_KEY is not set");
     return false;
   }
 
   try {
-    const { error } = await resend.emails.send({
+    const { error } = await resend!.emails.send({
       from: payload.from || "Talent Pool <onboarding@resend.dev>",
       to: payload.to,
       subject: payload.subject,

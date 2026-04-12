@@ -86,7 +86,6 @@ export interface Interview {
 
 export interface Scorecard {
   // Generic scorecard, fields vary per position
-  [key: string]: string | number | boolean | null;
   // Common fields:
   technical_skills?: number; // 1-5
   communication?: number; // 1-5
@@ -96,6 +95,7 @@ export interface Scorecard {
   culture_fit?: number; // 1-5
   overall_score?: number; // 1-5
   notes?: string;
+  [key: string]: string | number | boolean | null | undefined;
 }
 
 export interface NotificationLog {
@@ -181,7 +181,7 @@ export interface DashboardStats {
   by_brand: { brand_id: string; brand_name: string; count: number }[];
   by_position: { position_id: string; position_title: string; count: number }[];
   by_source: { source: CandidateSource; count: number }[];
-  pipeline funnel: { stage: PipelineStage; count: number }[];
+  "pipeline funnel": { stage: PipelineStage; count: number }[];
 }
 
 // --- API Response ---

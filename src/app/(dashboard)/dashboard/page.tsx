@@ -107,7 +107,7 @@ export default async function DashboardHome() {
                 <div>
                   <p className="font-medium text-gray-900">{c.full_name}</p>
                   <p className="text-sm text-gray-500">
-                    {c.positions?.title ?? "Tanpa Posisi"} · {c.brands?.name ?? "Semua Outlet"}
+                    {(c.positions as any)?.[0]?.title ?? "Tanpa Posisi"} · {(c.brands as any)?.[0]?.name ?? "Semua Outlet"}
                   </p>
                 </div>
                 <span
