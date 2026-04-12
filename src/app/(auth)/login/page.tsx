@@ -15,9 +15,7 @@ export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
-  const [demoLoading, setDemoLoading] = useState(false);
   const [error, setError] = useState("");
-  const [demoError, setDemoError] = useState("");
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -38,24 +36,10 @@ export default function LoginPage() {
     }
   };
 
-  const handleDemoLogin = async (role: "hrd" | "hiring_manager") => {
-    setDemoLoading(true);
-    setDemoError("");
-
+  const handleDemoLogin = (role: "hrd" | "hiring_manager") => {
     const demoEmail = role === "hrd" ? DEMO_EMAIL : DEMO_HM_EMAIL;
-
-    const { error } = await supabase.auth.signInWithPassword({
-      email: demoEmail,
-      password: DEMO_PASSWORD,
-    });
-
-    if (error) {
-      setDemoError(`Demo ${role} tidak tersedia: buat user "${demoEmail}" di Supabase Auth dulu.`);
-      setDemoLoading(false);
-    } else {
-      router.push("/dashboard");
-      router.refresh();
-    }
+    setEmail(demoEmail);
+    setPassword(DEMO_PASSWORD);
   };
 
   return (
@@ -116,28 +100,22 @@ export default function LoginPage() {
             Login cepat untuk demo — tidak perlu password
           </p>
 
-          {demoError && (
-            <div className="p-3 mb-3 text-xs text-amber-700 bg-amber-50 rounded-lg">
-              {demoError}
-            </div>
-          )}
+
 
           <div className="grid grid-cols-2 gap-2">
             <button
               type="button"
               onClick={() => handleDemoLogin("hrd")}
-              disabled={demoLoading}
-              className="py-2 px-3 bg-gray-100 hover:bg-gray-200 text-gray-800 rounded-lg text-xs font-medium transition-colors disabled:opacity-50"
+              className="py-2 px-3 bg-gray-100 hover:bg-gray-200 text-gray-800 rounded-lg text-xs font-medium transition-colors"
             >
-              {demoLoading ? "..." : "Demo HRD"}
+              Isi Login HRD
             </button>
             <button
               type="button"
               onClick={() => handleDemoLogin("hiring_manager")}
-              disabled={demoLoading}
-              className="py-2 px-3 bg-gray-100 hover:bg-gray-200 text-gray-800 rounded-lg text-xs font-medium transition-colors disabled:opacity-50"
+              className="py-2 px-3 bg-gray-100 hover:bg-gray-200 text-gray-800 rounded-lg text-xs font-medium transition-colors"
             >
-              {demoLoading ? "..." : "Demo Manager"}
+              Isi Login Manager
             </button>
           </div>
 
