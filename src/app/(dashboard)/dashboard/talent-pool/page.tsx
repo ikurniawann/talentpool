@@ -2,9 +2,18 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { useRouter } from "next/navigation";
 import type { Candidate, CandidateStatus } from "@/types";
+import {
+  StarIcon,
+  EnvelopeIcon,
+  DevicePhoneMobileIcon,
+  MapPinIcon,
+  PencilSquareIcon,
+} from "@heroicons/react/24/solid";
 
 export default function TalentPoolPage() {
+  const router = useRouter();
   const supabase = createClient();
   const [candidates, setCandidates] = useState<Candidate[]>([]);
   const [loading, setLoading] = useState(true);
@@ -48,31 +57,38 @@ export default function TalentPoolPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Talent Pool</h1>
           <p className="text-gray-500 text-sm mt-1">
             Kandidat potensial yang disimpan untuk kebutuhan mendatang
           </p>
         </div>
-        <span className="px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-sm font-medium">
+        <span className="px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-sm font-medium self-start sm:self-auto">
           {candidates.length} kandidat
         </span>
       </div>
 
       {/* Search */}
-      <div className="bg-white rounded-xl border border-gray-200 p-4">
-        <input
-          type="text"
-          placeholder="Cari nama atau email..."
-          value={search}
-          onChange={(e) => { setSearch(e.target.value); }}
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-        />
+      <div className="bg-white rounded-xl border border-gray-200 p-3 sm:p-4">
+        <div className="relative">
+          <div className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z" />
+            </svg>
+          </div>
+          <input
+            type="text"
+            placeholder="Cari nama atau email..."
+            value={search}
+            onChange={(e) => { setSearch(e.target.value); }}
+            className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+        </div>
       </div>
 
       {/* Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {loading ? (
           Array.from({ length: 3 }).map((_, i) => (
             <div key={i} className="bg-white rounded-xl border border-gray-200 p-5 animate-pulse">
@@ -89,7 +105,8 @@ export default function TalentPoolPage() {
           candidates.map((c) => (
             <div
               key={c.id}
-              className="bg-white rounded-xl border border-gray-200 p-5 hover:shadow-md transition-shadow"
+              onClick={() => router.push(`/dashboard/candidates/${c.id}`)}
+              className="bg-white rounded-xl border border-gray-200 p-4 sm:p-5 hover:shadow-md transition-shadow cursor-pointer"
             >
               <div className="flex items-start justify-between">
                 <div>
@@ -101,20 +118,26 @@ export default function TalentPoolPage() {
                     {(c as any).brands?.name ?? "Semua Outlet"}
                   </p>
                 </div>
-                <span className="px-2 py-1 bg-purple-100 text-purple-700 text-xs rounded-full">
-                  ⭐ Pool
+                <span className="flex items-center gap-1 px-2 py-1 bg-purple-100 text-purple-700 text-xs rounded-full">
+                  <StarIcon className="w-3 h-3" /> Pool
                 </span>
               </div>
 
               <div className="mt-4 space-y-1 text-sm text-gray-600">
-                <p>📧 {c.email}</p>
-                <p>📱 {c.phone}</p>
-                <p>📍 {c.domicile}</p>
+                <p className="flex items-center gap-2">
+                  <EnvelopeIcon className="w-4 h-4 text-gray-400" /> {c.email}
+                </p>
+                <p className="flex items-center gap-2">
+                  <DevicePhoneMobileIcon className="w-4 h-4 text-gray-400" /> {c.phone}
+                </p>
+                <p className="flex items-center gap-2">
+                  <MapPinIcon className="w-4 h-4 text-gray-400" /> {c.domicile}
+                </p>
               </div>
 
               {c.notes && (
-                <p className="mt-3 text-xs text-gray-500 line-clamp-2">
-                  📝 {c.notes}
+                <p className="mt-3 text-xs text-gray-500 line-clamp-2 flex items-start gap-1">
+                  <PencilSquareIcon className="w-3 h-3 mt-0.5 flex-shrink-0" /> {c.notes}
                 </p>
               )}
 

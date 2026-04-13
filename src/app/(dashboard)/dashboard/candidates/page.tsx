@@ -26,7 +26,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useForm } from "react-hook-form";
-import { Loader2, Plus, Download, Search, User } from "lucide-react";
+import { Loader2, Plus, Download, Search, User, Trash2 } from "lucide-react";
 import type { Candidate, CandidateStatus, Brand } from "@/types";
 
 const STATUS_LABELS: Record<CandidateStatus, string> = {
@@ -86,6 +86,7 @@ export default function CandidatesPage() {
   });
   const [page, setPage] = useState(1);
   const [showAddDialog, setShowAddDialog] = useState(false);
+  const [deleteCandidate, setDeleteCandidate] = useState<Candidate | null>(null);
   const perPage = 20;
 
   // New candidate form
@@ -203,12 +204,21 @@ export default function CandidatesPage() {
     URL.revokeObjectURL(url);
   };
 
+  const handleDeleteCandidate = async () => {
+    if (!deleteCandidate) return;
+    const { error } = await supabase.from("candidates").delete().eq("id", deleteCandidate.id);
+    if (!error) {
+      setDeleteCandidate(null);
+      fetchCandidates();
+    }
+  };
+
   const totalPages = Math.ceil(totalCount / perPage);
 
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Kandidat</h1>
           <p className="text-gray-500 text-sm mt-1">
@@ -216,13 +226,15 @@ export default function CandidatesPage() {
           </p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" onClick={handleExportCSV}>
-            <Download className="w-4 h-4 mr-2" />
-            Export CSV
+          <Button variant="outline" size="sm" onClick={handleExportCSV}>
+            <Download className="w-4 h-4 mr-1 sm:mr-2" />
+            <span className="hidden sm:inline">Export CSV</span>
+            <span className="sm:hidden">CSV</span>
           </Button>
-          <Button onClick={() => setShowAddDialog(true)}>
-            <Plus className="w-4 h-4 mr-2" />
-            Tambah Kandidat
+          <Button size="sm" onClick={() => setShowAddDialog(true)}>
+            <Plus className="w-4 h-4 mr-1 sm:mr-2" />
+            <span className="hidden sm:inline">Tambah Kandidat</span>
+            <span className="sm:hidden">Tambah</span>
           </Button>
         </div>
       </div>
@@ -230,8 +242,9 @@ export default function CandidatesPage() {
       {/* Filters */}
       <Card>
         <CardContent className="pt-4">
-          <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
-            <div className="relative col-span-2 md:col-span-2">
+          <div className="space-y-3">
+            {/* Search */}
+            <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
               <Input
                 placeholder="Cari nama, email, telepon..."
@@ -240,118 +253,189 @@ export default function CandidatesPage() {
                 className="pl-9"
               />
             </div>
-            <Select
-              value={filter.status}
-              onValueChange={(v) => { setFilter((f) => ({ ...f, status: v === "all" ? "" : (v as string) })); setPage(1); }}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Semua Status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Semua Status</SelectItem>
-                {Object.entries(STATUS_LABELS).map(([value, label]) => (
-                  <SelectItem key={value} value={value}>{label}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select
-              value={filter.brand_id}
-              onValueChange={(v) => { setFilter((f) => ({ ...f, brand_id: v === "all" ? "" : (v as string) })); setPage(1); }}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Semua Outlet" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Semua Outlet</SelectItem>
-                {brands.map((b) => (
-                  <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Input
-              type="date"
-              value={filter.date_from}
-              onChange={(e) => { setFilter((f) => ({ ...f, date_from: e.target.value })); setPage(1); }}
-              className="text-sm"
-            />
-            <Input
-              type="date"
-              value={filter.date_to}
-              onChange={(e) => { setFilter((f) => ({ ...f, date_to: e.target.value })); setPage(1); }}
-              className="text-sm"
-            />
+            {/* Dropdown filters - horizontal scroll on mobile */}
+            <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1">
+              <Select
+                value={filter.status}
+                onValueChange={(v) => { setFilter((f) => ({ ...f, status: v === "all" ? "" : (v as string) })); setPage(1); }}
+              >
+                <SelectTrigger className="w-[140px] flex-shrink-0">
+                  <SelectValue placeholder="Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Semua Status</SelectItem>
+                  {Object.entries(STATUS_LABELS).map(([value, label]) => (
+                    <SelectItem key={value} value={value}>{label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select
+                value={filter.brand_id}
+                onValueChange={(v) => { setFilter((f) => ({ ...f, brand_id: v === "all" ? "" : (v as string) })); setPage(1); }}
+              >
+                <SelectTrigger className="w-[140px] flex-shrink-0">
+                  <SelectValue placeholder="Outlet" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Semua Outlet</SelectItem>
+                  {brands.map((b) => (
+                    <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Input
+                type="date"
+                value={filter.date_from}
+                onChange={(e) => { setFilter((f) => ({ ...f, date_from: e.target.value })); setPage(1); }}
+                className="w-[130px] flex-shrink-0 text-sm"
+                title="Dari tanggal"
+              />
+              <Input
+                type="date"
+                value={filter.date_to}
+                onChange={(e) => { setFilter((f) => ({ ...f, date_to: e.target.value })); setPage(1); }}
+                className="w-[130px] flex-shrink-0 text-sm"
+                title="Sampai tanggal"
+              />
+            </div>
           </div>
         </CardContent>
       </Card>
 
-      {/* Table */}
+      {/* Desktop Table / Mobile Cards */}
       <Card>
         <CardContent className="p-0">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Nama</TableHead>
-                <TableHead>Posisi</TableHead>
-                <TableHead>Outlet</TableHead>
-                <TableHead>Sumber</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Tanggal</TableHead>
-                <TableHead className="w-20">Aksi</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {loading ? (
+          {/* Desktop Table — hidden on mobile */}
+          <div className="hidden md:block">
+            <Table>
+              <TableHeader>
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center py-8 text-gray-500">
-                    Memuat...
-                  </TableCell>
+                  <TableHead>Nama</TableHead>
+                  <TableHead>Posisi</TableHead>
+                  <TableHead>Outlet</TableHead>
+                  <TableHead>Sumber</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Tanggal</TableHead>
+                  <TableHead className="w-20">Aksi</TableHead>
                 </TableRow>
-              ) : candidates.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={7} className="text-center py-8 text-gray-500">
-                    Tidak ada kandidat ditemukan
-                  </TableCell>
-                </TableRow>
-              ) : (
-                candidates.map((c) => (
-                  <TableRow key={c.id} className="hover:bg-gray-50">
-                    <TableCell>
-                      <div>
-                        <p className="font-medium text-gray-900">{c.full_name}</p>
-                        <p className="text-gray-500 text-xs">{c.email}</p>
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-gray-700">
-                      {(c as any).positions?.title ?? "-"}
-                    </TableCell>
-                    <TableCell className="text-gray-700">
-                      {(c as any).brands?.name ?? "-"}
-                    </TableCell>
-                    <TableCell className="text-gray-700">
-                      {SOURCE_LABELS[c.source] ?? c.source}
-                    </TableCell>
-                    <TableCell>
-                      <Badge className={STATUS_COLORS[c.status]}>
-                        {STATUS_LABELS[c.status]}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-gray-500 text-xs">
-                      {new Date(c.created_at).toLocaleDateString("id-ID")}
-                    </TableCell>
-                    <TableCell>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => router.push(`/dashboard/candidates/${c.id}`)}
-                      >
-                        <User className="w-4 h-4" />
-                      </Button>
+              </TableHeader>
+              <TableBody>
+                {loading ? (
+                  <TableRow>
+                    <TableCell colSpan={7} className="text-center py-8 text-gray-500">
+                      Memuat...
                     </TableCell>
                   </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
+                ) : candidates.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={7} className="text-center py-8 text-gray-500">
+                      Tidak ada kandidat ditemukan
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  candidates.map((c) => (
+                    <TableRow key={c.id} className="hover:bg-gray-50">
+                      <TableCell>
+                        <div>
+                          <p className="font-medium text-gray-900">{c.full_name}</p>
+                          <p className="text-gray-500 text-xs">{c.email}</p>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-gray-700">
+                        {(c as any).positions?.title ?? "-"}
+                      </TableCell>
+                      <TableCell className="text-gray-700">
+                        {(c as any).brands?.name ?? "-"}
+                      </TableCell>
+                      <TableCell className="text-gray-700">
+                        {SOURCE_LABELS[c.source] ?? c.source}
+                      </TableCell>
+                      <TableCell>
+                        <Badge className={STATUS_COLORS[c.status]}>
+                          {STATUS_LABELS[c.status]}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-gray-500 text-xs">
+                        {new Date(c.created_at).toLocaleDateString("id-ID")}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex gap-1">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => router.push(`/dashboard/candidates/${c.id}`)}
+                          >
+                            <User className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-red-500 hover:text-red-600 hover:bg-red-50"
+                            onClick={() => setDeleteCandidate(c)}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </div>
+
+          {/* Mobile Cards — hidden on desktop */}
+          <div className="md:hidden divide-y divide-gray-100">
+            {loading ? (
+              <div className="p-6 text-center text-gray-500">Memuat...</div>
+            ) : candidates.length === 0 ? (
+              <div className="p-6 text-center text-gray-500">
+                Tidak ada kandidat ditemukan
+              </div>
+            ) : (
+              candidates.map((c) => (
+                <div
+                  key={c.id}
+                  className="p-4 hover:bg-gray-50"
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-gray-900 truncate">{c.full_name}</p>
+                      <p className="text-gray-500 text-xs truncate">{c.email}</p>
+                    </div>
+                    <Badge className={`${STATUS_COLORS[c.status]} flex-shrink-0`}>
+                      {STATUS_LABELS[c.status]}
+                    </Badge>
+                  </div>
+                  <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-500">
+                    <span>{(c as any).positions?.title ?? "-"}</span>
+                    <span>{(c as any).brands?.name ?? "-"}</span>
+                    <span>{SOURCE_LABELS[c.source] ?? c.source}</span>
+                    <span>{new Date(c.created_at).toLocaleDateString("id-ID")}</span>
+                  </div>
+                  <div className="mt-2 flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="flex-1 text-xs h-8"
+                      onClick={() => router.push(`/dashboard/candidates/${c.id}`)}
+                    >
+                      <User className="w-3.5 h-3.5 mr-1" />
+                      Detail
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="text-red-500 hover:text-red-600 hover:bg-red-50 h-8 w-8 p-0"
+                      onClick={() => setDeleteCandidate(c)}
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </Button>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
 
           {/* Pagination */}
           {totalPages > 1 && (
@@ -535,6 +619,36 @@ export default function CandidatesPage() {
               </Button>
             </DialogFooter>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={!!deleteCandidate} onOpenChange={(v) => !v && setDeleteCandidate(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Hapus Kandidat</DialogTitle>
+            <DialogDescription>
+              Apakah kamu yakin ingin menghapus kandidat{" "}
+              <span className="font-medium text-gray-900">{deleteCandidate?.full_name}</span>?
+              Tindakan ini tidak dapat dibatalkan.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setDeleteCandidate(null)}
+            >
+              Batal
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={handleDeleteCandidate}
+            >
+              Hapus
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

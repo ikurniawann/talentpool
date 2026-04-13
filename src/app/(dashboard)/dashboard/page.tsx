@@ -1,9 +1,14 @@
-import { createClient } from "@/lib/supabase/server";
 import { getUser } from "@/lib/supabase/auth";
+import {
+  UsersIcon,
+  PlusCircleIcon,
+  ClipboardDocumentListIcon,
+  CheckCircleIcon,
+} from "@heroicons/react/24/solid";
 
 export default async function DashboardHome() {
-  const user = await getUser();
-  const supabase = await createClient();
+  const { user, supabase } = await getUser();
+  if (!user) return null;
 
   // Fetch stats
   const now = new Date();
@@ -37,25 +42,25 @@ export default async function DashboardHome() {
     {
       label: "Total Kandidat",
       value: totalResult.count ?? 0,
-      icon: "👥",
+      icon: UsersIcon,
       color: "bg-blue-50 text-blue-700",
     },
     {
       label: "Baru Bulan Ini",
       value: newResult.count ?? 0,
-      icon: "🆕",
+      icon: PlusCircleIcon,
       color: "bg-green-50 text-green-700",
     },
     {
       label: "Dalam Pipeline",
       value: pipelineResult.count ?? 0,
-      icon: "📋",
+      icon: ClipboardDocumentListIcon,
       color: "bg-yellow-50 text-yellow-700",
     },
     {
       label: "Diterima Bulan Ini",
       value: hiredResult.count ?? 0,
-      icon: "✅",
+      icon: CheckCircleIcon,
       color: "bg-emerald-50 text-emerald-700",
     },
   ];
@@ -83,24 +88,31 @@ export default async function DashboardHome() {
 
       {/* Stats Grid */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {stats.map((stat) => (
-          <div
-            key={stat.label}
-            className={`p-5 rounded-xl ${stat.color}`}
-          >
-            <div className="text-2xl mb-2">{stat.icon}</div>
-            <div className="text-3xl font-bold">{stat.value}</div>
-            <div className="text-sm mt-1 opacity-80">{stat.label}</div>
-          </div>
-        ))}
+        {stats.map((stat) => {
+          const Icon = stat.icon;
+          return (
+            <div
+              key={stat.label}
+              className={`p-5 rounded-xl ${stat.color}`}
+            >
+              <div className="mb-2">
+                <Icon className="w-6 h-6" />
+              </div>
+              <div className="text-3xl font-bold">{stat.value}</div>
+              <div className="text-sm mt-1 opacity-80">{stat.label}</div>
+            </div>
+          );
+        })}
       </div>
 
       {/* Recent Candidates */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200">
-        <div className="px-6 py-4 border-b border-gray-100">
-          <h2 className="font-semibold text-gray-900">Kandidat Terbaru</h2>
+        <div className="px-4 sm:px-6 py-4 border-b border-gray-100">
+          <h2 className="font-semibold text-gray-900 text-sm sm:text-base">Kandidat Terbaru</h2>
         </div>
-        <div className="divide-y divide-gray-100">
+
+        {/* Desktop list */}
+        <div className="hidden sm:block divide-y divide-gray-100">
           {recentCandidates && recentCandidates.length > 0 ? (
             recentCandidates.map((c) => (
               <div key={c.id} className="px-6 py-4 flex items-center justify-between">
@@ -127,6 +139,39 @@ export default async function DashboardHome() {
             ))
           ) : (
             <div className="px-6 py-8 text-center text-gray-500">
+              Belum ada kandidat
+            </div>
+          )}
+        </div>
+
+        {/* Mobile cards */}
+        <div className="sm:hidden divide-y divide-gray-100">
+          {recentCandidates && recentCandidates.length > 0 ? (
+            recentCandidates.slice(0, 5).map((c) => (
+              <div key={c.id} className="px-4 py-3 flex items-center justify-between gap-2">
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium text-gray-900 text-sm truncate">{c.full_name}</p>
+                  <p className="text-xs text-gray-500 truncate">
+                    {(c.positions as any)?.[0]?.title ?? "Tanpa Posisi"}
+                  </p>
+                </div>
+                <span
+                  className={`px-2 py-0.5 rounded-full text-xs font-medium flex-shrink-0 ${
+                    c.status === "hired"
+                      ? "bg-emerald-100 text-emerald-700"
+                      : c.status === "rejected"
+                        ? "bg-red-100 text-red-700"
+                        : c.status === "talent_pool"
+                          ? "bg-purple-100 text-purple-700"
+                          : "bg-blue-100 text-blue-700"
+                  }`}
+                >
+                  {statusLabels[c.status] ?? c.status}
+                </span>
+              </div>
+            ))
+          ) : (
+            <div className="px-4 py-6 text-center text-gray-500 text-sm">
               Belum ada kandidat
             </div>
           )}

@@ -114,7 +114,7 @@ export default async function AnalyticsPage() {
       </div>
 
       {/* Overview */}
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         <div className="bg-white rounded-xl border border-gray-200 p-5">
           <p className="text-sm text-gray-500">Total Kandidat</p>
           <p className="text-3xl font-bold text-gray-900 mt-1">{totalCandidates ?? 0}</p>
@@ -136,7 +136,7 @@ export default async function AnalyticsPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Pipeline Distribution */}
         <div className="bg-white rounded-xl border border-gray-200 p-6">
           <h2 className="font-semibold text-gray-900 mb-4">Distribusi Pipeline</h2>

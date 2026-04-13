@@ -31,15 +31,19 @@ export default function LoginPage() {
       setError(error.message);
       setLoading(false);
     } else {
-      router.push("/dashboard");
-      router.refresh();
+      router.replace("/dashboard");
     }
   };
 
-  const handleDemoLogin = (role: "hrd" | "hiring_manager") => {
+  const handleDemoLogin = async (role: "hrd" | "hiring_manager") => {
     const demoEmail = role === "hrd" ? DEMO_EMAIL : DEMO_HM_EMAIL;
     setEmail(demoEmail);
     setPassword(DEMO_PASSWORD);
+
+    // Wait for React to re-render with new state, then submit
+    await new Promise((r) => setTimeout(r, 50));
+    const fakeEvent = { preventDefault: () => {} } as React.FormEvent;
+    await handleLogin(fakeEvent);
   };
 
   return (

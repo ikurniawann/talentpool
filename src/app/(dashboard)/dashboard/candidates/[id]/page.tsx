@@ -21,13 +21,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet";
+
 import {
   ArrowLeft,
   Mail,
@@ -46,10 +40,14 @@ import {
   CheckCircle2,
   XCircle,
   MinusCircle,
+  ClipboardList,
   type LucideIcon,
+  Video,
+  MapPin as MapPinIcon,
 } from "lucide-react";
-import type { Candidate, CandidateStatus, Brand, Position, Interview } from "@/types";
+import type { Candidate, CandidateStatus, Brand, Position, Interview, User as UserType } from "@/types";
 import { useForm } from "react-hook-form";
+import ScorecardDialog from "@/components/scorecard-dialog";
 
 const STATUS_LABELS: Record<CandidateStatus, string> = {
   new: "Baru",
@@ -113,6 +111,13 @@ export default function CandidateDetailPage({
   const [editOpen, setEditOpen] = useState(false);
   const [scheduleOpen, setScheduleOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [scorecardOpen, setScorecardOpen] = useState(false);
+  const [selectedInterview, setSelectedInterview] = useState<Interview | null>(null);
+  const [interviewers, setInterviewers] = useState<UserType[]>([]);
+  const [editInterviewOpen, setEditInterviewOpen] = useState(false);
+  const [editingInterview, setEditingInterview] = useState<Interview | null>(null);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [deletingInterviewId, setDeletingInterviewId] = useState<string | null>(null);
 
   // Load candidate ID from params
   useEffect(() => {
@@ -154,14 +159,56 @@ export default function CandidateDetailPage({
     if (data) setPositions(data);
   }, [supabase]);
 
+  const fetchInterviewers = useCallback(async () => {
+    try {
+      const { data, error } = await supabase
+        .from("users")
+        .select("*")
+        .in("role", ["hrd", "hiring_manager"])
+        .order("full_name", { ascending: true, nullsFirst: false });
+
+      if (error) {
+        console.error("Error fetching interviewers:", error);
+        // Try alternative - order by id if full_name fails
+        const { data: altData } = await supabase
+          .from("users")
+          .select("*")
+          .in("role", ["hrd", "hiring_manager"])
+          .order("id");
+        if (altData) setInterviewers(altData as UserType[]);
+        return;
+      }
+      if (data) setInterviewers(data as UserType[]);
+    } catch (e) {
+      console.error("Exception fetching interviewers:", e);
+    }
+  }, [supabase]);
+
   useEffect(() => {
     if (candidateId) {
       fetchCandidate(candidateId);
       fetchInterviews(candidateId);
       fetchBrands();
       fetchPositions();
+      fetchInterviewers();
     }
-  }, [candidateId, fetchCandidate, fetchInterviews, fetchBrands, fetchPositions]);
+  }, [candidateId, fetchCandidate, fetchInterviews, fetchBrands, fetchPositions, fetchInterviewers]);
+
+  // Reset schedule form when dialog opens
+  useEffect(() => {
+    if (scheduleOpen) {
+      scheduleForm.reset({
+        interview_date: "",
+        interview_time: "",
+        type: "hrd",
+        interviewer_id: "",
+        mode: "offline",
+        meeting_link: "",
+        notes: "",
+        send_notification: false,
+      });
+    }
+  }, [scheduleOpen]);
 
   // Edit form
   type EditFormValues = {
@@ -230,44 +277,239 @@ export default function CandidateDetailPage({
     }
   };
 
+  const handleScorecardSaved = async () => {
+    fetchInterviews(candidateId);
+    fetchCandidate(candidateId);
+  };
+
+  const handleInterviewClick = (interview: Interview) => {
+    setSelectedInterview(interview);
+    setScorecardOpen(true);
+  };
+
+  // Edit interview form
+  type EditInterviewFormValues = {
+    interview_date: string;
+    interview_time: string;
+    type: string;
+    interviewer_id: string;
+    mode: "offline" | "online";
+    meeting_link: string;
+    notes: string;
+  };
+
+  const editInterviewForm = useForm<EditInterviewFormValues>({
+    defaultValues: {
+      interview_date: "",
+      interview_time: "",
+      type: "hrd",
+      interviewer_id: "",
+      mode: "offline",
+      meeting_link: "",
+      notes: "",
+    },
+  });
+
+  // Open edit dialog with interview data
+  const handleEditInterview = (interview: Interview) => {
+    const dateObj = new Date(interview.interview_date);
+    const dateStr = dateObj.toISOString().split("T")[0];
+    const timeStr = dateObj.toTimeString().slice(0, 5);
+
+    setEditingInterview(interview);
+    editInterviewForm.reset({
+      interview_date: dateStr,
+      interview_time: timeStr,
+      type: interview.type,
+      interviewer_id: (interview as any).interviewer_id || "",
+      mode: interview.mode || "offline",
+      meeting_link: interview.meeting_link || "",
+      notes: interview.notes || "",
+    });
+    setEditInterviewOpen(true);
+  };
+
+  // Handle update interview
+  const handleUpdateInterview = async (values: EditInterviewFormValues) => {
+    if (!editingInterview) return;
+
+    setSaving(true);
+    const interviewDateTime = `${values.interview_date}T${values.interview_time || "00:00"}:00`;
+
+    const updateData: Record<string, unknown> = {
+      interview_date: interviewDateTime,
+      type: values.type as "hrd" | "hiring_manager",
+      mode: values.mode,
+      notes: values.notes || null,
+    };
+
+    if (values.interviewer_id && values.interviewer_id.trim() !== "") {
+      updateData.interviewer_id = values.interviewer_id;
+    }
+
+    if (values.mode === "online" && values.meeting_link) {
+      updateData.meeting_link = values.meeting_link;
+    } else if (values.mode === "offline") {
+      updateData.meeting_link = null;
+    }
+
+    const { error } = await supabase
+      .from("interviews")
+      .update(updateData)
+      .eq("id", editingInterview.id);
+
+    if (error) {
+      console.error("Error updating interview:", error);
+      alert(`Gagal mengupdate jadwal: ${error.message}`);
+      setSaving(false);
+      return;
+    }
+
+    setSaving(false);
+    setEditInterviewOpen(false);
+    setEditingInterview(null);
+    editInterviewForm.reset();
+    fetchInterviews(candidateId);
+  };
+
+  // Handle delete interview
+  const handleDeleteInterview = async () => {
+    if (!deletingInterviewId) return;
+
+    setSaving(true);
+    const { error } = await supabase
+      .from("interviews")
+      .delete()
+      .eq("id", deletingInterviewId);
+
+    if (error) {
+      console.error("Error deleting interview:", error);
+      alert(`Gagal menghapus interview: ${error.message}`);
+    }
+
+    setSaving(false);
+    setDeleteConfirmOpen(false);
+    setDeletingInterviewId(null);
+    fetchInterviews(candidateId);
+  };
+
   // Schedule interview form
   type ScheduleFormValues = {
     interview_date: string;
     interview_time: string;
     type: string;
+    interviewer_id: string;
+    mode: "offline" | "online";
+    meeting_link: string;
     notes: string;
+    send_notification: boolean;
   };
 
   const scheduleForm = useForm<ScheduleFormValues>({
-    defaultValues: { interview_date: "", interview_time: "", type: "hrd", notes: "" },
+    defaultValues: {
+      interview_date: "",
+      interview_time: "",
+      type: "hrd",
+      interviewer_id: "",
+      mode: "offline",
+      meeting_link: "",
+      notes: "",
+      send_notification: false,
+    },
   });
 
   const handleScheduleInterview = async (values: ScheduleFormValues) => {
+    // Validate required fields
+    if (!values.interview_date) {
+      alert("Tanggal interview harus diisi");
+      return;
+    }
+    if (!values.mode) {
+      alert("Mode interview harus dipilih");
+      return;
+    }
+
     setSaving(true);
-    const { data: userData } = await supabase.auth.getUser();
     const interviewDateTime = `${values.interview_date}T${values.interview_time || "00:00"}:00`;
 
-    const { error } = await supabase.from("interviews").insert({
+    // Build insert object - only include columns that have values
+    const insertData: Record<string, unknown> = {
       candidate_id: candidateId,
-      interviewer_id: userData.user?.id ?? null,
       interview_date: interviewDateTime,
       type: values.type as "hrd" | "hiring_manager",
+      mode: values.mode,
       notes: values.notes || null,
-    });
+    };
 
-    setSaving(false);
-    if (!error) {
-      setScheduleOpen(false);
-      scheduleForm.reset();
-      fetchInterviews(candidateId);
-      // Update candidate status if it's still "new"
-      if (candidate?.status === "new") {
-        await supabase
-          .from("candidates")
-          .update({ status: "screening" })
-          .eq("id", candidateId);
-        fetchCandidate(candidateId);
+    // Only add interviewer_id if it's not empty
+    if (values.interviewer_id && values.interviewer_id.trim() !== "") {
+      insertData.interviewer_id = values.interviewer_id;
+    }
+
+    // Only add meeting_link for online mode
+    if (values.mode === "online" && values.meeting_link) {
+      insertData.meeting_link = values.meeting_link;
+    }
+
+    const { data: inserted, error } = await supabase
+      .from("interviews")
+      .insert(insertData)
+      .select()
+      .single();
+
+    if (error) {
+      console.error("Error scheduling interview:", error);
+      alert(`Gagal menyimpan jadwal: ${error.message}`);
+      setSaving(false);
+      return;
+    }
+
+    // Send notification if checked
+    if (values.send_notification && candidate) {
+      const interviewTypeLabel = values.type === "hrd" ? "Interview HRD" : "Interview Manager";
+      const dateStr = new Date(interviewDateTime).toLocaleDateString("id-ID", {
+        day: "numeric",
+        month: "long",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+
+      let message = `Halo ${candidate.full_name}, jadwal interview telah ditentukan:\n\n📅 *${interviewTypeLabel}*\n🗓️ Tanggal: ${dateStr}\n📍 Mode: ${values.mode === "online" ? "Online (Zoom/Google Meet)" : "Offline (Tatap Muka)"}`;
+      if (values.mode === "online" && values.meeting_link) {
+        message += `\n🔗 Link: ${values.meeting_link}`;
       }
+      message += `\n\nMohon konfirmasi kehadiran. Terima kasih!`;
+
+      await fetch("/api/notifications/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          candidate_id: candidateId,
+          channel: "whatsapp",
+          message,
+        }),
+      });
+    }
+
+    // Success - show notification and reset
+    setSaving(false);
+    setScheduleOpen(false);
+    scheduleForm.reset();
+
+    // Fetch latest interviews FIRST, then show notification
+    await fetchInterviews(candidateId);
+
+    // Show success notification AFTER data is refreshed
+    alert("Interview berhasil dijadwalkan!");
+
+    // Update candidate status if it's still "new"
+    if (candidate?.status === "new") {
+      await supabase
+        .from("candidates")
+        .update({ status: "screening" })
+        .eq("id", candidateId);
+      fetchCandidate(candidateId);
     }
   };
 
@@ -295,42 +537,59 @@ export default function CandidateDetailPage({
 
   const candidateBrand = (candidate as any).brands as { name: string } | undefined;
   const candidatePosition = (candidate as any).positions as { title: string } | undefined;
+  const positionTitle = candidatePosition?.title;
 
   return (
     <div className="space-y-6 max-w-5xl">
       {/* Header */}
-      <div className="flex items-center gap-4">
-        <Button variant="ghost" size="icon" onClick={() => router.back()}>
+      <div className="flex items-start gap-3">
+        <Button variant="ghost" size="icon" onClick={() => router.back()} className="flex-shrink-0 mt-0.5">
           <ArrowLeft className="w-5 h-5" />
         </Button>
-        <div className="flex-1">
-          <h1 className="text-2xl font-bold text-gray-900">{candidate.full_name}</h1>
-          <div className="flex items-center gap-3 mt-1">
-            <Badge className={STATUS_COLORS[candidate.status]}>
+        <div className="flex-1 min-w-0">
+          <h1 className="text-xl sm:text-2xl font-bold text-gray-900 truncate">{candidate.full_name}</h1>
+          <div className="flex flex-wrap items-center gap-2 mt-1">
+            <Badge className={`${STATUS_COLORS[candidate.status]} text-xs`}>
               {STATUS_LABELS[candidate.status]}
             </Badge>
             {candidateBrand?.name && (
-              <span className="text-gray-500 text-sm">{candidateBrand.name}</span>
+              <span className="text-gray-500 text-xs sm:text-sm">{candidateBrand.name}</span>
             )}
             {candidatePosition?.title && (
-              <span className="text-gray-500 text-sm">· {candidatePosition.title}</span>
+              <span className="text-gray-500 text-xs sm:text-sm">· {candidatePosition.title}</span>
             )}
           </div>
         </div>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={() => setEditOpen(true)}>
-            <Edit2 className="w-4 h-4 mr-2" />
-            Edit
-          </Button>
-          <Button onClick={() => setScheduleOpen(true)}>
-            <Plus className="w-4 h-4 mr-2" />
-            Jadwalkan Interview
-          </Button>
-        </div>
+      </div>
+
+      {/* Action buttons — full width on mobile */}
+      <div className="flex flex-col sm:flex-row gap-2 sm:gap-2">
+        <Button variant="outline" size="sm" onClick={() => setEditOpen(true)} className="flex-1 sm:flex-none">
+          <Edit2 className="w-4 h-4 mr-1 sm:mr-2" />
+          <span className="sm:hidden">Edit</span>
+          <span className="hidden sm:inline">Edit Kandidat</span>
+        </Button>
+        <Button size="sm" onClick={() => setScheduleOpen(true)} className="flex-1 sm:flex-none">
+          <Plus className="w-4 h-4 mr-1 sm:mr-2" />
+          <span className="sm:hidden">Jadwalkan</span>
+          <span className="hidden sm:inline">Jadwalkan Interview</span>
+        </Button>
+        <a
+          href={`https://wa.me/${candidate.phone.replace(/\D/g, "")}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex shrink-0 items-center justify-center rounded-lg border border-green-200 bg-background hover:bg-green-50 text-green-600 text-sm font-medium whitespace-nowrap transition-all outline-none select-none focus-visible:ring-3 h-7 gap-1 rounded-[min(0.5rem,12px)] px-2.5 text-[0.8rem] flex-1 sm:flex-none"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4 mr-1 sm:mr-2">
+            <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+          </svg>
+          <span className="sm:hidden">WA</span>
+          <span className="hidden sm:inline">WhatsApp</span>
+        </a>
       </div>
 
       {/* Main Content */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         {/* Left Column - Profile & Files */}
         <div className="space-y-6">
           {/* Profile Card */}
@@ -496,17 +755,19 @@ export default function CandidateDetailPage({
                           ? RECOMMENDATION_CONFIG[interview.recommendation]
                           : null;
                         const RecIcon = rec?.icon;
+                        const isOnline = interview.mode === "online";
                         return (
                           <div
                             key={interview.id}
-                            className="border border-gray-200 rounded-lg p-4 space-y-3"
+                            className="border border-gray-200 rounded-lg p-4 space-y-3 hover:border-blue-300 hover:bg-blue-50/30 transition-colors cursor-pointer"
+                            onClick={() => handleInterviewClick(interview)}
                           >
                             <div className="flex items-start justify-between">
                               <div>
                                 <p className="font-medium text-gray-900">
                                   {INTERVIEW_TYPE_LABELS[interview.type] ?? interview.type}
                                 </p>
-                                <div className="flex items-center gap-3 mt-1 text-sm text-gray-500">
+                                <div className="flex flex-wrap items-center gap-3 mt-1 text-sm text-gray-500">
                                   <span className="flex items-center gap-1">
                                     <Calendar className="w-3.5 h-3.5" />
                                     {new Date(interview.interview_date).toLocaleDateString(
@@ -520,12 +781,32 @@ export default function CandidateDetailPage({
                                       }
                                     )}
                                   </span>
+                                  <span className="flex items-center gap-1">
+                                    {isOnline ? (
+                                      <Video className="w-3.5 h-3.5 text-blue-500" />
+                                    ) : (
+                                      <MapPinIcon className="w-3.5 h-3.5" />
+                                    )}
+                                    {isOnline ? "Online" : "Offline"}
+                                  </span>
                                   <span>·</span>
                                   <span className="flex items-center gap-1">
                                     <User className="w-3.5 h-3.5" />
                                     {(interview as any).users?.full_name ?? "HRD"}
                                   </span>
                                 </div>
+                                {isOnline && interview.meeting_link && (
+                                  <a
+                                    href={interview.meeting_link}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="inline-flex items-center gap-1 mt-1 text-xs text-blue-600 hover:underline"
+                                    onClick={(e) => e.stopPropagation()}
+                                  >
+                                    <Video className="w-3 h-3" />
+                                    {interview.meeting_link}
+                                  </a>
+                                )}
                               </div>
                               {rec && (
                                 <Badge
@@ -567,7 +848,7 @@ export default function CandidateDetailPage({
                                 </div>
                                 {interview.scorecard.notes && (
                                   <p className="text-xs text-gray-600 italic mt-2">
-                                    "{interview.scorecard.notes}"
+                                    &ldquo;{interview.scorecard.notes}&rdquo;
                                   </p>
                                 )}
                               </div>
@@ -577,6 +858,53 @@ export default function CandidateDetailPage({
                             {interview.notes && !interview.scorecard && (
                               <p className="text-sm text-gray-600 italic">{interview.notes}</p>
                             )}
+
+                            {/* Fill Scorecard Button */}
+                            {!interview.scorecard && (
+                              <div className="pt-2 border-t border-gray-100">
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="text-blue-600 border-blue-200 hover:bg-blue-50"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleInterviewClick(interview);
+                                  }}
+                                >
+                                  <ClipboardList className="w-4 h-4 mr-1" />
+                                  Isi Scorecard
+                                </Button>
+                              </div>
+                            )}
+
+                            {/* Action Buttons */}
+                            <div className="pt-2 border-t border-gray-100 flex gap-2">
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="text-gray-500 hover:text-blue-600"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleEditInterview(interview);
+                                }}
+                              >
+                                <Edit2 className="w-4 h-4 mr-1" />
+                                Edit
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="text-gray-500 hover:text-red-600"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setDeletingInterviewId(interview.id);
+                                  setDeleteConfirmOpen(true);
+                                }}
+                              >
+                                <XCircle className="w-4 h-4 mr-1" />
+                                Hapus
+                              </Button>
+                            </div>
                           </div>
                         );
                       })}
@@ -705,7 +1033,9 @@ export default function CandidateDetailPage({
                   }}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Pilih Outlet" />
+                    <SelectValue placeholder="Pilih Outlet">
+                      {brands.find(b => b.id === editForm.watch("brand_id"))?.name || editForm.watch("brand_id") || "Pilih Outlet"}
+                    </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="">-</SelectItem>
@@ -722,7 +1052,9 @@ export default function CandidateDetailPage({
                   onValueChange={(v) => editForm.setValue("position_id", v || "")}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Pilih Posisi" />
+                    <SelectValue placeholder="Pilih Posisi">
+                      {positions.find(p => p.id === editForm.watch("position_id"))?.title || editForm.watch("position_id") || "Pilih Posisi"}
+                    </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="">-</SelectItem>
@@ -786,17 +1118,17 @@ export default function CandidateDetailPage({
         </DialogContent>
       </Dialog>
 
-      {/* Schedule Interview Sheet */}
-      <Sheet open={scheduleOpen} onOpenChange={setScheduleOpen}>
-        <SheetContent className="w-[400px] sm:max-w-[400px]">
-          <SheetHeader>
-            <SheetTitle>Jadwalkan Interview</SheetTitle>
-            <SheetDescription>
+      {/* Schedule Interview Dialog */}
+      <Dialog open={scheduleOpen} onOpenChange={setScheduleOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Jadwalkan Interview</DialogTitle>
+            <DialogDescription>
               Atur jadwal interview untuk {candidate.full_name}.
-            </SheetDescription>
-          </SheetHeader>
+            </DialogDescription>
+          </DialogHeader>
 
-          <form onSubmit={scheduleForm.handleSubmit(handleScheduleInterview)} className="space-y-4 mt-6">
+          <form onSubmit={scheduleForm.handleSubmit(handleScheduleInterview)} className="space-y-4">
             <div className="space-y-1.5">
               <Label>Tipe Interview</Label>
               <Select
@@ -804,11 +1136,38 @@ export default function CandidateDetailPage({
                 onValueChange={(v) => scheduleForm.setValue("type", v as any)}
               >
                 <SelectTrigger>
-                  <SelectValue />
+                  <SelectValue>
+                    {scheduleForm.watch("type") === "hiring_manager" ? "Interview Manager" : "Interview HRD"}
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="hrd">Interview HRD</SelectItem>
                   <SelectItem value="hiring_manager">Interview Manager</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label>Interviewer</Label>
+              <Select
+                value={scheduleForm.watch("interviewer_id") || ""}
+                onValueChange={(v) => scheduleForm.setValue("interviewer_id", v || "")}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Pilih Interviewer (opsional)">
+                    {(interviewers.find(iv => iv.id === scheduleForm.watch("interviewer_id"))?.full_name || scheduleForm.watch("interviewer_id")) || "Pilih Interviewer (opsional)"}
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  {interviewers.length === 0 && (
+                    <SelectItem value="" disabled>Tidak ada interviewer</SelectItem>
+                  )}
+                  {interviewers.map((iv) => (
+                    <SelectItem key={iv.id} value={iv.id}>
+                      <span>{iv.full_name || iv.email || iv.id.slice(0, 8)}</span>
+                      <span className="text-gray-400 text-xs ml-1">({iv.role === "hrd" ? "HRD" : "Manager"})</span>
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
@@ -825,6 +1184,44 @@ export default function CandidateDetailPage({
             </div>
 
             <div className="space-y-1.5">
+              <Label>Mode Interview</Label>
+              <Select
+                value={scheduleForm.watch("mode") || "offline"}
+                onValueChange={(v) => scheduleForm.setValue("mode", v as "offline" | "online")}
+              >
+                <SelectTrigger>
+                  <SelectValue>
+                    {scheduleForm.watch("mode") === "online" ? "Online (Zoom/Google Meet)" : "Offline (Tatap Muka)"}
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="offline">
+                    <span className="flex items-center gap-2">
+                      <MapPinIcon className="w-4 h-4" /> Offline (Tatap Muka)
+                    </span>
+                  </SelectItem>
+                  <SelectItem value="online">
+                    <span className="flex items-center gap-2">
+                      <Video className="w-4 h-4" /> Online (Zoom/Google Meet)
+                    </span>
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {scheduleForm.watch("mode") === "online" && (
+              <div className="space-y-1.5">
+                <Label>
+                  Meeting Link <span className="text-red-500">*</span>
+                </Label>
+                <Input
+                  {...scheduleForm.register("meeting_link")}
+                  placeholder="https://zoom.us/j/... atau https://meet.google.com/..."
+                />
+              </div>
+            )}
+
+            <div className="space-y-1.5">
               <Label>Catatan</Label>
               <Textarea
                 {...scheduleForm.register("notes")}
@@ -833,12 +1230,193 @@ export default function CandidateDetailPage({
               />
             </div>
 
-            <Button type="submit" className="w-full" disabled={saving}>
-              {saving ? "Menyimpan..." : "Simpan Jadwal"}
-            </Button>
+            {/* Send notification checkbox */}
+            <div className="flex items-start gap-2.5 pt-1">
+              <input
+                type="checkbox"
+                id="send_notification"
+                className="mt-0.5 w-4 h-4 accent-blue-600"
+                {...scheduleForm.register("send_notification")}
+              />
+              <label htmlFor="send_notification" className="text-sm text-gray-700 cursor-pointer">
+                Kirim notifikasi WhatsApp ke kandidat setelah menyimpan jadwal
+              </label>
+            </div>
+
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setScheduleOpen(false)}>
+                Batal
+              </Button>
+              <Button
+                type="submit"
+                disabled={
+                  saving ||
+                  !scheduleForm.watch("interview_date")
+                }
+              >
+                {saving ? "Menyimpan..." : "Simpan Jadwal"}
+              </Button>
+            </DialogFooter>
           </form>
-        </SheetContent>
-      </Sheet>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Interview Dialog */}
+      <Dialog open={editInterviewOpen} onOpenChange={setEditInterviewOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Edit Jadwal Interview</DialogTitle>
+            <DialogDescription>
+              Ubah jadwal interview untuk {candidate?.full_name}.
+            </DialogDescription>
+          </DialogHeader>
+
+          <form onSubmit={editInterviewForm.handleSubmit(handleUpdateInterview)} className="space-y-4">
+            <div className="space-y-1.5">
+              <Label>Tipe Interview</Label>
+              <Select
+                value={editInterviewForm.watch("type") || "hrd"}
+                onValueChange={(v) => editInterviewForm.setValue("type", v as any)}
+              >
+                <SelectTrigger>
+                  <SelectValue>
+                    {editInterviewForm.watch("type") === "hiring_manager" ? "Interview Manager" : "Interview HRD"}
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="hrd">Interview HRD</SelectItem>
+                  <SelectItem value="hiring_manager">Interview Manager</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label>Interviewer</Label>
+              <Select
+                value={editInterviewForm.watch("interviewer_id") || ""}
+                onValueChange={(v) => editInterviewForm.setValue("interviewer_id", v || "")}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Pilih Interviewer (opsional)">
+                    {(interviewers.find(iv => iv.id === editInterviewForm.watch("interviewer_id"))?.full_name || editInterviewForm.watch("interviewer_id")) || "Pilih Interviewer (opsional)"}
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  {interviewers.length === 0 && (
+                    <SelectItem value="" disabled>Tidak ada interviewer</SelectItem>
+                  )}
+                  {interviewers.map((iv) => (
+                    <SelectItem key={iv.id} value={iv.id}>
+                      <span>{iv.full_name || iv.email || iv.id.slice(0, 8)}</span>
+                      <span className="text-gray-400 text-xs ml-1">({iv.role === "hrd" ? "HRD" : "Manager"})</span>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <Label>Tanggal</Label>
+                <Input type="date" {...editInterviewForm.register("interview_date")} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Jam</Label>
+                <Input type="time" {...editInterviewForm.register("interview_time")} />
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label>Mode Interview</Label>
+              <Select
+                value={editInterviewForm.watch("mode") || "offline"}
+                onValueChange={(v) => editInterviewForm.setValue("mode", v as "offline" | "online")}
+              >
+                <SelectTrigger>
+                  <SelectValue>
+                    {editInterviewForm.watch("mode") === "online" ? "Online (Zoom/Google Meet)" : "Offline (Tatap Muka)"}
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="offline">
+                    <span className="flex items-center gap-2">
+                      <MapPinIcon className="w-4 h-4" /> Offline (Tatap Muka)
+                    </span>
+                  </SelectItem>
+                  <SelectItem value="online">
+                    <span className="flex items-center gap-2">
+                      <Video className="w-4 h-4" /> Online (Zoom/Google Meet)
+                    </span>
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {editInterviewForm.watch("mode") === "online" && (
+              <div className="space-y-1.5">
+                <Label>
+                  Meeting Link <span className="text-red-500">*</span>
+                </Label>
+                <Input
+                  {...editInterviewForm.register("meeting_link")}
+                  placeholder="https://zoom.us/j/... atau https://meet.google.com/..."
+                />
+              </div>
+            )}
+
+            <div className="space-y-1.5">
+              <Label>Catatan</Label>
+              <Textarea
+                {...editInterviewForm.register("notes")}
+                rows={3}
+                placeholder="Catatan untuk interview..."
+              />
+            </div>
+
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setEditInterviewOpen(false)}>
+                Batal
+              </Button>
+              <Button type="submit" disabled={saving || !editInterviewForm.watch("interview_date")}>
+                {saving ? "Menyimpan..." : "Simpan Perubahan"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Interview Confirmation Dialog */}
+      <Dialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Hapus Interview?</DialogTitle>
+            <DialogDescription>
+              Apakah Anda yakin ingin menghapus interview ini? Tindakan ini tidak dapat dibatalkan.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setDeleteConfirmOpen(false)}>
+              Batal
+            </Button>
+            <Button
+              variant="destructive"
+              disabled={saving}
+              onClick={handleDeleteInterview}
+            >
+              {saving ? "Menghapus..." : "Hapus"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Interview Scorecard Dialog */}
+      <ScorecardDialog
+        interview={selectedInterview}
+        positionTitle={positionTitle}
+        open={scorecardOpen}
+        onOpenChange={setScorecardOpen}
+        onSaved={handleScorecardSaved}
+      />
     </div>
   );
 }

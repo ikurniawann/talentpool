@@ -24,6 +24,7 @@ export type InterviewType = "hrd" | "hiring_manager";
 export type InterviewRecommendation = "proceed" | "pool" | "reject";
 export type NotificationChannel = "whatsapp" | "email";
 export type NotificationStatus = "pending" | "sent" | "failed";
+export type InterviewMode = "offline" | "online";
 
 // --- Tables ---
 
@@ -49,6 +50,7 @@ export interface Position {
 export interface User {
   id: string;
   full_name: string;
+  email?: string;
   role: UserRole;
   brand_id: string | null;
   created_at: string;
@@ -78,6 +80,8 @@ export interface Interview {
   interviewer_id: string;
   interview_date: string;
   type: InterviewType;
+  mode: InterviewMode;
+  meeting_link: string | null;
   scorecard: Scorecard | null;
   recommendation: InterviewRecommendation | null;
   notes: string | null;
@@ -85,16 +89,40 @@ export interface Interview {
 }
 
 export interface Scorecard {
-  // Generic scorecard, fields vary per position
+  // Position-based scorecards; set of criteria depends on position category.
   // Common fields:
+  overall_score?: number; // 1-5
+  notes?: string;
+
+  // Kitchen criteria
+  pengalaman_memasak?: number; // 1-5
+  food_hygiene?: number; // 1-5
+  kecepatan_efisiensi?: number; // 1-5
+  kemampuan_resep?: number; // 1-5
+  attitude_teamwork?: number; // 1-5
+
+  // Service criteria
+  kemampuan_komunikasi?: number; // 1-5
+  penampilan_grooming?: number; // 1-5
+  pengetahuan_produk?: number; // 1-5
+  kecepatan_pelayanan?: number; // 1-5
+  attitude_customer_service?: number; // 1-5
+
+  // Management criteria
+  pengalaman_managerial?: number; // 1-5
+  problem_solving?: number; // 1-5
+  leadership_komunikasi?: number; // 1-5
+  pemahaman_operasional?: number; // 1-5
+  target_performance?: number; // 1-5
+
+  // Generic fallback criteria
   technical_skills?: number; // 1-5
   communication?: number; // 1-5
   attitude?: number; // 1-5
   appearance?: number; // 1-5
   experience?: number; // 1-5
   culture_fit?: number; // 1-5
-  overall_score?: number; // 1-5
-  notes?: string;
+
   [key: string]: string | number | boolean | null | undefined;
 }
 
@@ -105,6 +133,14 @@ export interface NotificationLog {
   message: string;
   status: NotificationStatus;
   sent_at: string | null;
+}
+
+export interface ActivityLog {
+  id: string;
+  candidate_id: string;
+  action: string;
+  details: Record<string, unknown> | null;
+  created_at: string;
 }
 
 // --- API / Form DTOs ---
@@ -141,6 +177,8 @@ export interface InterviewCreateInput {
   interviewer_id: string;
   interview_date: string;
   type: InterviewType;
+  mode?: InterviewMode;
+  meeting_link?: string | null;
   scorecard?: Scorecard;
   recommendation?: InterviewRecommendation;
   notes?: string;
@@ -200,3 +238,4 @@ export type UserRow = User;
 export type CandidateRow = Candidate;
 export type InterviewRow = Interview;
 export type NotificationLogRow = NotificationLog;
+export type ActivityLogRow = ActivityLog;
