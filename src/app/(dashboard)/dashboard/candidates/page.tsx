@@ -542,7 +542,9 @@ export default function CandidatesPage() {
                   onValueChange={(v) => addForm.setValue("brand_id", v || undefined)}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Pilih Outlet" />
+                    <SelectValue>
+                      {brands.find(b => b.id === addForm.watch("brand_id"))?.name || "Pilih Outlet"}
+                    </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
                     {brands.map((b) => (
@@ -558,7 +560,19 @@ export default function CandidatesPage() {
                   onValueChange={(v) => addForm.setValue("source", v as any)}
                 >
                   <SelectTrigger>
-                    <SelectValue />
+                    <SelectValue>
+                      {{
+                        walk_in: "Walk-in",
+                        referral: "Rekomendasi",
+                        internal_referral: "Referral Internal",
+                        jobfair: "Job Fair",
+                        headhunter: "Headhunter",
+                        portal: "Portal",
+                        instagram: "Instagram",
+                        jobstreet: "JobStreet",
+                        other: "Lainnya",
+                      }[addForm.watch("source") as string] || "Pilih Sumber"}
+                    </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="walk_in">Walk-in</SelectItem>
@@ -582,7 +596,9 @@ export default function CandidatesPage() {
                 onValueChange={(v) => addForm.setValue("status", v as any)}
               >
                 <SelectTrigger>
-                  <SelectValue />
+                  <SelectValue>
+                    {{ new: "Baru (New)", screening: "Screening" }[addForm.watch("status") as string] || "Baru (New)"}
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="new">Baru (New)</SelectItem>
