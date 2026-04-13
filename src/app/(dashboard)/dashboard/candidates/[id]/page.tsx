@@ -1033,9 +1033,7 @@ export default function CandidateDetailPage({
                   }}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Pilih Outlet">
-                      {brands.find(b => b.id === editForm.watch("brand_id"))?.name || editForm.watch("brand_id") || "Pilih Outlet"}
-                    </SelectValue>
+                    <SelectValue placeholder="Pilih Outlet" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="">-</SelectItem>
@@ -1052,9 +1050,7 @@ export default function CandidateDetailPage({
                   onValueChange={(v) => editForm.setValue("position_id", v || "")}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Pilih Posisi">
-                      {positions.find(p => p.id === editForm.watch("position_id"))?.title || editForm.watch("position_id") || "Pilih Posisi"}
-                    </SelectValue>
+                    <SelectValue placeholder="Pilih Posisi" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="">-</SelectItem>
@@ -1136,9 +1132,7 @@ export default function CandidateDetailPage({
                 onValueChange={(v) => scheduleForm.setValue("type", v as any)}
               >
                 <SelectTrigger>
-                  <SelectValue>
-                    {scheduleForm.watch("type") === "hiring_manager" ? "Interview Manager" : "Interview HRD"}
-                  </SelectValue>
+                  <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="hrd">Interview HRD</SelectItem>
@@ -1154,9 +1148,7 @@ export default function CandidateDetailPage({
                 onValueChange={(v) => scheduleForm.setValue("interviewer_id", v || "")}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Pilih Interviewer (opsional)">
-                    {(interviewers.find(iv => iv.id === scheduleForm.watch("interviewer_id"))?.full_name || scheduleForm.watch("interviewer_id")) || "Pilih Interviewer (opsional)"}
-                  </SelectValue>
+                  <SelectValue placeholder="Pilih Interviewer (opsional)" />
                 </SelectTrigger>
                 <SelectContent>
                   {interviewers.length === 0 && (
@@ -1279,9 +1271,7 @@ export default function CandidateDetailPage({
                 onValueChange={(v) => editInterviewForm.setValue("type", v as any)}
               >
                 <SelectTrigger>
-                  <SelectValue>
-                    {editInterviewForm.watch("type") === "hiring_manager" ? "Interview Manager" : "Interview HRD"}
-                  </SelectValue>
+                  <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="hrd">Interview HRD</SelectItem>
@@ -1297,9 +1287,7 @@ export default function CandidateDetailPage({
                 onValueChange={(v) => editInterviewForm.setValue("interviewer_id", v || "")}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Pilih Interviewer (opsional)">
-                    {(interviewers.find(iv => iv.id === editInterviewForm.watch("interviewer_id"))?.full_name || editInterviewForm.watch("interviewer_id")) || "Pilih Interviewer (opsional)"}
-                  </SelectValue>
+                  <SelectValue placeholder="Pilih Interviewer (opsional)" />
                 </SelectTrigger>
                 <SelectContent>
                   {interviewers.length === 0 && (
