@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -104,7 +105,8 @@ export default function CandidateDetailPage({
 }) {
   const router = useRouter();
   const supabase = createClient();
-  const [candidateId, setCandidateId] = useState<string>("");
+  const params = useParams();
+  const candidateId = params.id as string;
   const [candidate, setCandidate] = useState<Candidate | null>(null);
   const [brands, setBrands] = useState<Brand[]>([]);
   const [positions, setPositions] = useState<Position[]>([]);
@@ -121,13 +123,7 @@ export default function CandidateDetailPage({
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [deletingInterviewId, setDeletingInterviewId] = useState<string | null>(null);
 
-  // Load candidate ID from params
-  useEffect(() => {
-    params.then(({ id }) => {
-      console.log("[DEBUG] Setting candidateId from params:", id);
-      setCandidateId(id);
-    });
-  }, [params]);
+
 
   const fetchCandidate = useCallback(async (id: string) => {
     const { data } = await supabase
@@ -533,8 +529,8 @@ export default function CandidateDetailPage({
     await fetchCandidate(candidateId);
 
     setSaving(false);
+    scheduleForm.reset(); // Reset form BEFORE closing dialog
     setScheduleOpen(false);
-    scheduleForm.reset();
     alert("Interview berhasil dijadwalkan!");
   };
 
