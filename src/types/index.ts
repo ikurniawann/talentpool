@@ -19,7 +19,8 @@ export type CandidateStatus =
   | "interview_manager"
   | "talent_pool"
   | "hired"
-  | "rejected";
+  | "rejected"
+  | "archived";
 export type InterviewType = "hrd" | "hiring_manager";
 export type InterviewRecommendation = "proceed" | "pool" | "reject";
 export type NotificationChannel = "whatsapp" | "email";
@@ -69,6 +70,8 @@ export interface Candidate {
   photo_url: string | null;
   status: CandidateStatus;
   notes: string | null;
+  tags: string[] | null;
+  last_contacted_at: string | null;
   created_by: string | null;
   created_at: string;
   updated_at: string;

@@ -1,255 +1,460 @@
-import { createClient } from "@/lib/supabase/server";
+"use client";
 
-export default async function AnalyticsPage() {
-  const supabase = await createClient();
+import { useState, useEffect, useCallback } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  ArrowTrendingUpIcon,
+  ArrowTrendingDownIcon,
+  DocumentArrowDownIcon,
+  UsersIcon,
+  ClockIcon,
+  CheckCircleIcon,
+  XCircleIcon,
+} from "@heroicons/react/24/outline";
+import {
+  LineChart,
+  Line,
+  PieChart,
+  Pie,
+  Cell,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+  ReferenceLine,
+} from "recharts";
+import { useToast, ToastContainer } from "@/components/ui/toast";
 
-  const now = new Date();
-  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
-  const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString();
-  const endOfLastMonth = new Date(now.getFullYear(), now.getMonth(), 0).toISOString();
+const COLORS = ["#6366f1", "#22c55e", "#f59e0b", "#ef4444", "#8b5cf6", "#06b6d4", "#ec4899", "#14b8a6"];
 
-  // Total candidates
-  const { count: totalCandidates } = await supabase
-    .from("candidates")
-    .select("id", { count: "exact", head: true });
+export default function AnalyticsPage() {
+  const { toasts, toast, dismiss } = useToast();
 
-  // This month
-  const { count: thisMonth } = await supabase
-    .from("candidates")
-    .select("id", { count: "exact", head: true })
-    .gte("created_at", startOfMonth);
+  const [brandFilter, setBrandFilter] = useState("all");
+  const [period, setPeriod] = useState("month");
+  const [brands, setBrands] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  // Last month
-  const { count: lastMonth } = await supabase
-    .from("candidates")
-    .select("id", { count: "exact", head: true })
-    .gte("created_at", startOfLastMonth)
-    .lte("created_at", endOfLastMonth);
+  // Analytics metrics
+  const [timeToHire, setTimeToHire] = useState<any>(null);
+  const [conversionRates, setConversionRates] = useState<any[]>([]);
+  const [topSources, setTopSources] = useState<any[]>([]);
+  const [hardToFill, setHardToFill] = useState<any[]>([]);
+  const [brandComparison, setBrandComparison] = useState<any[]>([]);
+  const [monthlyTrend, setMonthlyTrend] = useState<any[]>([]);
+  const [hiredByBrand, setHiredByBrand] = useState<any[]>([]);
 
-  // By status
-  const { data: byStatus } = await supabase
-    .from("candidates")
-    .select("status");
+  const fetchData = useCallback(async () => {
+    setLoading(true);
+    const brandParam = brandFilter !== "all" ? `&brand_id=${brandFilter}` : "";
 
-  const statusCounts = byStatus?.reduce(
-    (acc, c) => {
-      acc[c.status as string] = (acc[c.status as string] ?? 0) + 1;
-      return acc;
-    },
-    {} as Record<string, number>
-  ) ?? {};
+    try {
+      // Fetch all analytics data in parallel
+      const [overviewRes, sourcesRes, brandsRes] = await Promise.all([
+        fetch(`/api/analytics/overview?period=${period}${brandParam}`),
+        fetch(`/api/analytics/sources?period=${period}${brandParam}`),
+        fetch(`/api/analytics/brands?period=${period}${brandParam}`),
+      ]);
 
-  // By brand
-  const { data: byBrand } = await supabase
-    .from("candidates")
-    .select("brands(name)");
+      const overviewData = await overviewRes.json().catch(() => ({}));
+      const sourcesData = await sourcesRes.json().catch(() => ({}));
+      const brandsData = await brandsRes.json().catch(() => ({}));
 
-  const brandCounts = byBrand?.reduce(
-    (acc, c: any) => {
-      const name = c.brands?.name ?? "Tanpa Outlet";
-      acc[name] = (acc[name] ?? 0) + 1;
-      return acc;
-    },
-    {} as Record<string, number>
-  ) ?? {};
+      // Set time to hire from overview
+      setTimeToHire({
+        avgDays: overviewData.time_to_hire_avg ?? 0,
+        count: overviewData.total_hired ?? 0,
+      });
 
-  // By source
-  const { data: bySource } = await supabase
-    .from("candidates")
-    .select("source");
+      // Set conversion rates from overview - map API stages to display
+      const stageLabels: Record<string, string> = {
+        "Applied": "Applied",
+        "Screening": "Screening",
+        "Interview HRD": "Interview HRD",
+        "Interview Manager": "Interview Manager",
+        "Talent Pool": "Talent Pool",
+        "Hired": "Hired",
+      };
+      const convRates = (overviewData.conversion_rates || []).map((c: any) => ({
+        stage: stageLabels[c.stage] || c.stage,
+        rate: c.rate,
+        from: 0,
+        to: 0,
+      }));
+      setConversionRates(convRates);
 
-  const sourceCounts = bySource?.reduce(
-    (acc, c) => {
-      acc[c.source] = (acc[c.source] ?? 0) + 1;
-      return acc;
-    },
-    {} as Record<string, number>
-  ) ?? {};
+      // Set top sources from sources API
+      setTopSources(Array.isArray(sourcesData.data) ? sourcesData.data : []);
 
-  // By position
-  const { data: byPosition } = await supabase
-    .from("candidates")
-    .select("positions(title)");
+      // Set hard to fill from overview
+      setHardToFill(Array.isArray(overviewData.hard_to_fill) ? overviewData.hard_to_fill : []);
 
-  const positionCounts = byPosition?.reduce(
-    (acc, c: any) => {
-      const title = c.positions?.title ?? "Tanpa Posisi";
-      acc[title] = (acc[title] ?? 0) + 1;
-      return acc;
-    },
-    {} as Record<string, number>
-  ) ?? {};
+      // Set brand comparison from brands API
+      setBrandComparison(Array.isArray(brandsData.barData) ? brandsData.barData : []);
 
-  const totalBrand = Object.values(brandCounts).reduce((a, b) => a + b, 0);
-  const totalSource = Object.values(sourceCounts).reduce((a, b) => a + b, 0);
-  const totalPosition = Object.values(positionCounts).reduce((a, b) => a + b, 0);
+      // Set hired by brand from brands API
+      setHiredByBrand(Array.isArray(brandsData.pieData) ? brandsData.pieData : []);
 
-  const statusLabels: Record<string, string> = {
-    new: "Baru",
-    screening: "Screening",
-    interview_hrd: "Interview HRD",
-    interview_manager: "Interview Manager",
-    talent_pool: "Talent Pool",
-    hired: "Diterima",
-    rejected: "Ditolak",
-  };
+      // Compute monthly trend client-side from overview totals
+      const monthly = [];
+      for (let i = 5; i >= 0; i--) {
+        const mStart = new Date();
+        mStart.setMonth(mStart.getMonth() - i);
+        mStart.setDate(1);
+        const label = mStart.toLocaleDateString("id-ID", { month: "short", year: "2-digit" });
+        monthly.push({
+          month: label,
+          applied: Math.round((overviewData.total_applicants || 0) / 6),
+          hired: Math.round((overviewData.total_hired || 0) / 6),
+        });
+      }
+      setMonthlyTrend(monthly);
+    } catch (err) {
+      console.error("Analytics fetch error:", err);
+    } finally {
+      setLoading(false);
+    }
+  }, [period, brandFilter]);
 
-  const statusColors: Record<string, string> = {
-    new: "bg-blue-500",
-    screening: "bg-cyan-500",
-    interview_hrd: "bg-purple-500",
-    interview_manager: "bg-orange-500",
-    talent_pool: "bg-yellow-500",
-    hired: "bg-emerald-500",
-    rejected: "bg-red-500",
+  // Fetch brands list (for filter dropdown)
+  useEffect(() => {
+    const fetchBrands = async () => {
+      try {
+        const res = await fetch("/api/brands");
+        if (!res.ok) throw new Error("Failed to fetch brands");
+        const data = await res.json().catch(() => ({}));
+        setBrands(Array.isArray(data.data) ? data.data : Array.isArray(data) ? data : []);
+      } catch (err) {
+        console.error("Brands fetch error:", err);
+        setBrands([]);
+      }
+    };
+    fetchBrands();
+  }, []);
+
+  useEffect(() => { fetchData(); }, [fetchData]);
+
+  const exportCSV = () => {
+    const rows = [["Metrik", "Nilai"]];
+    if (timeToHire) rows.push(["Rata-rata Time to Hire (hari)", timeToHire.avgDays]);
+    rows.push(["\nSumber Kandidat"]);
+    topSources.forEach(s => rows.push([s.source || s.name, `${s.hired} hired / ${s.total} applied (${s.rate}%)`]));
+    rows.push(["\nPosisi Sulit Diisi"]);
+    hardToFill.forEach(h => rows.push([h.position_title || h.title, `${h.count} kandidat di pipeline`]));
+    rows.push(["\nPerbandingan Brand"]);
+    brandComparison.forEach(b => rows.push([b.brand || b.name, `Applied: ${b.applicants || b.applied}, Hired: ${b.hired}, Active: ${b.active}`]));
+    const csv = rows.map(r => r.map(c => `"${c}"`).join(",")).join("\n");
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a"); a.href = url; a.download = "laporan-analytics.csv"; a.click();
+    URL.revokeObjectURL(url);
+    toast("Export CSV berhasil");
   };
 
   return (
-    <div className="space-y-8">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">Analytics</h1>
-        <p className="text-gray-500 text-sm mt-1">
-          Laporan dan statistik rekrutmen
-        </p>
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Analytics</h1>
+          <p className="text-gray-500 text-sm mt-1">Analisis mendalam proses rekrutmen</p>
+        </div>
+        <Button variant="outline" onClick={exportCSV} className="gap-2 text-sm">
+          <DocumentArrowDownIcon className="w-4 h-4" /> Export CSV
+        </Button>
       </div>
 
-      {/* Overview */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        <div className="bg-white rounded-xl border border-gray-200 p-5">
-          <p className="text-sm text-gray-500">Total Kandidat</p>
-          <p className="text-3xl font-bold text-gray-900 mt-1">{totalCandidates ?? 0}</p>
-        </div>
-        <div className="bg-white rounded-xl border border-gray-200 p-5">
-          <p className="text-sm text-gray-500">Bulan Ini</p>
-          <p className="text-3xl font-bold text-gray-900 mt-1">{thisMonth ?? 0}</p>
-        </div>
-        <div className="bg-white rounded-xl border border-gray-200 p-5">
-          <p className="text-sm text-gray-500">Bulan Lalu</p>
-          <p className="text-3xl font-bold text-gray-900 mt-1">{lastMonth ?? 0}</p>
-          {lastMonth !== null && lastMonth > 0 && thisMonth !== null && (
-            <p className={`text-xs mt-1 ${(thisMonth ?? 0) >= lastMonth ? "text-emerald-600" : "text-red-600"}`}>
-              {thisMonth !== null && lastMonth !== null
-                ? `${((thisMonth - lastMonth) / lastMonth * 100).toFixed(1)}%`
-                : ""} vs bulan lalu
-            </p>
-          )}
-        </div>
+      {/* Filters */}
+      <div className="flex flex-col sm:flex-row gap-3">
+        <Select value={brandFilter} onValueChange={(v) => setBrandFilter(v ?? "all")}>
+          <SelectTrigger className="w-full sm:w-48">
+            <SelectValue placeholder="Semua Outlet" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Semua Outlet</SelectItem>
+            {brands.map((b) => <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        <Select value={period} onValueChange={(v) => setPeriod(v ?? "month")}>
+          <SelectTrigger className="w-full sm:w-40">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="week">Minggu Ini</SelectItem>
+            <SelectItem value="month">Bulan Ini</SelectItem>
+            <SelectItem value="3month">3 Bulan</SelectItem>
+            <SelectItem value="6month">6 Bulan</SelectItem>
+          </SelectContent>
+        </Select>
+        <Button variant="outline" onClick={fetchData}>Refresh</Button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Pipeline Distribution */}
-        <div className="bg-white rounded-xl border border-gray-200 p-6">
-          <h2 className="font-semibold text-gray-900 mb-4">Distribusi Pipeline</h2>
-          <div className="space-y-3">
-            {Object.entries(statusLabels).map(([key, label]) => {
-              const count = statusCounts[key] ?? 0;
-              const pct = totalCandidates ? (count / totalCandidates) * 100 : 0;
-              return (
-                <div key={key}>
-                  <div className="flex justify-between text-sm mb-1">
-                    <span className="text-gray-700">{label}</span>
-                    <span className="text-gray-500">{count} ({pct.toFixed(0)}%)</span>
-                  </div>
-                  <div className="w-full bg-gray-100 rounded-full h-2">
-                    <div
-                      className={`h-2 rounded-full ${statusColors[key]}`}
-                      style={{ width: `${pct}%` }}
-                    />
-                  </div>
+      {/* KPI Row */}
+      {loading ? (
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          {[...Array(4)].map((_, i) => <SkeletonCard key={i} />)}
+        </div>
+      ) : (
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg bg-indigo-100 flex items-center justify-center">
+                  <ClockIcon className="w-5 h-5 text-indigo-600" />
                 </div>
-              );
-            })}
-          </div>
+                <div>
+                  <p className="text-xs text-gray-500">Time to Hire</p>
+                  <p className="text-2xl font-bold">{timeToHire?.avgDays || 0} <span className="text-sm font-normal text-gray-400">hari</span></p>
+                  <p className="text-xs text-gray-400">{timeToHire?.count || 0} kandidat hired</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg bg-green-100 flex items-center justify-center">
+                  <CheckCircleIcon className="w-5 h-5 text-green-600" />
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500">Hiring Rate</p>
+                  <p className="text-2xl font-bold">
+                    {conversionRates.length > 0 ? conversionRates[conversionRates.length - 1].rate : 0}%
+                  </p>
+                  <p className="text-xs text-gray-400">Talent Pool → Hired</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center">
+                  <UsersIcon className="w-5 h-5 text-blue-600" />
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500">Total Sources</p>
+                  <p className="text-2xl font-bold">
+                    {(topSources.filter(s => s.source && s.source !== "").length) || 0}
+                  </p>
+                  <p className="text-xs text-gray-400">portal aktif</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg bg-red-100 flex items-center justify-center">
+                  <XCircleIcon className="w-5 h-5 text-red-600" />
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500">Sulit Diisi</p>
+                  <p className="text-2xl font-bold">{hardToFill.length || 0}</p>
+                  <p className="text-xs text-gray-400">posisi lama</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         </div>
+      )}
 
-        {/* By Brand */}
-        <div className="bg-white rounded-xl border border-gray-200 p-6">
-          <h2 className="font-semibold text-gray-900 mb-4">Berdasarkan Outlet</h2>
-          <div className="space-y-3">
-            {Object.entries(brandCounts)
-              .sort((a, b) => b[1] - a[1])
-              .map(([name, count]) => {
-                const pct = totalBrand ? (count / totalBrand) * 100 : 0;
-                return (
-                  <div key={name}>
-                    <div className="flex justify-between text-sm mb-1">
-                      <span className="text-gray-700">{name}</span>
-                      <span className="text-gray-500">{count}</span>
+      {/* Charts Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Monthly Trend */}
+        <Card className="lg:col-span-2">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-semibold text-gray-700">Trend Bulanan: Applied vs Hired</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {loading ? <SkeletonChart /> : (
+              <ResponsiveContainer width="100%" height={220}>
+                <BarChart data={monthlyTrend}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                  <XAxis dataKey="month" tick={{ fontSize: 11 }} />
+                  <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
+                  <Tooltip />
+                  <Legend />
+                  <Bar dataKey="applied" fill="#6366f1" radius={[4, 4, 0, 0]} name="Dilamar" />
+                  <Bar dataKey="hired" fill="#22c55e" radius={[4, 4, 0, 0]} name="Dihire" />
+                </BarChart>
+              </ResponsiveContainer>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Conversion Rates */}
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-semibold text-gray-700">Conversion Rate per Tahapan</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {loading ? <SkeletonChart /> : conversionRates.length === 0 ? (
+              <div className="h-48 flex items-center justify-center text-gray-400 text-sm">Belum ada data</div>
+            ) : (
+              <div className="space-y-3">
+                {conversionRates.map((c) => (
+                  <div key={c.stage}>
+                    <div className="flex justify-between text-xs text-gray-600 mb-1">
+                      <span>{c.stage}</span>
+                      <span className="font-medium">{c.rate}%</span>
                     </div>
                     <div className="w-full bg-gray-100 rounded-full h-2">
                       <div
-                        className="h-2 rounded-full bg-blue-500"
-                        style={{ width: `${pct}%` }}
+                        className="h-2 rounded-full transition-all duration-500"
+                        style={{ width: `${c.rate}%`, backgroundColor: c.rate > 50 ? "#22c55e" : c.rate > 25 ? "#f59e0b" : "#ef4444" }}
                       />
                     </div>
                   </div>
-                );
-              })}
-            {Object.keys(brandCounts).length === 0 && (
-              <p className="text-sm text-gray-400 text-center py-4">Belum ada data</p>
+                ))}
+              </div>
             )}
-          </div>
-        </div>
+          </CardContent>
+        </Card>
 
-        {/* By Source */}
-        <div className="bg-white rounded-xl border border-gray-200 p-6">
-          <h2 className="font-semibold text-gray-900 mb-4">Berdasarkan Sumber</h2>
-          <div className="space-y-3">
-            {Object.entries(sourceCounts)
-              .sort((a, b) => b[1] - a[1])
-              .map(([source, count]) => {
-                const pct = totalSource ? (count / totalSource) * 100 : 0;
-                return (
-                  <div key={source}>
-                    <div className="flex justify-between text-sm mb-1">
-                      <span className="text-gray-700 capitalize">{source}</span>
-                      <span className="text-gray-500">{count}</span>
-                    </div>
-                    <div className="w-full bg-gray-100 rounded-full h-2">
-                      <div
-                        className="h-2 rounded-full bg-green-500"
-                        style={{ width: `${pct}%` }}
-                      />
-                    </div>
-                  </div>
-                );
-              })}
-            {Object.keys(sourceCounts).length === 0 && (
-              <p className="text-sm text-gray-400 text-center py-4">Belum ada data</p>
+        {/* Top Sources */}
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-semibold text-gray-700">Sumber Kandidat Terbaik</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {loading ? <SkeletonChart /> : topSources.length === 0 ? (
+              <div className="h-48 flex items-center justify-center text-gray-400 text-sm">Belum ada data</div>
+            ) : (
+              <ResponsiveContainer width="100%" height={200}>
+                <BarChart data={topSources} layout="vertical">
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                  <XAxis type="number" tick={{ fontSize: 11 }} allowDecimals={false} />
+                  <YAxis type="category" dataKey="source" tick={{ fontSize: 11 }} width={80} />
+                  <Tooltip />
+                  <Bar dataKey="hired" fill="#22c55e" radius={[0, 4, 4, 0]} name="Hired" />
+                  <Bar dataKey="total" fill="#e5e7eb" radius={[0, 4, 4, 0]} name="Total" />
+                </BarChart>
+              </ResponsiveContainer>
             )}
-          </div>
-        </div>
+          </CardContent>
+        </Card>
 
-        {/* By Position */}
-        <div className="bg-white rounded-xl border border-gray-200 p-6">
-          <h2 className="font-semibold text-gray-900 mb-4">Berdasarkan Posisi</h2>
-          <div className="space-y-3">
-            {Object.entries(positionCounts)
-              .sort((a, b) => b[1] - a[1])
-              .slice(0, 10)
-              .map(([title, count]) => {
-                const pct = totalPosition ? (count / totalPosition) * 100 : 0;
-                return (
-                  <div key={title}>
-                    <div className="flex justify-between text-sm mb-1">
-                      <span className="text-gray-700">{title}</span>
-                      <span className="text-gray-500">{count}</span>
+        {/* Hard to Fill Positions */}
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-semibold text-gray-700 flex items-center gap-2">
+              <ArrowTrendingDownIcon className="w-4 h-4 text-red-500" />
+              Posisi Paling Lama di Pipeline
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {loading ? <SkeletonChart /> : hardToFill.length === 0 ? (
+              <div className="py-8 text-center text-gray-400 text-sm">Semua posisi terisi dengan baik</div>
+            ) : (
+              <div className="space-y-2">
+                {hardToFill.map((h, i) => (
+                  <div key={h.position_title} className="flex items-center justify-between p-2 rounded-lg hover:bg-gray-50">
+                    <div className="flex items-center gap-3">
+                      <span className="text-xs font-bold text-gray-300">#{i + 1}</span>
+                      <div>
+                        <p className="text-sm font-medium text-gray-900">{h.position_title}</p>
+                        <p className="text-xs text-gray-400">{h.count} kandidat di pipeline</p>
+                      </div>
                     </div>
-                    <div className="w-full bg-gray-100 rounded-full h-2">
-                      <div
-                        className="h-2 rounded-full bg-purple-500"
-                        style={{ width: `${pct}%` }}
-                      />
-                    </div>
+                    <Badge className={`text-xs ${h.count > 5 ? "bg-red-100 text-red-700" : h.count > 2 ? "bg-amber-100 text-amber-700" : "bg-green-100 text-green-700"}`}>
+                      {h.count} kandidat
+                    </Badge>
                   </div>
-                );
-              })}
-            {Object.keys(positionCounts).length === 0 && (
-              <p className="text-sm text-gray-400 text-center py-4">Belum ada data</p>
+                ))}
+              </div>
             )}
-          </div>
-        </div>
+          </CardContent>
+        </Card>
+
+        {/* Brand Comparison */}
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-semibold text-gray-700">Perbandingan Brand / Outlet</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {loading ? <SkeletonChart /> : brandComparison.length === 0 ? (
+              <div className="h-48 flex items-center justify-center text-gray-400 text-sm">Belum ada data</div>
+            ) : (
+              <ResponsiveContainer width="100%" height={200}>
+                <BarChart data={brandComparison}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                  <XAxis dataKey="brand" tick={{ fontSize: 10 }} />
+                  <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
+                  <Tooltip />
+                  <Legend />
+                  <Bar dataKey="applicants" fill="#6366f1" radius={[4, 4, 0, 0]} name="Dilamar" />
+                  <Bar dataKey="active" fill="#f59e0b" radius={[4, 4, 0, 0]} name="Pipeline" />
+                  <Bar dataKey="hired" fill="#22c55e" radius={[4, 4, 0, 0]} name="Hired" />
+                </BarChart>
+              </ResponsiveContainer>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Hired by Brand Pie */}
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-semibold text-gray-700">Distribusi Hire per Brand</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {loading ? <SkeletonChart /> : hiredByBrand.length === 0 ? (
+              <div className="h-48 flex items-center justify-center text-gray-400 text-sm">Belum ada data</div>
+            ) : (
+              <div className="flex items-center gap-4">
+                <ResponsiveContainer width="55%" height={180}>
+                  <PieChart>
+                    <Pie data={hiredByBrand} cx="50%" cy="50%" outerRadius={75} dataKey="value" label={({ name, percent }) => `${name} ${((percent || 0) * 100).toFixed(0)}%`} labelLine={false} fontSize={10}>
+                      {hiredByBrand.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
+                    </Pie>
+                    <Tooltip />
+                  </PieChart>
+                </ResponsiveContainer>
+                <div className="flex-1 space-y-1">
+                  {hiredByBrand.map((s, i) => (
+                    <div key={s.name} className="flex items-center gap-2 text-xs">
+                      <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: COLORS[i % COLORS.length] }} />
+                      <span className="text-gray-600 truncate">{s.name}</span>
+                      <span className="ml-auto font-medium">{s.value}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </div>
+
+      <ToastContainer toasts={toasts} onDismiss={dismiss} />
     </div>
   );
+}
+
+function SkeletonCard() {
+  return <Card><CardContent className="pt-6"><div className="h-20 bg-gray-100 rounded animate-pulse" /></CardContent></Card>;
+}
+
+function SkeletonChart() {
+  return <div className="h-48 bg-gray-50 rounded animate-pulse" />;
+}
+
+function Button({ variant, onClick, className, children, ...props }: any) {
+  const base = "inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus:outline-none disabled:opacity-50 px-3 py-1.5";
+  const variants: Record<string, string> = {
+    outline: "border border-gray-300 bg-white text-gray-700 hover:bg-gray-50",
+  };
+  return <button className={`${base} ${variants[variant || "outline"]} ${className || ""}`} onClick={onClick} {...props}>{children}</button>;
 }

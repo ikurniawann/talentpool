@@ -10,8 +10,25 @@ import {
   type DropResult,
 } from "@hello-pangea/dnd";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import { ChevronDown, ChevronRight, ExternalLink } from "lucide-react";
+import { ChevronDown, ChevronRight, ExternalLink, GroupIcon } from "lucide-react";
 import Link from "next/link";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 
 const STAGES: { id: PipelineStage; label: string; color: string }[] = [
   { id: "new", label: "Baru", color: "bg-blue-100 border-blue-300" },
@@ -45,6 +62,13 @@ export default function PipelinePage() {
   const [rejectedCollapsed, setRejectedCollapsed] = useState(true);
   const [selectedCandidate, setSelectedCandidate] = useState<Candidate | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
+
+  // Cari Kandidat Cocok dialog
+  const [cariDialogOpen, setCariDialogOpen] = useState(false);
+  const [selectedPosition, setSelectedPosition] = useState<string>("");
+  const [matchingCandidates, setMatchingCandidates] = useState<any[]>([]);
+  const [cariLoading, setCariLoading] = useState(false);
+  const [positions, setPositions] = useState<any[]>([]);
 
   const fetchCandidates = useCallback(async () => {
     try {

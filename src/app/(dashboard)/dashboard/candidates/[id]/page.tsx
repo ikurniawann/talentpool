@@ -57,6 +57,7 @@ const STATUS_LABELS: Record<CandidateStatus, string> = {
   talent_pool: "Talent Pool",
   hired: "Diterima",
   rejected: "Ditolak",
+  archived: "Diarsipkan",
 };
 
 const SOURCE_LABELS: Record<string, string> = {
@@ -80,6 +81,7 @@ const STATUS_COLORS: Record<CandidateStatus, string> = {
   talent_pool: "bg-pink-100 text-pink-700",
   hired: "bg-emerald-100 text-emerald-700",
   rejected: "bg-red-100 text-red-700",
+  archived: "bg-gray-100 text-gray-700",
 };
 
 const RECOMMENDATION_CONFIG = {
@@ -121,7 +123,10 @@ export default function CandidateDetailPage({
 
   // Load candidate ID from params
   useEffect(() => {
-    params.then(({ id }) => setCandidateId(id));
+    params.then(({ id }) => {
+      console.log("[DEBUG] Setting candidateId from params:", id);
+      setCandidateId(id);
+    });
   }, [params]);
 
   const fetchCandidate = useCallback(async (id: string) => {
@@ -135,11 +140,13 @@ export default function CandidateDetailPage({
   }, [supabase]);
 
   const fetchInterviews = useCallback(async (id: string) => {
-    const { data } = await supabase
+    console.log("[DEBUG] fetchInterviews called with id:", id);
+    const { data, error } = await supabase
       .from("interviews")
       .select("*, users(full_name)")
       .eq("candidate_id", id)
       .order("interview_date", { ascending: false });
+    console.log("[DEBUG] fetchInterviews result:", { count: data?.length, error });
     if (data) setInterviews(data as Interview[]);
   }, [supabase]);
 
@@ -424,44 +431,76 @@ export default function CandidateDetailPage({
       alert("Tanggal interview harus diisi");
       return;
     }
-    if (!values.mode) {
-      alert("Mode interview harus dipilih");
+
+    setSaving(true);
+    const interviewDateTime = `${values.interview_date}T${values.interview_time || "09:00"}:00`;
+
+    // Get authenticated user for interviewer_id fallback
+    const { data: authUser } = await supabase.auth.getUser();
+    const interviewerId = values.interviewer_id?.trim() || authUser?.user?.id;
+
+    if (!interviewerId) {
+      alert("Interviewer harus dipilih atau Anda harus login");
+      setSaving(false);
       return;
     }
 
-    setSaving(true);
-    const interviewDateTime = `${values.interview_date}T${values.interview_time || "00:00"}:00`;
-
-    // Build insert object - only include columns that have values
-    const insertData: Record<string, unknown> = {
+    // Build insert object - only columns that exist in schema
+    const insertData = {
       candidate_id: candidateId,
+      interviewer_id: interviewerId,
       interview_date: interviewDateTime,
       type: values.type as "hrd" | "hiring_manager",
-      mode: values.mode,
       notes: values.notes || null,
     };
+    console.log("[DEBUG] handleScheduleInterview insertData:", insertData);
 
-    // Only add interviewer_id if it's not empty
-    if (values.interviewer_id && values.interviewer_id.trim() !== "") {
-      insertData.interviewer_id = values.interviewer_id;
-    }
-
-    // Only add meeting_link for online mode
-    if (values.mode === "online" && values.meeting_link) {
-      insertData.meeting_link = values.meeting_link;
-    }
-
-    const { data: inserted, error } = await supabase
+    const { data: inserted, error: insertError } = await supabase
       .from("interviews")
       .insert(insertData)
       .select()
       .single();
 
-    if (error) {
-      console.error("Error scheduling interview:", error);
-      alert(`Gagal menyimpan jadwal: ${error.message}`);
+    if (insertError) {
+      console.error("Error scheduling interview:", insertError);
+      alert(`Gagal menyimpan jadwal: ${insertError.message}`);
       setSaving(false);
       return;
+    }
+    console.log("[DEBUG] Interview inserted successfully:", inserted);
+
+    // Re-fetch candidate to get LATEST status from DB (avoid stale state)
+    const { data: freshCandidate } = await supabase
+      .from("candidates")
+      .select("status")
+      .eq("id", candidateId)
+      .single();
+
+    const currentStatus = freshCandidate?.status || candidate?.status || "new";
+    const interviewType = values.type as "hrd" | "hiring_manager";
+
+    // Advance candidate status based on current status and interview type
+    let newStatus: string | null = null;
+    if (currentStatus === "new") {
+      newStatus = "screening";
+    } else if (currentStatus === "screening" && interviewType === "hrd") {
+      newStatus = "interview_hrd";
+    } else if (currentStatus === "screening" && interviewType === "hiring_manager") {
+      newStatus = "interview_manager";
+    } else if (currentStatus === "interview_hrd" && interviewType === "hiring_manager") {
+      newStatus = "interview_manager";
+    }
+    // interview_manager, talent_pool, hired, rejected, archived = no change
+
+    if (newStatus && newStatus !== currentStatus) {
+      const { error: statusError } = await supabase
+        .from("candidates")
+        .update({ status: newStatus, updated_at: new Date().toISOString() })
+        .eq("id", candidateId);
+
+      if (statusError) {
+        console.error("Status update error:", statusError);
+      }
     }
 
     // Send notification if checked
@@ -475,10 +514,7 @@ export default function CandidateDetailPage({
         minute: "2-digit",
       });
 
-      let message = `Halo ${candidate.full_name}, jadwal interview telah ditentukan:\n\n📅 *${interviewTypeLabel}*\n🗓️ Tanggal: ${dateStr}\n📍 Mode: ${values.mode === "online" ? "Online (Zoom/Google Meet)" : "Offline (Tatap Muka)"}`;
-      if (values.mode === "online" && values.meeting_link) {
-        message += `\n🔗 Link: ${values.meeting_link}`;
-      }
+      let message = `Halo ${candidate.full_name}, jadwal interview telah ditentukan:\n\n📅 *${interviewTypeLabel}*\n🗓️ Tanggal: ${dateStr}`;
       message += `\n\nMohon konfirmasi kehadiran. Terima kasih!`;
 
       await fetch("/api/notifications/send", {
@@ -489,28 +525,17 @@ export default function CandidateDetailPage({
           channel: "whatsapp",
           message,
         }),
-      });
+      }).catch(() => {}); // Don't fail the whole flow if notification fails
     }
 
-    // Success - show notification and reset
+    // Refresh data and close
+    await fetchInterviews(candidateId);
+    await fetchCandidate(candidateId);
+
     setSaving(false);
     setScheduleOpen(false);
     scheduleForm.reset();
-
-    // Fetch latest interviews FIRST, then show notification
-    await fetchInterviews(candidateId);
-
-    // Show success notification AFTER data is refreshed
     alert("Interview berhasil dijadwalkan!");
-
-    // Update candidate status if it's still "new"
-    if (candidate?.status === "new") {
-      await supabase
-        .from("candidates")
-        .update({ status: "screening" })
-        .eq("id", candidateId);
-      fetchCandidate(candidateId);
-    }
   };
 
   if (loading) {

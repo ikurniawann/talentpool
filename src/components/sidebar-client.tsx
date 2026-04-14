@@ -13,6 +13,7 @@ import {
   ArrowRightStartOnRectangleIcon,
   Bars3Icon,
   XMarkIcon,
+  BriefcaseIcon,
 } from "@heroicons/react/24/outline";
 import {
   HomeIcon as HomeIconSolid,
@@ -22,6 +23,7 @@ import {
   ChartBarIcon as ChartIconSolid,
   Cog6ToothIcon as CogIconSolid,
   ArrowRightStartOnRectangleIcon as LogoutIconSolid,
+  BriefcaseIcon as BriefcaseIconSolid,
 } from "@heroicons/react/24/solid";
 
 const iconMap: Record<string, { outline: React.ElementType; solid: React.ElementType }> = {
@@ -32,6 +34,7 @@ const iconMap: Record<string, { outline: React.ElementType; solid: React.Element
   chart: { outline: ChartBarIcon, solid: ChartIconSolid },
   settings: { outline: Cog6ToothIcon, solid: CogIconSolid },
   logout: { outline: ArrowRightStartOnRectangleIcon, solid: LogoutIconSolid },
+  briefcase: { outline: BriefcaseIcon, solid: BriefcaseIconSolid },
 };
 
 function NavIcon({ name, className, isActive }: { name: string; className?: string; isActive: boolean }) {

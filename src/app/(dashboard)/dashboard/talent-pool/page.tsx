@@ -1,158 +1,368 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
-import type { Candidate, CandidateStatus } from "@/types";
+import type { Candidate, Brand, Position } from "@/types";
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   StarIcon,
-  EnvelopeIcon,
-  DevicePhoneMobileIcon,
-  MapPinIcon,
-  PencilSquareIcon,
-} from "@heroicons/react/24/solid";
+  PhoneIcon,
+  VideoCameraIcon,
+  ArchiveBoxIcon,
+  ArrowsRightLeftIcon,
+  MagnifyingGlassIcon,
+} from "@heroicons/react/24/outline";
+
+function getDaysAgo(dateStr: string | null): number {
+  if (!dateStr) return Infinity;
+  return Math.floor((Date.now() - new Date(dateStr).getTime()) / (1000 * 60 * 60 * 24));
+}
+
+function CandidateRow({
+  candidate,
+  onAction,
+}: {
+  candidate: Candidate & { brands?: { name: string }; positions?: { title: string } };
+  onAction: (action: string, c: Candidate) => void;
+}) {
+  const daysAgo = getDaysAgo(candidate.last_contacted_at);
+  const needsContact = daysAgo > 30;
+  const isHot = daysAgo <= 14 && daysAgo !== Infinity;
+
+  return (
+    <Card className="hover:shadow-md transition-all">
+      <CardContent className="p-4">
+        <div className="flex items-start justify-between gap-4">
+          {/* Info */}
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 mb-1">
+              <h3 className="font-semibold text-gray-900 truncate">{candidate.full_name}</h3>
+              <Badge className="bg-yellow-100 text-yellow-700 text-xs">Pool</Badge>
+              {needsContact && (
+                <Badge className="bg-orange-100 text-orange-700 text-xs">Perlu Dihubungi</Badge>
+              )}
+              {isHot && !needsContact && (
+                <Badge className="bg-green-100 text-green-700 text-xs">Hangat</Badge>
+              )}
+            </div>
+            <p className="text-sm text-gray-500">
+              {(candidate as any).positions?.title || "Tanpa Posisi"} ·{" "}
+              {(candidate as any).brands?.name || "Semua Outlet"}
+            </p>
+            <div className="flex items-center gap-4 mt-2 text-sm text-gray-400">
+              <span>{candidate.phone}</span>
+              <span>·</span>
+              <span>{candidate.domicile}</span>
+              <span>·</span>
+              <span>Di pool {getDaysAgo(candidate.created_at)} hari</span>
+            </div>
+          </div>
+
+          {/* Actions */}
+          <div className="flex items-center gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              className="text-green-600 border-green-200 hover:bg-green-50"
+              onClick={() => onAction("whatsapp", candidate)}
+            >
+              <PhoneIcon className="w-4 h-4 mr-1" /> WA
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              className="text-blue-600 border-blue-200 hover:bg-blue-50"
+              onClick={() => onAction("interview", candidate)}
+            >
+              <VideoCameraIcon className="w-4 h-4 mr-1" /> Jadwalkan
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              className="text-purple-600 border-purple-200 hover:bg-purple-50"
+              onClick={() => onAction("activate", candidate)}
+            >
+              <ArrowsRightLeftIcon className="w-4 h-4 mr-1" /> Aktifkan
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => onAction("view", candidate)}
+            >
+              Detail
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              className="text-red-500 hover:text-red-600 hover:bg-red-50"
+              onClick={() => onAction("archive", candidate)}
+            >
+              <ArchiveBoxIcon className="w-4 h-4" />
+            </Button>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
 
 export default function TalentPoolPage() {
   const router = useRouter();
   const supabase = createClient();
+
   const [candidates, setCandidates] = useState<Candidate[]>([]);
+  const [brands, setBrands] = useState<Brand[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [selectedBrand, setSelectedBrand] = useState<string>("all");
+  const [selectedCandidate, setSelectedCandidate] = useState<Candidate | null>(null);
+  const [actionDialog, setActionDialog] = useState<string | null>(null);
+  const [whatsappMsg, setWhatsappMsg] = useState("");
+  const [saving, setSaving] = useState(false);
 
-  const fetchCandidates = useCallback(async () => {
+  useEffect(() => {
+    fetchCandidates();
+    fetchBrands();
+  }, [selectedBrand]);
+
+  async function fetchCandidates() {
     setLoading(true);
     let query = supabase
       .from("candidates")
       .select("*, brands(name), positions(title)")
-      .eq("status", "talent_pool")
-      .order("updated_at", { ascending: false });
+      .eq("status", "talent_pool");
 
-    if (search) {
-      query = query.or(
-        `full_name.ilike.%${search}%,email.ilike.%${search}%`
-      );
+    if (selectedBrand !== "all") {
+      query = query.eq("brand_id", selectedBrand);
     }
 
     const { data } = await query;
-    setCandidates((data as Candidate[]) ?? []);
+    let results = (data as any[]) || [];
+
+    if (search) {
+      results = results.filter(
+        (c) =>
+          c.full_name.toLowerCase().includes(search.toLowerCase()) ||
+          c.phone.includes(search) ||
+          c.email.toLowerCase().includes(search.toLowerCase())
+      );
+    }
+
+    // Sort: hot first, then by created_at
+    results.sort((a, b) => {
+      const aHot = getDaysAgo(a.last_contacted_at) <= 14;
+      const bHot = getDaysAgo(b.last_contacted_at) <= 14;
+      if (aHot && !bHot) return -1;
+      if (!aHot && bHot) return 1;
+      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+    });
+
+    setCandidates(results);
     setLoading(false);
-  }, [search]);
+  }
 
-  useEffect(() => {
-    fetchCandidates();
-  }, [fetchCandidates]);
+  async function fetchBrands() {
+    const { data } = await supabase
+      .from("brands")
+      .select("*")
+      .eq("is_active", true)
+      .order("name");
+    setBrands(data || []);
+  }
 
-  const reactivate = async (candidateId: string) => {
-    const newStatus = prompt(
-      "Pindahkan ke status baru:\nnew, screening, interview_hrd, interview_manager, hired"
-    ) as CandidateStatus;
-    if (newStatus) {
+  function handleAction(action: string, candidate: Candidate) {
+    setSelectedCandidate(candidate);
+    if (action === "view") {
+      router.push(`/dashboard/candidates/${candidate.id}`);
+    } else if (action === "whatsapp") {
+      setWhatsappMsg(
+        `Halo ${candidate.full_name}! Kami dari Tim Rekrutmen ingin mengupdate status lamaran Anda.`
+      );
+      setActionDialog("whatsapp");
+    } else if (action === "activate") {
+      setActionDialog("activate");
+    } else if (action === "archive") {
+      setActionDialog("archive");
+    } else if (action === "interview") {
+      router.push(`/dashboard/candidates/${candidate.id}`);
+    }
+  }
+
+  async function handleConfirmAction() {
+    if (!selectedCandidate) return;
+    setSaving(true);
+
+    if (actionDialog === "activate") {
       await supabase
         .from("candidates")
-        .update({ status: newStatus })
-        .eq("id", candidateId);
-      fetchCandidates();
+        .update({ status: "new" })
+        .eq("id", selectedCandidate.id);
+    } else if (actionDialog === "archive") {
+      await supabase
+        .from("candidates")
+        .update({ status: "archived" })
+        .eq("id", selectedCandidate.id);
+    } else if (actionDialog === "whatsapp") {
+      await fetch("/api/notifications/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          candidate_id: selectedCandidate.id,
+          channel: "whatsapp",
+          message: whatsappMsg,
+        }),
+      });
+    } else if (actionDialog === "contact") {
+      await supabase
+        .from("candidates")
+        .update({ last_contacted_at: new Date().toISOString() })
+        .eq("id", selectedCandidate.id);
     }
-  };
+
+    setSaving(false);
+    setActionDialog(null);
+    setSelectedCandidate(null);
+    fetchCandidates();
+  }
+
+  const needsContactCount = candidates.filter((c) => getDaysAgo(c.last_contacted_at) > 30).length;
+  const hotCount = candidates.filter(
+    (c) => getDaysAgo(c.last_contacted_at) <= 14 && getDaysAgo(c.last_contacted_at) !== Infinity
+  ).length;
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Talent Pool</h1>
           <p className="text-gray-500 text-sm mt-1">
-            Kandidat potensial yang disimpan untuk kebutuhan mendatang
+            {candidates.length} kandidat potensial
+            {needsContactCount > 0 && ` · ${needsContactCount} perlu dihubungi`}
+            {hotCount > 0 && ` · ${hotCount} hangat`}
           </p>
         </div>
-        <span className="px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-sm font-medium self-start sm:self-auto">
-          {candidates.length} kandidat
-        </span>
       </div>
 
-      {/* Search */}
-      <div className="bg-white rounded-xl border border-gray-200 p-3 sm:p-4">
-        <div className="relative">
-          <div className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z" />
-            </svg>
-          </div>
-          <input
-            type="text"
-            placeholder="Cari nama atau email..."
+      {/* Filters */}
+      <div className="flex flex-col sm:flex-row gap-3">
+        <div className="relative flex-1">
+          <MagnifyingGlassIcon className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+          <Input
+            placeholder="Cari nama, telepon, email..."
             value={search}
-            onChange={(e) => { setSearch(e.target.value); }}
-            className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            onChange={(e) => setSearch(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && fetchCandidates()}
+            className="pl-9"
           />
         </div>
+        <Select value={selectedBrand} onValueChange={(v) => setSelectedBrand(v ?? "all")}>
+          <SelectTrigger className="w-full sm:w-48">
+            <SelectValue placeholder="Semua Outlet" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Semua Outlet</SelectItem>
+            {brands.map((b) => (
+              <SelectItem key={b.id} value={b.id}>
+                {b.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Button variant="outline" onClick={fetchCandidates}>
+          Refresh
+        </Button>
       </div>
 
-      {/* Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {loading ? (
-          Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} className="bg-white rounded-xl border border-gray-200 p-5 animate-pulse">
-              <div className="h-4 bg-gray-200 rounded w-3/4 mb-3" />
-              <div className="h-3 bg-gray-100 rounded w-1/2 mb-2" />
-              <div className="h-3 bg-gray-100 rounded w-1/3" />
-            </div>
-          ))
-        ) : candidates.length === 0 ? (
-          <div className="col-span-3 text-center py-12 text-gray-500">
-            Tidak ada kandidat di talent pool
-          </div>
-        ) : (
-          candidates.map((c) => (
-            <div
-              key={c.id}
-              onClick={() => router.push(`/dashboard/candidates/${c.id}`)}
-              className="bg-white rounded-xl border border-gray-200 p-4 sm:p-5 hover:shadow-md transition-shadow cursor-pointer"
+      {/* List */}
+      {loading ? (
+        <div className="flex items-center justify-center py-20">
+          <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
+        </div>
+      ) : candidates.length === 0 ? (
+        <div className="text-center py-20">
+          <StarIcon className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+          <p className="text-gray-500">Belum ada kandidat di Talent Pool</p>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {candidates.map((c) => (
+            <CandidateRow key={c.id} candidate={c as any} onAction={handleAction} />
+          ))}
+        </div>
+      )}
+
+      {/* WhatsApp Dialog */}
+      <Dialog open={actionDialog === "whatsapp"} onOpenChange={(o) => !o && setActionDialog(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Kirim WhatsApp</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-gray-600">
+            Ke: <span className="font-medium">{selectedCandidate?.full_name}</span>
+          </p>
+          <textarea
+            className="w-full border border-gray-300 rounded-lg p-3 text-sm"
+            rows={4}
+            value={whatsappMsg}
+            onChange={(e) => setWhatsappMsg(e.target.value)}
+          />
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setActionDialog(null)}>
+              Batal
+            </Button>
+            <Button onClick={handleConfirmAction} disabled={saving}>
+              {saving ? "Mengirim..." : "Kirim"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Activate / Archive Confirm Dialog */}
+      <Dialog open={actionDialog === "activate" || actionDialog === "archive"} onOpenChange={(o) => !o && setActionDialog(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {actionDialog === "activate" ? "Aktifkan Kandidat" : "Arsipkan Kandidat"}
+            </DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-gray-600">
+            {actionDialog === "activate"
+              ? `Kandidat "${selectedCandidate?.full_name}" akan dikembalikan ke stage "Baru"?`
+              : `Kandidat "${selectedCandidate?.full_name}" akan dipindahkan ke archived?`}
+          </p>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setActionDialog(null)}>
+              Batal
+            </Button>
+            <Button
+              variant={actionDialog === "archive" ? "destructive" : "default"}
+              onClick={handleConfirmAction}
+              disabled={saving}
             >
-              <div className="flex items-start justify-between">
-                <div>
-                  <h3 className="font-semibold text-gray-900">{c.full_name}</h3>
-                  <p className="text-sm text-gray-500 mt-0.5">
-                    {(c as any).positions?.title ?? "Tanpa Posisi"}
-                  </p>
-                  <p className="text-sm text-gray-400">
-                    {(c as any).brands?.name ?? "Semua Outlet"}
-                  </p>
-                </div>
-                <span className="flex items-center gap-1 px-2 py-1 bg-purple-100 text-purple-700 text-xs rounded-full">
-                  <StarIcon className="w-3 h-3" /> Pool
-                </span>
-              </div>
-
-              <div className="mt-4 space-y-1 text-sm text-gray-600">
-                <p className="flex items-center gap-2">
-                  <EnvelopeIcon className="w-4 h-4 text-gray-400" /> {c.email}
-                </p>
-                <p className="flex items-center gap-2">
-                  <DevicePhoneMobileIcon className="w-4 h-4 text-gray-400" /> {c.phone}
-                </p>
-                <p className="flex items-center gap-2">
-                  <MapPinIcon className="w-4 h-4 text-gray-400" /> {c.domicile}
-                </p>
-              </div>
-
-              {c.notes && (
-                <p className="mt-3 text-xs text-gray-500 line-clamp-2 flex items-start gap-1">
-                  <PencilSquareIcon className="w-3 h-3 mt-0.5 flex-shrink-0" /> {c.notes}
-                </p>
-              )}
-
-              <div className="mt-4 flex gap-2">
-                <button
-                  onClick={() => reactivate(c.id)}
-                  className="flex-1 py-1.5 px-3 bg-blue-600 text-white text-xs rounded-lg hover:bg-blue-700"
-                >
-                  Aktifkan Kembali
-                </button>
-              </div>
-            </div>
-          ))
-        )}
-      </div>
+              {saving ? "Memproses..." : actionDialog === "activate" ? "Aktifkan" : "Arsipkan"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

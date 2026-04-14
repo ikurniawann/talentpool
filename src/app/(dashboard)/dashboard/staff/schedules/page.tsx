@@ -1,0 +1,414 @@
+"use client";
+
+import { useState, useEffect, useCallback } from "react";
+import { createClient } from "@/lib/supabase/client";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  MagnifyingGlassIcon,
+  ArrowUpIcon,
+  ArrowDownIcon,
+  CalendarDaysIcon,
+  ArrowUpTrayIcon,
+  CheckIcon,
+} from "@heroicons/react/24/outline";
+import { useToast, ToastContainer } from "@/components/ui/toast";
+
+type SortDir = "asc" | "desc";
+
+const DAYS = [
+  { label: "Minggu", value: 0 },
+  { label: "Senin", value: 1 },
+  { label: "Selasa", value: 2 },
+  { label: "Rabu", value: 3 },
+  { label: "Kamis", value: 4 },
+  { label: "Jumat", value: 5 },
+  { label: "Sabtu", value: 6 },
+];
+
+function formatTime(t: string | null): string {
+  if (!t) return "-";
+  return t.substring(0, 5);
+}
+
+export default function ScheduleStaffPage() {
+  const supabase = createClient();
+  const { toasts, toast, dismiss } = useToast();
+
+  const [staff, setStaff] = useState<any[]>([]);
+  const [schedules, setSchedules] = useState<any[]>([]);
+  const [brands, setBrands] = useState<any[]>([]);
+  const [sections, setSections] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // Filters
+  const [brandFilter, setBrandFilter] = useState("all");
+  const [staffSearch, setStaffSearch] = useState("");
+
+  // Dialogs
+  const [scheduleDialog, setScheduleDialog] = useState<{ staff: any; current: any[] } | null>(null);
+  const [importDialog, setImportDialog] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  // Schedule form: one row per day
+  const [scheduleForm, setScheduleForm] = useState<Record<number, {
+    start_time: string;
+    end_time: string;
+    is_off: boolean;
+  }>>({});
+
+  const fetchData = useCallback(async () => {
+    setLoading(true);
+
+    const brandParam = brandFilter !== "all" ? `brand_id=${brandFilter}` : "";
+
+    const [staffRes, schedulesRes, brandsRes, sectionsRes] = await Promise.all([
+      fetch(`/api/staff?${brandParam}${brandParam ? "&" : ""}status=active`),
+      fetch("/api/staff-schedules"),
+      supabase.from("brands").select("*").eq("is_active", true).order("name"),
+      fetch("/api/sections"),
+    ]);
+
+    const staffData = await staffRes.json();
+    const schedulesData = await schedulesRes.json();
+    const sectionsData = await sectionsRes.json();
+
+    setStaff(staffData.data || []);
+    setSchedules(schedulesData.data || []);
+    setBrands(brandsRes.data || []);
+    setSections(sectionsData.data || []);
+    setLoading(false);
+  }, [brandFilter]);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  function getStaffSchedules(staffId: string): any[] {
+    return schedules.filter((s) => s.staff_id === staffId);
+  }
+
+  function openScheduleDialog(st: any) {
+    const current = getStaffSchedules(st.id);
+    const form: Record<number, { start_time: string; end_time: string; is_off: boolean }> = {};
+
+    DAYS.forEach((d) => {
+      const existing = current.find((c) => c.day_of_week === d.value);
+      if (existing) {
+        form[d.value] = {
+          start_time: existing.start_time || "09:00",
+          end_time: existing.end_time || "17:00",
+          is_off: existing.is_off,
+        };
+      } else {
+        form[d.value] = { start_time: "09:00", end_time: "17:00", is_off: false };
+      }
+    });
+
+    setScheduleForm(form);
+    setScheduleDialog({ staff: st, current });
+  }
+
+  async function handleSaveSchedule() {
+    if (!scheduleDialog) return;
+    setSaving(true);
+
+    // Delete existing schedules for this staff
+    await fetch(`/api/staff-schedules?staff_id=${scheduleDialog.staff.id}`, {
+      method: "DELETE",
+    });
+
+    // Insert new schedules
+    const toInsert = DAYS
+      .filter((d) => !scheduleForm[d.value].is_off)
+      .map((d) => ({
+        staff_id: scheduleDialog.staff.id,
+        day_of_week: d.value,
+        start_time: scheduleForm[d.value].start_time,
+        end_time: scheduleForm[d.value].end_time,
+        is_off: false,
+      }));
+
+    if (toInsert.length > 0) {
+      await fetch("/api/staff-schedules", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ schedules: toInsert }),
+      });
+    }
+
+    // Also save days off
+    const offDays = DAYS.filter((d) => scheduleForm[d.value].is_off);
+    if (offDays.length > 0) {
+      const offToInsert = offDays.map((d) => ({
+        staff_id: scheduleDialog.staff.id,
+        day_of_week: d.value,
+        start_time: "00:00",
+        end_time: "00:00",
+        is_off: true,
+      }));
+      await fetch("/api/staff-schedules", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ schedules: offToInsert }),
+      });
+    }
+
+    toast("Jadwal berhasil disimpan");
+    setSaving(false);
+    setScheduleDialog(null);
+    fetchData();
+  }
+
+  async function handleImportExcel(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // For now, just show a placeholder message
+    // Full Excel parsing would require xlsx library
+    toast("Fitur import Excel dalam pengembangan. Silakan input jadwal secara manual.", "error");
+    setImportDialog(false);
+    e.target.value = "";
+  }
+
+  const filteredStaff = staff.filter((s) =>
+    s.full_name.toLowerCase().includes(staffSearch.toLowerCase()) ||
+    s.employee_code.toLowerCase().includes(staffSearch.toLowerCase())
+  );
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Schedule Staff</h1>
+          <p className="text-gray-500 text-sm mt-1">
+            Atur jadwal kerja staff per minggu
+          </p>
+        </div>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => setImportDialog(true)} className="gap-2">
+            <ArrowUpTrayIcon className="w-4 h-4" /> Import Jadwal
+          </Button>
+        </div>
+      </div>
+
+      {/* Filters */}
+      <div className="flex flex-col sm:flex-row gap-3">
+        <Select value={brandFilter} onValueChange={(v) => setBrandFilter(v ?? "all")}>
+          <SelectTrigger className="w-full sm:w-48">
+            <SelectValue placeholder="Semua Outlet" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Semua Outlet</SelectItem>
+            {brands.map((b) => (
+              <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <div className="relative flex-1">
+          <MagnifyingGlassIcon className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+          <Input
+            placeholder="Cari staff..."
+            value={staffSearch}
+            onChange={(e) => setStaffSearch(e.target.value)}
+            className="pl-9"
+          />
+        </div>
+        <Button variant="outline" onClick={fetchData}>Refresh</Button>
+      </div>
+
+      {/* Schedule Table */}
+      <Card>
+        <CardContent className="p-0">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm min-w-[800px]">
+              <thead>
+                <tr className="border-b border-gray-100 bg-gray-50">
+                  <th className="text-left p-3 text-xs font-semibold text-gray-500 uppercase">Staff</th>
+                  {DAYS.map((d) => (
+                    <th key={d.value} className="text-center p-3 text-xs font-semibold text-gray-500 uppercase min-w-[100px]">
+                      {d.label}
+                    </th>
+                  ))}
+                  <th className="text-center p-3 text-xs font-semibold text-gray-500 uppercase">Aksi</th>
+                </tr>
+              </thead>
+              <tbody>
+                {loading ? (
+                  <tr>
+                    <td colSpan={9} className="text-center py-12 text-gray-400">
+                      Memuat...
+                    </td>
+                  </tr>
+                ) : filteredStaff.length === 0 ? (
+                  <tr>
+                    <td colSpan={9} className="text-center py-12 text-gray-400">
+                      <CalendarDaysIcon className="w-8 h-8 mx-auto mb-2 text-gray-300" />
+                      Tidak ada staff
+                    </td>
+                  </tr>
+                ) : (
+                  filteredStaff.map((s) => {
+                    const staffSched = getStaffSchedules(s.id);
+                    return (
+                      <tr key={s.id} className="border-b border-gray-50 hover:bg-gray-50/50">
+                        <td className="p-3">
+                          <div className="font-medium text-gray-900">{s.full_name}</div>
+                          <div className="text-xs text-gray-400">{s.employee_code} · {s.brands?.name}</div>
+                        </td>
+                        {DAYS.map((d) => {
+                          const sched = staffSched.find((c) => c.day_of_week === d.value);
+                          return (
+                            <td key={d.value} className="text-center p-2">
+                              {sched?.is_off ? (
+                                <Badge className="bg-red-100 text-red-600 text-xs">Off</Badge>
+                              ) : sched ? (
+                                <Badge className="bg-blue-100 text-blue-700 text-xs">
+                                  {formatTime(sched.start_time)}-{formatTime(sched.end_time)}
+                                </Badge>
+                              ) : (
+                                <span className="text-xs text-gray-300">-</span>
+                              )}
+                            </td>
+                          );
+                        })}
+                        <td className="text-center p-3">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => openScheduleDialog(s)}
+                          >
+                            Atur
+                          </Button>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Schedule Dialog */}
+      <Dialog
+        open={scheduleDialog !== null}
+        onOpenChange={(o) => !o && setScheduleDialog(null)}
+      >
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>
+              Atur Jadwal — {scheduleDialog?.staff.full_name}
+            </DialogTitle>
+            <p className="text-xs text-gray-500">
+              {scheduleDialog?.staff.employee_code} · {scheduleDialog?.staff.brands?.name}
+            </p>
+          </DialogHeader>
+          <div className="space-y-2 max-h-[60vh] overflow-y-auto py-2">
+            {DAYS.map((d) => (
+              <div
+                key={d.value}
+                className={`flex items-center gap-3 p-3 rounded-lg border ${
+                  scheduleForm[d.value]?.is_off ? "bg-red-50 border-red-200" : "bg-gray-50 border-gray-200"
+                }`}
+              >
+                <div className="w-20 text-sm font-medium text-gray-700">{d.label}</div>
+                <label className="flex items-center gap-2 text-xs">
+                  <input
+                    type="checkbox"
+                    checked={scheduleForm[d.value]?.is_off || false}
+                    onChange={(e) =>
+                      setScheduleForm((prev) => ({
+                        ...prev,
+                        [d.value]: { ...prev[d.value], is_off: e.target.checked },
+                      }))
+                    }
+                    className="rounded"
+                  />
+                  <span className="text-gray-600">Libur</span>
+                </label>
+                {!scheduleForm[d.value]?.is_off && (
+                  <div className="flex items-center gap-2 ml-auto">
+                    <Input
+                      type="time"
+                      className="w-28"
+                      value={scheduleForm[d.value]?.start_time || "09:00"}
+                      onChange={(e) =>
+                        setScheduleForm((prev) => ({
+                          ...prev,
+                          [d.value]: { ...prev[d.value], start_time: e.target.value },
+                        }))
+                      }
+                    />
+                    <span className="text-gray-400">–</span>
+                    <Input
+                      type="time"
+                      className="w-28"
+                      value={scheduleForm[d.value]?.end_time || "17:00"}
+                      onChange={(e) =>
+                        setScheduleForm((prev) => ({
+                          ...prev,
+                          [d.value]: { ...prev[d.value], end_time: e.target.value },
+                        }))
+                      }
+                    />
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setScheduleDialog(null)}>Batal</Button>
+            <Button onClick={handleSaveSchedule} disabled={saving}>
+              {saving ? "Menyimpan..." : "Simpan Jadwal"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Import Dialog */}
+      <Dialog open={importDialog} onOpenChange={(o) => !o && setImportDialog(false)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Import Jadwal dari Excel</DialogTitle>
+          </DialogHeader>
+          <div className="py-4 text-center">
+            <ArrowUpTrayIcon className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+            <p className="text-sm text-gray-600 mb-4">
+              Upload file Excel (.xlsx) berisi jadwal staff. Format kolom: Kode Staff, Hari, Jam Masuk, Jam Pulang.
+            </p>
+            <input
+              type="file"
+              accept=".xlsx,.xls"
+              onChange={handleImportExcel}
+              className="text-sm"
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setImportDialog(false)}>Tutup</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <ToastContainer toasts={toasts} onDismiss={dismiss} />
+    </div>
+  );
+}

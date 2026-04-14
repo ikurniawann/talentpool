@@ -37,6 +37,7 @@ const STATUS_LABELS: Record<CandidateStatus, string> = {
   talent_pool: "Talent Pool",
   hired: "Diterima",
   rejected: "Ditolak",
+  archived: "Diarsipkan",
 };
 
 const SOURCE_LABELS: Record<string, string> = {
@@ -60,6 +61,7 @@ const STATUS_COLORS: Record<CandidateStatus, string> = {
   talent_pool: "bg-pink-100 text-pink-700",
   hired: "bg-emerald-100 text-emerald-700",
   rejected: "bg-red-100 text-red-700",
+  archived: "bg-gray-100 text-gray-700",
 };
 
 export default function CandidatesPage() {

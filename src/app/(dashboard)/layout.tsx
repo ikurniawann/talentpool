@@ -18,6 +18,7 @@ export default async function DashboardGroupLayout({
               { href: "/dashboard/candidates", label: "Kandidat", icon: "users" },
               { href: "/dashboard/pipeline", label: "Pipeline", icon: "clipboard" },
               { href: "/dashboard/talent-pool", label: "Talent Pool", icon: "star" },
+              { href: "/dashboard/staff", label: "Staff", icon: "briefcase" },
               { href: "/dashboard/analytics", label: "Analytics", icon: "chart" },
               { href: "/dashboard/settings", label: "Pengaturan", icon: "settings" },
             ]
