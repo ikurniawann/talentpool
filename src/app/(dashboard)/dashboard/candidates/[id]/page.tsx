@@ -98,11 +98,7 @@ const INTERVIEW_TYPE_LABELS = {
   hiring_manager: "Interview Manager",
 };
 
-export default function CandidateDetailPage({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
+export default function CandidateDetailPage() {
   const router = useRouter();
   const supabase = createClient();
   const params = useParams();
