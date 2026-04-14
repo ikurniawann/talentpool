@@ -132,13 +132,11 @@ export default function CandidateDetailPage() {
   }, [supabase]);
 
   const fetchInterviews = useCallback(async (id: string) => {
-    console.log("[DEBUG] fetchInterviews called with id:", id);
-    const { data, error } = await supabase
+    const { data } = await supabase
       .from("interviews")
       .select("*, users(full_name)")
       .eq("candidate_id", id)
       .order("interview_date", { ascending: false });
-    console.log("[DEBUG] fetchInterviews result:", { count: data?.length, error });
     if (data) setInterviews(data as Interview[]);
   }, [supabase]);
 
@@ -445,7 +443,6 @@ export default function CandidateDetailPage() {
       type: values.type as "hrd" | "hiring_manager",
       notes: values.notes || null,
     };
-    console.log("[DEBUG] handleScheduleInterview insertData:", insertData);
 
     const { data: inserted, error: insertError } = await supabase
       .from("interviews")
@@ -459,7 +456,6 @@ export default function CandidateDetailPage() {
       setSaving(false);
       return;
     }
-    console.log("[DEBUG] Interview inserted successfully:", inserted);
 
     // Re-fetch candidate to get LATEST status from DB (avoid stale state)
     const { data: freshCandidate } = await supabase
@@ -527,7 +523,6 @@ export default function CandidateDetailPage() {
     setSaving(false);
     scheduleForm.reset(); // Reset form BEFORE closing dialog
     setScheduleOpen(false);
-    alert("Interview berhasil dijadwalkan!");
   };
 
   if (loading) {
