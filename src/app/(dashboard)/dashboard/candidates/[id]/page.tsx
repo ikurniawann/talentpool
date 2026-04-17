@@ -721,12 +721,13 @@ export default function CandidateDetailPage() {
                   href={candidate.cv_url}
                   target="_blank"
                   rel="noopener noreferrer"
+                  download={`${candidate.full_name.replace(/\s+/g, "_")}_CV`}
                   className="flex items-center gap-3 p-3 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors"
                 >
                   <FileText className="w-5 h-5 text-blue-600" />
                   <div>
                     <p className="text-sm font-medium text-gray-900">CV / Resume</p>
-                    <p className="text-xs text-gray-500">Klik untuk melihat</p>
+                    <p className="text-xs text-gray-500">Klik untuk download</p>
                   </div>
                 </a>
               ) : (
@@ -786,7 +787,7 @@ export default function CandidateDetailPage() {
         </div>
 
         {/* Right Column - Tabs */}
-        <div className="lg:col-span-2">
+        <div className="md:col-span-3">
           <Tabs defaultValue="interviews" className="w-full">
             <TabsList className="mb-4">
               <TabsTrigger value="interviews">Interview ({interviews.length})</TabsTrigger>
