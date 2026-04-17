@@ -637,7 +637,7 @@ export default function CandidateDetailPage() {
       </div>
 
       {/* Main Content */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Left Column - Profile & Files */}
         <div className="space-y-6">
           {/* Profile Card */}
@@ -787,7 +787,7 @@ export default function CandidateDetailPage() {
         </div>
 
         {/* Right Column - Tabs */}
-        <div className="md:col-span-3">
+        <div>
           <Tabs defaultValue="interviews" className="w-full">
             <TabsList className="mb-4">
               <TabsTrigger value="interviews">Interview ({interviews.length})</TabsTrigger>
