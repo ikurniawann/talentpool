@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 import { useParams } from "next/navigation";
@@ -45,6 +45,8 @@ import {
   type LucideIcon,
   Video,
   MapPin as MapPinIcon,
+  Upload,
+  Loader2,
 } from "lucide-react";
 import type { Candidate, CandidateStatus, Brand, Position, Interview, User as UserType } from "@/types";
 import { useForm } from "react-hook-form";
@@ -118,6 +120,8 @@ export default function CandidateDetailPage() {
   const [editingInterview, setEditingInterview] = useState<Interview | null>(null);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [deletingInterviewId, setDeletingInterviewId] = useState<string | null>(null);
+  const [uploadingCv, setUploadingCv] = useState(false);
+  const cvInputRef = useRef<HTMLInputElement>(null);
 
 
 
@@ -271,6 +275,38 @@ export default function CandidateDetailPage() {
     if (!error) {
       setEditOpen(false);
       fetchCandidate(candidateId);
+    }
+  };
+
+  const handleCvUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploadingCv(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const res = await fetch(`/api/candidates/${candidateId}/cv-upload`, {
+        method: "POST",
+        body: formData,
+      });
+
+      const result = await res.json();
+      if (!res.ok) {
+        alert(result.error || "Upload gagal");
+        return;
+      }
+
+      // Update local state
+      setCandidate((prev) => prev ? { ...prev, cv_url: result.data.cv_url } : prev);
+    } catch (err) {
+      console.error("CV upload error:", err);
+      alert("Upload gagal. Coba lagi.");
+    } finally {
+      setUploadingCv(false);
+      // Reset input so same file can be selected again
+      if (cvInputRef.current) cvInputRef.current.value = "";
     }
   };
 
@@ -672,46 +708,69 @@ export default function CandidateDetailPage() {
           </Card>
 
           {/* Files Card */}
-          {(candidate.cv_url || candidate.photo_url) && (
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base flex items-center gap-2">
-                  <FileText className="w-4 h-4" />
-                  File Lampiran
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {candidate.cv_url && (
-                  <a
-                    href={candidate.cv_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-3 p-3 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors"
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2">
+                <FileText className="w-4 h-4" />
+                File Lampiran
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {candidate.cv_url ? (
+                <a
+                  href={candidate.cv_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-3 p-3 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors"
+                >
+                  <FileText className="w-5 h-5 text-blue-600" />
+                  <div>
+                    <p className="text-sm font-medium text-gray-900">CV / Resume</p>
+                    <p className="text-xs text-gray-500">Klik untuk melihat</p>
+                  </div>
+                </a>
+              ) : (
+                <div className="flex items-center justify-center p-4 border-2 border-dashed border-gray-200 rounded-lg">
+                  <input
+                    ref={cvInputRef}
+                    type="file"
+                    accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                    onChange={handleCvUpload}
+                    className="hidden"
+                  />
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => cvInputRef.current?.click()}
+                    disabled={uploadingCv}
+                    className="flex items-center gap-2"
                   >
-                    <FileText className="w-5 h-5 text-blue-600" />
-                    <div>
-                      <p className="text-sm font-medium text-gray-900">CV / Resume</p>
-                      <p className="text-xs text-gray-500">Klik untuk melihat</p>
-                    </div>
-                  </a>
-                )}
-                {candidate.photo_url && (
-                  <a
-                    href={candidate.photo_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-3 p-3 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors"
-                  >
-                    <ImageIcon className="w-5 h-5 text-purple-600" />
-                    <div>
-                      <p className="text-sm font-medium text-gray-900">Pas Foto</p>
-                      <p className="text-xs text-gray-500">Klik untuk melihat</p>
-                    </div>
-                  </a>
-                )}
-              </CardContent>
-            </Card>
-          )}
+                    {uploadingCv ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Upload className="w-4 h-4" />
+                    )}
+                    {uploadingCv ? "Mengupload..." : "Upload CV"}
+                  </Button>
+                  <span className="ml-2 text-xs text-gray-400">PDF, DOC, DOCX, JPG, PNG (max 10MB)</span>
+                </div>
+              )}
+              {candidate.photo_url && (
+                <a
+                  href={candidate.photo_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-3 p-3 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors"
+                >
+                  <ImageIcon className="w-5 h-5 text-purple-600" />
+                  <div>
+                    <p className="text-sm font-medium text-gray-900">Pas Foto</p>
+                    <p className="text-xs text-gray-500">Klik untuk melihat</p>
+                  </div>
+                </a>
+              )}
+            </CardContent>
+          </Card>
 
           {/* Notes */}
           {candidate.notes && (

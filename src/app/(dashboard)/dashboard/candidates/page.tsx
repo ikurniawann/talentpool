@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -26,7 +26,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useForm } from "react-hook-form";
-import { Loader2, Plus, Download, Search, User, Trash2 } from "lucide-react";
+import { Loader2, Plus, Download, Search, User, Trash2, Upload, FileText } from "lucide-react";
 import type { Candidate, CandidateStatus, Brand } from "@/types";
 
 const STATUS_LABELS: Record<CandidateStatus, string> = {
@@ -89,6 +89,9 @@ export default function CandidatesPage() {
   const [page, setPage] = useState(1);
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [deleteCandidate, setDeleteCandidate] = useState<Candidate | null>(null);
+  const [cvFile, setCvFile] = useState<File | null>(null);
+  const [uploadingCv, setUploadingCv] = useState(false);
+  const cvFileRef = useRef<HTMLInputElement>(null);
   const perPage = 20;
 
   // New candidate form
@@ -144,7 +147,8 @@ export default function CandidatesPage() {
   }, []);
 
   const handleAddCandidate = async (values: AddFormValues) => {
-    const { error } = await supabase.from("candidates").insert({
+    // First insert the candidate
+    const { data: newCandidate, error } = await supabase.from("candidates").insert({
       full_name: values.full_name,
       email: values.email,
       phone: values.phone,
@@ -154,13 +158,44 @@ export default function CandidatesPage() {
       position_id: values.position_id || null,
       status: values.status,
       notes: values.notes || null,
-    });
+    }).select().single();
 
-    if (!error) {
-      setShowAddDialog(false);
-      addForm.reset({ status: "new" });
-      fetchCandidates();
+    if (error) {
+      alert(`Gagal menyimpan: ${error.message}`);
+      return;
     }
+
+    // If there's a CV file, upload it
+    if (cvFile && newCandidate) {
+      setUploadingCv(true);
+      try {
+        const formData = new FormData();
+        formData.append("file", cvFile);
+        const res = await fetch(`/api/candidates/${newCandidate.id}/cv-upload`, {
+          method: "POST",
+          body: formData,
+        });
+        const result = await res.json();
+        if (!res.ok) {
+          console.error("CV upload failed:", result.error);
+        }
+      } catch (err) {
+        console.error("CV upload error:", err);
+      } finally {
+        setUploadingCv(false);
+      }
+    }
+
+    setCvFile(null);
+    setShowAddDialog(false);
+    addForm.reset({ status: "new", source: "walk_in" });
+    fetchCandidates();
+  };
+
+  const handleCvFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setCvFile(file);
   };
 
   const handleExportCSV = async () => {
@@ -610,6 +645,40 @@ export default function CandidatesPage() {
             </div>
 
             <div className="space-y-1.5">
+              <Label>CV / Resume</Label>
+              <input
+                ref={cvFileRef}
+                type="file"
+                accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                onChange={handleCvFileChange}
+                className="hidden"
+              />
+              <div className="flex items-center gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => cvFileRef.current?.click()}
+                  disabled={uploadingCv}
+                  className="flex items-center gap-1"
+                >
+                  {cvFile ? (
+                    <FileText className="w-4 h-4 text-blue-600" />
+                  ) : (
+                    <Upload className="w-4 h-4" />
+                  )}
+                  {cvFile ? "Ganti File" : "Pilih File"}
+                </Button>
+                {cvFile && (
+                  <span className="text-sm text-gray-600 truncate max-w-[150px]">
+                    {cvFile.name}
+                  </span>
+                )}
+                <span className="text-xs text-gray-400">PDF, DOC, DOCX, JPG, PNG (max 10MB)</span>
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
               <Label>Catatan</Label>
               <textarea
                 placeholder="Catatan internal (opsional)"
@@ -623,12 +692,15 @@ export default function CandidatesPage() {
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => setShowAddDialog(false)}
+                onClick={() => {
+                  setShowAddDialog(false);
+                  setCvFile(null);
+                }}
               >
                 Batal
               </Button>
-              <Button type="submit" disabled={addForm.formState.isSubmitting}>
-                {addForm.formState.isSubmitting ? (
+              <Button type="submit" disabled={addForm.formState.isSubmitting || uploadingCv}>
+                {addForm.formState.isSubmitting || uploadingCv ? (
                   <Loader2 className="w-4 h-4 animate-spin mr-2" />
                 ) : (
                   <Plus className="w-4 h-4 mr-2" />
