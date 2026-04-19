@@ -15,6 +15,7 @@ export default async function DashboardLayout({
     { href: "/dashboard/candidates", label: "Kandidat", icon: "👥" },
     { href: "/dashboard/pipeline", label: "Pipeline", icon: "📋" },
     { href: "/dashboard/talent-pool", label: "Talent Pool", icon: "⭐" },
+    { href: "/dashboard/purchasing", label: "Purchasing", icon: "🛒" },
     { href: "/dashboard/analytics", label: "Analytics", icon: "📊" },
     { href: "/dashboard/settings", label: "Pengaturan", icon: "⚙️" },
   ];
