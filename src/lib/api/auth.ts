@@ -158,12 +158,12 @@ export function paginatedResponse<T>(
   meta: PaginationMeta,
   message?: string
 ) {
-  return {
+  return NextResponse.json({
     success: true,
     data,
     ...(message && { message }),
     pagination: meta,
-  };
+  });
 }
 
 export function successResponse<T>(data: T, message?: string) {
