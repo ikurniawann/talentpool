@@ -159,7 +159,7 @@ export default function DashboardPage() {
       }
     } catch (error) {
       console.error("Error fetching dashboard data:", error);
-      toast({ type: "error", title: "Error", message: "Gagal memuat data dashboard" });
+      toast("Gagal memuat data dashboard", "error");
     } finally {
       setLoading(false);
     }
@@ -170,13 +170,13 @@ export default function DashboardPage() {
   }, [fetchData]);
 
   const exportCSV = () => {
-    // Implementation for CSV export
-    toast({ type: "success", title: "Export", message: "Data berhasil diekspor ke CSV" });
+    toast("Data berhasil diekspor ke CSV", "success");
+  };
   };
 
   const exportPDF = () => {
-    // Implementation for PDF export
-    toast({ type: "success", title: "Export", message: "Data berhasil diekspor ke PDF" });
+    toast("Data berhasil diekspor ke PDF", "success");
+  };
   };
 
   return (
