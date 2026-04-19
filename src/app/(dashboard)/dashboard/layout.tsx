@@ -10,7 +10,26 @@ export default async function DashboardLayout({
   const user = await requireUser();
 
   // Define navigation items by role
-  const hrNavItems = [
+  const baseNavItems = [
+    { href: "/dashboard", label: "Beranda", icon: "🏠" },
+  ];
+
+  const talentNavItems = [
+    { href: "/dashboard", label: "Beranda", icon: "🏠" },
+    { href: "/dashboard/candidates", label: "Kandidat", icon: "👥" },
+    { href: "/dashboard/pipeline", label: "Pipeline", icon: "📋" },
+    { href: "/dashboard/talent-pool", label: "Talent Pool", icon: "⭐" },
+    { href: "/dashboard/analytics", label: "Analytics", icon: "📊" },
+    { href: "/dashboard/settings", label: "Pengaturan", icon: "⚙️" },
+  ];
+
+  const purchasingNavItems = [
+    { href: "/dashboard", label: "Beranda", icon: "🏠" },
+    { href: "/dashboard/purchasing", label: "Purchasing", icon: "🛒" },
+    { href: "/dashboard/analytics", label: "Analytics", icon: "📊" },
+  ];
+
+  const combinedNavItems = [
     { href: "/dashboard", label: "Beranda", icon: "🏠" },
     { href: "/dashboard/candidates", label: "Kandidat", icon: "👥" },
     { href: "/dashboard/pipeline", label: "Pipeline", icon: "📋" },
@@ -20,45 +39,34 @@ export default async function DashboardLayout({
     { href: "/dashboard/settings", label: "Pengaturan", icon: "⚙️" },
   ];
 
-  const hiringManagerNavItems = [
-    { href: "/dashboard", label: "Beranda", icon: "🏠" },
-    { href: "/dashboard/candidates", label: "Kandidat", icon: "👥" },
-    { href: "/dashboard/pipeline", label: "Pipeline", icon: "📋" },
-    { href: "/dashboard/analytics", label: "Analytics", icon: "📊" },
-  ];
-
-  const direksiNavItems = [
-    { href: "/dashboard", label: "Beranda", icon: "🏠" },
-    { href: "/dashboard/purchasing", label: "Purchasing", icon: "🛒" },
-    { href: "/dashboard/analytics", label: "Analytics", icon: "📊" },
-  ];
-
-  const purchasingNavItems = [
-    { href: "/dashboard", label: "Beranda", icon: "🏠" },
-    { href: "/dashboard/purchasing", label: "Purchasing", icon: "🛒" },
-    { href: "/dashboard/analytics", label: "Analytics", icon: "📊" },
-  ];
-
-  const financeNavItems = [
-    { href: "/dashboard", label: "Beranda", icon: "🏠" },
-    { href: "/dashboard/purchasing", label: "Purchasing", icon: "🛒" },
-    { href: "/dashboard/analytics", label: "Analytics", icon: "📊" },
-  ];
-
-  const navItemsMap: Record<string, { href: string; label: string; icon: string }[]> = {
-    hrd: hrNavItems,
-    hiring_manager: hiringManagerNavItems,
-    direksi: direksiNavItems,
-    purchasing_staff: purchasingNavItems,
-    purchasing_manager: purchasingNavItems,
-    finance_staff: financeNavItems,
-    warehouse_staff: [
+  // Determine nav items based on role
+  let navItems = baseNavItems;
+  
+  if (user.role === "purchasing_manager" || user.role === "purchasing_staff") {
+    navItems = purchasingNavItems;
+  } else if (user.role === "hrd") {
+    navItems = combinedNavItems;
+  } else if (user.role === "hiring_manager") {
+    navItems = [
+      { href: "/dashboard", label: "Beranda", icon: "🏠" },
+      { href: "/dashboard/candidates", label: "Kandidat", icon: "👥" },
+      { href: "/dashboard/pipeline", label: "Pipeline", icon: "📋" },
+      { href: "/dashboard/analytics", label: "Analytics", icon: "📊" },
+    ];
+  } else if (user.role === "direksi") {
+    navItems = [
       { href: "/dashboard", label: "Beranda", icon: "🏠" },
       { href: "/dashboard/purchasing", label: "Purchasing", icon: "🛒" },
-    ],
-  };
-
-  const navItems = navItemsMap[user.role] || hrNavItems;
+      { href: "/dashboard/analytics", label: "Analytics", icon: "📊" },
+    ];
+  } else if (user.role === "finance_staff" || user.role === "warehouse_staff") {
+    navItems = [
+      { href: "/dashboard", label: "Beranda", icon: "🏠" },
+      { href: "/dashboard/purchasing", label: "Purchasing", icon: "🛒" },
+    ];
+  } else {
+    navItems = talentNavItems;
+  }
 
   return (
     <div className="flex min-h-screen bg-gray-50">
