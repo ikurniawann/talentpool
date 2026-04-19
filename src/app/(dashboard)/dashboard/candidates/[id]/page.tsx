@@ -172,16 +172,14 @@ export default function DashboardPage() {
   const exportCSV = () => {
     toast("Data berhasil diekspor ke CSV", "success");
   };
-  };
 
   const exportPDF = () => {
     toast("Data berhasil diekspor ke PDF", "success");
   };
-  };
 
   return (
     <div className="space-y-6">
-      <ToastContainer toasts={toasts} dismiss={dismiss} />
+      <ToastContainer toasts={toasts} onDismiss={dismiss} />
 
       {/* Header */}
       <div className="flex items-center justify-between">
@@ -314,7 +312,7 @@ export default function DashboardPage() {
                       cx="50%"
                       cy="50%"
                       labelLine={false}
-                      label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                      label={({ name, percent }) => `${name} ${((percent ?? 0) * 100).toFixed(0)}%`}
                       outerRadius={80}
                       fill="#8884d8"
                       dataKey="value"

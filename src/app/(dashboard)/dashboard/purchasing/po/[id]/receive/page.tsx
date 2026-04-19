@@ -263,7 +263,6 @@ export default async function ReceivePOPage({ params }: ReceivePOPageProps) {
                           Kondisi *
                         </Label>
                         <Select
-                          name={`condition_${item.id}`}
                           defaultValue="good"
                         >
                           <SelectTrigger>

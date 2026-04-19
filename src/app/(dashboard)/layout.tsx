@@ -29,10 +29,19 @@ export default async function DashboardGroupLayout({
                 { href: "/dashboard/pipeline", label: "Pipeline", icon: "clipboard" },
                 { href: "/dashboard/analytics", label: "Analytics", icon: "chart" },
               ]
-            : [
-                { href: "/dashboard", label: "Beranda", icon: "home" },
-                { href: "/dashboard/analytics", label: "Analytics", icon: "chart" },
-              ]
+            : user.role === "purchasing_manager" || user.role === "purchasing_staff"
+              ? [
+                  { href: "/dashboard", label: "Beranda", icon: "home" },
+                  { href: "/dashboard/purchasing", label: "Purchasing", icon: "shopping" },
+                  { href: "/dashboard/purchasing/pr", label: "Purchase Request", icon: "pr" },
+                  { href: "/dashboard/purchasing/po", label: "Purchase Order", icon: "po" },
+                  { href: "/dashboard/purchasing/reports", label: "Laporan", icon: "reports" },
+                  { href: "/dashboard/analytics", label: "Analytics", icon: "chart" },
+                ]
+              : [
+                  { href: "/dashboard", label: "Beranda", icon: "home" },
+                  { href: "/dashboard/analytics", label: "Analytics", icon: "chart" },
+                ]
       }
     >
       {children}

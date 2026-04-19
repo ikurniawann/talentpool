@@ -152,12 +152,7 @@ export async function sendApprovalReminders(
 
   const { data: pendingPRs } = await supabase
     .from("purchase_requests")
-    .select(
-      `
-      id, pr_number, created_at,
-      current_approver_id:users!purchase_requests_current_approver_id_fkey(id, full_name, email)
-    `
-    )
+    .select("id, pr_number, created_at, current_approver_id")
     .in("status", ["pending_head", "pending_finance", "pending_direksi"])
     .lt("created_at", threeDaysAgo.toISOString());
 
@@ -170,7 +165,7 @@ export async function sendApprovalReminders(
     );
 
     await createNotification(supabase, {
-      user_id: pr.current_approver_id?.id,
+      user_id: pr.current_approver_id,
       title: "Reminder: PR Menunggu Approval",
       message: `PR ${pr.pr_number} telah menunggu ${daysPending} hari. Mohon segera diproses.`,
       type: "reminder",

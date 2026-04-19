@@ -21,10 +21,10 @@ import { formatRupiah } from "@/lib/purchasing/utils";
 
 const poItemSchema = z.object({
   description: z.string().min(1, "Deskripsi wajib diisi"),
-  qty: z.number().min(1, "Minimal 1"),
+  qty: z.coerce.number().min(1, "Minimal 1"),
   unit: z.string().min(1, "Satuan wajib diisi"),
-  unit_price: z.number().min(0, "Harga tidak boleh negatif"),
-  discount: z.number().min(0).default(0),
+  unit_price: z.coerce.number().min(0, "Harga tidak boleh negatif"),
+  discount: z.coerce.number().min(0).default(0).optional(),
   notes: z.string().optional(),
 });
 
@@ -35,9 +35,9 @@ const poSchema = z.object({
   delivery_date: z.string().optional(),
   payment_terms: z.string().optional(),
   delivery_address: z.string().min(1, "Alamat pengiriman wajib diisi"),
-  discount_percent: z.number().min(0).max(100).default(0),
-  tax_percent: z.number().min(0).max(100).default(11),
-  shipping_cost: z.number().min(0).default(0),
+  discount_percent: z.coerce.number().min(0).max(100).default(0).optional(),
+  tax_percent: z.coerce.number().min(0).max(100).default(11).optional(),
+  shipping_cost: z.coerce.number().min(0).default(0).optional(),
   notes: z.string().optional(),
   items: z.array(poItemSchema).min(1, "Minimal 1 item"),
 });
@@ -76,7 +76,7 @@ export function POForm({ vendors, prData, onSubmit, isLoading }: POFormProps) {
     setValue,
     formState: { errors },
   } = useForm<POFormData>({
-    resolver: zodResolver(poSchema),
+    resolver: zodResolver(poSchema) as any,
     defaultValues: {
       pr_id: prData?.id,
       order_date: new Date().toISOString().split("T")[0],

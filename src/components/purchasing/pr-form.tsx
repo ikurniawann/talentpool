@@ -83,7 +83,7 @@ export function PRForm({ departments, onSubmit, isLoading }: PRFormProps) {
   const approvalInfo = getRequiredApprovalLevel(totalAmount);
   
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+    <form onSubmit={handleSubmit((data) => onSubmit(data, "submit"))} className="space-y-6">
       {/* Header Info */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div>

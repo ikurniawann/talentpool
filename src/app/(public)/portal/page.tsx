@@ -254,7 +254,6 @@ export default function PortalPage() {
                 <Select
                   value={watch("position_id") || ""}
                   onValueChange={(v) => setValue("position_id", v || undefined)}
-                  disabled={!selectedBrand || positions.length === 0}
                 >
                   <SelectTrigger id="position_id">
                     <SelectValue placeholder={selectedBrand ? "Pilih Posisi" : "Pilih Outlet dulu"} />

@@ -481,12 +481,10 @@ export default function StaffPage() {
                 <label className="text-xs font-medium text-gray-600">Outlet *</label>
                 <Select value={form.brand_id || ""} onValueChange={(v) => setForm((f) => ({ ...f, brand_id: v ?? "", position_id: "" }))}>
                   <SelectTrigger>
-                    <SelectValue>
-                      {(() => {
-                        const found = brands.find(b => String(b.id) === String(form.brand_id));
-                        return found ? found.name : "Pilih Outlet";
-                      })()}
-                    </SelectValue>
+                    <SelectValue placeholder={(() => {
+                      const found = brands.find(b => String(b.id) === String(form.brand_id));
+                      return found ? found.name : "Pilih Outlet";
+                    })()} />
                   </SelectTrigger>
                   <SelectContent>
                     {brands.map((b) => (
@@ -499,12 +497,10 @@ export default function StaffPage() {
                 <label className="text-xs font-medium text-gray-600">Posisi</label>
                 <Select value={form.position_id || ""} onValueChange={(v) => setForm((f) => ({ ...f, position_id: v ?? "" }))}>
                   <SelectTrigger>
-                    <SelectValue>
-                      {(() => {
-                        const found = positions.find(p => String(p.id) === String(form.position_id));
-                        return found ? found.title : "Pilih Posisi";
-                      })()}
-                    </SelectValue>
+                    <SelectValue placeholder={(() => {
+                      const found = positions.find(p => String(p.id) === String(form.position_id));
+                      return found ? found.title : "Pilih Posisi";
+                    })()} />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="">-</SelectItem>
@@ -528,7 +524,7 @@ export default function StaffPage() {
                 <label className="text-xs font-medium text-gray-600">Status</label>
                 <Select value={form.status || "active"} onValueChange={(v) => setForm((f) => ({ ...f, status: v ?? "active" }))}>
                   <SelectTrigger>
-                    <SelectValue>{{ active: "Aktif", inactive: "Nonaktif", resigned: "Resign" }[form.status] || "Aktif"}</SelectValue>
+                    <SelectValue placeholder={{ active: "Aktif", inactive: "Nonaktif", resigned: "Resign" }[form.status] || "Aktif"} />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="active">Aktif</SelectItem>

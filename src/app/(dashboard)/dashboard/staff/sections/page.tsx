@@ -356,12 +356,10 @@ export default function SectionStaffPage() {
               <label className="text-xs font-medium text-gray-600">Outlet *</label>
               <Select value={newSection.brand_id || ""} onValueChange={(v) => setNewSection((s) => ({ ...s, brand_id: v ?? "" }))}>
                 <SelectTrigger>
-                  <SelectValue>
-                    {(() => {
-                      const found = brands.find(b => String(b.id) === String(newSection.brand_id));
-                      return found ? found.name : "Pilih Outlet";
-                    })()}
-                  </SelectValue>
+                  <SelectValue placeholder={(() => {
+                    const found = brands.find(b => String(b.id) === String(newSection.brand_id));
+                    return found ? found.name : "Pilih Outlet";
+                  })()} />
                 </SelectTrigger>
                 <SelectContent>
                   {brands.map((b) => (
@@ -409,12 +407,10 @@ export default function SectionStaffPage() {
             <label className="text-xs font-medium text-gray-600">Pilih Section</label>
             <Select value={assignSection || ""} onValueChange={(v) => setAssignSection(v ?? "")}>
               <SelectTrigger>
-                <SelectValue>
-                  {(() => {
-                    const found = sections.find(sec => String(sec.id) === String(assignSection));
-                    return found ? `${found.name} (${found.code})` : "Pilih Section";
-                  })()}
-                </SelectValue>
+                <SelectValue placeholder={(() => {
+                  const found = sections.find(sec => String(sec.id) === String(assignSection));
+                  return found ? `${found.name} (${found.code})` : "Pilih Section";
+                })()} />
               </SelectTrigger>
               <SelectContent>
                 {sections

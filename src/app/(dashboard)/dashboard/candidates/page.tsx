@@ -579,9 +579,7 @@ export default function CandidatesPage() {
                   onValueChange={(v) => addForm.setValue("brand_id", v || undefined)}
                 >
                   <SelectTrigger>
-                    <SelectValue>
-                      {brands.find(b => b.id === addForm.watch("brand_id"))?.name || "Pilih Outlet"}
-                    </SelectValue>
+                    <SelectValue placeholder={brands.find(b => b.id === addForm.watch("brand_id"))?.name || "Pilih Outlet"} />
                   </SelectTrigger>
                   <SelectContent>
                     {brands.map((b) => (
@@ -597,19 +595,17 @@ export default function CandidatesPage() {
                   onValueChange={(v) => addForm.setValue("source", v as any)}
                 >
                   <SelectTrigger>
-                    <SelectValue>
-                      {{
-                        walk_in: "Walk-in",
-                        referral: "Rekomendasi",
-                        internal_referral: "Referral Internal",
-                        jobfair: "Job Fair",
-                        headhunter: "Headhunter",
-                        portal: "Portal",
-                        instagram: "Instagram",
-                        jobstreet: "JobStreet",
-                        other: "Lainnya",
-                      }[addForm.watch("source") as string] || "Pilih Sumber"}
-                    </SelectValue>
+                    <SelectValue placeholder={{
+                      walk_in: "Walk-in",
+                      referral: "Rekomendasi",
+                      internal_referral: "Referral Internal",
+                      jobfair: "Job Fair",
+                      headhunter: "Headhunter",
+                      portal: "Portal",
+                      instagram: "Instagram",
+                      jobstreet: "JobStreet",
+                      other: "Lainnya",
+                    }[addForm.watch("source") as string] || "Pilih Sumber"} />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="walk_in">Walk-in</SelectItem>
@@ -632,11 +628,9 @@ export default function CandidatesPage() {
                 value={addForm.watch("status") || "new"}
                 onValueChange={(v) => addForm.setValue("status", v as any)}
               >
-                <SelectTrigger>
-                  <SelectValue>
-                    {{ new: "Baru (New)", screening: "Screening" }[addForm.watch("status") as string] || "Baru (New)"}
-                  </SelectValue>
-                </SelectTrigger>
+                  <SelectTrigger>
+                    <SelectValue placeholder={{ new: "Baru (New)", screening: "Screening" }[addForm.watch("status") as string] || "Baru (New)"} />
+                  </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="new">Baru (New)</SelectItem>
                   <SelectItem value="screening">Screening</SelectItem>

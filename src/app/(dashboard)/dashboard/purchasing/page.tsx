@@ -277,7 +277,7 @@ export default async function PurchasingPage() {
                           className="bg-blue-500 h-2 rounded-full"
                           style={{
                             width: `${Math.min(
-                              (amount / Math.max(...Object.values(spendingByDept))) * 100,
+                              (Number(amount) / Math.max(...Object.values(spendingByDept).map(Number))) * 100,
                               100
                             )}%`
                           }}
@@ -310,7 +310,7 @@ export default async function PurchasingPage() {
                       </div>
                       <div className="text-right">
                         <p className="font-medium">{formatRupiah(po.total)}</p>
-                        <Badge className={status.color} size="sm">{status.label}</Badge>
+                        <Badge className={`${status.color} text-xs`}>{status.label}</Badge>
                       </div>
                     </div>
                   </Link>

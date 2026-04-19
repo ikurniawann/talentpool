@@ -218,7 +218,7 @@ export default async function ReportsPage() {
                         className="bg-blue-500 h-2 rounded-full"
                         style={{
                           width: `${Math.min(
-                            (amount / Math.max(...Object.values(spendingByDept))) * 100,
+                            (Number(amount) / Math.max(...Object.values(spendingByDept).map(Number))) * 100,
                             100
                           )}%`
                         }}
