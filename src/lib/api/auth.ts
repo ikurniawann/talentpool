@@ -155,11 +155,13 @@ export interface PaginationMeta {
 
 export function paginatedResponse<T>(
   data: T[],
-  meta: PaginationMeta
+  meta: PaginationMeta,
+  message?: string
 ) {
   return {
     success: true,
     data,
+    ...(message && { message }),
     pagination: meta,
   };
 }

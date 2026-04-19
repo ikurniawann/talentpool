@@ -1,0 +1,176 @@
+import { createClient } from "@/lib/supabase/server";
+import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
+import {
+  requireApiRole,
+  ApiError,
+  successResponse,
+  createdResponse,
+  paginatedResponse,
+} from "@/lib/api/auth";
+import { validateReturnTransition, ReturnStatus } from "@/lib/purchasing/delivery";
+import { reduceStockOnReturn } from "@/lib/purchasing/inventory";
+
+// ============================================================
+// Schemas
+// ============================================================
+
+const createReturnSchema = z.object({
+  goods_receipt_id: z.string().uuid("GRN ID tidak valid"),
+  bahan_baku_id: z.string().uuid("Bahan Baku ID tidak valid"),
+  jumlah: z.number().positive("Jumlah return harus lebih dari 0"),
+  satuan_id: z.string().uuid("Satuan ID tidak valid"),
+  alasan: z.string().min(1, "Alasan return wajib diisi"),
+  tanggal_pengembalian: z.string().optional(), // YYYY-MM-DD
+  no_resi: z.string().optional(),
+  catatan: z.string().optional(),
+});
+
+const updateReturnSchema = z.object({
+  jumlah: z.number().positive().optional(),
+  alasan: z.string().optional(),
+  satuan_id: z.string().uuid().optional(),
+  tanggal_pengembalian: z.string().optional(),
+  no_resi: z.string().optional(),
+  status: z.enum(["pending", "approved", "shipped", "received_by_supplier", "completed", "cancelled"]).optional(),
+  catatan: z.string().optional(),
+});
+
+const queryParamsSchema = z.object({
+  page: z.coerce.number().min(1).default(1),
+  limit: z.coerce.number().min(1).max(100).default(20),
+  search: z.string().optional(),
+  status: z.enum(["pending", "approved", "shipped", "received_by_supplier", "completed", "cancelled"]).optional(),
+  supplier_id: z.string().uuid().optional(),
+  date_from: z.string().optional(),
+  date_to: z.string().optional(),
+});
+
+// ============================================================
+// GET /api/purchasing/return - List returns
+// ============================================================
+
+export async function GET(request: NextRequest) {
+  try {
+    const user = await requireApiRole(["purchasing_admin", "purchasing_staff"]);
+    const supabase = await createClient();
+
+    const { searchParams } = new URL(request.url);
+    const params = queryParamsSchema.parse(Object.fromEntries(searchParams));
+    const { page, limit, search, status, supplier_id, date_from, date_to } = params;
+    const offset = (page - 1) * limit;
+
+    let query = supabase
+      .from("returns")
+      .select(
+        `
+        *,
+        supplier:supplier_id(id, kode, nama),
+        bahan_baku:bahan_baku_id(id, kode, nama),
+        satuan:satuan_id(id, kode, nama),
+        goods_receipt:goods_receipt_id(id, nomor_gr)
+      `,
+        { count: "exact" }
+      )
+      .eq("is_active", true)
+      .order("created_at", { ascending: false })
+      .range(offset, offset + limit - 1);
+
+    if (status) query = query.eq("status", status);
+    if (supplier_id) query = query.eq("supplier_id", supplier_id);
+    if (date_from) query = query.gte("tanggal_pengembalian", date_from);
+    if (date_to) query = query.lte("tanggal_pengembalian", date_to);
+    if (search) {
+      query = query.or(`nomor_return.ilike.%${search}%,alasan.ilike.%${search}%`);
+    }
+
+    const { data, error, count } = await query;
+    if (error) throw error;
+
+    return paginatedResponse(
+      data || [],
+      { page, limit, total: count || 0, totalPages: Math.ceil((count || 0) / limit) },
+      "Return list retrieved"
+    );
+  } catch (error) {
+    if (error instanceof ApiError) return error.toResponse();
+    if (error instanceof z.ZodError) {
+      return ApiError.badRequest("Validation failed", error.issues).toResponse();
+    }
+    console.error("Error fetching returns:", error);
+    return ApiError.server("Failed to fetch returns").toResponse();
+  }
+}
+
+// ============================================================
+// POST /api/purchasing/return - Create return
+// ============================================================
+
+export async function POST(request: NextRequest) {
+  try {
+    const user = await requireApiRole(["purchasing_admin", "purchasing_staff"]);
+    const supabase = await createClient();
+
+    const body = await request.json();
+    const validated = createReturnSchema.parse(body);
+
+    // Validate GRN exists
+    const { data: grn } = await supabase
+      .from("goods_receipts")
+      .select("id, purchase_order_id, supplier_id")
+      .eq("id", validated.goods_receipt_id)
+      .single();
+
+    if (!grn) {
+      throw ApiError.notFound("GRN tidak ditemukan");
+    }
+
+    // Validate bahan_baku exists
+    const { data: bahanBaku } = await supabase
+      .from("bahan_baku")
+      .select("id, is_active")
+      .eq("id", validated.bahan_baku_id)
+      .single();
+
+    if (!bahanBaku) {
+      throw ApiError.notFound("Bahan Baku tidak ditemukan");
+    }
+
+    // nomor_return auto-generated by DB trigger
+    const { data: ret, error } = await supabase
+      .from("returns")
+      .insert({
+        goods_receipt_id: validated.goods_receipt_id,
+        supplier_id: grn.supplier_id || validated.goods_receipt_id,
+        bahan_baku_id: validated.bahan_baku_id,
+        jumlah: validated.jumlah,
+        satuan_id: validated.satuan_id,
+        alasan: validated.alasan,
+        status: "pending",
+        tanggal_pengembalian: validated.tanggal_pengembalian || null,
+        nomor_resi: validated.no_resi || null,
+        catatan: validated.catatan || null,
+        created_by: user.id,
+      })
+      .select(
+        `
+        *,
+        supplier:supplier_id(id, kode, nama),
+        bahan_baku:bahan_baku_id(id, kode, nama),
+        satuan:satuan_id(id, kode, nama)
+      `
+      )
+      .single();
+
+    if (error) throw error;
+
+    return createdResponse(ret, `Return ${ret.nomor_return} berhasil dibuat`);
+  } catch (error) {
+    if (error instanceof ApiError) return error.toResponse();
+    if (error instanceof z.ZodError) {
+      return ApiError.badRequest("Validation failed", error.issues).toResponse();
+    }
+    console.error("Error creating return:", error);
+    return ApiError.server("Failed to create return").toResponse();
+  }
+}
