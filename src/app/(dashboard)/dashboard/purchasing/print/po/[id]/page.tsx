@@ -29,22 +29,26 @@ export default async function PrintPOPage({ params }: PrintPOPageProps) {
 
   return (
     <div className="min-h-screen bg-white p-8 print:p-0">
-      {/* Print Styles */}
-      <style jsx global>{`
-        @media print {
-          @page {
-            size: A4;
-            margin: 15mm;
-          }
-          body {
-            print-color-adjust: exact;
-            -webkit-print-color-adjust: exact;
-          }
-          .no-print {
-            display: none !important;
-          }
-        }
-      `}</style>
+      {/* Print Styles via inline style tag */}
+      <style
+        dangerouslySetInnerHTML={{
+          __html: `
+            @media print {
+              @page {
+                size: A4;
+                margin: 15mm;
+              }
+              body {
+                print-color-adjust: exact;
+                -webkit-print-color-adjust: exact;
+              }
+              .no-print {
+                display: none !important;
+              }
+            }
+          `,
+        }}
+      />
 
       {/* Header */}
       <div className="border-b-2 border-gray-800 pb-6 mb-6">

@@ -33,22 +33,26 @@ export default async function PrintPRPage({ params }: PrintPRPageProps) {
 
   return (
     <div className="min-h-screen bg-white p-8 print:p-0">
-      {/* Print Styles */}
-      <style jsx global>{`
-        @media print {
-          @page {
-            size: A4;
-            margin: 15mm;
-          }
-          body {
-            print-color-adjust: exact;
-            -webkit-print-color-adjust: exact;
-          }
-          .no-print {
-            display: none !important;
-          }
-        }
-      `}</style>
+      {/* Print Styles via inline style tag */}
+      <style
+        dangerouslySetInnerHTML={{
+          __html: `
+            @media print {
+              @page {
+                size: A4;
+                margin: 15mm;
+              }
+              body {
+                print-color-adjust: exact;
+                -webkit-print-color-adjust: exact;
+              }
+              .no-print {
+                display: none !important;
+              }
+            }
+          `,
+        }}
+      />
 
       {/* Header */}
       <div className="text-center mb-8 border-b pb-6">

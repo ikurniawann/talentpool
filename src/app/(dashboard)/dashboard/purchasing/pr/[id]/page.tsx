@@ -389,7 +389,7 @@ export default async function PRDetailPage({ params }: PRDetailPageProps) {
                       approvalInfo.level === "finance" ? "Finance" : "Direksi"}
                   </p>
                   <p className="text-xs text-blue-600 mt-1">
-                    Threshold: > {formatRupiah(approvalInfo.minAmount)}
+                    Threshold: &gt; {formatRupiah(approvalInfo.minAmount)}
                   </p>
                 </div>
               )}
