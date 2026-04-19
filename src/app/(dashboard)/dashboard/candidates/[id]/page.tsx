@@ -1105,9 +1105,7 @@ export default function CandidateDetailPage() {
                   }}
                 >
                   <SelectTrigger>
-                    <SelectValue>
-                      {brands.find(b => b.id === editForm.watch("brand_id"))?.name || "Pilih Outlet"}
-                    </SelectValue>
+                    <SelectValue placeholder="Pilih Outlet" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="">-</SelectItem>
