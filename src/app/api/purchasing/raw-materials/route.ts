@@ -8,17 +8,17 @@ import { z } from "zod";
 
 // Validation schema
 const materialSchema = z.object({
-  kode: z.string().max(20).optional(),
+  kode: z.string().max(20).optional().nullable(),
   nama: z.string().min(1, "Nama bahan wajib diisi").max(100),
   kategori: z.enum(["BAHAN_PANGAN", "BAHAN_NON_PANGAN", "KEMASAN", "BAHAN_BAKAR", "LAINNYA"]),
-  deskripsi: z.string().optional(),
-  satuan_besar_id: z.string().uuid().optional(),
-  satuan_kecil_id: z.string().uuid().optional(),
+  deskripsi: z.string().optional().nullable(),
+  satuan_besar_id: z.string().uuid("Satuan besar wajib dipilih"),
+  satuan_kecil_id: z.string().uuid().optional().nullable(),
   konversi_factor: z.number().min(0).default(1),
   stok_minimum: z.number().min(0).default(0),
   stok_maximum: z.number().min(0).default(0),
-  shelf_life_days: z.number().min(0).optional(),
-  storage_condition: z.enum(["SUHU_RUANG", "DINGIN", "BEKU", "KHUSUS"]).optional(),
+  shelf_life_days: z.number().min(0).optional().nullable(),
+  storage_condition: z.enum(["SUHU_RUANG", "DINGIN", "BEKU", "KHUSUS"]).optional().nullable(),
 });
 
 // GET /api/purchasing/raw-materials
@@ -99,20 +99,41 @@ export async function POST(request: NextRequest) {
     // Validasi input
     const validated = materialSchema.parse(body);
 
-    // Cek kode unik jika disediakan
-    if (validated.kode) {
-      const { data: existing } = await supabase
+    // Generate kode otomatis jika tidak disediakan
+    let finalKode = validated.kode;
+    if (!finalKode) {
+      const year = new Date().getFullYear();
+      // Get last code
+      const { data: lastCode } = await supabase
         .from("raw_materials")
-        .select("id")
-        .eq("kode", validated.kode)
+ .select("kode")
+        .ilike("kode", `BHN-${year}-%`)
+        .order("kode", { ascending: false })
+        .limit(1)
         .single();
 
-      if (existing) {
-        return Response.json(
-          { success: false, message: "Kode bahan sudah digunakan" },
-          { status: 400 }
-        );
+      let nextNum = 1;
+      if (lastCode?.kode) {
+        const match = lastCode.kode.match(/-(\d+)$/);
+        if (match) {
+          nextNum = parseInt(match[1]) + 1;
+        }
       }
+      finalKode = `BHN-${year}-${String(nextNum).padStart(4, "0")}`;
+    }
+
+    // Cek kode unik
+    const { data: existing } = await supabase
+      .from("raw_materials")
+      .select("id")
+      .eq("kode", finalKode)
+      .single();
+
+    if (existing) {
+      return Response.json(
+        { success: false, message: "Kode bahan sudah digunakan" },
+        { status: 400 }
+      );
     }
 
     // Insert data
@@ -120,6 +141,7 @@ export async function POST(request: NextRequest) {
       .from("raw_materials")
       .insert({
         ...validated,
+        kode: finalKode,
         is_active: true,
       })
       .select()

@@ -73,22 +73,24 @@ export default function NewRawMaterialPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Validasi
+    if (!formData.nama) {
+      toast.error("Nama bahan baku wajib diisi");
+      return;
+    }
+    if (!formData.satuan_besar_id) {
+      toast.error("Satuan besar wajib dipilih");
+      return;
+    }
+
     setIsSubmitting(true);
-
     try {
-      // Validasi
-      if (!formData.nama) {
-        toast.error("Nama bahan baku wajib diisi");
-        return;
-      }
-      if (!formData.satuan_besar_id) {
-        toast.error("Satuan besar wajib dipilih");
-        return;
-      }
-
+      // Prepare data - convert empty string to undefined for optional fields
       const dataToSubmit = {
         ...formData,
-        kode: formData.kode || undefined, // Jika kosong, akan auto-generate
+        kode: formData.kode || undefined,
+        deskripsi: formData.deskripsi || undefined,
         satuan_kecil_id: formData.satuan_kecil_id || undefined,
         shelf_life_days: formData.shelf_life_days || undefined,
         storage_condition: formData.storage_condition || undefined,
@@ -147,10 +149,10 @@ export default function NewRawMaterialPage() {
                       setFormData({ ...formData, kode: e.target.value })
                     }
                     placeholder="Kosongkan untuk auto-generate"
-                    maxLength={20}
+                    maxLength={50}
                   />
                   <p className="text-xs text-muted-foreground">
-                    Format: BHN-YYYY-XXXX
+                    Boleh dikosongkan atau isi manual bebas
                   </p>
                 </div>
                 <div className="space-y-2">
