@@ -231,7 +231,9 @@ export default function NewRawMaterialPage() {
                   disabled={loading}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Pilih satuan besar" />
+                    <SelectValue placeholder="Pilih satuan besar">
+                      {formData.satuan_besar_id && units.find(u => u.id === formData.satuan_besar_id)?.nama}
+                    </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
                     {satuanBesar.map((unit) => (
@@ -253,7 +255,9 @@ export default function NewRawMaterialPage() {
                   disabled={loading}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Opsional" />
+                    <SelectValue placeholder="Opsional">
+                      {formData.satuan_kecil_id && units.find(u => u.id === formData.satuan_kecil_id)?.nama}
+                    </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="">&mdash; Tidak ada &mdash;</SelectItem>
