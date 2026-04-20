@@ -56,19 +56,35 @@ export default function NewPOPage() {
   const loadData = async () => {
     console.log("loadData started"); // DEBUG
     try {
-      const suppliersRes = await listSuppliers();
-      console.log("Suppliers raw response:", suppliersRes); // DEBUG
-      
-      const materialsRes = await listRawMaterials({ limit: 100 });
-      const unitsRes = await listUnits(true);
-      
-      // Handle both array and paginated response
-      const suppliersArray = Array.isArray(suppliersRes) ? suppliersRes : suppliersRes.data || [];
-      console.log("Suppliers array:", suppliersArray); // DEBUG
-      
+      // Load suppliers first
+      let suppliersArray: Supplier[] = [];
+      try {
+        const suppliersRes = await listSuppliers();
+        console.log("Suppliers raw response:", suppliersRes); // DEBUG
+        suppliersArray = Array.isArray(suppliersRes) ? suppliersRes : suppliersRes.data || [];
+        console.log("Suppliers array:", suppliersArray); // DEBUG
+      } catch (e) {
+        console.error("Error loading suppliers:", e);
+      }
       setSuppliers(suppliersArray);
-      setMaterials(materialsRes.data || []);
-      setUnits(unitsRes || []);
+      
+      // Load materials
+      try {
+        const materialsRes = await listRawMaterials({ limit: 100 });
+        console.log("Materials response:", materialsRes); // DEBUG
+        setMaterials(materialsRes.data || []);
+      } catch (e) {
+        console.error("Error loading materials:", e);
+      }
+      
+      // Load units
+      try {
+        const unitsRes = await listUnits(true);
+        console.log("Units response:", unitsRes); // DEBUG
+        setUnits(unitsRes || []);
+      } catch (e) {
+        console.error("Error loading units:", e);
+      }
     } catch (error) {
       console.error("Error loading data:", error);
       toast.error("Gagal memuat data");
