@@ -120,28 +120,38 @@ export async function POST(request: NextRequest) {
   try {
     const supabase = await createClient();
     const body = await request.json();
+    
+    console.log("Creating PO with body:", JSON.stringify(body, null, 2));
 
     // Validasi input
     const validated = poSchema.parse(body);
+    console.log("Validated data:", validated);
 
     // Generate nomor PO
     const nomor_po = await generateNomorPO(supabase);
+    console.log("Generated nomor_po:", nomor_po);
 
     // Insert PO dengan status DRAFT
+    const insertData = {
+      ...validated,
+      nomor_po,
+      status: "DRAFT",
+      subtotal: 0,
+      total: 0,
+      is_active: true,
+    };
+    console.log("Inserting data:", insertData);
+    
     const { data, error } = await supabase
       .from("purchase_orders")
-      .insert({
-        ...validated,
-        nomor_po,
-        status: "DRAFT",
-        subtotal: 0,
-        total: 0,
-        is_active: true,
-      })
+      .insert(insertData)
       .select()
       .single();
 
-    if (error) throw error;
+    if (error) {
+      console.error("Supabase insert error:", error);
+      throw error;
+    }
 
     return Response.json(
       { success: true, data, message: "PO berhasil dibuat" },
@@ -151,6 +161,7 @@ export async function POST(request: NextRequest) {
     console.error("Error creating PO:", error);
 
     if (error instanceof z.ZodError) {
+      console.error("Zod validation errors:", error.flatten().fieldErrors);
       return Response.json(
         {
           success: false,
