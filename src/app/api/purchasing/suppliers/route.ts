@@ -23,8 +23,8 @@ const createSupplierSchema = z.object({
   kota: z.string().max(100).optional(),
   npwp: z.string().max(50).optional(),
   payment_terms: z
-    .enum(["COD", "NET7", "NET14", "NET30", "NET45", "NET60"])
-    .default("NET30"),
+    .enum(["COD", "NET7", "NET14", "NET 30", "NET45", "NET60"])
+    .default("NET 30"),
   currency: z.enum(["IDR", "USD", "EUR"]).default("IDR"),
   bank_nama: z.string().optional(),
   bank_rekening: z.string().optional(),
@@ -140,11 +140,17 @@ export async function POST(request: NextRequest) {
 
     const supabase = await createClient();
 
+    // Auto-generate kode if placeholder or empty
+    let kodeSupplier = validated.kode_supplier;
+    if (!kodeSupplier || kodeSupplier.includes("XXXX")) {
+      kodeSupplier = await generateSupplierCode(supabase);
+    }
+
     // Check if kode_supplier already exists
     const { data: existing } = await supabase
       .from("suppliers")
       .select("id")
-      .eq("kode", validated.kode_supplier)
+      .eq("kode", kodeSupplier)
       .single();
 
     if (existing) {
@@ -161,7 +167,7 @@ export async function POST(request: NextRequest) {
     const { data, error } = await supabase
       .from("suppliers")
       .insert({
-        kode: validated.kode_supplier,
+        kode: kodeSupplier,
         nama_supplier: validated.nama_supplier,
         pic_name: validated.pic_name,
         pic_phone: validated.pic_phone,
