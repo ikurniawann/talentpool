@@ -2,42 +2,54 @@ import { createClient } from "@/lib/supabase/server";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import {
-  requireApiUser,
   requireApiRole,
   ApiError,
   successResponse,
   createdResponse,
   paginatedResponse,
-  noContentResponse,
 } from "@/lib/api/auth";
-import { UserRole } from "@/types";
 
-// Zod schemas
+// ========================
+// ZOD SCHEMAS
+// ========================
+
 const createSupplierSchema = z.object({
-  nama: z.string().min(1, "Nama supplier wajib diisi"),
-  alamat: z.string().optional(),
-  telepon: z.string().optional(),
+  kode_supplier: z.string().min(1, "Kode supplier wajib diisi").max(50),
+  nama_supplier: z.string().min(1, "Nama supplier wajib diisi").max(200),
+  pic_name: z.string().max(100).optional(),
+  pic_phone: z.string().max(30).optional(),
   email: z.string().email("Email tidak valid").optional().or(z.literal("")),
-  npwp: z.string().optional(),
+  alamat: z.string().optional(),
+  kota: z.string().max(100).optional(),
+  npwp: z.string().max(50).optional(),
+  payment_terms: z
+    .enum(["COD", "NET7", "NET14", "NET30", "NET45", "NET60"])
+    .default("NET30"),
+  currency: z.enum(["IDR", "USD", "EUR"]).default("IDR"),
   bank_nama: z.string().optional(),
   bank_rekening: z.string().optional(),
   bank_atas_nama: z.string().optional(),
   kategori: z.string().optional(),
-  status: z.enum(["active", "inactive", "blacklisted"]).default("active"),
 });
-
-const updateSupplierSchema = createSupplierSchema.partial();
 
 const queryParamsSchema = z.object({
+  search: z.string().optional(),
+  is_active: z.coerce.boolean().default(true),
+  payment_terms: z.enum(["COD", "NET7", "NET14", "NET30", "NET45", "NET60"]).optional(),
   page: z.coerce.number().min(1).default(1),
   limit: z.coerce.number().min(1).max(100).default(20),
-  search: z.string().optional(),
-  status: z.enum(["active", "inactive", "blacklisted"]).optional(),
-  kategori: z.string().optional(),
+  sort_by: z
+    .enum(["nama_supplier", "kode_supplier", "kota", "created_at"])
+    .default("nama_supplier"),
+  sort_dir: z.enum(["ASC", "DESC"]).default("ASC"),
 });
 
-// Helper: generate supplier code
-async function generateSupplierCode(supabase: Awaited<ReturnType<typeof createClient>>): Promise<string> {
+// ========================
+// HELPER: Generate supplier code
+// ========================
+async function generateSupplierCode(
+  supabase: Awaited<ReturnType<typeof createClient>>
+): Promise<string> {
   const year = new Date().getFullYear();
   const { data } = await supabase
     .from("suppliers")
@@ -54,33 +66,47 @@ async function generateSupplierCode(supabase: Awaited<ReturnType<typeof createCl
   return `SUP-${year}-${String(seq).padStart(4, "0")}`;
 }
 
-// GET /api/purchasing/suppliers - List with filter & pagination
+// ========================
+// GET /api/purchasing/suppliers — getAll with filter & pagination
+// ========================
 export async function GET(request: NextRequest) {
   try {
-    const user = await requireApiUser();
-    const supabase = await createClient();
+    await requireApiRole(["purchasing_admin", "purchasing_staff", "purchasing_manager"]);
 
-    // Parse & validate query params
     const url = new URL(request.url);
     const rawParams = Object.fromEntries(url.searchParams);
     const params = queryParamsSchema.parse(rawParams);
-    const { page, limit, search, status, kategori } = params;
+    const { page, limit, search, is_active, payment_terms, sort_by, sort_dir } = params;
     const offset = (page - 1) * limit;
 
-    // Build query
+    const supabase = await createClient();
+
+    // Map sort field to actual column name
+    const sortColumnMap: Record<string, string> = {
+      nama_supplier: "nama_supplier",
+      kode_supplier: "kode",
+      kota: "kota",
+      created_at: "created_at",
+    };
+    const sortColumn = sortColumnMap[sort_by] ?? "nama_supplier";
+
     let query = supabase
       .from("suppliers")
       .select("*", { count: "exact" })
-      .eq("is_active", true);
+      .eq("is_active", is_active);
 
-    if (status) query = query.eq("status", status);
-    if (kategori) query = query.eq("kategori", kategori);
+    if (payment_terms) {
+      query = query.eq("payment_terms", payment_terms);
+    }
+
     if (search) {
-      query = query.or(`nama.ilike.%${search}%,kode.ilike.%${search}%,alamat.ilike.%${search}%`);
+      query = query.or(
+        `nama_supplier.ilike.%${search}%,kode.ilike.%${search}%,kota.ilike.%${search}%`
+      );
     }
 
     const { data, count, error } = await query
-      .order("created_at", { ascending: false })
+      .order(sortColumn, { ascending: sort_dir === "ASC" })
       .range(offset, offset + limit - 1);
 
     if (error) throw error;
@@ -96,45 +122,80 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     if (error instanceof ApiError) return error.toResponse();
     if (error instanceof z.ZodError) {
-      return ApiError.badRequest("Invalid query parameters", error.issues).toResponse();
+      return ApiError.badRequest("Parameter query tidak valid", error.issues).toResponse();
     }
     console.error("Error fetching suppliers:", error);
-    return ApiError.server("Failed to fetch suppliers").toResponse();
+    return ApiError.server("Gagal mengambil data supplier").toResponse();
   }
 }
 
-// POST /api/purchasing/suppliers - Create
+// ========================
+// POST /api/purchasing/suppliers — create
+// ========================
 export async function POST(request: NextRequest) {
   try {
-    // Only purchasing_admin or purchasing_staff can create
     const user = await requireApiRole(["purchasing_admin", "purchasing_staff"]);
-    const supabase = await createClient();
-
     const body = await request.json();
     const validated = createSupplierSchema.parse(body);
 
-    // Generate code
-    const kode = await generateSupplierCode(supabase);
+    const supabase = await createClient();
+
+    // Check if kode_supplier already exists
+    const { data: existing } = await supabase
+      .from("suppliers")
+      .select("id")
+      .eq("kode", validated.kode_supplier)
+      .single();
+
+    if (existing) {
+      throw ApiError.conflict("Kode supplier sudah digunakan");
+    }
+
+    // Validate NPWP format if provided
+    if (validated.npwp && !/^\d{2}\.\d{3}\.\d{3}\.\d{1}-\d{3}\.\d{3}$/.test(validated.npwp)) {
+      throw ApiError.badRequest(
+        "Format NPWP tidak valid. Gunakan format: XX.XXX.XXX.X-XXX.XXX"
+      );
+    }
 
     const { data, error } = await supabase
       .from("suppliers")
       .insert({
-        kode,
-        ...validated,
+        kode: validated.kode_supplier,
+        nama_supplier: validated.nama_supplier,
+        pic_name: validated.pic_name,
+        pic_phone: validated.pic_phone,
+        email: validated.email,
+        alamat: validated.alamat,
+        kota: validated.kota,
+        npwp: validated.npwp,
+        payment_terms: validated.payment_terms,
+        currency: validated.currency,
+        bank_nama: validated.bank_nama,
+        bank_rekening: validated.bank_rekening,
+        bank_atas_nama: validated.bank_atas_nama,
+        kategori: validated.kategori,
+        status: "active",
+        is_active: true,
         created_by: user.id,
       })
       .select()
       .single();
 
-    if (error) throw error;
+    if (error) {
+      if (error.code === "23505") {
+        throw ApiError.conflict("Kode supplier sudah digunakan");
+      }
+      throw error;
+    }
 
     return createdResponse(data, "Supplier berhasil dibuat");
   } catch (error) {
     if (error instanceof ApiError) return error.toResponse();
     if (error instanceof z.ZodError) {
-      return ApiError.badRequest("Validation failed", error.issues).toResponse();
+      return ApiError.badRequest("Validasi gagal", error.issues).toResponse();
     }
     console.error("Error creating supplier:", error);
-    return ApiError.server("Failed to create supplier").toResponse();
+    return ApiError.server("Gagal membuat supplier").toResponse();
   }
 }
