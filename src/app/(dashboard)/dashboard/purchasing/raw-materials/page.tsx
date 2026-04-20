@@ -81,6 +81,7 @@ export default function RawMaterialsPage() {
   const loadMaterials = async () => {
     try {
       setLoading(true);
+      console.log("Loading materials...", { page: pagination.page, search: searchQuery, category: categoryFilter });
       const response = await listRawMaterials({
         search: searchQuery || undefined,
         kategori: categoryFilter || undefined,
@@ -90,15 +91,17 @@ export default function RawMaterialsPage() {
         sort_by: "nama",
         sort_dir: "ASC",
       });
+      console.log("Materials response:", response);
       setMaterials(response.data);
       setPagination((prev) => ({
         ...prev,
         total: response.pagination.total,
         total_pages: response.pagination.total_pages,
       }));
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error loading materials:", error);
-      toast.error("Gagal memuat data bahan baku");
+      console.error("Error details:", error.message, error.stack);
+      toast.error("Gagal memuat data bahan baku: " + error.message);
     } finally {
       setLoading(false);
     }
