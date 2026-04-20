@@ -30,7 +30,7 @@ const MASTER_ITEMS = [
 
 // Transaksi Items
 const TRANSAKSI_ITEMS = [
-  { href: "/dashboard/purchasing/purchase-orders", label: "Purchase Order", icon: ShoppingCartIcon },
+  { href: "/dashboard/purchasing/po", label: "Purchase Order", icon: ShoppingCartIcon },
   { href: "/dashboard/purchasing/receiving", label: "Penerimaan", icon: TruckIcon },
   { href: "/dashboard/purchasing/qc", label: "QC", icon: CheckBadgeIcon },
   { href: "/dashboard/purchasing/delivery", label: "Pengiriman", icon: TruckIcon },
