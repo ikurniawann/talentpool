@@ -1,72 +1,106 @@
-import { createClient } from "@/lib/supabase/server";
 import { NextRequest, NextResponse } from "next/server";
-import { z } from "zod";
-import {
-  requireApiRole,
-  ApiError,
-  successResponse,
-} from "@/lib/api/auth";
-
-// ============================================================
-// GET /api/purchasing/grn/:id - Get GRN detail with QC inspections
-// ============================================================
+import { createClient } from "@/lib/supabase/server";
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: { id: string } }
 ) {
   try {
-    await requireApiRole(["purchasing_admin", "purchasing_staff", "warehouse_staff"]);
     const supabase = await createClient();
-    const { id } = await params;
 
-    const { data: grn, error } = await supabase
+    const { data, error } = await supabase
       .from("goods_receipts")
-      .select(
-        `
+      .select(`
         *,
-        purchase_order:purchase_order_id(
-          id, po_number, status, supplier_id, delivery_date,
-          items:po_items(
-            id, bahan_baku_id, description, qty, qty_received,
-            satuan:satuan_id(id, kode, nama),
-            bahan_baku:bahan_baku_id(id, kode, nama)
-          )
-        ),
-        delivery:delivery_id(
-          id, nomor_resi, no_surat_jalan, kurir,
-          tanggal_kirim, tanggal_estimasi_tiba, tanggal_aktual_tiba
-        ),
-        penerima:penerima_id(id, full_name)
-      `
-      )
-      .eq("id", id)
+        po:po_id(*,supplier:supplier_id(*)),
+        delivery:delivery_id(*),
+        received_by_user:received_by(id,email),
+        items:goods_receipt_items(*,raw_material:raw_material_id(*),satuan:satuan_id(*))
+      `)
+      .eq("id", params.id)
       .single();
 
-    if (error || !grn) {
-      throw ApiError.notFound("GRN tidak ditemukan");
+    if (error) throw error;
+    if (!data) {
+      return NextResponse.json(
+        { error: "GRN not found" },
+        { status: 404 }
+      );
     }
 
-    // Get QC inspections for this GRN
-    const { data: qcInspections } = await supabase
-      .from("qc_inspections")
-      .select(
-        `
-        *,
-        inspector:inspector_id(id, full_name),
-        bahan_baku:bahan_baku_id(id, kode, nama)
-      `
-      )
-      .eq("goods_receipt_id", id)
-      .eq("is_active", true);
-
-    return successResponse(
-      { ...grn, qc_inspections: qcInspections || [] },
-      "GRN detail retrieved"
-    );
-  } catch (error) {
-    if (error instanceof ApiError) return error.toResponse();
+    return NextResponse.json({ data });
+  } catch (error: any) {
     console.error("Error fetching GRN:", error);
-    return ApiError.server("Failed to fetch GRN").toResponse();
+    return NextResponse.json(
+      { error: error.message || "Failed to fetch GRN" },
+      { status: 500 }
+    );
+  }
+}
+
+export async function PUT(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const supabase = await createClient();
+    const body = await request.json();
+
+    const { data, error } = await supabase
+      .from("goods_receipts")
+      .update({
+        ...body,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", params.id)
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    return NextResponse.json({ data });
+  } catch (error: any) {
+    console.error("Error updating GRN:", error);
+    return NextResponse.json(
+      { error: error.message || "Failed to update GRN" },
+      { status: 500 }
+    );
+  }
+}
+
+// Complete GRN - Finalize and update inventory
+export async function POST(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const supabase = await createClient();
+    const { action } = await request.json();
+
+    if (action === "complete") {
+      // Update GRN status to COMPLETED
+      const { data, error } = await supabase
+        .from("goods_receipts")
+        .update({
+          status: "COMPLETED",
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", params.id)
+        .eq("status", "QC_APPROVED")
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      return NextResponse.json({ data });
+    }
+
+    return NextResponse.json({ error: "Invalid action" }, { status: 400 });
+  } catch (error: any) {
+    console.error("Error completing GRN:", error);
+    return NextResponse.json(
+      { error: error.message || "Failed to complete GRN" },
+      { status: 500 }
+    );
   }
 }

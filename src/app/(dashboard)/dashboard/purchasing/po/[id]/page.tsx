@@ -1,407 +1,510 @@
-import { requireUser } from "@/lib/supabase/auth";
-import { createClient } from "@/lib/supabase/server";
-import { notFound, redirect } from "next/navigation";
+"use client";
+
+import { useState, useEffect } from "react";
+import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 import {
   ArrowLeft,
   Printer,
-  Send,
-  Package,
   CheckCircle,
+  Send,
   XCircle,
   FileText,
-  Truck,
-  Clock,
+  Package,
+  User,
+  Calendar,
+  MapPin,
 } from "lucide-react";
+import { toast } from "sonner";
+import { PurchaseOrderWithStats, PurchaseOrderItem, POStatus } from "@/types/purchasing";
 import {
-  formatRupiah,
-  formatDate,
-  getPOStatusLabel,
-} from "@/lib/purchasing/utils";
+  getPurchaseOrder,
+  approvePurchaseOrder,
+  sendPurchaseOrder,
+  cancelPurchaseOrder,
+} from "@/lib/purchasing";
 
-interface PODetailPageProps {
-  params: Promise<{ id: string }>;
-}
+export default function PODetailPage() {
+  const params = useParams();
+  const router = useRouter();
+  const poId = params.id as string;
 
-export default async function PODetailPage({ params }: PODetailPageProps) {
-  const { id } = await params;
-  const user = await requireUser();
-  const supabase = await createClient();
+  const [po, setPo] = useState<PurchaseOrderWithStats | null>(null);
+  const [items, setItems] = useState<PurchaseOrderItem[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  // Fetch PO with all relations
-  const { data: po } = await supabase
-    .from("purchase_orders")
-    .select(`
-      *,
-      items:po_items(*),
-      vendor:vendors(*),
-      pr:purchase_requests(pr_number),
-      creator:users!purchase_orders_created_by_fkey(full_name),
-      sent_by_user:users!purchase_orders_sent_by_fkey(full_name)
-    `)
-    .eq("id", id)
-    .single();
+  // Dialog states
+  const [isApproveDialogOpen, setIsApproveDialogOpen] = useState(false);
+  const [isSendDialogOpen, setIsSendDialogOpen] = useState(false);
+  const [isCancelDialogOpen, setIsCancelDialogOpen] = useState(false);
+  const [sendVia, setSendVia] = useState<"EMAIL" | "WHATSAPP" | "PRINT" | "OTHER">("EMAIL");
+  const [cancelReason, setCancelReason] = useState("");
 
-  if (!po) {
-    notFound();
+  useEffect(() => {
+    if (poId) {
+      loadPO();
+    }
+  }, [poId]);
+
+  const loadPO = async () => {
+    try {
+      setLoading(true);
+      const data = await getPurchaseOrder(poId);
+      setPo(data);
+      setItems(data.items || []);
+    } catch (error) {
+      console.error("Error loading PO:", error);
+      toast.error("Gagal memuat data PO");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleApprove = async () => {
+    try {
+      await approvePurchaseOrder(poId);
+      toast.success("PO berhasil diapprove");
+      setIsApproveDialogOpen(false);
+      loadPO();
+    } catch (error: any) {
+      console.error("Error approving PO:", error);
+      toast.error(error.message || "Gagal mengapprove PO");
+    }
+  };
+
+  const handleSend = async () => {
+    try {
+      await sendPurchaseOrder(poId, sendVia);
+      toast.success(`PO berhasil dikirim via ${sendVia}`);
+      setIsSendDialogOpen(false);
+      loadPO();
+    } catch (error: any) {
+      console.error("Error sending PO:", error);
+      toast.error(error.message || "Gagal mengirim PO");
+    }
+  };
+
+  const handleCancel = async () => {
+    if (!cancelReason) return;
+    try {
+      await cancelPurchaseOrder(poId, cancelReason);
+      toast.success("PO berhasil dibatalkan");
+      setIsCancelDialogOpen(false);
+      loadPO();
+    } catch (error: any) {
+      console.error("Error cancelling PO:", error);
+      toast.error(error.message || "Gagal membatalkan PO");
+    }
+  };
+
+  const getStatusBadge = (status: POStatus) => {
+    const styles: Record<POStatus, string> = {
+      DRAFT: "bg-gray-100 text-gray-800",
+      APPROVED: "bg-blue-100 text-blue-800",
+      SENT: "bg-purple-100 text-purple-800",
+      PARTIAL: "bg-yellow-100 text-yellow-800",
+      RECEIVED: "bg-green-100 text-green-800",
+      CANCELLED: "bg-red-100 text-red-800",
+    };
+    const labels: Record<POStatus, string> = {
+      DRAFT: "Draft",
+      APPROVED: "Approved",
+      SENT: "Terkirim",
+      PARTIAL: "Diterima Sebagian",
+      RECEIVED: "Diterima Penuh",
+      CANCELLED: "Dibatalkan",
+    };
+    return <Badge className={styles[status]}>{labels[status]}</Badge>;
+  };
+
+  const formatCurrency = (num: number) => {
+    return `Rp ${num.toLocaleString("id-ID")}`;
+  };
+
+  const formatDate = (dateStr?: string) => {
+    if (!dateStr) return "-";
+    return new Date(dateStr).toLocaleDateString("id-ID", {
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    });
+  };
+
+  const formatDateTime = (dateStr?: string) => {
+    if (!dateStr) return "-";
+    return new Date(dateStr).toLocaleString("id-ID");
+  };
+
+  if (loading) {
+    return (
+      <div className="container mx-auto py-6">
+        <div className="text-center py-12">Memuat data PO...</div>
+      </div>
+    );
   }
 
-  const statusBadge = getPOStatusLabel(po.status);
-
-  // Determine available actions
-  const canSend = po.status === "draft" && (user.role === "purchasing_staff" || user.role === "purchasing_manager");
-  const canReceive = (po.status === "sent" || po.status === "partial") && user.role === "warehouse_staff";
-  const canClose = po.status === "received" && (user.role === "purchasing_manager" || user.role === "direksi");
-  const canCancel = po.status !== "closed" && po.status !== "cancelled" && (user.role === "purchasing_manager" || user.role === "direksi");
-
-  // Calculate received progress
-  const totalItems = po.items?.length || 0;
-  const receivedItems = po.items?.filter((item: any) => item.received_qty >= item.qty).length || 0;
-  const progressPercent = totalItems > 0 ? (receivedItems / totalItems) * 100 : 0;
+  if (!po) {
+    return (
+      <div className="container mx-auto py-6">
+        <div className="text-center py-12 text-red-500">PO tidak ditemukan</div>
+      </div>
+    );
+  }
 
   return (
-    <div className="space-y-6">
+    <div className="container mx-auto py-6 space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex justify-between items-start">
         <div className="flex items-center gap-4">
           <Link href="/dashboard/purchasing/po">
-            <Button variant="ghost" size="sm">
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              Kembali
+            <Button variant="ghost" size="icon">
+              <ArrowLeft className="w-5 h-5" />
             </Button>
           </Link>
           <div>
-            <h1 className="text-2xl font-bold">{po.po_number}</h1>
-            <p className="text-sm text-gray-500">
-              Dibuat {formatDate(po.created_at)} oleh {po.creator?.full_name}
-            </p>
+            <h1 className="text-2xl font-bold">Purchase Order Detail</h1>
+            <p className="text-muted-foreground">{po.nomor_po}</p>
           </div>
         </div>
-
-        <div className="flex items-center gap-3">
-          <Link href={`/dashboard/purchasing/print/po/${id}`} target="_blank">
-            <Button variant="outline">
-              <Printer className="w-4 h-4 mr-2" />
-              Print
-            </Button>
-          </Link>
-
-          {canSend && (
-            <form action={async () => {
-              "use server";
-              const supabase = await createClient();
-              const user = await requireUser();
-              
-              await supabase
-                .from("purchase_orders")
-                .update({
-                  status: "sent",
-                  sent_at: new Date().toISOString(),
-                  sent_by: user.id,
-                })
-                .eq("id", id);
-              
-              redirect(`/dashboard/purchasing/po/${id}`);
-            }}>
-              <Button type="submit">
-                <Send className="w-4 h-4 mr-2" />
-                Kirim ke Vendor
-              </Button>
-            </form>
-          )}
-
-          {canReceive && (
-            <Link href={`/dashboard/purchasing/po/${id}/receive`}>
-              <Button>
-                <Package className="w-4 h-4 mr-2" />
-                Terima Barang
-              </Button>
-            </Link>
-          )}
-
-          {canClose && (
-            <form action={async () => {
-              "use server";
-              const supabase = await createClient();
-              
-              await supabase
-                .from("purchase_orders")
-                .update({ status: "closed" })
-                .eq("id", id);
-              
-              redirect(`/dashboard/purchasing/po/${id}`);
-            }}>
-              <Button variant="outline" type="submit">
+        <div className="flex gap-2">
+          <Button variant="outline">
+            <Printer className="w-4 h-4 mr-2" />
+            Print
+          </Button>
+          
+          {po.status === "DRAFT" && (
+            <>
+              <Link href={`/dashboard/purchasing/po/${po.id}/edit`}>
+                <Button variant="outline">Edit</Button>
+              </Link>
+              <Button onClick={() => setIsApproveDialogOpen(true)}>
                 <CheckCircle className="w-4 h-4 mr-2" />
-                Tutup PO
+                Approve
               </Button>
-            </form>
+            </>
           )}
-
-          {canCancel && (
-            <form action={async () => {
-              "use server";
-              const supabase = await createClient();
-              
-              await supabase
-                .from("purchase_orders")
-                .update({ status: "cancelled" })
-                .eq("id", id);
-              
-              redirect(`/dashboard/purchasing/po/${id}`);
-            }}>
-              <Button variant="destructive" type="submit">
-                <XCircle className="w-4 h-4 mr-2" />
-                Batal
-              </Button>
-            </form>
+          
+          {po.status === "APPROVED" && (
+            <Button onClick={() => setIsSendDialogOpen(true)}>
+              <Send className="w-4 h-4 mr-2" />
+              Kirim ke Supplier
+            </Button>
+          )}
+          
+          {po.status !== "RECEIVED" && po.status !== "CANCELLED" && (
+            <Button variant="destructive" onClick={() => setIsCancelDialogOpen(true)}>
+              <XCircle className="w-4 h-4 mr-2" />
+              Batal
+            </Button>
           )}
         </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left Column - PO Details */}
-        <div className="lg:col-span-2 space-y-6">
-          {/* Status Card */}
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between mb-6">
-                <div className="flex items-center gap-4">
-                  <Badge className={statusBadge.color} size="lg">
-                    {statusBadge.label}
-                  </Badge>
-                  {po.pr?.pr_number && (
-                    <span className="text-sm text-gray-500">
-                      Ref PR: <span className="font-medium">{po.pr.pr_number}</span>
-                    </span>
-                  )}
-                </div>
-                <div className="text-right">
-                  <p className="text-sm text-gray-500">Total PO</p>
-                  <p className="text-2xl font-bold">{formatRupiah(po.total)}</p>
+        {/* Info PO */}
+        <Card className="lg:col-span-2">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <FileText className="w-5 h-5" />
+              Informasi PO
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1">
+                <Label className="text-muted-foreground text-sm">Status</Label>
+                <div>{getStatusBadge(po.status)}</div>
+              </div>
+              <div className="space-y-1">
+                <Label className="text-muted-foreground text-sm">Tanggal PO</Label>
+                <div className="font-medium">{formatDate(po.tanggal_po)}</div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1">
+                <Label className="text-muted-foreground text-sm flex items-center gap-1">
+                  <User className="w-4 h-4" />
+                  Supplier
+                </Label>
+                <div className="font-medium">{po.nama_supplier}</div>
+                <div className="text-sm text-muted-foreground">
+                  {po.supplier_kode}
                 </div>
               </div>
-
-              {/* Progress Bar */}
-              {(po.status === "sent" || po.status === "partial" || po.status === "received") && (
-                <div className="mb-6">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm font-medium">Progress Penerimaan</span>
-                    <span className="text-sm text-gray-500">
-                      {receivedItems} / {totalItems} item
-                    </span>
-                  </div>
-                  <div className="w-full bg-gray-200 rounded-full h-2">
-                    <div
-                      className="bg-green-500 h-2 rounded-full transition-all"
-                      style={{ width: `${progressPercent}%` }}
-                    />
-                  </div>
+              <div className="space-y-1">
+                <Label className="text-muted-foreground text-sm flex items-center gap-1">
+                  <Calendar className="w-4 h-4" />
+                  Estimasi Pengiriman
+                </Label>
+                <div className="font-medium">
+                  {formatDate(po.tanggal_kirim_estimasi)}
                 </div>
-              )}
+              </div>
+            </div>
 
-              {/* Items Table */}
-              <table className="w-full">
-                <thead className="bg-gray-50">
-                  <tr className="border-b">
-                    <th className="text-left py-3 px-4 text-sm font-medium">No</th>
-                    <th className="text-left py-3 px-4 text-sm font-medium">Deskripsi</th>
-                    <th className="text-center py-3 px-4 text-sm font-medium">Qty</th>
-                    <th className="text-center py-3 px-4 text-sm font-medium">Satuan</th>
-                    <th className="text-right py-3 px-4 text-sm font-medium">Harga</th>
-                    <th className="text-right py-3 px-4 text-sm font-medium">Total</th>
-                    {(po.status === "partial" || po.status === "received") && (
-                      <th className="text-center py-3 px-4 text-sm font-medium">Diterima</th>
-                    )}
-                  </tr>
-                </thead>
-                <tbody>
-                  {po.items?.map((item: any, index: number) => (
-                    <tr key={item.id} className="border-b">
-                      <td className="py-3 px-4 text-sm">{index + 1}</td>
-                      <td className="py-3 px-4 text-sm">
-                        {item.description}
-                        {item.notes && (
-                          <p className="text-xs text-gray-500">{item.notes}</p>
-                        )}
-                      </td>
-                      <td className="py-3 px-4 text-sm text-center">{item.qty}</td>
-                      <td className="py-3 px-4 text-sm text-center">{item.unit}</td>
-                      <td className="py-3 px-4 text-sm text-right">
-                        {formatRupiah(item.unit_price)}
-                      </td>
-                      <td className="py-3 px-4 text-sm text-right font-medium">
-                        {formatRupiah(item.total)}
-                      </td>
-                      {(po.status === "partial" || po.status === "received") && (
-                        <td className="py-3 px-4 text-sm text-center">
-                          <span className={item.received_qty >= item.qty ? "text-green-600" : "text-yellow-600"}>
-                            {item.received_qty || 0} / {item.qty}
-                          </span>
-                        </td>
-                      )}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            {po.catatan && (
+              <div className="space-y-1">
+                <Label className="text-muted-foreground text-sm">Catatan</Label>
+                <div>{po.catatan}</div>
+              </div>
+            )}
 
-              {/* Calculations */}
-              <div className="mt-6 pt-6 border-t">
-                <div className="flex justify-between py-1">
-                  <span className="text-gray-600">Subtotal</span>
-                  <span>{formatRupiah(po.subtotal)}</span>
-                </div>
-                {po.discount_amount > 0 && (
-                  <div className="flex justify-between py-1">
-                    <span className="text-gray-600">
-                      Diskon ({po.discount_percent}%)
-                    </span>
-                    <span className="text-red-600">-{formatRupiah(po.discount_amount)}</span>
+            {po.alamat_pengiriman && (
+              <div className="space-y-1">
+                <Label className="text-muted-foreground text-sm flex items-center gap-1">
+                  <MapPin className="w-4 h-4" />
+                  Alamat Pengiriman
+                </Label>
+                <div>{po.alamat_pengiriman}</div>
+              </div>
+            )}
+
+            {/* Tracking Info */}
+            <div className="border-t pt-4 mt-4">
+              <h4 className="font-semibold mb-3">Tracking</h4>
+              <div className="space-y-2 text-sm">
+                {po.approved_at && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Approved</span>
+                    <span>{formatDateTime(po.approved_at)}</span>
                   </div>
                 )}
-                <div className="flex justify-between py-1">
-                  <span className="text-gray-600">PPN ({po.tax_percent}%)</span>
-                  <span>{formatRupiah(po.tax_amount)}</span>
-                </div>
-                {po.shipping_cost > 0 && (
-                  <div className="flex justify-between py-1">
-                    <span className="text-gray-600">Biaya Pengiriman</span>
-                    <span>{formatRupiah(po.shipping_cost)}</span>
-                  </div>
-                )}
-                <div className="flex justify-between py-2 border-t mt-2">
-                  <span className="font-bold text-lg">TOTAL</span>
-                  <span className="font-bold text-2xl">{formatRupiah(po.total)}</span>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Vendor Info */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg flex items-center gap-2">
-                <Truck className="w-5 h-5" />
-                Informasi Vendor
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <p className="text-sm text-gray-500">Nama Vendor</p>
-                  <p className="font-medium">{po.vendor?.name}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-500">Kontak</p>
-                  <p className="font-medium">{po.vendor?.contact_person}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-500">Telepon</p>
-                  <p className="font-medium">{po.vendor?.phone}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-500">Email</p>
-                  <p className="font-medium">{po.vendor?.email}</p>
-                </div>
-              </div>
-              <div>
-                <p className="text-sm text-gray-500">Alamat</p>
-                <p className="font-medium">{po.vendor?.address}</p>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Right Column - Info & Actions */}
-        <div className="space-y-6">
-          {/* Delivery Info */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Pengiriman</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3 text-sm">
-              <div>
-                <p className="text-gray-500">Tanggal Order</p>
-                <p className="font-medium">{formatDate(po.order_date)}</p>
-              </div>
-              <div>
-                <p className="text-gray-500">Estimasi Pengiriman</p>
-                <p className="font-medium">
-                  {po.delivery_date ? formatDate(po.delivery_date) : "-"}
-                </p>
-              </div>
-              {po.actual_delivery && (
-                <div>
-                  <p className="text-gray-500">Tanggal Diterima</p>
-                  <p className="font-medium">{formatDate(po.actual_delivery)}</p>
-                </div>
-              )}
-              <div>
-                <p className="text-gray-500">Alamat Pengiriman</p>
-                <p className="font-medium">{po.delivery_address}</p>
-              </div>
-              {po.payment_terms && (
-                <div>
-                  <p className="text-gray-500">Ketentuan Pembayaran</p>
-                  <p className="font-medium capitalize">{po.payment_terms.replace("_", " ")}</p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Timeline */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg flex items-center gap-2">
-                <Clock className="w-5 h-5" />
-                Timeline
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <div className="flex items-start gap-3">
-                  <div className="p-2 bg-blue-100 rounded-full">
-                    <FileText className="w-4 h-4 text-blue-600" />
-                  </div>
-                  <div>
-                    <p className="font-medium">PO Dibuat</p>
-                    <p className="text-sm text-gray-500">{formatDate(po.created_at)}</p>
-                    <p className="text-sm text-gray-600">oleh {po.creator?.full_name}</p>
-                  </div>
-                </div>
-
                 {po.sent_at && (
-                  <div className="flex items-start gap-3">
-                    <div className="p-2 bg-green-100 rounded-full">
-                      <Send className="w-4 h-4 text-green-600" />
-                    </div>
-                    <div>
-                      <p className="font-medium">Terkirim ke Vendor</p>
-                      <p className="text-sm text-gray-500">{formatDate(po.sent_at)}</p>
-                      <p className="text-sm text-gray-600">oleh {po.sent_by_user?.full_name}</p>
-                    </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Sent via {po.sent_via}</span>
+                    <span>{formatDateTime(po.sent_at)}</span>
+                  </div>
+                )}
+                {po.cancelled_at && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Cancelled</span>
+                    <span>{formatDateTime(po.cancelled_at)}</span>
                   </div>
                 )}
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </CardContent>
+        </Card>
 
-          {/* Notes */}
-          {po.notes && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">Catatan</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-gray-700 whitespace-pre-wrap">{po.notes}</p>
-              </CardContent>
-            </Card>
-          )}
-        </div>
+        {/* Financial Summary */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Ringkasan</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="flex justify-between text-sm">
+              <span className="text-muted-foreground">Subtotal</span>
+              <span>{formatCurrency(po.subtotal)}</span>
+            </div>
+            <div className="flex justify-between text-sm">
+              <span className="text-muted-foreground">Diskon</span>
+              <span>{formatCurrency(po.diskon_nominal)}</span>
+            </div>
+            <div className="flex justify-between text-sm">
+              <span className="text-muted-foreground">PPN ({po.ppn_persen}%)</span>
+              <span>{formatCurrency(po.ppn_nominal)}</span>
+            </div>
+            <div className="border-t pt-2 flex justify-between font-semibold text-lg">
+              <span>Total</span>
+              <span>{formatCurrency(po.total)}</span>
+            </div>
+
+            {po.status !== "DRAFT" && po.status !== "CANCELLED" && (
+              <div className="pt-4 border-t mt-4">
+                <div className="text-sm text-muted-foreground mb-2">Progress Penerimaan</div>
+                <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-green-500"
+                    style={{ width: `${po.receive_percentage || 0}%` }}
+                  />
+                </div>
+                <div className="text-right text-sm mt-1">
+                  {po.total_qty_received || 0} / {po.total_qty_ordered || 0} item
+                  ({po.receive_percentage || 0}%)
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </div>
+
+      {/* Items Table */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Package className="w-5 h-5" />
+            Item Purchase Order
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Bahan Baku</TableHead>
+                <TableHead className="text-right">Jumlah</TableHead>
+                <TableHead>Satuan</TableHead>
+                <TableHead className="text-right">Harga Satuan</TableHead>
+                <TableHead className="text-right">Subtotal</TableHead>
+                {po.status !== "DRAFT" && po.status !== "CANCELLED" && (
+                  <TableHead className="text-right">Diterima</TableHead>
+                )}
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {items.map((item) => (
+                <TableRow key={item.id}>
+                  <TableCell>
+                    <div className="font-medium">{item.raw_material?.nama}</div>
+                    <div className="text-sm text-muted-foreground">
+                      {item.raw_material?.kode}
+                    </div>
+                  </TableCell>
+                  <TableCell className="text-right">{item.qty_ordered}</TableCell>
+                  <TableCell>{item.satuan?.nama || "-"}</TableCell>
+                  <TableCell className="text-right">
+                    {formatCurrency(item.harga_satuan)}
+                  </TableCell>
+                  <TableCell className="text-right font-medium">
+                    {formatCurrency(item.subtotal)}
+                  </TableCell>
+                  {po.status !== "DRAFT" && po.status !== "CANCELLED" && (
+                    <TableCell className="text-right">
+                      <div
+                        className={
+                          item.qty_received >= item.qty_ordered
+                            ? "text-green-600"
+                            : item.qty_received > 0
+                            ? "text-yellow-600"
+                            : "text-gray-400"
+                        }
+                      >
+                        {item.qty_received} / {item.qty_ordered}
+                      </div>
+                    </TableCell>
+                  )}
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+
+      {/* Approve Dialog */}
+      <Dialog open={isApproveDialogOpen} onOpenChange={setIsApproveDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Approve PO</DialogTitle>
+            <DialogDescription>
+              Apakah Anda yakin ingin mengapprove PO {po.nomor_po}?
+              Setelah diapprove, PO tidak bisa diedit lagi.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsApproveDialogOpen(false)}>
+              Batal
+            </Button>
+            <Button onClick={handleApprove}>Approve</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Send Dialog */}
+      <Dialog open={isSendDialogOpen} onOpenChange={setIsSendDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Kirim PO</DialogTitle>
+            <DialogDescription>
+              Pilih metode pengiriman untuk PO {po.nomor_po}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Metode Pengiriman</Label>
+              <Select value={sendVia} onValueChange={(v) => setSendVia(v as any)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="EMAIL">Email</SelectItem>
+                  <SelectItem value="WHATSAPP">WhatsApp</SelectItem>
+                  <SelectItem value="PRINT">Print / Manual</SelectItem>
+                  <SelectItem value="OTHER">Lainnya</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsSendDialogOpen(false)}>
+              Batal
+            </Button>
+            <Button onClick={handleSend}>Kirim</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Cancel Dialog */}
+      <Dialog open={isCancelDialogOpen} onOpenChange={setIsCancelDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Batalkan PO</DialogTitle>
+            <DialogDescription>
+              Apakah Anda yakin ingin membatalkan PO {po.nomor_po}?
+              Masukkan alasan pembatalan.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Alasan Pembatalan *</Label>
+              <Input
+                value={cancelReason}
+                onChange={(e) => setCancelReason(e.target.value)}
+                placeholder="Masukkan alasan..."
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsCancelDialogOpen(false)}>
+              Batal
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleCancel}
+              disabled={!cancelReason}
+            >
+              Batalkan PO
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

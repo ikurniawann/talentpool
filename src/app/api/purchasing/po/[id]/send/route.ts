@@ -1,75 +1,87 @@
+// ============================================
+// API ROUTE: /api/purchasing/po/[id]/send
+// ============================================
+
+import { NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import {
-  requireApiRole,
-  ApiError,
-  successResponse,
-} from "@/lib/api/auth";
-import { validateTransition, POStatus } from "@/lib/purchasing/po";
+
+const sendSchema = z.object({
+  sent_via: z.enum(["EMAIL", "WHATSAPP", "PRINT", "OTHER"]),
+});
 
 // POST /api/purchasing/po/:id/send
-// Transitions: APPROVED → SENT
-// purchasing_admin and purchasing_staff can send
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const user = await requireApiRole(["purchasing_admin", "purchasing_staff"]);
-    const supabase = await createClient();
-
     const { id } = await params;
+    const supabase = await createClient();
+    const body = await request.json();
 
-    const body = await request.json().catch(() => ({}));
-    const sent_via = body.sent_via; // email, whatsapp, courier, etc.
-    const sent_at = body.sent_at;   // custom datetime, defaults to now
+    // Validasi input
+    const { sent_via } = sendSchema.parse(body);
 
-    // Get current PO
-    const { data: po, error } = await supabase
+    // Cek PO ada
+    const { data: po, error: findError } = await supabase
       .from("purchase_orders")
-      .select("*, supplier:supplier_id (id, nama, email)")
+      .select("*")
       .eq("id", id)
       .single();
 
-    if (error || !po) {
-      throw ApiError.notFound("PO tidak ditemukan");
+    if (findError || !po) {
+      return Response.json(
+        { success: false, message: "PO tidak ditemukan" },
+        { status: 404 }
+      );
     }
 
-    // ============================================================
-    // STATE MACHINE: APPROVED → SENT
-    // ============================================================
-    try {
-      validateTransition(po.status as POStatus, "sent");
-    } catch (e) {
-      throw ApiError.badRequest((e as Error).message);
+    // Validasi status - harus APPROVED untuk dikirim
+    if (po.status !== "APPROVED") {
+      return Response.json(
+        { success: false, message: "PO harus diapprove terlebih dahulu sebelum dikirim" },
+        { status: 400 }
+      );
     }
 
-    // Update PO status to SENT
-    const { data: updatedPO, error: updateError } = await supabase
+    // Update status ke SENT
+    const { data, error } = await supabase
       .from("purchase_orders")
       .update({
-        status: "sent",
-        sent_by: user.id,
-        sent_at: sent_at || new Date().toISOString(),
-        sent_via: sent_via || null,
+        status: "SENT",
+        sent_via,
+        sent_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
       })
       .eq("id", id)
-      .select(
-        `
-        *,
-        supplier:supplier_id (id, kode, nama),
-        sender:sent_by (id, full_name)
-      `
-      )
+      .select()
       .single();
 
-    if (updateError) throw updateError;
+    if (error) throw error;
 
-    return successResponse(updatedPO, `PO ${po.po_number} ditandai sudah dikirim ke ${po.supplier?.nama}`);
-  } catch (error) {
-    if (error instanceof ApiError) return error.toResponse();
+    return Response.json({
+      success: true,
+      data,
+      message: `PO berhasil dikirim ke supplier via ${sent_via}`,
+    });
+  } catch (error: any) {
     console.error("Error sending PO:", error);
-    return ApiError.server("Failed to mark PO as sent").toResponse();
+
+    if (error instanceof z.ZodError) {
+      return Response.json(
+        {
+          success: false,
+          message: "Validasi gagal",
+          errors: error.flatten().fieldErrors,
+        },
+        { status: 400 }
+      );
+    }
+
+    return Response.json(
+      { success: false, message: error.message || "Gagal mengirim PO" },
+      { status: 500 }
+    );
   }
 }

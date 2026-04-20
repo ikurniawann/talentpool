@@ -1,115 +1,106 @@
-import { createClient } from "@/lib/supabase/server";
-import { NextRequest, NextResponse } from "next/server";
-import { z } from "zod";
-import {
-  requireApiUser,
-  requireApiRole,
-  ApiError,
-  successResponse,
-  createdResponse,
-  paginatedResponse,
-  noContentResponse,
-} from "@/lib/api/auth";
+// ============================================
+// API ROUTE: /api/purchasing/units
+// ============================================
 
-// Zod schemas
-const createSatuanSchema = z.object({
-  kode: z.string().min(1, "Kode satuan wajib diisi").max(20),
-  nama: z.string().min(1, "Nama satuan wajib diisi").max(100),
+import { NextRequest } from "next/server";
+import { createClient } from "@/lib/supabase/server";
+import { z } from "zod";
+
+// Validation schema
+const unitSchema = z.object({
+  kode: z.string().min(1, "Kode satuan wajib diisi").max(10),
+  nama: z.string().min(1, "Nama satuan wajib diisi").max(50),
+  tipe: z.enum(["BESAR", "KECIL", "KONVERSI"]),
   deskripsi: z.string().optional(),
 });
 
-const updateSatuanSchema = createSatuanSchema.partial();
-
-const queryParamsSchema = z.object({
-  page: z.coerce.number().min(1).default(1),
-  limit: z.coerce.number().min(1).max(100).default(50),
-  search: z.string().optional(),
-});
-
-// GET /api/purchasing/units - List with filter & pagination
+// GET /api/purchasing/units
 export async function GET(request: NextRequest) {
   try {
-    await requireApiUser();
     const supabase = await createClient();
-
-    const url = new URL(request.url);
-    const rawParams = Object.fromEntries(url.searchParams);
-    const params = queryParamsSchema.parse(rawParams);
-    const { page, limit, search } = params;
-    const offset = (page - 1) * limit;
-
+    const { searchParams } = new URL(request.url);
+    
+    const isActive = searchParams.get("is_active");
+    
     let query = supabase
-      .from("satuan")
-      .select("*", { count: "exact" })
-      .eq("is_active", true);
-
-    if (search) {
-      query = query.or(`nama.ilike.%${search}%,kode.ilike.%${search}%`);
+      .from("units")
+      .select("*")
+      .order("nama", { ascending: true });
+    
+    if (isActive !== null) {
+      query = query.eq("is_active", isActive === "true");
     }
-
-    const { data, count, error } = await query
-      .order("nama")
-      .range(offset, offset + limit - 1);
-
+    
+    const { data, error } = await query;
+    
     if (error) throw error;
-
-    return NextResponse.json(
-      paginatedResponse(data, {
-        page,
-        limit,
-        total: count ?? 0,
-        totalPages: Math.ceil((count ?? 0) / limit),
-      })
+    
+    return Response.json({ success: true, data });
+  } catch (error: any) {
+    console.error("Error fetching units:", error);
+    return Response.json(
+      { success: false, message: error.message || "Gagal mengambil data satuan" },
+      { status: 500 }
     );
-  } catch (error) {
-    if (error instanceof ApiError) return error.toResponse();
-    if (error instanceof z.ZodError) {
-      return ApiError.badRequest("Invalid query parameters", error.issues).toResponse();
-    }
-    console.error("Error fetching satuan:", error);
-    return ApiError.server("Failed to fetch satuan").toResponse();
   }
 }
 
-// POST /api/purchasing/units - Create
+// POST /api/purchasing/units
 export async function POST(request: NextRequest) {
   try {
-    const user = await requireApiRole(["purchasing_admin", "purchasing_staff"]);
     const supabase = await createClient();
-
     const body = await request.json();
-    const validated = createSatuanSchema.parse(body);
-
-    // Check duplicate kode
+    
+    // Validasi input
+    const validated = unitSchema.parse(body);
+    
+    // Cek kode unik
     const { data: existing } = await supabase
-      .from("satuan")
+      .from("units")
       .select("id")
       .eq("kode", validated.kode)
-      .eq("is_active", true)
       .single();
-
+    
     if (existing) {
-      throw ApiError.conflict("Kode satuan sudah ada");
+      return Response.json(
+        { success: false, message: "Kode satuan sudah digunakan" },
+        { status: 400 }
+      );
     }
-
+    
+    // Insert data
     const { data, error } = await supabase
-      .from("satuan")
+      .from("units")
       .insert({
         ...validated,
-        created_by: user.id,
+        is_active: true,
       })
       .select()
       .single();
-
+    
     if (error) throw error;
-
-    return createdResponse(data, "Satuan berhasil dibuat");
-  } catch (error) {
-    if (error instanceof ApiError) return error.toResponse();
+    
+    return Response.json(
+      { success: true, data, message: "Satuan berhasil ditambahkan" },
+      { status: 201 }
+    );
+  } catch (error: any) {
+    console.error("Error creating unit:", error);
+    
     if (error instanceof z.ZodError) {
-      return ApiError.badRequest("Validation failed", error.issues).toResponse();
+      return Response.json(
+        { 
+          success: false, 
+          message: "Validasi gagal", 
+          errors: error.flatten().fieldErrors 
+        },
+        { status: 400 }
+      );
     }
-    console.error("Error creating satuan:", error);
-    return ApiError.server("Failed to create satuan").toResponse();
+    
+    return Response.json(
+      { success: false, message: error.message || "Gagal menambahkan satuan" },
+      { status: 500 }
+    );
   }
 }

@@ -1,257 +1,612 @@
-// ============================================================
-// Types for Purchasing / Procurement Module (ERP)
-// ============================================================
+// ============================================
+// TYPES: Purchasing Module
+// ============================================
 
-// --- Enums ---
-export type VendorCategory = "it" | "office" | "stationery" | "services" | "raw_material" | "other";
-export type PRStatus = "draft" | "pending_head" | "pending_finance" | "pending_direksi" | "approved" | "rejected" | "converted";
-export type POStatus = "draft" | "sent" | "partial" | "received" | "closed" | "cancelled";
-export type ApprovalLevel = "head_dept" | "finance" | "direksi";
-export type PriorityLevel = "low" | "medium" | "high" | "urgent";
+// ─── SUPPLIERS ─────────────────────────────
 
-// --- Master Data ---
-
-export interface Department {
+export interface Supplier {
   id: string;
-  code: string;           // DEP-001
-  name: string;
-  head_id: string | null; // User ID kepala dept
-  created_at: string;
-}
-
-export interface Vendor {
-  id: string;
-  code: string;           // V-2024-001 (auto-generate)
-  name: string;
-  contact_person: string;
-  phone: string;
-  email: string;
-  address: string;
-  category: VendorCategory;
-  npwp: string | null;
-  bank_name: string | null;
-  bank_account: string | null;
-  bank_account_name: string | null;
+  kode: string;
+  nama_supplier: string;
+  pic_name?: string;
+  pic_phone?: string;
+  email?: string;
+  alamat?: string;
+  kota?: string;
+  npwp?: string;
+  payment_terms: "COD" | "NET7" | "NET14" | "NET30" | "NET45" | "NET60";
+  currency: "IDR" | "USD" | "EUR";
+  bank_nama?: string;
+  bank_rekening?: string;
+  bank_atas_nama?: string;
+  kategori?: string;
   is_active: boolean;
-  notes: string | null;
   created_at: string;
+  updated_at: string;
+  created_by?: string;
+  updated_by?: string;
 }
+
+export interface SupplierFormData {
+  kode_supplier: string;
+  nama_supplier: string;
+  pic_name?: string;
+  pic_phone?: string;
+  email?: string;
+  alamat?: string;
+  kota?: string;
+  npwp?: string;
+  payment_terms: "COD" | "NET7" | "NET14" | "NET30" | "NET45" | "NET60";
+  currency: "IDR" | "USD" | "EUR";
+  bank_nama?: string;
+  bank_rekening?: string;
+  bank_atas_nama?: string;
+  kategori?: string;
+}
+
+// ─── UNITS ─────────────────────────────────
+
+export interface Unit {
+  id: string;
+  kode: string;
+  nama: string;
+  tipe: "BESAR" | "KECIL" | "KONVERSI";
+  deskripsi?: string;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+  created_by?: string;
+  updated_by?: string;
+}
+
+export interface UnitFormData {
+  kode: string;
+  nama: string;
+  tipe: "BESAR" | "KECIL" | "KONVERSI";
+  deskripsi?: string;
+}
+
+// ─── RAW MATERIALS ─────────────────────────
+
+export type MaterialCategory =
+  | "BAHAN_PANGAN"
+  | "BAHAN_NON_PANGAN"
+  | "KEMASAN"
+  | "BAHAN_BAKAR"
+  | "LAINNYA";
+
+export type StorageCondition =
+  | "SUHU_RUANG"
+  | "DINGIN"
+  | "BEKU"
+  | "KHUSUS";
+
+export type StockStatus = "AMAN" | "MENIPIS" | "HABIS";
+
+export interface RawMaterial {
+  id: string;
+  kode: string;
+  nama: string;
+  kategori: MaterialCategory;
+  deskripsi?: string;
+  satuan_besar_id?: string;
+  satuan_kecil_id?: string;
+  konversi_factor: number;
+  stok_minimum: number;
+  stok_maximum: number;
+  shelf_life_days?: number;
+  storage_condition?: StorageCondition;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+  created_by?: string;
+  updated_by?: string;
+  deleted_at?: string;
+  deleted_by?: string;
+  // Relations
+  satuan_besar?: Unit;
+  satuan_kecil?: Unit;
+  inventory?: Inventory;
+}
+
+export interface RawMaterialWithStock extends RawMaterial {
+  satuan_besar_nama?: string;
+  satuan_kecil_nama?: string;
+  qty_onhand: number;
+  qty_reserved: number;
+  qty_on_order: number;
+  avg_cost: number;
+  status_stok: StockStatus;
+}
+
+export interface RawMaterialFormData {
+  kode?: string;
+  nama: string;
+  kategori: MaterialCategory;
+  deskripsi?: string;
+  satuan_besar_id?: string;
+  satuan_kecil_id?: string;
+  konversi_factor: number;
+  stok_minimum: number;
+  stok_maximum: number;
+  shelf_life_days?: number;
+  storage_condition?: StorageCondition;
+}
+
+export interface RawMaterialListParams {
+  search?: string;
+  kategori?: MaterialCategory;
+  satuan_besar_id?: string;
+  is_active?: boolean;
+  below_minimum?: boolean;
+  page?: number;
+  limit?: number;
+  sort_by?: string;
+  sort_dir?: "ASC" | "DESC";
+}
+
+// ─── INVENTORY ───────────────────────────────
+
+export interface Inventory {
+  id: string;
+  raw_material_id: string;
+  qty_onhand: number;
+  qty_reserved: number;
+  qty_on_order: number;
+  avg_cost: number;
+  last_movement_at?: string;
+  updated_at: string;
+  updated_by?: string;
+  // Relations
+  raw_material?: RawMaterial;
+}
+
+export type MovementType = "IN" | "OUT" | "ADJUSTMENT" | "CONVERSION" | "RETURN";
+
+export interface InventoryMovement {
+  id: string;
+  raw_material_id: string;
+  movement_type: MovementType;
+  qty: number;
+  unit_cost?: number;
+  total_cost?: number;
+  reference_type?: string;
+  reference_id?: string;
+  notes?: string;
+  created_at: string;
+  created_by?: string;
+  // Relations
+  raw_material?: RawMaterial;
+}
+
+export interface InventoryAdjustmentForm {
+  raw_material_id: string;
+  qty_actual: number;
+  notes?: string;
+}
+
+// ─── PRODUCTS ────────────────────────────────
 
 export interface Product {
   id: string;
-  code: string;           // PRD-001
-  name: string;
-  description: string | null;
-  category: string;
-  unit: string;           // pcs, box, meter, kg, dll
-  estimated_price: number;
-  vendor_id: string | null; // Preferred vendor
+  kode: string;
+  nama: string;
+  deskripsi?: string;
+  kategori?: string;
+  satuan_id?: string;
+  harga_jual: number;
   is_active: boolean;
   created_at: string;
+  updated_at: string;
+  created_by?: string;
+  updated_by?: string;
+  deleted_at?: string;
+  deleted_by?: string;
+  // Relations
+  satuan?: Unit;
+  bom_items?: BOMItem[];
 }
 
-// --- Purchase Request ---
+export interface ProductWithCOGS extends Product {
+  satuan_nama?: string;
+  hpp_estimasi: number;
+}
 
-export interface PurchaseRequest {
+export interface ProductFormData {
+  kode?: string;
+  nama: string;
+  deskripsi?: string;
+  kategori?: string;
+  satuan_id?: string;
+  harga_jual: number;
+}
+
+// ─── BOM (BILL OF MATERIALS) ────────────────
+
+export interface BOMItem {
   id: string;
-  pr_number: string;      // PR-2024-00001 (auto-generate)
-  requester_id: string;   // user.id
-  requester_name?: string; // join dari users
-  department_id: string;
-  department_name?: string; // join dari departments
-  status: PRStatus;
-  total_amount: number;
-  priority: PriorityLevel;
-  notes: string | null;
-  required_date: string | null;
-  
-  // Approval tracking
-  current_approval_level: ApprovalLevel | null;
-  approved_by_head: string | null;
-  approved_at_head: string | null;
-  approved_by_finance: string | null;
-  approved_at_finance: string | null;
-  approved_by_direksi: string | null;
-  approved_at_direksi: string | null;
-  rejected_by: string | null;
-  rejected_at: string | null;
-  rejection_reason: string | null;
-  
-  // Link ke PO (jika sudah converted)
-  converted_po_id: string | null;
-  
+  product_id: string;
+  raw_material_id: string;
+  qty_required: number;
+  satuan_id?: string;
+  waste_factor: number;
+  is_active: boolean;
   created_at: string;
   updated_at: string;
-  items: PRItem[];
+  // Relations
+  raw_material?: RawMaterialWithStock;
+  satuan?: Unit;
 }
 
-export interface PRItem {
+export interface BOMItemFormData {
+  raw_material_id: string;
+  qty_required: number;
+  satuan_id?: string;
+  waste_factor: number;
+}
+
+// ─── SUPPLIER PRICE LIST ─────────────────────
+
+export interface SupplierPriceList {
   id: string;
-  pr_id: string;
-  product_id: string | null; // kalau dari master data
-  description: string;
-  qty: number;
-  unit: string;
-  estimated_price: number;
-  total: number;          // qty * estimated_price
+  supplier_id: string;
+  raw_material_id: string;
+  harga: number;
+  satuan_id?: string;
+  min_qty: number;
+  lead_time_days: number;
+  is_preferred: boolean;
+  is_active: boolean;
+  berlaku_mulai: string;
+  berlaku_sampai?: string;
+  created_at: string;
+  updated_at: string;
+  created_by?: string;
+  updated_by?: string;
+  // Relations
+  supplier?: {
+    id: string;
+    kode: string;
+    nama_supplier: string;
+  };
+  raw_material?: RawMaterial;
+  satuan?: Unit;
 }
 
-// --- Purchase Order ---
+export interface SupplierPriceListFormData {
+  supplier_id: string;
+  raw_material_id: string;
+  harga: number;
+  satuan_id?: string;
+  min_qty: number;
+  lead_time_days: number;
+  is_preferred: boolean;
+  berlaku_mulai: string;
+  berlaku_sampai?: string;
+}
+
+// ─── PURCHASE ORDERS ─────────────────────────
+
+export type POStatus = "DRAFT" | "APPROVED" | "SENT" | "PARTIAL" | "RECEIVED" | "CANCELLED";
 
 export interface PurchaseOrder {
   id: string;
-  po_number: string;      // PO-2024-00001 (auto-generate)
-  pr_id: string;          // reference ke PR
-  pr_number?: string;     // join dari purchase_requests
-  vendor_id: string;
-  vendor_name?: string;   // join dari vendors
+  nomor_po: string;
+  supplier_id: string;
+  tanggal_po: string;
+  tanggal_kirim_estimasi?: string;
   status: POStatus;
-  
-  // Financial
   subtotal: number;
-  discount_percent: number;
-  discount_amount: number;
-  tax_percent: number;    // default 11% PPN
-  tax_amount: number;
-  shipping_cost: number;
+  diskon_persen: number;
+  diskon_nominal: number;
+  ppn_persen: number;
+  ppn_nominal: number;
   total: number;
-  
-  // Dates
-  order_date: string;
-  delivery_date: string | null;
-  expected_delivery: string | null;
-  
-  // Additional info
-  payment_terms: string | null; // 30 hari, 14 hari, dll
-  delivery_address: string;
-  notes: string | null;
-  
-  created_by: string;
-  created_by_name?: string;
+  catatan?: string;
+  alamat_pengiriman?: string;
+  approved_by?: string;
+  approved_at?: string;
+  sent_by?: string;
+  sent_at?: string;
+  sent_via?: "EMAIL" | "WHATSAPP" | "PRINT" | "OTHER";
+  is_active: boolean;
   created_at: string;
   updated_at: string;
-  items: POItem[];
+  created_by?: string;
+  updated_by?: string;
+  cancelled_at?: string;
+  cancelled_by?: string;
+  cancellation_reason?: string;
+  // Relations
+  supplier?: {
+    id: string;
+    kode: string;
+    nama_supplier: string;
+    kontak_hp?: string;
+  };
+  items?: PurchaseOrderItem[];
 }
 
-export interface POItem {
+export interface PurchaseOrderWithStats extends PurchaseOrder {
+  item_count: number;
+  total_qty_ordered: number;
+  total_qty_received: number;
+  receive_percentage: number;
+}
+
+export interface PurchaseOrderItem {
   id: string;
-  po_id: string;
-  description: string;
-  qty: number;
-  unit: string;
-  unit_price: number;
-  discount: number;       // per item
-  total: number;          // (qty * unit_price) - discount
+  purchase_order_id: string;
+  raw_material_id: string;
+  qty_ordered: number;
+  qty_received: number;
+  qty_remaining: number;
+  satuan_id?: string;
+  harga_satuan: number;
+  diskon_item: number;
+  subtotal: number;
+  catatan?: string;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+  // Relations
+  raw_material?: RawMaterialWithStock;
+  satuan?: Unit;
 }
 
-// --- Goods Receipt (Penerimaan Barang) ---
+export interface PurchaseOrderFormData {
+  supplier_id: string;
+  tanggal_po: string;
+  tanggal_kirim_estimasi?: string;
+  catatan?: string;
+  alamat_pengiriman?: string;
+  diskon_persen?: number;
+  diskon_nominal?: number;
+  ppn_persen?: number;
+}
+
+export interface PurchaseOrderItemFormData {
+  raw_material_id: string;
+  qty_ordered: number;
+  satuan_id?: string;
+  harga_satuan: number;
+  diskon_item?: number;
+  catatan?: string;
+}
+
+export interface POListParams {
+  search?: string;
+  status?: POStatus;
+  supplier_id?: string;
+  tanggal_mulai?: string;
+  tanggal_sampai?: string;
+  page?: number;
+  limit?: number;
+}
+
+// ─── API RESPONSES ───────────────────────────
+
+export interface PaginatedResponse<T> {
+  data: T[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    total_pages: number;
+  };
+}
+
+export interface ApiError {
+  message: string;
+  code?: string;
+  details?: Record<string, string>;
+}
+
+// ─── DELIVERIES (PENGIRIMAN) ─────────────────
+
+export type DeliveryStatus = "IN_TRANSIT" | "ARRIVED" | "RECEIVED" | "CANCELLED";
+
+export interface Delivery {
+  id: string;
+  nomor_delivery: string;
+  po_id: string;
+  supplier_id: string;
+  tanggal_kirim?: string;
+  tanggal_estimasi_tiba?: string;
+  tanggal_aktual_tiba?: string;
+  kurir?: string;
+  nomor_resi?: string;
+  status: DeliveryStatus;
+  catatan?: string;
+  created_at: string;
+  updated_at: string;
+  // Relations
+  po?: PurchaseOrder;
+  supplier?: {
+    id: string;
+    kode: string;
+    nama_supplier: string;
+  };
+}
+
+export interface DeliveryFormData {
+  po_id: string;
+  tanggal_kirim?: string;
+  tanggal_estimasi_tiba?: string;
+  kurir?: string;
+  nomor_resi?: string;
+  catatan?: string;
+}
+
+// ─── GOODS RECEIPT (GRN) ──────────────────────
+
+export type GRNStatus = "DRAFT" | "QC_PENDING" | "QC_APPROVED" | "QC_REJECTED" | "COMPLETED";
 
 export interface GoodsReceipt {
   id: string;
-  gr_number: string;      // GR-2024-00001
+  nomor_grn: string;
   po_id: string;
-  po_number?: string;
-  vendor_id: string;
-  vendor_name?: string;
-  receipt_date: string;
-  received_by: string;
-  notes: string | null;
-  status: "complete" | "partial";
-  items: GRItem[];
+  delivery_id?: string;
+  received_by?: string;
+  received_at: string;
+  gudang_tujuan: string;
+  kondisi_packing?: "BAIK" | "RUSAK_RINGAN" | "RUSAK_BERAT";
+  status: GRNStatus;
+  catatan_penerimaan?: string;
+  total_qty_received: number;
   created_at: string;
+  updated_at: string;
+  // Relations
+  po?: PurchaseOrder;
+  delivery?: Delivery;
+  items?: GoodsReceiptItem[];
+  received_by_user?: {
+    id: string;
+    email: string;
+  };
 }
 
-export interface GRItem {
+export interface GoodsReceiptItem {
   id: string;
-  gr_id: string;
+  grn_id: string;
   po_item_id: string;
-  description: string;
-  qty_ordered: number;
-  qty_received: number;
-  notes: string | null;
+  raw_material_id: string;
+  qty_diterima: number;
+  qty_diterima_baik: number;
+  qty_cacat: number;
+  satuan_id?: string;
+  harga_satuan: number;
+  lokasi_rak?: string;
+  catatan?: string;
+  created_at: string;
+  // Relations
+  raw_material?: RawMaterial;
+  satuan?: Unit;
+  po_item?: PurchaseOrderItem;
 }
 
-// --- Approval Config ---
-
-export interface ApprovalThreshold {
-  level: ApprovalLevel;
-  min_amount: number;
-  max_amount: number | null;
+export interface GoodsReceiptFormData {
+  po_id: string;
+  delivery_id?: string;
+  gudang_tujuan?: string;
+  kondisi_packing?: "BAIK" | "RUSAK_RINGAN" | "RUSAK_BERAT";
+  catatan_penerimaan?: string;
 }
 
-// --- DTOs for Forms ---
-
-export interface VendorCreateInput {
-  name: string;
-  contact_person: string;
-  phone: string;
-  email: string;
-  address: string;
-  category: VendorCategory;
-  npwp?: string;
-  bank_name?: string;
-  bank_account?: string;
-  bank_account_name?: string;
-  notes?: string;
+export interface GoodsReceiptItemFormData {
+  po_item_id: string;
+  raw_material_id: string;
+  qty_diterima: number;
+  qty_diterima_baik: number;
+  qty_cacat: number;
+  satuan_id?: string;
+  harga_satuan: number;
+  lokasi_rak?: string;
+  catatan?: string;
 }
 
-export interface ProductCreateInput {
-  name: string;
-  description?: string;
-  category: string;
-  unit: string;
-  estimated_price: number;
-  vendor_id?: string;
+// ─── QC INSPECTION ────────────────────────────
+
+export type QCStatus = "PENDING" | "APPROVED" | "REJECTED" | "PARTIAL";
+
+export interface QCInspection {
+  id: string;
+  grn_id: string;
+  inspected_by?: string;
+  inspected_at: string;
+  status: QCStatus;
+  parameter_inspeksi?: string[];
+  hasil_inspeksi?: Record<string, string>;
+  qty_sample?: number;
+  qty_sample_diterima?: number;
+  qty_sample_ditolak?: number;
+  foto_qc?: string[];
+  dokumen_lain?: string[];
+  catatan_qc?: string;
+  rekomendasi?: "ACCEPT" | "REJECT" | "REWORK";
+  created_at: string;
+  updated_at: string;
+  // Relations
+  inspected_by_user?: {
+    id: string;
+    email: string;
+  };
 }
 
-export interface PRCreateInput {
-  department_id: string;
-  priority: PriorityLevel;
-  required_date?: string;
-  notes?: string;
-  items: {
-    product_id?: string;
-    description: string;
-    qty: number;
-    unit: string;
-    estimated_price: number;
-  }[];
+export interface QCInspectionFormData {
+  status: QCStatus;
+  parameter_inspeksi?: string[];
+  hasil_inspeksi?: Record<string, string>;
+  qty_sample?: number;
+  qty_sample_diterima?: number;
+  qty_sample_ditolak?: number;
+  foto_qc?: string[];
+  dokumen_lain?: string[];
+  catatan_qc?: string;
+  rekomendasi?: "ACCEPT" | "REJECT" | "REWORK";
 }
 
-export interface POCreateInput {
-  pr_id: string;
-  vendor_id: string;
-  order_date: string;
-  delivery_date?: string;
-  payment_terms?: string;
-  delivery_address: string;
-  discount_percent?: number;
-  tax_percent?: number;
-  shipping_cost?: number;
-  notes?: string;
-  items: {
-    description: string;
-    qty: number;
-    unit: string;
-    unit_price: number;
-    discount?: number;
-  }[];
+// ─── RETURNS ──────────────────────────────────
+
+export type ReturnStatus = "DRAFT" | "SENT" | "RECEIVED_BY_SUPPLIER" | "REPLACEMENT_SENT" | "REFUNDED" | "CANCELLED";
+export type ReturnReason = "CACAT" | "KADALUARSA" | "SALAH_KIRIM" | "KELEBIHAN" | "LAINNYA";
+export type ReturnResolution = "REPLACEMENT" | "REFUND" | "CREDIT_NOTE";
+
+export interface Return {
+  id: string;
+  nomor_return: string;
+  grn_id: string;
+  po_id: string;
+  supplier_id: string;
+  status: ReturnStatus;
+  tanggal_return: string;
+  alasan_return: ReturnReason;
+  keterangan?: string;
+  jenis_resolusi?: ReturnResolution;
+  nomor_referensi_resolusi?: string;
+  total_qty_return: number;
+  total_nilai_return: number;
+  created_at: string;
+  updated_at: string;
+  // Relations
+  grn?: GoodsReceipt;
+  po?: PurchaseOrder;
+  supplier?: {
+    id: string;
+    kode: string;
+    nama_supplier: string;
+  };
+  items?: ReturnItem[];
 }
 
-export interface ApprovalActionInput {
-  pr_id: string;
-  action: "approve" | "reject";
-  reason?: string;
+export interface ReturnItem {
+  id: string;
+  return_id: string;
+  grn_item_id: string;
+  raw_material_id: string;
+  qty_return: number;
+  harga_satuan: number;
+  nilai_return: number;
+  alasan_item?: string;
+  foto_bukti?: string[];
+  created_at: string;
+  // Relations
+  raw_material?: RawMaterial;
+  grn_item?: GoodsReceiptItem;
 }
 
-// --- Dashboard Stats ---
+export interface ReturnFormData {
+  grn_id: string;
+  alasan_return: ReturnReason;
+  keterangan?: string;
+  jenis_resolusi?: ReturnResolution;
+}
 
-export interface PurchasingStats {
-  total_pr_this_month: number;
-  pr_pending_approval: number;
-  total_po_this_month: number;
-  po_outstanding: number;  // belum received
-  total_spending_this_month: number;
-  by_department: { dept_id: string; dept_name: string; total_pr: number; total_amount: number }[];
-  by_category: { category: string; total_po: number; total_amount: number }[];
+export interface ReturnItemFormData {
+  grn_item_id: string;
+  raw_material_id: string;
+  qty_return: number;
+  harga_satuan: number;
+  alasan_item?: string;
+  foto_bukti?: string[];
 }

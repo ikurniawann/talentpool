@@ -1,210 +1,200 @@
+// ============================================
+// API ROUTE: /api/purchasing/products/[id]
+// ============================================
+
+import { NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import {
-  requireApiRole,
-  ApiError,
-  successResponse,
-  noContentResponse,
-} from "@/lib/api/auth";
 
-const updateProductSchema = z.object({
-  nama: z.string().min(1).max(200).optional(),
-  deskripsi: z.string().optional(),
-  satuan_id: z.string().uuid().optional(),
-  kategori: z.string().optional(),
-  harga_jual: z.number().positive().optional(),
+const productSchema = z.object({
+  nama: z.string().min(1).max(100).optional(),
+  deskripsi: z.string().optional().nullable(),
+  kategori: z.string().optional().nullable(),
+  satuan_id: z.string().uuid().optional().nullable(),
+  harga_jual: z.number().min(0).optional(),
+  is_active: z.boolean().optional(),
 });
 
-const bomItemSchema = z.object({
-  id: z.string().uuid().optional(), // if present, update existing
-  bahan_baku_id: z.string().uuid(),
-  jumlah: z.number().positive(),
-  satuan_id: z.string().uuid(),
-  waste_percentage: z.number().min(0).max(100).default(0),
-  urutan: z.number().min(0).default(0).refine(v => Number.isInteger(v)),
-  catatan: z.string().optional(),
-});
-
-const updateProductWithBomSchema = z.object({
-  ...updateProductSchema.shape,
-  bom: z.array(bomItemSchema).optional(),
-});
-
-// GET /api/purchasing/products/:id - Get product with BOM
+// GET /api/purchasing/products/:id
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    await requireApiRole(["purchasing_admin", "purchasing_staff", "purchasing_manager"]);
     const { id } = await params;
     const supabase = await createClient();
 
-    const { data, error } = await supabase
-      .from("produk")
-      .select(`
-        *,
-        satuan:satuan_id (id, kode, nama),
-        bom_items:bom (
-          *,
-          bahan_baku:bahan_baku_id (id, kode, nama),
-          satuan:satuan_id (id, kode, nama)
-        )
-      `)
+    // Get product dengan HPP
+    const { data: product, error: productError } = await supabase
+      .from("v_products_cogs")
+      .select("*")
       .eq("id", id)
-      .eq("is_active", true)
       .single();
 
-    if (error || !data) {
-      throw ApiError.notFound("Produk tidak ditemukan");
+    if (productError) {
+      if (productError.code === "PGRST116") {
+        return Response.json(
+          { success: false, message: "Produk tidak ditemukan" },
+          { status: 404 }
+        );
+      }
+      throw productError;
     }
 
-    return successResponse(data);
-  } catch (error) {
-    if (error instanceof ApiError) return error.toResponse();
+    // Get BOM items
+    const { data: bomItems, error: bomError } = await supabase
+      .from("bom_items")
+      .select(`
+        *,
+        raw_material:raw_material_id (*),
+        satuan:satuan_id (*)
+      `)
+      .eq("product_id", id)
+      .eq("is_active", true)
+      .order("created_at", { ascending: true });
+
+    if (bomError) throw bomError;
+
+    // Calculate total HPP dari BOM
+    let totalHPP = 0;
+    const bomWithCost = (bomItems || []).map((item: any) => {
+      const materialCost = item.raw_material?.avg_cost || 0;
+      const qtyNeeded = item.qty_required * (1 + (item.waste_factor || 0));
+      const itemCost = materialCost * qtyNeeded;
+      totalHPP += itemCost;
+      return {
+        ...item,
+        cost_per_unit: materialCost,
+        total_cost: itemCost,
+      };
+    });
+
+    return Response.json({
+      success: true,
+      data: {
+        ...product,
+        bom_items: bomWithCost,
+        hpp_calculated: totalHPP,
+      },
+    });
+  } catch (error: any) {
     console.error("Error fetching product:", error);
-    return ApiError.server("Failed to fetch product").toResponse();
+    return Response.json(
+      { success: false, message: error.message || "Gagal mengambil data produk" },
+      { status: 500 }
+    );
   }
 }
 
-// PUT /api/purchasing/products/:id - Update product + BOM
+// PUT /api/purchasing/products/:id
 export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const user = await requireApiRole(["purchasing_admin", "purchasing_staff"]);
     const { id } = await params;
     const supabase = await createClient();
-
     const body = await request.json();
-    const { bom: bomItems, ...productData } = body;
-    const validated = updateProductSchema.parse(productData);
 
-    // Verify satuan if being updated
-    if (validated.satuan_id) {
-      const { data: satuan } = await supabase
-        .from("satuan")
-        .select("id")
-        .eq("id", validated.satuan_id)
-        .eq("is_active", true)
-        .single();
+    // Validasi input
+    const validated = productSchema.parse(body);
 
-      if (!satuan) {
-        throw ApiError.badRequest("Satuan tidak ditemukan");
-      }
-    }
-
-    // Update product
-    const { data: product, error: productError } = await supabase
-      .from("produk")
-      .update({ ...validated, updated_by: user.id })
-      .eq("id", id)
-      .eq("is_active", true)
-      .select(`*, satuan:satuan_id (id, kode, nama)`)
-      .single();
-
-    if (productError || !product) {
-      throw ApiError.notFound("Produk tidak ditemukan");
-    }
-
-    // Update BOM if provided
-    if (bomItems !== undefined) {
-      // Delete existing BOM items
-      await supabase.from("bom").delete().eq("produk_id", id);
-
-      // Insert new BOM items
-      if (Array.isArray(bomItems) && bomItems.length > 0) {
-        const validatedBomItems = bomItems.map((item: unknown) => bomItemSchema.parse(item));
-
-        // Verify all bahan_baku exist
-        const bahanBakuIds = validatedBomItems.map(item => item.bahan_baku_id);
-        const { data: bahanBakus } = await supabase
-          .from("bahan_baku")
-          .select("id")
-          .in("id", bahanBakuIds)
-          .eq("is_active", true);
-
-        if (!bahanBakus || bahanBakus.length !== bahanBakuIds.length) {
-          throw ApiError.badRequest("Salah satu bahan baku di BOM tidak ditemukan");
-        }
-
-        // Verify all satuan exist
-        const satuanIds = validatedBomItems.map(item => item.satuan_id);
-        const { data: satuans } = await supabase
-          .from("satuan")
-          .select("id")
-          .in("id", satuanIds)
-          .eq("is_active", true);
-
-        if (!satuans || satuans.length !== satuanIds.length) {
-          throw ApiError.badRequest("Salah satu satuan di BOM tidak ditemukan");
-        }
-
-        const bomInserts = validatedBomItems.map(item => ({
-          produk_id: id,
-          ...item,
-          created_by: user.id,
-        }));
-
-        const { error: bomError } = await supabase
-          .from("bom")
-          .insert(bomInserts);
-
-        if (bomError) throw bomError;
-      }
-    }
-
-    // Fetch updated product with BOM
-    const { data: productWithBom } = await supabase
-      .from("produk")
-      .select(`
-        *,
-        satuan:satuan_id (id, kode, nama),
-        bom_items:bom (
-          *,
-          bahan_baku:bahan_baku_id (id, kode, nama),
-          satuan:satuan_id (id, kode, nama)
-        )
-      `)
+    // Cek apakah produk ada
+    const { data: existingProduct, error: findError } = await supabase
+      .from("products")
+      .select("*")
       .eq("id", id)
       .single();
 
-    return successResponse(productWithBom, "Produk berhasil diperbarui");
-  } catch (error) {
-    if (error instanceof ApiError) return error.toResponse();
-    if (error instanceof z.ZodError) {
-      return ApiError.badRequest("Validation failed", error.issues).toResponse();
+    if (findError || !existingProduct) {
+      return Response.json(
+        { success: false, message: "Produk tidak ditemukan" },
+        { status: 404 }
+      );
     }
+
+    // Update data
+    const { data, error } = await supabase
+      .from("products")
+      .update({
+        ...validated,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", id)
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    return Response.json({
+      success: true,
+      data,
+      message: "Produk berhasil diupdate",
+    });
+  } catch (error: any) {
     console.error("Error updating product:", error);
-    return ApiError.server("Failed to update product").toResponse();
+
+    if (error instanceof z.ZodError) {
+      return Response.json(
+        {
+          success: false,
+          message: "Validasi gagal",
+          errors: error.flatten().fieldErrors,
+        },
+        { status: 400 }
+      );
+    }
+
+    return Response.json(
+      { success: false, message: error.message || "Gagal mengupdate produk" },
+      { status: 500 }
+    );
   }
 }
 
-// DELETE /api/purchasing/products/:id - Soft delete
+// DELETE /api/purchasing/products/:id
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    await requireApiRole(["purchasing_admin"]);
     const { id } = await params;
     const supabase = await createClient();
 
-    // BOM has ON DELETE CASCADE, so no need to check
+    // Cek apakah produk ada
+    const { data: product, error: findError } = await supabase
+      .from("products")
+      .select("*")
+      .eq("id", id)
+      .single();
 
+    if (findError || !product) {
+      return Response.json(
+        { success: false, message: "Produk tidak ditemukan" },
+        { status: 404 }
+      );
+    }
+
+    // Soft delete
     const { error } = await supabase
-      .from("produk")
-      .update({ is_active: false })
+      .from("products")
+      .update({
+        is_active: false,
+        deleted_at: new Date().toISOString(),
+      })
       .eq("id", id);
 
     if (error) throw error;
 
-    return noContentResponse();
-  } catch (error) {
-    if (error instanceof ApiError) return error.toResponse();
+    return Response.json({
+      success: true,
+      message: "Produk berhasil dinonaktifkan",
+    });
+  } catch (error: any) {
     console.error("Error deleting product:", error);
-    return ApiError.server("Failed to delete product").toResponse();
+    return Response.json(
+      { success: false, message: error.message || "Gagal menghapus produk" },
+      { status: 500 }
+    );
   }
 }

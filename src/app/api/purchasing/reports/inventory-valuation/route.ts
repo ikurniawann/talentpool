@@ -1,114 +1,69 @@
+// ============================================
+// API ROUTE: /api/purchasing/reports/inventory-valuation
+// ============================================
+
+import { NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { NextRequest, NextResponse } from "next/server";
-import { z } from "zod";
-import {
-  requireApiRole,
-  ApiError,
-  successResponse,
-} from "@/lib/api/auth";
-import { formatRupiah } from "@/lib/purchasing/utils";
 
 // GET /api/purchasing/reports/inventory-valuation
-// Inventory valuation report - supports CSV/Excel export
-
-const querySchema = z.object({
-  date: z.string().optional(), // valuation date (default: today)
-  kategori: z.string().optional(),
-  export: z.enum(["json", "csv", "xlsx"]).default("json"),
-});
-
 export async function GET(request: NextRequest) {
   try {
-    const user = await requireApiRole(["purchasing_admin", "purchasing_manager", "purchasing_staff"]);
     const supabase = await createClient();
 
-    const { searchParams } = new URL(request.url);
-    const params = querySchema.parse(Object.fromEntries(searchParams));
-    const { kategori, export: exportFormat } = params;
-
-    // Fetch all inventory with bahan_baku
-    let query = supabase
-      .from("inventory")
-      .select(
-        `
-        *,
-        bahan_baku:bahan_baku_id(
-          id, kode, nama, kategori,
-          satuan:satuan_id(id, kode, nama),
-          minimum_stock
-        )
-      `
-      )
-      .gte("qty_in_stock", 0);
-
-    if (kategori) {
-      query = query.eq("bahan_baku.kategori", kategori);
-    }
-
-    const { data: inventory, error } = await query;
+    // Get semua inventory aktif dengan stok > 0
+    const { data, error } = await supabase
+      .from("v_raw_materials_stock")
+      .select("*")
+      .eq("is_active", true)
+      .gt("qty_onhand", 0)
+      .order("kategori", { ascending: true });
 
     if (error) throw error;
 
-    // Build valuation report
-    const valuation = (inventory || []).map((item: any) => {
-      const qty = item.qty_in_stock || 0;
-      const avgCost = item.avg_cost || 0;
-      const totalValue = qty * avgCost;
-      const minStock = item.bahan_baku?.minimum_stock || 0;
-      const isBelowMin = qty > 0 && qty < minStock;
+    // Calculate total value
+    let totalValue = 0;
+    const byCategory: Record<string, { kategori: string; total_value: number; item_count: number }> = {};
 
-      return {
-        kode_bahan: item.bahan_baku?.kode,
-        nama_bahan: item.bahan_baku?.nama,
-        kategori: item.bahan_baku?.kategori,
-        satuan: item.bahan_baku?.satuan?.nama,
-        qty_onhand: qty,
-        avg_cost: Math.round(avgCost * 100) / 100,
-        total_value: Math.round(totalValue * 100) / 100,
-        total_value_formatted: formatRupiah(totalValue),
-        below_minimum: isBelowMin,
-        minimum_stock: minStock,
-        location: item.bahan_baku?.lokasi_rak,
-      };
+    data?.forEach((item: any) => {
+      const value = (item.qty_onhand || 0) * (item.avg_cost || 0);
+      totalValue += value;
+
+      if (!byCategory[item.kategori]) {
+        byCategory[item.kategori] = {
+          kategori: item.kategori,
+          total_value: 0,
+          item_count: 0,
+        };
+      }
+      byCategory[item.kategori].total_value += value;
+      byCategory[item.kategori].item_count += 1;
     });
 
-    const totalNilaiStok = valuation.reduce((sum, v) => sum + v.total_value, 0);
-    const totalItems = valuation.length;
-    const itemsBelowMin = valuation.filter((v: any) => v.below_minimum).length;
-
-    const summary = {
-      total_items: totalItems,
-      total_nilai_stok: Math.round(totalNilaiStok * 100) / 100,
-      total_nilai_stok_formatted: formatRupiah(totalNilaiStok),
-      items_below_minimum: itemsBelowMin,
-      valuation_date: new Date().toISOString(),
+    const kategoriLabels: Record<string, string> = {
+      BAHAN_PANGAN: "Bahan Pangan",
+      BAHAN_NON_PANGAN: "Bahan Non-Pangan",
+      KEMASAN: "Kemasan",
+      BAHAN_BAKAR: "Bahan Bakar",
+      LAINNYA: "Lainnya",
     };
 
-    if (exportFormat === "csv") {
-      const header =
-        "Kode,Nama,Kategori,Satuan,Qty On Hand,Avg Cost,Total Value,Below Minimum,Min Stock,Location\n";
-      const rows = valuation
-        .map(
-          (v: any) =>
-            `${v.kode_bahan},"${v.nama_bahan}",${v.kategori || ""},${v.satuan || ""},${v.qty_onhand},${v.avg_cost},${v.total_value},${v.below_minimum},${v.minimum_stock},${v.location || ""}`
-        )
-        .join("\n");
-
-      return new NextResponse(header + rows, {
-        headers: {
-          "Content-Type": "text/csv",
-          "Content-Disposition": `attachment; filename="inventory-valuation-${new Date().toISOString().split("T")[0]}.csv"`,
-        },
-      });
-    }
-
-    return successResponse({ summary, items: valuation });
-  } catch (error) {
-    if (error instanceof ApiError) return error.toResponse();
-    if (error instanceof z.ZodError) {
-      return ApiError.badRequest("Invalid query params", error.issues).toResponse();
-    }
-    console.error("Error generating inventory valuation:", error);
-    return ApiError.server("Failed to generate report").toResponse();
+    return Response.json({
+      success: true,
+      data,
+      summary: {
+        total_value: totalValue,
+        total_items: data?.length || 0,
+        by_category: Object.values(byCategory).map((cat) => ({
+          ...cat,
+          kategori: kategoriLabels[cat.kategori] || cat.kategori,
+        })),
+      },
+    });
+  } catch (error: any) {
+    console.error("Error fetching inventory valuation:", error);
+    return Response.json(
+      { success: false, message: error.message || "Gagal mengambil laporan valuasi" },
+      { status: 500 }
+    );
   }
 }

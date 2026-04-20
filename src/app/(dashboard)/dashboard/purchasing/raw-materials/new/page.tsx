@@ -1,12 +1,12 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
@@ -14,363 +14,387 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { BreadcrumbNav } from "@/modules/purchasing/components/breadcrumb/BreadcrumbNav";
-import PurchasingGuard from "@/modules/purchasing/components/auth/PurchasingGuard";
-import { useToast } from "@/components/ui/toast";
-import { ChevronLeft, Save, Loader2 } from "lucide-react";
-import { KATEGORI_OPTIONS, Kategori } from "@/types/raw-material";
-import { createRawMaterial, CreateRawMaterialInput } from "@/lib/purchasing/raw-materials";
-import { createClient } from "@/lib/supabase/client";
-import { cn } from "@/lib/utils";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ArrowLeft, Save, Package } from "lucide-react";
+import { toast } from "sonner";
+import { Unit, MaterialCategory, RawMaterialFormData } from "@/types/purchasing";
+import { listUnits, createRawMaterial } from "@/lib/purchasing";
 
-interface SatuanOption {
-  id: string;
-  kode: string;
-  nama: string;
-}
+const CATEGORY_OPTIONS: { value: MaterialCategory; label: string }[] = [
+  { value: "BAHAN_PANGAN", label: "Bahan Pangan" },
+  { value: "BAHAN_NON_PANGAN", label: "Bahan Non-Pangan" },
+  { value: "KEMASAN", label: "Kemasan" },
+  { value: "BAHAN_BAKAR", label: "Bahan Bakar" },
+  { value: "LAINNYA", label: "Lainnya" },
+];
+
+const STORAGE_OPTIONS = [
+  { value: "SUHU_RUANG", label: "Suhu Ruang" },
+  { value: "DINGIN", label: "Dingin (Chiller)" },
+  { value: "BEKU", label: "Beku (Freezer)" },
+  { value: "KHUSUS", label: "Kondisi Khusus" },
+];
 
 export default function NewRawMaterialPage() {
-  return (
-    <PurchasingGuard minRole="purchasing_staff">
-      <NewRawMaterialInner />
-    </PurchasingGuard>
-  );
-}
-
-function NewRawMaterialInner() {
   const router = useRouter();
-  const { toast } = useToast();
+  const [units, setUnits] = useState<Unit[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Form state
-  const [loading, setLoading] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
+  const [formData, setFormData] = useState<RawMaterialFormData>({
+    kode: "",
+    nama: "",
+    kategori: "BAHAN_PANGAN",
+    deskripsi: "",
+    satuan_besar_id: "",
+    satuan_kecil_id: "",
+    konversi_factor: 1,
+    stok_minimum: 0,
+    stok_maximum: 0,
+    shelf_life_days: undefined,
+    storage_condition: undefined,
+  });
 
-  // Satuan dropdowns
-  const [satuanBesar, setSatuanBesar] = useState<SatuanOption[]>([]);
-  const [satuanKecil, setSatuanKecil] = useState<SatuanOption[]>([]);
-  const [satuanBesarLoading, setSatuanBesarLoading] = useState(true);
-  const [satuanKecilLoading, setSatuanKecilLoading] = useState(true);
-
-  // Form values
-  const [kodeBahan, setKodeBahan] = useState("");
-  const [namaBahan, setNamaBahan] = useState("");
-  const [kategori, setKategori] = useState<Kategori | "">("");
-  const [satuanBesarId, setSatuanBesarId] = useState("");
-  const [satuanKecilId, setSatuanKecilId] = useState("");
-  const [konversiFactor, setKonversiFactor] = useState("1");
-  const [stokMinimum, setStokMinimum] = useState("0");
-  const [stokMaximum, setStokMaximum] = useState("");
-  const [shelfLifeDays, setShelfLifeDays] = useState("0");
-  const [storageCondition, setStorageCondition] = useState("ambient");
-
-  // Validation errors
-  const [errors, setErrors] = useState<Record<string, string>>({});
-
-  // Fetch satuan lists on mount
   useEffect(() => {
-    const supabase = createClient();
-
-    async function fetchSatuan() {
-      // Fetch satuan besar
-      const { data: sb } = await supabase
-        .from("satuan")
-        .select("id, kode, nama")
-        .eq("is_active", true)
-        .order("nama");
-
-      setSatuanBesar(sb ?? []);
-      setSatuanBesarLoading(false);
-
-      // Fetch satuan kecil
-      const { data: sk } = await supabase
-        .from("satuan")
-        .select("id, kode, nama")
-        .eq("is_active", true)
-        .order("nama");
-
-      setSatuanKecil(sk ?? []);
-      setSatuanKecilLoading(false);
-    }
-
-    fetchSatuan();
+    loadUnits();
   }, []);
 
-  // Auto-generate kode when nama is filled
-  useEffect(() => {
-    if (namaBahan && !kodeBahan) {
-      const prefix = namaBahan
-        .toUpperCase()
-        .replace(/[^A-Z0-9]/g, "")
-        .slice(0, 3);
-      const rand = Math.floor(Math.random() * 900 + 100);
-      setKodeBahan(`${prefix || "BB"}-${rand}`);
-    }
-  }, [namaBahan, kodeBahan]);
-
-  function validate(): boolean {
-    const newErrors: Record<string, string> = {};
-
-    if (!namaBahan.trim()) {
-      newErrors.namaBahan = "Nama bahan wajib diisi";
-    }
-    if (!satuanBesarId) {
-      newErrors.satuanBesarId = "Satuan besar wajib dipilih";
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  }
-
-  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    if (!validate()) return;
-
-    setSubmitting(true);
+  const loadUnits = async () => {
     try {
-      const input: CreateRawMaterialInput = {
-        kode_bahan: kodeBahan,
-        nama_bahan: namaBahan.trim(),
-        kategori: kategori as Kategori || undefined,
-        satuan_besar_id: satuanBesarId,
-        satuan_kecil_id: satuanKecilId || undefined,
-        konversi_factor: parseFloat(konversiFactor) || 1,
-        stok_minimum: parseFloat(stokMinimum) || 0,
-        stok_maximum: parseFloat(stokMaximum) || undefined,
-        shelf_life_days: parseInt(shelfLifeDays) || 0,
-        storage_condition: storageCondition,
+      const data = await listUnits(true);
+      setUnits(data);
+    } catch (error) {
+      console.error("Error loading units:", error);
+      toast.error("Gagal memuat data satuan");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+
+    try {
+      // Validasi
+      if (!formData.nama) {
+        toast.error("Nama bahan baku wajib diisi");
+        return;
+      }
+      if (!formData.satuan_besar_id) {
+        toast.error("Satuan besar wajib dipilih");
+        return;
+      }
+
+      const dataToSubmit = {
+        ...formData,
+        kode: formData.kode || undefined, // Jika kosong, akan auto-generate
+        satuan_kecil_id: formData.satuan_kecil_id || undefined,
+        shelf_life_days: formData.shelf_life_days || undefined,
+        storage_condition: formData.storage_condition || undefined,
       };
 
-      await createRawMaterial(input);
-      toast({
-        title: "Berhasil",
-        description: `Bahan baku "${namaBahan}" berhasil ditambahkan.`,
-      });
+      await createRawMaterial(dataToSubmit);
+      toast.success("Bahan baku berhasil ditambahkan");
       router.push("/dashboard/purchasing/raw-materials");
-    } catch (err: any) {
-      toast({
-        title: "Gagal",
-        description: err.message ?? "Terjadi kesalahan saat menyimpan.",
-        variant: "destructive",
-      });
+    } catch (error: any) {
+      console.error("Error creating material:", error);
+      toast.error(error.message || "Gagal menambahkan bahan baku");
     } finally {
-      setSubmitting(false);
+      setIsSubmitting(false);
     }
-  }
+  };
+
+  // Filter satuan berdasarkan tipe
+  const satuanBesar = units.filter((u) => u.tipe === "BESAR" || u.tipe === "KONVERSI");
+  const satuanKecil = units.filter((u) => u.tipe === "KECIL" || u.tipe === "KONVERSI");
 
   return (
-    <div className="space-y-6 max-w-4xl">
-      <BreadcrumbNav
-        items={[
-          { label: "Dashboard", href: "/dashboard" },
-          { label: "Purchasing", href: "/dashboard/purchasing" },
-          { label: "Bahan Baku", href: "/dashboard/purchasing/raw-materials" },
-          { label: "Tambah Bahan" },
-        ]}
-      />
-
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-gray-900">Tambah Bahan Baku</h1>
+    <div className="container mx-auto py-6 space-y-6">
+      {/* Header */}
+      <div className="flex items-center gap-4">
         <Link href="/dashboard/purchasing/raw-materials">
-          <Button variant="outline">
-            <ChevronLeft className="w-4 h-4 mr-2" />
-            Kembali
+          <Button variant="ghost" size="icon">
+            <ArrowLeft className="w-5 h-5" />
           </Button>
         </Link>
+        <div>
+          <h1 className="text-2xl font-bold">Tambah Bahan Baku</h1>
+          <p className="text-muted-foreground">
+            Isi detail bahan baku baru
+          </p>
+        </div>
       </div>
 
-      <form onSubmit={handleSubmit}>
-        <Card className="mb-4">
-          <CardHeader>
-            <CardTitle>Informasi Bahan</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Kode */}
-              <div className="space-y-2">
-                <Label>Kode Bahan</Label>
-                <Input
-                  value={kodeBahan}
-                  onChange={(e) => setKodeBahan(e.target.value.toUpperCase())}
-                  placeholder="Auto-generate atau input manual"
-                  className="uppercase"
-                />
-                <p className="text-xs text-gray-400">Akan di-generate otomatis jika kosong</p>
+      <form onSubmit={handleSubmit} className="space-y-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Informasi Dasar */}
+          <Card className="lg:col-span-2">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Package className="w-5 h-5" />
+                Informasi Dasar
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="kode">Kode Bahan</Label>
+                  <Input
+                    id="kode"
+                    value={formData.kode}
+                    onChange={(e) =>
+                      setFormData({ ...formData, kode: e.target.value })
+                    }
+                    placeholder="Kosongkan untuk auto-generate"
+                    maxLength={20}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Format: BHN-YYYY-XXXX
+                  </p>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="kategori">
+                    Kategori <span className="text-red-500">*</span>
+                  </Label>
+                  <Select
+                    value={formData.kategori}
+                    onValueChange={(v) =>
+                      setFormData({
+                        ...formData,
+                        kategori: v as MaterialCategory,
+                      })
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Pilih kategori" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {CATEGORY_OPTIONS.map((opt) => (
+                        <SelectItem key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
 
-              {/* Nama */}
               <div className="space-y-2">
-                <Label htmlFor="namaBahan">
-                  Nama Bahan <span className="text-red-500">*</span>
+                <Label htmlFor="nama">
+                  Nama Bahan Baku <span className="text-red-500">*</span>
                 </Label>
                 <Input
-                  id="namaBahan"
-                  value={namaBahan}
-                  onChange={(e) => setNamaBahan(e.target.value)}
-                  placeholder="Nama bahan baku"
+                  id="nama"
+                  value={formData.nama}
+                  onChange={(e) =>
+                    setFormData({ ...formData, nama: e.target.value })
+                  }
+                  placeholder="Contoh: Gula Pasir Premium"
+                  maxLength={100}
+                  required
                 />
-                {errors.namaBahan && (
-                  <p className="text-xs text-red-500">{errors.namaBahan}</p>
-                )}
               </div>
 
-              {/* Kategori */}
               <div className="space-y-2">
-                <Label>Kategori</Label>
-                <Select value={kategori} onValueChange={setKategori}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="— Pilih Kategori —" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {KATEGORI_OPTIONS.map((k) => (
-                      <SelectItem key={k} value={k}>
-                        {k.replace(/_/g, " ")}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Label htmlFor="deskripsi">Deskripsi</Label>
+                <Textarea
+                  id="deskripsi"
+                  value={formData.deskripsi}
+                  onChange={(e) =>
+                    setFormData({ ...formData, deskripsi: e.target.value })
+                  }
+                  placeholder="Deskripsi tambahan tentang bahan..."
+                  rows={3}
+                />
               </div>
+            </CardContent>
+          </Card>
 
-              {/* Satuan Besar */}
+          {/* Pengaturan Satuan */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Satuan</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="satuanBesar">
+                <Label htmlFor="satuan_besar">
                   Satuan Besar <span className="text-red-500">*</span>
                 </Label>
                 <Select
-                  value={satuanBesarId}
-                  onValueChange={setSatuanBesarId}
-                  disabled={satuanBesarLoading}
-                >
-                  <SelectTrigger id="satuanBesar">
-                    <SelectValue placeholder="— Pilih Satuan —" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {satuanBesar.map((s) => (
-                      <SelectItem key={s.id} value={s.id}>
-                        {s.nama} ({s.kode})
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {errors.satuanBesarId && (
-                  <p className="text-xs text-red-500">{errors.satuanBesarId}</p>
-                )}
-              </div>
-
-              {/* Satuan Kecil */}
-              <div className="space-y-2">
-                <Label>Satuan Kecil (opsional)</Label>
-                <Select
-                  value={satuanKecilId}
-                  onValueChange={setSatuanKecilId}
-                  disabled={satuanKecilLoading}
+                  value={formData.satuan_besar_id}
+                  onValueChange={(v) =>
+                    setFormData({ ...formData, satuan_besar_id: v })
+                  }
+                  disabled={loading}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="— Pilih Satuan Kecil —" />
+                    <SelectValue placeholder="Pilih satuan besar" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Tidak ada</SelectItem>
-                    {satuanKecil.map((s) => (
-                      <SelectItem key={s.id} value={s.id}>
-                        {s.nama} ({s.kode})
+                    {satuanBesar.map((unit) => (
+                      <SelectItem key={unit.id} value={unit.id}>
+                        {unit.nama} ({unit.kode})
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
 
-              {/* Konversi Factor */}
               <div className="space-y-2">
-                <Label>Faktor Konversi</Label>
-                <Input
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={konversiFactor}
-                  onChange={(e) => setKonversiFactor(e.target.value)}
-                  placeholder="1"
-                />
-                <p className="text-xs text-gray-400">
-                  {satuanKecilId
-                    ? `1 ${satuanBesar.find((s) => s.id === satuanBesarId)?.nama ?? "satuan besar"} = ? ${satuanKecil.find((s) => s.id === satuanKecilId)?.nama ?? "satuan kecil"}`
-                    : "Isi jika ada satuan kecil"}
-                </p>
+                <Label htmlFor="satuan_kecil">Satuan Kecil</Label>
+                <Select
+                  value={formData.satuan_kecil_id || ""}
+                  onValueChange={(v) =>
+                    setFormData({ ...formData, satuan_kecil_id: v || undefined })
+                  }
+                  disabled={loading}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Opsional" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">&mdash; Tidak ada &mdash;</SelectItem>
+                    {satuanKecil.map((unit) => (
+                      <SelectItem key={unit.id} value={unit.id}>
+                        {unit.nama} ({unit.kode})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
 
-              {/* Stok Minimum */}
-              <div className="space-y-2">
-                <Label>Minimum Stok</Label>
-                <Input
-                  type="number"
-                  min="0"
-                  value={stokMinimum}
-                  onChange={(e) => setStokMinimum(e.target.value)}
-                  placeholder="0"
-                />
+              {formData.satuan_kecil_id && (
+                <div className="space-y-2">
+                  <Label htmlFor="konversi">Faktor Konversi</Label>
+                  <Input
+                    id="konversi"
+                    type="number"
+                    step="0.0001"
+                    min="0"
+                    value={formData.konversi_factor}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        konversi_factor: parseFloat(e.target.value) || 1,
+                      })
+                    }
+                    placeholder="1"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    1 {formData.satuan_besar_id && units.find((u) => u.id === formData.satuan_besar_id)?.nama} ={" "}
+                    {formData.konversi_factor} {formData.satuan_kecil_id &&
+                      units.find((u) => u.id === formData.satuan_kecil_id)?.nama}
+                  </p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Pengaturan Stok */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Pengaturan Stok</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="stok_min">Stok Minimum</Label>
+                  <Input
+                    id="stok_min"
+                    type="number"
+                    min="0"
+                    step="0.0001"
+                    value={formData.stok_minimum}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        stok_minimum: parseFloat(e.target.value) || 0,
+                      })
+                    }
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Alert saat stok &lt;= nilai ini
+                  </p>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="stok_max">Stok Maksimum</Label>
+                  <Input
+                    id="stok_max"
+                    type="number"
+                    min="0"
+                    step="0.0001"
+                    value={formData.stok_maximum}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        stok_maximum: parseFloat(e.target.value) || 0,
+                      })
+                    }
+                  />
+                </div>
               </div>
 
-              {/* Stok Maximum */}
               <div className="space-y-2">
-                <Label>Maximum Stok</Label>
+                <Label htmlFor="shelf_life">Shelf Life (hari)</Label>
                 <Input
+                  id="shelf_life"
                   type="number"
                   min="0"
-                  value={stokMaximum}
-                  onChange={(e) => setStokMaximum(e.target.value)}
+                  value={formData.shelf_life_days || ""}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      shelf_life_days: e.target.value
+                        ? parseInt(e.target.value)
+                        : undefined,
+                    })
+                  }
                   placeholder="Opsional"
                 />
               </div>
 
-              {/* Shelf Life */}
               <div className="space-y-2">
-                <Label>Shelf Life (hari)</Label>
-                <Input
-                  type="number"
-                  min="0"
-                  value={shelfLifeDays}
-                  onChange={(e) => setShelfLifeDays(e.target.value)}
-                  placeholder="0"
-                />
-              </div>
-
-              {/* Storage Condition */}
-              <div className="space-y-2">
-                <Label>Storage Condition</Label>
-                <Select value={storageCondition} onValueChange={setStorageCondition}>
+                <Label htmlFor="storage">Kondisi Penyimpanan</Label>
+                <Select
+                  value={formData.storage_condition || ""}
+                  onValueChange={(v) =>
+                    setFormData({
+                      ...formData,
+                      storage_condition: (v as any) || undefined,
+                    })
+                  }
+                >
                   <SelectTrigger>
-                    <SelectValue />
+                    <SelectValue placeholder="Pilih kondisi" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="ambient">Ambient</SelectItem>
-                    <SelectItem value="chilled">Chilled</SelectItem>
-                    <SelectItem value="frozen">Frozen</SelectItem>
-                    <SelectItem value="dry">Dry</SelectItem>
-                    <SelectItem value="humid">Humid</SelectItem>
+                    <SelectItem value="">&mdash; Tidak ada &mdash;</SelectItem>
+                    {STORAGE_OPTIONS.map((opt) => (
+                      <SelectItem key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
 
-        <div className="flex justify-end gap-3">
-          <Link href="/dashboard/purchasing/raw-materials">
-            <Button variant="outline" type="button">
-              Batal
+          {/* Actions */}
+          <div className="flex items-end justify-end gap-4">
+            <Link href="/dashboard/purchasing/raw-materials">
+              <Button variant="outline" disabled={isSubmitting}>
+                Batal
+              </Button>
+            </Link>
+            <Button type="submit" disabled={isSubmitting}>
+              <Save className="w-4 h-4 mr-2" />
+              {isSubmitting ? "Menyimpan..." : "Simpan Bahan Baku"}
             </Button>
-          </Link>
-          <Button type="submit" disabled={submitting}>
-            {submitting ? (
-              <>
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                Menyimpan...
-              </>
-            ) : (
-              <>
-                <Save className="w-4 h-4 mr-2" />
-                Simpan
-              </>
-            )}
-          </Button>
+          </div>
         </div>
       </form>
     </div>

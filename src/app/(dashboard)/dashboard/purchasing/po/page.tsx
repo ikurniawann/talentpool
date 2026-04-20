@@ -4,8 +4,14 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import {
   Select,
   SelectContent,
@@ -13,110 +19,187 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
 import {
-  Plus,
-  Search,
-  Filter,
-  FileText,
-  Eye,
-  Printer,
-  ChevronLeft,
-  ChevronRight,
-  Send,
-} from "lucide-react";
-import { formatRupiah, formatDate, getPOStatusLabel } from "@/lib/purchasing/utils";
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Plus, Search, MoreVertical, FileText, CheckCircle, Send, XCircle } from "lucide-react";
+import { toast } from "sonner";
+import { PurchaseOrderWithStats, POStatus, PaginatedResponse } from "@/types/purchasing";
+import { listPurchaseOrders, approvePurchaseOrder, sendPurchaseOrder, cancelPurchaseOrder } from "@/lib/purchasing";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
 
-interface POItem {
-  id: string;
-  description: string;
-  qty: number;
-  unit: string;
-  unit_price: number;
-  total: number;
-  received_qty: number;
-}
+const STATUS_OPTIONS: { value: POStatus | ""; label: string }[] = [
+  { value: "", label: "Semua Status" },
+  { value: "DRAFT", label: "Draft" },
+  { value: "APPROVED", label: "Approved" },
+  { value: "SENT", label: "Terkirim" },
+  { value: "PARTIAL", label: "Diterima Sebagian" },
+  { value: "RECEIVED", label: "Diterima Penuh" },
+  { value: "CANCELLED", label: "Dibatalkan" },
+];
 
-interface PurchaseOrder {
-  id: string;
-  po_number: string;
-  pr_id: string | null;
-  pr_number?: string;
-  vendor_id: string;
-  vendor_name?: string;
-  status: string;
-  subtotal: number;
-  discount_amount: number;
-  tax_amount: number;
-  shipping_cost: number;
-  total: number;
-  order_date: string;
-  delivery_date: string | null;
-  sent_at: string | null;
-  created_at: string;
-  items?: POItem[];
-}
-
-type POStatus = "all" | "draft" | "sent" | "partial" | "received" | "closed" | "cancelled";
-
-export default function POListPage() {
-  const [pos, setPos] = useState<PurchaseOrder[]>([]);
+export default function PurchaseOrdersPage() {
+  const [pos, setPos] = useState<PurchaseOrderWithStats[]>([]);
   const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState<POStatus>("all");
-  const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-  const limit = 10;
+  const [pagination, setPagination] = useState({
+    page: 1,
+    limit: 20,
+    total: 0,
+    total_pages: 0,
+  });
+  const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState<POStatus | "">("");
+  
+  // Dialog states
+  const [isCancelDialogOpen, setIsCancelDialogOpen] = useState(false);
+  const [cancellingPo, setCancellingPo] = useState<PurchaseOrderWithStats | null>(null);
+  const [cancelReason, setCancelReason] = useState("");
+  const [isSendDialogOpen, setIsSendDialogOpen] = useState(false);
+  const [sendingPo, setSendingPo] = useState<PurchaseOrderWithStats | null>(null);
+  const [sendVia, setSendVia] = useState<"EMAIL" | "WHATSAPP" | "PRINT" | "OTHER">("EMAIL");
 
   useEffect(() => {
-    fetchPOs();
-  }, [page, statusFilter]);
+    loadPOs();
+  }, [pagination.page, statusFilter]);
 
-  async function fetchPOs() {
-    setLoading(true);
+  // Debounce search
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      loadPOs();
+    }, 300);
+    return () => clearTimeout(timeout);
+  }, [searchQuery]);
+
+  const loadPOs = async () => {
     try {
-      const params = new URLSearchParams();
-      params.append("page", page.toString());
-      params.append("limit", limit.toString());
-      if (statusFilter !== "all") params.append("status", statusFilter);
-      if (search) params.append("search", search);
-
-      const response = await fetch(`/api/purchasing/po?${params}`);
-      const data = await response.json();
-
-      if (data.data) {
-        setPos(data.data);
-        setTotalPages(Math.ceil((data.pagination?.total || 0) / limit));
-      }
+      setLoading(true);
+      const response = await listPurchaseOrders({
+        search: searchQuery || undefined,
+        status: statusFilter || undefined,
+        page: pagination.page,
+        limit: pagination.limit,
+      });
+      setPos(response.data);
+      setPagination((prev) => ({
+        ...prev,
+        total: response.pagination.total,
+        total_pages: response.pagination.total_pages,
+      }));
     } catch (error) {
-      console.error("Error fetching POs:", error);
+      console.error("Error loading POs:", error);
+      toast.error("Gagal memuat data PO");
     } finally {
       setLoading(false);
     }
-  }
+  };
 
-  function handleSearch(e: React.FormEvent) {
-    e.preventDefault();
-    setPage(1);
-    fetchPOs();
-  }
+  const handleApprove = async (po: PurchaseOrderWithStats) => {
+    try {
+      await approvePurchaseOrder(po.id);
+      toast.success("PO berhasil diapprove");
+      loadPOs();
+    } catch (error: any) {
+      console.error("Error approving PO:", error);
+      toast.error(error.message || "Gagal mengapprove PO");
+    }
+  };
 
-  const statusOptions = [
-    { value: "all", label: "Semua Status" },
-    { value: "draft", label: "Draft" },
-    { value: "sent", label: "Terkirim" },
-    { value: "partial", label: "Partial" },
-    { value: "received", label: "Diterima" },
-    { value: "closed", label: "Selesai" },
-    { value: "cancelled", label: "Dibatalkan" },
-  ];
+  const handleOpenSend = (po: PurchaseOrderWithStats) => {
+    setSendingPo(po);
+    setSendVia("EMAIL");
+    setIsSendDialogOpen(true);
+  };
+
+  const handleSend = async () => {
+    if (!sendingPo) return;
+    try {
+      await sendPurchaseOrder(sendingPo.id, sendVia);
+      toast.success(`PO berhasil dikirim via ${sendVia}`);
+      setIsSendDialogOpen(false);
+      loadPOs();
+    } catch (error: any) {
+      console.error("Error sending PO:", error);
+      toast.error(error.message || "Gagal mengirim PO");
+    }
+  };
+
+  const handleOpenCancel = (po: PurchaseOrderWithStats) => {
+    setCancellingPo(po);
+    setCancelReason("");
+    setIsCancelDialogOpen(true);
+  };
+
+  const handleCancel = async () => {
+    if (!cancellingPo || !cancelReason) return;
+    try {
+      await cancelPurchaseOrder(cancellingPo.id, cancelReason);
+      toast.success("PO berhasil dibatalkan");
+      setIsCancelDialogOpen(false);
+      loadPOs();
+    } catch (error: any) {
+      console.error("Error cancelling PO:", error);
+      toast.error(error.message || "Gagal membatalkan PO");
+    }
+  };
+
+  const getStatusBadge = (status: POStatus) => {
+    const styles: Record<POStatus, string> = {
+      DRAFT: "bg-gray-100 text-gray-800",
+      APPROVED: "bg-blue-100 text-blue-800",
+      SENT: "bg-purple-100 text-purple-800",
+      PARTIAL: "bg-yellow-100 text-yellow-800",
+      RECEIVED: "bg-green-100 text-green-800",
+      CANCELLED: "bg-red-100 text-red-800",
+    };
+    const labels: Record<POStatus, string> = {
+      DRAFT: "Draft",
+      APPROVED: "Approved",
+      SENT: "Terkirim",
+      PARTIAL: "Sebagian",
+      RECEIVED: "Diterima",
+      CANCELLED: "Batal",
+    };
+    return <Badge className={styles[status]}>{labels[status]}</Badge>;
+  };
+
+  const formatCurrency = (num: number) => {
+    return `Rp ${num.toLocaleString("id-ID")}`;
+  };
+
+  const formatDate = (dateStr: string) => {
+    if (!dateStr) return "-";
+    return new Date(dateStr).toLocaleDateString("id-ID");
+  };
 
   return (
-    <div className="space-y-6">
+    <div className="container mx-auto py-6 space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Purchase Order</h1>
-          <p className="text-sm text-gray-500">Kelola order pembelian ke vendor</p>
+          <h1 className="text-2xl font-bold">Purchase Orders</h1>
+          <p className="text-muted-foreground">
+            Kelola Purchase Order dari pembuatan hingga penerimaan
+          </p>
         </div>
         <Link href="/dashboard/purchasing/po/new">
           <Button>
@@ -127,221 +210,264 @@ export default function POListPage() {
       </div>
 
       {/* Filters */}
-      <Card>
-        <CardContent className="p-4">
-          <div className="flex flex-col md:flex-row gap-4">
-            <form onSubmit={handleSearch} className="flex-1 flex gap-2">
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
-                <Input
-                  placeholder="Cari nomor PO atau vendor..."
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  className="pl-10"
-                />
-              </div>
-              <Button type="submit" variant="outline">
-                Cari
-              </Button>
-            </form>
+      <div className="flex flex-wrap gap-4">
+        <div className="relative flex-1 min-w-[300px]">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <Input
+            placeholder="Cari nomor PO atau supplier..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-10"
+          />
+        </div>
+        <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as POStatus | "")}>
+          <SelectTrigger className="w-[200px]">
+            <SelectValue placeholder="Status" />
+          </SelectTrigger>
+          <SelectContent>
+            {STATUS_OPTIONS.map((opt) => (
+              <SelectItem key={opt.value || "all"} value={opt.value || "all"}>
+                {opt.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
 
-            <div className="flex items-center gap-2">
-              <Filter className="w-4 h-4 text-gray-400" />
+      {/* Table */}
+      <div className="border rounded-lg">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Nomor PO</TableHead>
+              <TableHead>Supplier</TableHead>
+              <TableHead>Tanggal</TableHead>
+              <TableHead className="text-right">Total</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead>Progress</TableHead>
+              <TableHead className="w-[50px]"></TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {loading ? (
+              <TableRow>
+                <TableCell colSpan={7} className="text-center py-8">
+                  Memuat data...
+                </TableCell>
+              </TableRow>
+            ) : pos.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={7} className="text-center py-8">
+                  Tidak ada data PO
+                </TableCell>
+              </TableRow>
+            ) : (
+              pos.map((po) => (
+                <TableRow key={po.id}>
+                  <TableCell className="font-medium">
+                    <Link
+                      href={`/dashboard/purchasing/po/${po.id}`}
+                      className="hover:underline text-blue-600"
+                    >
+                      {po.nomor_po}
+                    </Link>
+                  </TableCell>
+                  <TableCell>{po.nama_supplier || po.supplier_kode}</TableCell>
+                  <TableCell>{formatDate(po.tanggal_po)}</TableCell>
+                  <TableCell className="text-right font-medium">
+                    {formatCurrency(po.total)}
+                  </TableCell>
+                  <TableCell>{getStatusBadge(po.status)}</TableCell>
+                  <TableCell>
+                    {po.status !== "DRAFT" && po.status !== "CANCELLED" && (
+                      <div className="flex items-center gap-2">
+                        <div className="w-24 h-2 bg-gray-200 rounded-full overflow-hidden">
+                          <div
+                            className="h-full bg-green-500"
+                            style={{ width: `${po.receive_percentage}%` }}
+                          />
+                        </div>
+                        <span className="text-xs text-muted-foreground">
+                          {po.receive_percentage}%
+                        </span>
+                      </div>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon">
+                          <MoreVertical className="w-4 h-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <Link href={`/dashboard/purchasing/po/${po.id}`}>
+                          <DropdownMenuItem>
+                            <FileText className="w-4 h-4 mr-2" />
+                            Lihat Detail
+                          </DropdownMenuItem>
+                        </Link>
+                        {po.status === "DRAFT" && (
+                          <>
+                            <Link href={`/dashboard/purchasing/po/${po.id}/edit`}>
+                              <DropdownMenuItem>Edit PO</DropdownMenuItem>
+                            </Link>
+                            <DropdownMenuItem onClick={() => handleApprove(po)}>
+                              <CheckCircle className="w-4 h-4 mr-2 text-green-600" />
+                              Approve
+                            </DropdownMenuItem>
+                          </>
+                        )}
+                        {po.status === "APPROVED" && (
+                          <DropdownMenuItem onClick={() => handleOpenSend(po)}>
+                            <Send className="w-4 h-4 mr-2 text-blue-600" />
+                            Kirim ke Supplier
+                          </DropdownMenuItem>
+                        )}
+                        {po.status !== "RECEIVED" && po.status !== "CANCELLED" && (
+                          <DropdownMenuItem onClick={() => handleOpenCancel(po)}>
+                            <XCircle className="w-4 h-4 mr-2 text-red-600" />
+                            Batalkan
+                          </DropdownMenuItem>
+                        )}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
+          </TableBody>
+        </Table>
+      </div>
+
+      {/* Pagination */}
+      {pagination.total_pages > 1 && (
+        <Pagination>
+          <PaginationContent>
+            <PaginationItem>
+              <PaginationPrevious
+                onClick={() =>
+                  setPagination((prev) => ({
+                    ...prev,
+                    page: Math.max(1, prev.page - 1),
+                  }))
+                }
+                className={
+                  pagination.page <= 1
+                    ? "pointer-events-none opacity-50"
+                    : "cursor-pointer"
+                }
+              />
+            </PaginationItem>
+            {Array.from(
+              { length: Math.min(5, pagination.total_pages) },
+              (_, i) => {
+                const pageNum = i + 1;
+                return (
+                  <PaginationItem key={pageNum}>
+                    <PaginationLink
+                      onClick={() =>
+                        setPagination((prev) => ({ ...prev, page: pageNum }))
+                      }
+                      isActive={pageNum === pagination.page}
+                      className="cursor-pointer"
+                    >
+                      {pageNum}
+                    </PaginationLink>
+                  </PaginationItem>
+                );
+              }
+            )}
+            <PaginationItem>
+              <PaginationNext
+                onClick={() =>
+                  setPagination((prev) => ({
+                    ...prev,
+                    page: Math.min(pagination.total_pages, prev.page + 1),
+                  }))
+                }
+                className={
+                  pagination.page >= pagination.total_pages
+                    ? "pointer-events-none opacity-50"
+                    : "cursor-pointer"
+                }
+              />
+            </PaginationItem>
+          </PaginationContent>
+        </Pagination>
+      )}
+
+      {/* Send Dialog */}
+      <Dialog open={isSendDialogOpen} onOpenChange={setIsSendDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Kirim PO ke Supplier</DialogTitle>
+            <DialogDescription>
+              Pilih metode pengiriman untuk PO {sendingPo?.nomor_po}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Metode Pengiriman</Label>
               <Select
-                value={statusFilter}
-                onValueChange={(value) => {
-                  setStatusFilter(value as POStatus);
-                  setPage(1);
-                }}
+                value={sendVia}
+                onValueChange={(v) => setSendVia(v as any)}
               >
-                <SelectTrigger className="w-[200px]">
-                  <SelectValue placeholder="Filter Status" />
+                <SelectTrigger>
+                  <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {statusOptions.map((opt) => (
-                    <SelectItem key={opt.value} value={opt.value}>
-                      {opt.label}
-                    </SelectItem>
-                  ))}
+                  <SelectItem value="EMAIL">Email</SelectItem>
+                  <SelectItem value="WHATSAPP">WhatsApp</SelectItem>
+                  <SelectItem value="PRINT">Print / Manual</SelectItem>
+                  <SelectItem value="OTHER">Lainnya</SelectItem>
                 </SelectContent>
               </Select>
             </div>
           </div>
-        </CardContent>
-      </Card>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsSendDialogOpen(false)}>
+              Batal
+            </Button>
+            <Button onClick={handleSend}>Kirim</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card>
-          <CardContent className="p-4">
-            <p className="text-sm text-gray-500">Total PO</p>
-            <p className="text-2xl font-bold">{pos.length}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <p className="text-sm text-gray-500">Draft</p>
-            <p className="text-2xl font-bold text-gray-600">
-              {pos.filter((p) => p.status === "draft").length}
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <p className="text-sm text-gray-500">Terkirim</p>
-            <p className="text-2xl font-bold text-blue-600">
-              {pos.filter((p) => p.status === "sent" || p.status === "partial").length}
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <p className="text-sm text-gray-500">Total Nilai</p>
-            <p className="text-2xl font-bold text-green-600">
-              {formatRupiah(pos.reduce((sum, p) => sum + p.total, 0))}
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* PO Table */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg flex items-center gap-2">
-            <FileText className="w-5 h-5" />
-            Daftar Purchase Order
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {loading ? (
-            <div className="text-center py-8">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto"></div>
-              <p className="text-sm text-gray-500 mt-2">Memuat data...</p>
+      {/* Cancel Dialog */}
+      <Dialog open={isCancelDialogOpen} onOpenChange={setIsCancelDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Batalkan PO</DialogTitle>
+            <DialogDescription>
+              Apakah Anda yakin ingin membatalkan PO {cancellingPo?.nomor_po}?
+              Masukkan alasan pembatalan.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Alasan Pembatalan *</Label>
+              <Input
+                value={cancelReason}
+                onChange={(e) => setCancelReason(e.target.value)}
+                placeholder="Contoh: Perubahan kebutuhan"
+              />
             </div>
-          ) : pos.length === 0 ? (
-            <div className="text-center py-8">
-              <FileText className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-              <p className="text-gray-500">Tidak ada data PO</p>
-              <Link href="/dashboard/purchasing/po/new">
-                <Button variant="outline" className="mt-4">
-                  Buat PO Pertama
-                </Button>
-              </Link>
-            </div>
-          ) : (
-            <>
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead className="bg-gray-50 border-b">
-                    <tr>
-                      <th className="text-left py-3 px-4 text-sm font-medium text-gray-700">
-                        No. PO
-                      </th>
-                      <th className="text-left py-3 px-4 text-sm font-medium text-gray-700">
-                        Tanggal
-                      </th>
-                      <th className="text-left py-3 px-4 text-sm font-medium text-gray-700">
-                        Vendor
-                      </th>
-                      <th className="text-left py-3 px-4 text-sm font-medium text-gray-700">
-                        Ref PR
-                      </th>
-                      <th className="text-right py-3 px-4 text-sm font-medium text-gray-700">
-                        Total
-                      </th>
-                      <th className="text-center py-3 px-4 text-sm font-medium text-gray-700">
-                        Status
-                      </th>
-                      <th className="text-right py-3 px-4 text-sm font-medium text-gray-700">
-                        Aksi
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {pos.map((po) => {
-                      const statusBadge = getPOStatusLabel(po.status);
-
-                      return (
-                        <tr key={po.id} className="border-b hover:bg-gray-50">
-                          <td className="py-3 px-4">
-                            <span className="font-medium text-gray-900">{po.po_number}</span>
-                          </td>
-                          <td className="py-3 px-4 text-sm text-gray-600">
-                            {formatDate(po.order_date)}
-                          </td>
-                          <td className="py-3 px-4 text-sm text-gray-600">
-                            {po.vendor_name || "-"}
-                          </td>
-                          <td className="py-3 px-4 text-sm text-gray-600">
-                            {po.pr_number || "-"}
-                          </td>
-                          <td className="py-3 px-4 text-sm text-right font-medium">
-                            {formatRupiah(po.total)}
-                          </td>
-                          <td className="py-3 px-4 text-center">
-                            <Badge className={statusBadge.color}>
-                              {statusBadge.label}
-                            </Badge>
-                          </td>
-                          <td className="py-3 px-4 text-right">
-                            <div className="flex items-center justify-end gap-2">
-                              {po.status === "draft" && (
-                                <Link href={`/dashboard/purchasing/po/${po.id}/send`}>
-                                  <Button variant="ghost" size="sm" title="Kirim ke Vendor">
-                                    <Send className="w-4 h-4" />
-                                  </Button>
-                                </Link>
-                              )}
-                              <Link href={`/dashboard/purchasing/po/${po.id}`}>
-                                <Button variant="ghost" size="sm">
-                                  <Eye className="w-4 h-4" />
-                                </Button>
-                              </Link>
-                              <Link
-                                href={`/dashboard/purchasing/print/po/${po.id}`}
-                                target="_blank"
-                              >
-                                <Button variant="ghost" size="sm">
-                                  <Printer className="w-4 h-4" />
-                                </Button>
-                              </Link>
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-
-              {/* Pagination */}
-              <div className="flex items-center justify-between mt-6 pt-4 border-t">
-                <p className="text-sm text-gray-500">
-                  Halaman {page} dari {totalPages}
-                </p>
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setPage((p) => Math.max(1, p - 1))}
-                    disabled={page === 1}
-                  >
-                    <ChevronLeft className="w-4 h-4" />
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                    disabled={page === totalPages}
-                  >
-                    <ChevronRight className="w-4 h-4" />
-                  </Button>
-                </div>
-              </div>
-            </>
-          )}
-        </CardContent>
-      </Card>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsCancelDialogOpen(false)}>
+              Batal
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleCancel}
+              disabled={!cancelReason}
+            >
+              Batalkan PO
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

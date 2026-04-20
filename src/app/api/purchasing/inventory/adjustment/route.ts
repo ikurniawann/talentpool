@@ -1,110 +1,98 @@
-import { createClient } from "@/lib/supabase/server";
-import { NextRequest, NextResponse } from "next/server";
-import { z } from "zod";
-import {
-  requireApiRole,
-  ApiError,
-  successResponse,
-} from "@/lib/api/auth";
-import { getOrCreateInventory, recordMovement } from "@/lib/purchasing/inventory";
+// ============================================
+// API ROUTE: /api/purchasing/inventory/adjustment
+// ============================================
 
-// POST /api/purchasing/inventory/adjustment
-// Stock opname / manual correction - purchasing_admin only
+import { NextRequest } from "next/server";
+import { createClient } from "@/lib/supabase/server";
+import { z } from "zod";
 
 const adjustmentSchema = z.object({
-  bahan_baku_id: z.string().uuid("ID bahan baku tidak valid"),
-  adjustment: z.number().refine((v) => v !== 0, {
-    message: "Adjustment tidak boleh 0",
-  }),
-  alasan: z.string().min(10, "Alasan minimal 10 karakter").max(500),
-  dokumen_lampiran: z
-    .object({
-      nama: z.string(),
-      url: z.string().url(),
-      tipe: z.string(),
-    })
-    .optional(),
+  raw_material_id: z.string().uuid("Bahan baku wajib dipilih"),
+  qty_actual: z.number().min(0, "Stok aktual minimal 0"),
+  notes: z.string().optional(),
 });
 
+// POST /api/purchasing/inventory/adjustment
 export async function POST(request: NextRequest) {
   try {
-    const user = await requireApiRole(["purchasing_admin"]);
     const supabase = await createClient();
-
     const body = await request.json();
-    const { bahan_baku_id, adjustment, alasan, dokumen_lampiran } =
-      adjustmentSchema.parse(body);
 
-    // Get or create inventory record
-    const inventory = await getOrCreateInventory(supabase, bahan_baku_id);
-    const sebelum = inventory.qty_in_stock || 0;
-    const sesudah = sebelum + adjustment;
+    // Validasi input
+    const validated = adjustmentSchema.parse(body);
 
-    // Prevent negative stock (allow positive adjustment only for new items)
-    if (sesudah < 0) {
-      throw ApiError.badRequest(
-        `Stok tidak bisa negatif. Stok saat ini: ${sebelum}, adjustment: ${adjustment}`
+    // Get current inventory
+    const { data: currentInv, error: invError } = await supabase
+      .from("inventory")
+      .select("*")
+      .eq("raw_material_id", validated.raw_material_id)
+      .single();
+
+    if (invError || !currentInv) {
+      return Response.json(
+        { success: false, message: "Data inventory tidak ditemukan" },
+        { status: 404 }
       );
     }
 
-    // Get avg_cost for movement record
-    const avgCost = inventory.avg_cost || 0;
+    // Hitung selisih
+    const qtyDiff = validated.qty_actual - currentInv.qty_onhand;
 
     // Update inventory
-    const { error: updateError } = await supabase
+    const { data: updatedInv, error: updateError } = await supabase
       .from("inventory")
-      .update({ qty_in_stock: sesudah })
-      .eq("id", inventory.id);
+      .update({
+        qty_onhand: validated.qty_actual,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("raw_material_id", validated.raw_material_id)
+      .select()
+      .single();
 
     if (updateError) throw updateError;
 
-    // Record movement
-    await recordMovement(supabase, {
-      inventory_id: inventory.id,
-      bahan_baku_id,
-      tipe: "adjustment",
-      jumlah: Math.abs(adjustment),
-      unit_cost: avgCost,
-      total_cost: Math.abs(adjustment) * avgCost,
-      reference_type: "adjustment",
-      reference_id: crypto.randomUUID(), // temporary ID for adjustment
-      sebelum,
-      sesudah,
-      alasan,
-      catatan: `Stock opname: ${alasan}`,
-      created_by: user.id,
+    // Record movement jika ada perubahan
+    if (qtyDiff !== 0) {
+      const { error: movementError } = await supabase
+        .from("inventory_movements")
+        .insert({
+          raw_material_id: validated.raw_material_id,
+          movement_type: "ADJUSTMENT",
+          qty: qtyDiff,
+          reference_type: "ADJUSTMENT",
+          notes: validated.notes || `Stok opname: ${qtyDiff > 0 ? "+" : ""}${qtyDiff}`,
+        });
+
+      if (movementError) throw movementError;
+    }
+
+    return Response.json({
+      success: true,
+      data: updatedInv,
+      message: "Stok berhasil disesuaikan",
+      adjustment: {
+        qty_before: currentInv.qty_onhand,
+        qty_after: validated.qty_actual,
+        qty_diff: qtyDiff,
+      },
     });
-
-    // Store attachment if provided
-    if (dokumen_lampiran) {
-      await supabase.from("inventory_adjustment_docs").insert({
-        inventory_id: inventory.id,
-        bahan_baku_id,
-        nama_dokumen: dokumen_lampiran.nama,
-        url_dokumen: dokumen_lampiran.url,
-        tipe_dokumen: dokumen_lampiran.tipe,
-        alasan,
-        adjustment_amount: adjustment,
-        created_by: user.id,
-      });
-    }
-
-    // Fetch updated record
-    const { data: updated } = await supabase
-      .from("inventory")
-      .select(
-        `*, bahan_baku:bahan_baku_id(id, kode, nama, satuan_id, minimum_stock)`
-      )
-      .eq("id", inventory.id)
-      .single();
-
-    return successResponse(updated, "Stock adjustment berhasil");
-  } catch (error) {
-    if (error instanceof ApiError) return error.toResponse();
-    if (error instanceof z.ZodError) {
-      return ApiError.badRequest("Validation failed", error.issues).toResponse();
-    }
+  } catch (error: any) {
     console.error("Error adjusting inventory:", error);
-    return ApiError.server("Failed to adjust inventory").toResponse();
+
+    if (error instanceof z.ZodError) {
+      return Response.json(
+        {
+          success: false,
+          message: "Validasi gagal",
+          errors: error.flatten().fieldErrors,
+        },
+        { status: 400 }
+      );
+    }
+
+    return Response.json(
+      { success: false, message: error.message || "Gagal menyesuaikan stok" },
+      { status: 500 }
+    );
   }
 }

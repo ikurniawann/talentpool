@@ -1,17 +1,17 @@
-import { createClient } from "@/lib/supabase/server";
-import { NextRequest, NextResponse } from "next/server";
-import { z } from "zod";
-import {
-  requireApiRole,
-  ApiError,
-  successResponse,
-  noContentResponse,
-} from "@/lib/api/auth";
+// ============================================
+// API ROUTE: /api/purchasing/units/[id]
+// ============================================
 
-const updateSatuanSchema = z.object({
-  kode: z.string().min(1).max(20).optional(),
-  nama: z.string().min(1).max(100).optional(),
+import { NextRequest } from "next/server";
+import { createClient } from "@/lib/supabase/server";
+import { z } from "zod";
+
+const unitSchema = z.object({
+  kode: z.string().min(1).max(10).optional(),
+  nama: z.string().min(1).max(50).optional(),
+  tipe: z.enum(["BESAR", "KECIL", "KONVERSI"]).optional(),
   deskripsi: z.string().optional(),
+  is_active: z.boolean().optional(),
 });
 
 // GET /api/purchasing/units/:id
@@ -20,26 +20,32 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    await requireApiRole(["purchasing_admin", "purchasing_staff", "purchasing_manager"]);
     const { id } = await params;
     const supabase = await createClient();
-
+    
     const { data, error } = await supabase
-      .from("satuan")
+      .from("units")
       .select("*")
       .eq("id", id)
-      .eq("is_active", true)
       .single();
-
-    if (error || !data) {
-      throw ApiError.notFound("Satuan tidak ditemukan");
+    
+    if (error) {
+      if (error.code === "PGRST116") {
+        return Response.json(
+          { success: false, message: "Satuan tidak ditemukan" },
+          { status: 404 }
+        );
+      }
+      throw error;
     }
-
-    return successResponse(data);
-  } catch (error) {
-    if (error instanceof ApiError) return error.toResponse();
-    console.error("Error fetching satuan:", error);
-    return ApiError.server("Failed to fetch satuan").toResponse();
+    
+    return Response.json({ success: true, data });
+  } catch (error: any) {
+    console.error("Error fetching unit:", error);
+    return Response.json(
+      { success: false, message: error.message || "Gagal mengambil data satuan" },
+      { status: 500 }
+    );
   }
 }
 
@@ -49,91 +55,125 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const user = await requireApiRole(["purchasing_admin", "purchasing_staff"]);
     const { id } = await params;
     const supabase = await createClient();
-
     const body = await request.json();
-    const validated = updateSatuanSchema.parse(body);
-
-    // Check duplicate kode if being updated
+    
+    // Validasi input
+    const validated = unitSchema.parse(body);
+    
+    // Cek kode unik jika diupdate
     if (validated.kode) {
       const { data: existing } = await supabase
-        .from("satuan")
+        .from("units")
         .select("id")
         .eq("kode", validated.kode)
-        .eq("is_active", true)
         .neq("id", id)
         .single();
-
+      
       if (existing) {
-        throw ApiError.conflict("Kode satuan sudah digunakan");
+        return Response.json(
+          { success: false, message: "Kode satuan sudah digunakan" },
+          { status: 400 }
+        );
       }
     }
-
+    
+    // Update data
     const { data, error } = await supabase
-      .from("satuan")
-      .update({ ...validated, updated_by: user.id })
+      .from("units")
+      .update(validated)
       .eq("id", id)
-      .eq("is_active", true)
       .select()
       .single();
-
-    if (error || !data) {
-      throw ApiError.notFound("Satuan tidak ditemukan");
+    
+    if (error) {
+      if (error.code === "PGRST116") {
+        return Response.json(
+          { success: false, message: "Satuan tidak ditemukan" },
+          { status: 404 }
+        );
+      }
+      throw error;
     }
-
-    return successResponse(data, "Satuan berhasil diperbarui");
-  } catch (error) {
-    if (error instanceof ApiError) return error.toResponse();
+    
+    return Response.json({
+      success: true,
+      data,
+      message: "Satuan berhasil diupdate",
+    });
+  } catch (error: any) {
+    console.error("Error updating unit:", error);
+    
     if (error instanceof z.ZodError) {
-      return ApiError.badRequest("Validation failed", error.issues).toResponse();
+      return Response.json(
+        { 
+          success: false, 
+          message: "Validasi gagal", 
+          errors: error.flatten().fieldErrors 
+        },
+        { status: 400 }
+      );
     }
-    console.error("Error updating satuan:", error);
-    return ApiError.server("Failed to update satuan").toResponse();
+    
+    return Response.json(
+      { success: false, message: error.message || "Gagal mengupdate satuan" },
+      { status: 500 }
+    );
   }
 }
 
-// DELETE /api/purchasing/units/:id - Soft delete
+// DELETE /api/purchasing/units/:id
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    await requireApiRole(["purchasing_admin"]);
     const { id } = await params;
     const supabase = await createClient();
-
-    // Check if used by bahan_baku or produk
-    const { data: usedInBahanBaku } = await supabase
-      .from("bahan_baku")
+    
+    // Cek apakah satuan digunakan di raw_materials
+    const { data: usedInMaterials } = await supabase
+      .from("raw_materials")
       .select("id")
-      .eq("satuan_id", id)
-      .eq("is_active", true)
+      .or(`satuan_besar_id.eq.${id},satuan_kecil_id.eq.${id}`)
       .limit(1);
-
-    const { data: usedInProduk } = await supabase
-      .from("produk")
-      .select("id")
-      .eq("satuan_id", id)
-      .eq("is_active", true)
-      .limit(1);
-
-    if (usedInBahanBaku?.length || usedInProduk?.length) {
-      throw ApiError.conflict("Satuan sedang digunakan, tidak dapat dihapus");
+    
+    if (usedInMaterials && usedInMaterials.length > 0) {
+      return Response.json(
+        { 
+          success: false, 
+          message: "Satuan tidak bisa dihapus karena masih digunakan di bahan baku" 
+        },
+        { status: 400 }
+      );
     }
-
+    
+    // Soft delete dengan set is_active = false
     const { error } = await supabase
-      .from("satuan")
+      .from("units")
       .update({ is_active: false })
       .eq("id", id);
-
-    if (error) throw error;
-
-    return noContentResponse();
-  } catch (error) {
-    if (error instanceof ApiError) return error.toResponse();
-    console.error("Error deleting satuan:", error);
-    return ApiError.server("Failed to delete satuan").toResponse();
+    
+    if (error) {
+      if (error.code === "PGRST116") {
+        return Response.json(
+          { success: false, message: "Satuan tidak ditemukan" },
+          { status: 404 }
+        );
+      }
+      throw error;
+    }
+    
+    return Response.json({
+      success: true,
+      message: "Satuan berhasil dinonaktifkan",
+    });
+  } catch (error: any) {
+    console.error("Error deleting unit:", error);
+    return Response.json(
+      { success: false, message: error.message || "Gagal menghapus satuan" },
+      { status: 500 }
+    );
   }
 }
