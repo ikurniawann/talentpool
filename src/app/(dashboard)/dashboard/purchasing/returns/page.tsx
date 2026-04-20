@@ -105,6 +105,12 @@ export default function ReturnsListPage() {
           <h1 className="text-2xl font-bold text-gray-900">Retur</h1>
           <p className="text-sm text-gray-500">Kelola pengembalian barang ke supplier</p>
         </div>
+        <Link href="/dashboard/purchasing/returns/new">
+          <Button>
+            <PlusIcon className="w-4 h-4 mr-2" />
+            Tambah Retur
+          </Button>
+        </Link>
       </div>
 
       <Card>
