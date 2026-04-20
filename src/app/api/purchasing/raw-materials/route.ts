@@ -72,7 +72,6 @@ export async function GET(request: NextRequest) {
     if (error) throw error;
 
     return Response.json({
-      success: true,
       data,
       pagination: {
         page,
