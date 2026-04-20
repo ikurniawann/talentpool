@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, useRef, useEffect } from "react";
+import { Toaster } from "sonner";
 import {
   BuildingOfficeIcon,
   CubeIcon,
@@ -149,6 +150,7 @@ export default function PurchasingLayout({ children }: { children: React.ReactNo
         </div>
       </div>
       {children}
+      <Toaster position="top-right" richColors />
     </div>
   );
 }
