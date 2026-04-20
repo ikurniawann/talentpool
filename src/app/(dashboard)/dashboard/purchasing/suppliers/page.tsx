@@ -59,7 +59,7 @@ import {
 } from "@/lib/purchasing/supplier";
 import PurchasingGuard from "@/modules/purchasing/components/auth/PurchasingGuard";
 import { useAuth } from "@/hooks/use-auth";
-import { useToast } from "@/components/ui/toast";
+import { toast } from "sonner";
 
 // ─── Status badge ───────────────────────────────────────────────
 
@@ -109,7 +109,6 @@ export default function SuppliersListPage() {
 
 function SuppliersListInner() {
   const { user } = useAuth();
-  const { toast } = useToast();
   const router = useRouter();
 
   // ── State ────────────────────────────────────────────────────
@@ -162,11 +161,7 @@ function SuppliersListInner() {
       setTotal(res.pagination.total);
       setTotalPages(res.pagination.totalPages);
     } catch (err: any) {
-      toast({
-        title: "Gagal memuat data",
-        description: err.message,
-        variant: "destructive",
-      });
+      toast.error("Gagal memuat data: " + err.message);
     } finally {
       setLoading(false);
     }
@@ -194,15 +189,11 @@ function SuppliersListInner() {
     setDeactivateLoading(true);
     try {
       await deactivateSupplier(supplier.id);
-      toast({ title: "Berhasil", description: `Supplier "${supplier.nama_supplier}" dinonaktifkan.` });
+      toast.success(`Supplier "${supplier.nama_supplier}" dinonaktifkan.`);
       setDeactivateDialog({ open: false, supplier: null });
       fetchSuppliers();
     } catch (err: any) {
-      toast({
-        title: "Gagal",
-        description: err.message,
-        variant: "destructive",
-      });
+      toast.error("Gagal: " + err.message);
     } finally {
       setDeactivateLoading(false);
     }
@@ -210,11 +201,11 @@ function SuppliersListInner() {
 
   function handleExportCSV() {
     if (suppliers.length === 0) {
-      toast({ title: "Tidak ada data", description: "Tidak ada supplier untuk di-export.", variant: "destructive" });
+      toast.error("Tidak ada data: Tidak ada supplier untuk di-export.");
       return;
     }
     exportSuppliersCSV(suppliers);
-    toast({ title: "Berhasil", description: "File CSV sedang didownload." });
+    toast.success("File CSV sedang didownload.");
   }
 
   function handleResetFilters() {
