@@ -59,6 +59,7 @@ export default function NewPOPage() {
         listRawMaterials({ limit: 100 }),
         listUnits(true),
       ]);
+      console.log("Suppliers data:", suppliersData); // DEBUG
       setSuppliers(suppliersData);
       setMaterials(materialsData.data);
       setUnits(unitsData);
