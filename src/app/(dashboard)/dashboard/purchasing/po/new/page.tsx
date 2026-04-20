@@ -28,6 +28,7 @@ interface POItemForm extends PurchaseOrderItemFormData {
 }
 
 export default function NewPOPage() {
+  console.log("NewPOPage component mounted"); // DEBUG
   const router = useRouter();
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [materials, setMaterials] = useState<RawMaterialWithStock[]>([]);
