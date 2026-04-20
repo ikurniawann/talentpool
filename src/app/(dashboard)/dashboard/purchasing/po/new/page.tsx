@@ -53,21 +53,27 @@ export default function NewPOPage() {
   }, []);
 
   const loadData = async () => {
+    console.log("loadData started"); // DEBUG
     try {
-      const [suppliersData, materialsData, unitsData] = await Promise.all([
-        listSuppliers(),
-        listRawMaterials({ limit: 100 }),
-        listUnits(true),
-      ]);
-      console.log("Suppliers data:", suppliersData); // DEBUG
-      setSuppliers(suppliersData);
-      setMaterials(materialsData.data);
-      setUnits(unitsData);
+      const suppliersRes = await listSuppliers();
+      console.log("Suppliers raw response:", suppliersRes); // DEBUG
+      
+      const materialsRes = await listRawMaterials({ limit: 100 });
+      const unitsRes = await listUnits(true);
+      
+      // Handle both array and paginated response
+      const suppliersArray = Array.isArray(suppliersRes) ? suppliersRes : suppliersRes.data || [];
+      console.log("Suppliers array:", suppliersArray); // DEBUG
+      
+      setSuppliers(suppliersArray);
+      setMaterials(materialsRes.data || []);
+      setUnits(unitsRes || []);
     } catch (error) {
       console.error("Error loading data:", error);
       toast.error("Gagal memuat data");
     } finally {
       setLoading(false);
+      console.log("loadData finished"); // DEBUG
     }
   };
 
