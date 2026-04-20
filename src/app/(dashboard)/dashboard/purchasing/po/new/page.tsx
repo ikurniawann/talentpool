@@ -14,8 +14,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowLeft, Save, Plus, Trash2, Package } from "lucide-react";
+import { ArrowLeft, Save, Plus, Trash2, Package, Search, User } from "lucide-react";
 import { toast } from "sonner";
 import { Supplier, RawMaterialWithStock, PurchaseOrderFormData, PurchaseOrderItemFormData, Unit } from "@/types/purchasing";
 import { listSuppliers, listRawMaterials, listUnits, createPurchaseOrder, createPOItem } from "@/lib/purchasing";
@@ -28,13 +35,14 @@ interface POItemForm extends PurchaseOrderItemFormData {
 }
 
 export default function NewPOPage() {
-  console.log("NewPOPage component mounted"); // DEBUG
   const router = useRouter();
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [materials, setMaterials] = useState<RawMaterialWithStock[]>([]);
   const [units, setUnits] = useState<Unit[]>([]);
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [supplierModalOpen, setSupplierModalOpen] = useState(false);
+  const [supplierSearch, setSupplierSearch] = useState("");
 
   const [formData, setFormData] = useState<PurchaseOrderFormData>({
     supplier_id: "",
@@ -54,45 +62,42 @@ export default function NewPOPage() {
   }, []);
 
   const loadData = async () => {
-    console.log("loadData started"); // DEBUG
+    setLoading(true);
     try {
-      // Load suppliers first
-      let suppliersArray: Supplier[] = [];
-      try {
-        const suppliersRes = await listSuppliers();
-        console.log("Suppliers raw response:", suppliersRes); // DEBUG
-        suppliersArray = Array.isArray(suppliersRes) ? suppliersRes : suppliersRes.data || [];
-        console.log("Suppliers array:", suppliersArray); // DEBUG
-      } catch (e) {
-        console.error("Error loading suppliers:", e);
-      }
+      // Load suppliers
+      const suppliersRes = await listSuppliers();
+      const suppliersArray = Array.isArray(suppliersRes) ? suppliersRes : suppliersRes.data || [];
       setSuppliers(suppliersArray);
       
       // Load materials
-      try {
-        const materialsRes = await listRawMaterials({ limit: 100 });
-        console.log("Materials response:", materialsRes); // DEBUG
-        setMaterials(materialsRes.data || []);
-      } catch (e) {
-        console.error("Error loading materials:", e);
-      }
+      const materialsRes = await listRawMaterials({ limit: 100 });
+      setMaterials(materialsRes.data || []);
       
       // Load units
-      try {
-        const unitsRes = await listUnits(true);
-        console.log("Units response:", unitsRes); // DEBUG
-        setUnits(unitsRes || []);
-      } catch (e) {
-        console.error("Error loading units:", e);
-      }
+      const unitsRes = await listUnits(true);
+      setUnits(unitsRes || []);
     } catch (error) {
       console.error("Error loading data:", error);
       toast.error("Gagal memuat data");
     } finally {
       setLoading(false);
-      console.log("loadData finished"); // DEBUG
     }
   };
+
+  const getSelectedSupplier = () => {
+    return suppliers.find(s => s.id === formData.supplier_id);
+  };
+
+  const handleSelectSupplier = (supplier: Supplier) => {
+    setFormData({ ...formData, supplier_id: supplier.id });
+    setSupplierModalOpen(false);
+    setSupplierSearch("");
+  };
+
+  const filteredSuppliers = suppliers.filter(s => 
+    s.nama_supplier.toLowerCase().includes(supplierSearch.toLowerCase()) ||
+    s.kode.toLowerCase().includes(supplierSearch.toLowerCase())
+  );
 
   const addItem = () => {
     setItems([
@@ -186,6 +191,7 @@ export default function NewPOPage() {
   };
 
   const { subtotal, diskonNominal, ppnNominal, total } = calculateTotals();
+  const selectedSupplier = getSelectedSupplier();
 
   return (
     <div className="container mx-auto py-6 space-y-6">
@@ -220,24 +226,23 @@ export default function NewPOPage() {
                   <Label>
                     Supplier <span className="text-red-500">*</span>
                   </Label>
-                  <Select
-                    value={formData.supplier_id}
-                    onValueChange={(v) =>
-                      setFormData({ ...formData, supplier_id: v })
-                    }
-                    disabled={loading}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Pilih supplier" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {suppliers.map((s) => (
-                        <SelectItem key={s.id} value={s.id}>
-                          {s.nama_supplier} ({s.kode})
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <div className="flex gap-2">
+                    <Input
+                      value={selectedSupplier ? `${selectedSupplier.nama_supplier} (${selectedSupplier.kode})` : ""}
+                      placeholder="Pilih supplier..."
+                      readOnly
+                      className="flex-1"
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => setSupplierModalOpen(true)}
+                      disabled={loading}
+                    >
+                      <User className="w-4 h-4 mr-2" />
+                      Pilih
+                    </Button>
+                  </div>
                 </div>
                 <div className="space-y-2">
                   <Label>Tanggal PO</Label>
@@ -490,6 +495,71 @@ export default function NewPOPage() {
           </Button>
         </div>
       </form>
+
+      {/* Supplier Selection Modal */}
+      <Dialog open={supplierModalOpen} onOpenChange={setSupplierModalOpen}>
+        <DialogContent className="max-w-2xl max-h-[80vh]">
+          <DialogHeader>
+            <DialogTitle>Pilih Supplier</DialogTitle>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            {/* Search */}
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Input
+                placeholder="Cari supplier..."
+                value={supplierSearch}
+                onChange={(e) => setSupplierSearch(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+
+            {/* Supplier List */}
+            <div className="border rounded-lg overflow-hidden">
+              {loading ? (
+                <div className="p-8 text-center text-muted-foreground">
+                  Memuat data...
+                </div>
+              ) : filteredSuppliers.length === 0 ? (
+                <div className="p-8 text-center text-muted-foreground">
+                  {suppliers.length === 0 ? "Tidak ada supplier" : "Supplier tidak ditemukan"}
+                </div>
+              ) : (
+                <div className="max-h-[400px] overflow-y-auto">
+                  {filteredSuppliers.map((supplier) => (
+                    <button
+                      key={supplier.id}
+                      type="button"
+                      onClick={() => handleSelectSupplier(supplier)}
+                      className="w-full px-4 py-3 text-left hover:bg-muted border-b last:border-b-0 transition-colors"
+                    >
+                      <div className="font-medium">{supplier.nama_supplier}</div>
+                      <div className="text-sm text-muted-foreground">
+                        {supplier.kode} • {supplier.pic_name} • {supplier.kota}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Actions */}
+            <div className="flex justify-end gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setSupplierModalOpen(false);
+                  setSupplierSearch("");
+                }}
+              >
+                Batal
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
