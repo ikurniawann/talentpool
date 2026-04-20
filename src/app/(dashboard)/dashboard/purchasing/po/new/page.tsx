@@ -387,7 +387,9 @@ export default function NewPOPage() {
                       disabled={loading}
                     >
                       <SelectTrigger>
-                        <SelectValue placeholder="Pilih bahan" />
+                        <SelectValue placeholder="Pilih bahan">
+                          {item.raw_material_id && materials.find(m => m.id === item.raw_material_id)?.nama}
+                        </SelectValue>
                       </SelectTrigger>
                       <SelectContent>
                         {materials.map((m) => (
@@ -425,7 +427,9 @@ export default function NewPOPage() {
                       }
                     >
                       <SelectTrigger>
-                        <SelectValue placeholder="Satuan" />
+                        <SelectValue placeholder="Satuan">
+                          {item.satuan_id && units.find(u => u.id === item.satuan_id)?.nama}
+                        </SelectValue>
                       </SelectTrigger>
                       <SelectContent>
                         {units.map((u) => (
