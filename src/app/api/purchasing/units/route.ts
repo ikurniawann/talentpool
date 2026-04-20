@@ -35,11 +35,11 @@ export async function GET(request: NextRequest) {
     
     if (error) throw error;
     
-    return Response.json({ success: true, data });
+    return Response.json({ data });
   } catch (error: any) {
     console.error("Error fetching units:", error);
     return Response.json(
-      { success: false, message: error.message || "Gagal mengambil data satuan" },
+      { message: error.message || "Gagal mengambil data satuan" },
       { status: 500 }
     );
   }
@@ -63,7 +63,7 @@ export async function POST(request: NextRequest) {
     
     if (existing) {
       return Response.json(
-        { success: false, message: "Kode satuan sudah digunakan" },
+        { message: "Kode satuan sudah digunakan" },
         { status: 400 }
       );
     }
@@ -81,7 +81,7 @@ export async function POST(request: NextRequest) {
     if (error) throw error;
     
     return Response.json(
-      { success: true, data, message: "Satuan berhasil ditambahkan" },
+      { data },
       { status: 201 }
     );
   } catch (error: any) {
@@ -90,7 +90,6 @@ export async function POST(request: NextRequest) {
     if (error instanceof z.ZodError) {
       return Response.json(
         { 
-          success: false, 
           message: "Validasi gagal", 
           errors: error.flatten().fieldErrors 
         },
@@ -99,7 +98,7 @@ export async function POST(request: NextRequest) {
     }
     
     return Response.json(
-      { success: false, message: error.message || "Gagal menambahkan satuan" },
+      { message: error.message || "Gagal menambahkan satuan" },
       { status: 500 }
     );
   }
