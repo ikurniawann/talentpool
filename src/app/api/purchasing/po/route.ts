@@ -17,6 +17,32 @@ const poSchema = z.object({
   ppn_persen: z.number().min(0).max(100).default(11),
 });
 
+// Helper: Generate nomor PO
+async function generateNomorPO(supabase: any): Promise<string> {
+  const today = new Date();
+  const year = today.getFullYear();
+  const month = String(today.getMonth() + 1).padStart(2, "0");
+  const prefix = `PO-${year}${month}`;
+  
+  // Get latest PO number for this month
+  const { data, error } = await supabase
+    .from("purchase_orders")
+    .select("nomor_po")
+    .ilike("nomor_po", `${prefix}-%`)
+    .order("nomor_po", { ascending: false })
+    .limit(1);
+  
+  if (error) throw error;
+  
+  let nextNumber = 1;
+  if (data && data.length > 0) {
+    const lastNumber = parseInt(data[0].nomor_po.split("-").pop() || "0");
+    nextNumber = lastNumber + 1;
+  }
+  
+  return `${prefix}-${String(nextNumber).padStart(4, "0")}`;
+}
+
 // GET /api/purchasing/po
 export async function GET(request: NextRequest) {
   try {
@@ -98,11 +124,15 @@ export async function POST(request: NextRequest) {
     // Validasi input
     const validated = poSchema.parse(body);
 
+    // Generate nomor PO
+    const nomor_po = await generateNomorPO(supabase);
+
     // Insert PO dengan status DRAFT
     const { data, error } = await supabase
       .from("purchase_orders")
       .insert({
         ...validated,
+        nomor_po,
         status: "DRAFT",
         subtotal: 0,
         total: 0,
