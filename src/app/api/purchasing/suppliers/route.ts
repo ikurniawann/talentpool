@@ -1,13 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import {
-  requireApiRole,
-  ApiError,
-  successResponse,
-  createdResponse,
-  paginatedResponse,
-} from "@/lib/api/auth";
+import { requireApiRole, ApiError } from "@/lib/api/auth";
 
 // ========================
 // ZOD SCHEMAS
@@ -23,8 +17,8 @@ const createSupplierSchema = z.object({
   kota: z.string().max(100).optional(),
   npwp: z.string().max(50).optional(),
   payment_terms: z
-    .enum(["COD", "NET7", "NET14", "NET 30", "NET45", "NET60"])
-    .default("NET 30"),
+    .enum(["COD", "NET7", "NET14", "NET30", "NET45", "NET60"])
+    .default("NET30"),
   currency: z.enum(["IDR", "USD", "EUR"]).default("IDR"),
   bank_nama: z.string().optional(),
   bank_rekening: z.string().optional(),
@@ -67,7 +61,7 @@ async function generateSupplierCode(
 }
 
 // ========================
-// GET /api/purchasing/suppliers — getAll with filter & pagination
+// GET /api/purchasing/suppliers
 // ========================
 export async function GET(request: NextRequest) {
   try {
@@ -81,7 +75,6 @@ export async function GET(request: NextRequest) {
 
     const supabase = await createClient();
 
-    // Map sort field to actual column name
     const sortColumnMap: Record<string, string> = {
       nama_supplier: "nama_supplier",
       kode_supplier: "kode",
@@ -111,14 +104,16 @@ export async function GET(request: NextRequest) {
 
     if (error) throw error;
 
-    return NextResponse.json(
-      paginatedResponse(data, {
+    // Return format tanpa wrapper success
+    return NextResponse.json({
+      data,
+      pagination: {
         page,
         limit,
         total: count ?? 0,
         totalPages: Math.ceil((count ?? 0) / limit),
-      })
-    );
+      },
+    });
   } catch (error) {
     if (error instanceof ApiError) return error.toResponse();
     if (error instanceof z.ZodError) {
@@ -130,7 +125,7 @@ export async function GET(request: NextRequest) {
 }
 
 // ========================
-// POST /api/purchasing/suppliers — create
+// POST /api/purchasing/suppliers
 // ========================
 export async function POST(request: NextRequest) {
   try {
@@ -155,13 +150,6 @@ export async function POST(request: NextRequest) {
 
     if (existing) {
       throw ApiError.conflict("Kode supplier sudah digunakan");
-    }
-
-    // Validate NPWP format if provided
-    if (validated.npwp && !/^\d{2}\.\d{3}\.\d{3}\.\d{1}-\d{3}\.\d{3}$/.test(validated.npwp)) {
-      throw ApiError.badRequest(
-        "Format NPWP tidak valid. Gunakan format: XX.XXX.XXX.X-XXX.XXX"
-      );
     }
 
     const { data, error } = await supabase
@@ -195,7 +183,7 @@ export async function POST(request: NextRequest) {
       throw error;
     }
 
-    return createdResponse(data, "Supplier berhasil dibuat");
+    return NextResponse.json({ data }, { status: 201 });
   } catch (error) {
     if (error instanceof ApiError) return error.toResponse();
     if (error instanceof z.ZodError) {
