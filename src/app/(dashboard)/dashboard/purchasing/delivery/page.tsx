@@ -13,8 +13,7 @@ import {
   PlusIcon,
   MagnifyingGlassIcon,
   EyeIcon,
-  MapPinIcon,
-  CalendarIcon,
+  ArrowRightIcon,
 } from "@heroicons/react/24/outline";
 
 type DeliveryStatus = "pending" | "shipped" | "in_transit" | "delivered" | "cancelled";
@@ -100,6 +99,12 @@ export default function DeliveryListPage() {
           <h1 className="text-2xl font-bold text-gray-900">Pengiriman</h1>
           <p className="text-sm text-gray-500">Pantau pengiriman dari supplier</p>
         </div>
+        <Link href="/dashboard/purchasing/delivery/new">
+          <Button>
+            <PlusIcon className="w-4 h-4 mr-2" />
+            Buat Pengiriman
+          </Button>
+        </Link>
       </div>
 
       <Card>
