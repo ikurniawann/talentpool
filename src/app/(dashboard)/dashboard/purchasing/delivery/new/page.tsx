@@ -10,17 +10,33 @@ import { Textarea } from "@/components/ui/textarea";
 import { BreadcrumbNav } from "@/modules/purchasing/components/breadcrumb/BreadcrumbNav";
 import { useToast } from "@/components/ui/toast";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { cn } from "@/lib/utils";
 import {
   TruckIcon,
   ArrowLeftIcon,
   SaveIcon,
   Loader2Icon,
+  CheckIcon,
+  ChevronsUpDown,
+  SearchIcon,
 } from "lucide-react";
 
 interface POOption {
@@ -36,6 +52,7 @@ export default function CreateDeliveryPage() {
   const [loading, setLoading] = useState(false);
   const [poList, setPoList] = useState<POOption[]>([]);
   const [fetchingPOs, setFetchingPOs] = useState(true);
+  const [poPopoverOpen, setPoPopoverOpen] = useState(false);
 
   const [formData, setFormData] = useState({
     po_id: "",
@@ -47,32 +64,22 @@ export default function CreateDeliveryPage() {
     catatan: "",
   });
 
-  // Fetch POs that can have delivery (exclude draft and cancelled)
   useEffect(() => {
     async function fetchPOs() {
       try {
-        // Fetch all POs without status filter first
         const res = await fetch("/api/purchasing/po?limit=100");
         const data = await res.json();
-        console.log("PO API response:", data);
         
         if (data.data) {
-          // Filter POs that can have delivery
           const validStatuses = ["approved", "sent", "partial", "completed"];
           const availablePOs = data.data.filter((po: any) => {
             const status = po.status?.toLowerCase() || "";
             return validStatuses.includes(status);
           });
-          
-          console.log("Available POs for delivery:", availablePOs.length, availablePOs);
           setPoList(availablePOs);
-        } else {
-          console.log("No PO data in response:", data);
-          setPoList([]);
         }
       } catch (e) {
         console.error("Failed to fetch POs:", e);
-        setPoList([]);
       } finally {
         setFetchingPOs(false);
       }
@@ -104,16 +111,17 @@ export default function CreateDeliveryPage() {
       
       if (res.ok) {
         toast({
-          title: "Berhasil",
-          description: `Delivery berhasil dibuat: ${data.data?.nomor_resi || ""}`,
+          title: "✅ Berhasil",
+          description: `Delivery ${data.data?.nomor_resi || ""} berhasil dibuat`,
         });
         router.push("/dashboard/purchasing/delivery");
+        router.refresh();
       } else {
-        throw new Error(data.error?.message || "Gagal membuat delivery");
+        throw new Error(data.error?.message || data.message || "Gagal membuat delivery");
       }
     } catch (error: any) {
       toast({
-        title: "Error",
+        title: "❌ Error",
         description: error.message,
         variant: "destructive",
       });
@@ -156,56 +164,73 @@ export default function CreateDeliveryPage() {
 
       <form onSubmit={handleSubmit}>
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Main Form */}
           <div className="lg:col-span-2 space-y-6">
             <Card>
               <CardHeader>
                 <CardTitle>Informasi Pengiriman</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                {/* PO Selection */}
+                {/* PO Selection - Modal Popover */}
                 <div className="space-y-2">
-                  <Label htmlFor="po_id">
+                  <Label>
                     Purchase Order <span className="text-red-500">*</span>
                   </Label>
-                  <Select
-                    value={formData.po_id}
-                    onValueChange={(value) =>
-                      setFormData({ ...formData, po_id: value })
-                    }
-                    disabled={fetchingPOs}
-                  >
-                    <SelectTrigger>
-                      <SelectValue
-                        placeholder={
-                          fetchingPOs
-                            ? "Memuat PO..."
-                            : "Pilih Purchase Order"
-                        }
-                      />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {poList.length === 0 ? (
-                        <SelectItem value="" disabled>
-                          Tidak ada PO yang tersedia
-                        </SelectItem>
-                      ) : (
-                        poList.map((po) => (
-                          <SelectItem key={po.id} value={po.id}>
-                            {po.nomor_po} - {po.nama_supplier}
-                          </SelectItem>
-                        ))
-                      )}
-                    </SelectContent>
-                  </Select>
-                  {selectedPO && (
-                    <p className="text-sm text-gray-500">
-                      Supplier: {selectedPO.nama_supplier}
-                    </p>
-                  )}
+                  <Popover open={poPopoverOpen} onOpenChange={setPoPopoverOpen}>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        role="combobox"
+                        aria-expanded={poPopoverOpen}
+                        className="w-full justify-between h-12 text-left font-normal"
+                        disabled={fetchingPOs}
+                      >
+                        {fetchingPOs ? (
+                          <span className="text-gray-400">Memuat PO...</span>
+                        ) : selectedPO ? (
+                          <div className="flex flex-col items-start">
+                            <span className="font-medium">{selectedPO.nomor_po}</span>
+                            <span className="text-xs text-gray-500">{selectedPO.nama_supplier}</span>
+                          </div>
+                        ) : (
+                          <span className="text-gray-400">Pilih Purchase Order</span>
+                        )}
+                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-[400px] p-0" align="start">
+                      <Command>
+                        <CommandInput placeholder="Cari PO atau supplier..." />
+                        <CommandList>
+                          <CommandEmpty>Tidak ada PO yang ditemukan</CommandEmpty>
+                          <CommandGroup>
+                            {poList.map((po) => (
+                              <CommandItem
+                                key={po.id}
+                                value={`${po.nomor_po} ${po.nama_supplier}`}
+                                onSelect={() => {
+                                  setFormData({ ...formData, po_id: po.id });
+                                  setPoPopoverOpen(false);
+                                }}
+                              >
+                                <CheckIcon
+                                  className={cn(
+                                    "mr-2 h-4 w-4",
+                                    formData.po_id === po.id ? "opacity-100" : "opacity-0"
+                                  )}
+                                />
+                                <div className="flex flex-col">
+                                  <span className="font-medium">{po.nomor_po}</span>
+                                  <span className="text-xs text-gray-500">{po.nama_supplier}</span>
+                                </div>
+                              </CommandItem>
+                            ))}
+                          </CommandGroup>
+                        </CommandList>
+                      </Command>
+                    </PopoverContent>
+                  </Popover>
                 </div>
 
-                {/* No Surat Jalan */}
                 <div className="space-y-2">
                   <Label htmlFor="no_surat_jalan">
                     No. Surat Jalan <span className="text-red-500">*</span>
@@ -220,7 +245,6 @@ export default function CreateDeliveryPage() {
                   />
                 </div>
 
-                {/* Ekspedisi */}
                 <div className="space-y-2">
                   <Label htmlFor="ekspedisi">Ekspedisi / Kurir</Label>
                   <Input
@@ -233,7 +257,6 @@ export default function CreateDeliveryPage() {
                   />
                 </div>
 
-                {/* No Resi */}
                 <div className="space-y-2">
                   <Label htmlFor="no_resi">No. Resi / Tracking</Label>
                   <Input
@@ -246,7 +269,6 @@ export default function CreateDeliveryPage() {
                   />
                 </div>
 
-                {/* Dates */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="tanggal_kirim">Tanggal Kirim</Label>
@@ -260,18 +282,13 @@ export default function CreateDeliveryPage() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="tanggal_estimasi_tiba">
-                      Estimasi Tiba
-                    </Label>
+                    <Label htmlFor="tanggal_estimasi_tiba">Estimasi Tiba</Label>
                     <Input
                       id="tanggal_estimasi_tiba"
                       type="date"
                       value={formData.tanggal_estimasi_tiba}
                       onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          tanggal_estimasi_tiba: e.target.value,
-                        })
+                        setFormData({ ...formData, tanggal_estimasi_tiba: e.target.value })
                       }
                     />
                   </div>
@@ -285,7 +302,7 @@ export default function CreateDeliveryPage() {
               </CardHeader>
               <CardContent>
                 <Textarea
-                  placeholder="Tambahkan catatan jika diperlukan..."
+                  placeholder="Tambahkan catatan jika diperlikan..."
                   value={formData.catatan}
                   onChange={(e) =>
                     setFormData({ ...formData, catatan: e.target.value })
@@ -296,7 +313,6 @@ export default function CreateDeliveryPage() {
             </Card>
           </div>
 
-          {/* Sidebar */}
           <div className="space-y-6">
             <Card>
               <CardHeader>
