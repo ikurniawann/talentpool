@@ -25,8 +25,8 @@ import {
 
 interface POOption {
   id: string;
-  po_number: string;
-  supplier_name: string;
+  nomor_po: string;
+  nama_supplier: string;
   status: string;
 }
 
@@ -54,7 +54,13 @@ export default function CreateDeliveryPage() {
         const res = await fetch("/api/purchasing/po?status=approved&limit=100");
         const data = await res.json();
         if (data.data) {
-          setPoList(data.data.filter((po: any) => po.status === "approved" || po.status === "sent"));
+          const approvedPOs = data.data.filter((po: any) => 
+            po.status?.toLowerCase() === "approved" || po.status?.toLowerCase() === "sent"
+          );
+          console.log("POs loaded:", approvedPOs.length, approvedPOs);
+          setPoList(approvedPOs);
+        } else {
+          console.log("No PO data in response:", data);
         }
       } catch (e) {
         console.error("Failed to fetch POs:", e);
@@ -177,7 +183,7 @@ export default function CreateDeliveryPage() {
                       ) : (
                         poList.map((po) => (
                           <SelectItem key={po.id} value={po.id}>
-                            {po.po_number} - {po.supplier_name}
+                            {po.nomor_po} - {po.nama_supplier}
                           </SelectItem>
                         ))
                       )}
@@ -185,7 +191,7 @@ export default function CreateDeliveryPage() {
                   </Select>
                   {selectedPO && (
                     <p className="text-sm text-gray-500">
-                      Supplier: {selectedPO.supplier_name}
+                      Supplier: {selectedPO.nama_supplier}
                     </p>
                   )}
                 </div>
