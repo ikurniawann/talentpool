@@ -47,23 +47,32 @@ export default function CreateDeliveryPage() {
     catatan: "",
   });
 
-  // Fetch approved POs that don't have delivery yet
+  // Fetch POs that can have delivery (exclude draft and cancelled)
   useEffect(() => {
     async function fetchPOs() {
       try {
-        const res = await fetch("/api/purchasing/po?status=approved&limit=100");
+        // Fetch all POs without status filter first
+        const res = await fetch("/api/purchasing/po?limit=100");
         const data = await res.json();
+        console.log("PO API response:", data);
+        
         if (data.data) {
-          const approvedPOs = data.data.filter((po: any) => 
-            po.status?.toLowerCase() === "approved" || po.status?.toLowerCase() === "sent"
-          );
-          console.log("POs loaded:", approvedPOs.length, approvedPOs);
-          setPoList(approvedPOs);
+          // Filter POs that can have delivery
+          const validStatuses = ["approved", "sent", "partial", "completed"];
+          const availablePOs = data.data.filter((po: any) => {
+            const status = po.status?.toLowerCase() || "";
+            return validStatuses.includes(status);
+          });
+          
+          console.log("Available POs for delivery:", availablePOs.length, availablePOs);
+          setPoList(availablePOs);
         } else {
           console.log("No PO data in response:", data);
+          setPoList([]);
         }
       } catch (e) {
         console.error("Failed to fetch POs:", e);
+        setPoList([]);
       } finally {
         setFetchingPOs(false);
       }
