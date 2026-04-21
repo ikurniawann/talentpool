@@ -134,9 +134,9 @@ export async function validatePOCanDelivery(
     errors.push("Purchase Order sudah tidak aktif");
   }
 
-  if (po.status !== "sent" && po.status !== "partial") {
+  if (po.status !== "sent" && po.status !== "partial" && po.status !== "approved") {
     errors.push(
-      `PO berstatus "${po.status}" — harus berstatus SENT atau PARTIAL untuk dapat dibuatkan Delivery`
+      `PO berstatus "${po.status}" — harus berstatus APPROVED, SENT, atau PARTIAL untuk dapat dibuatkan Delivery`
     );
   }
 
