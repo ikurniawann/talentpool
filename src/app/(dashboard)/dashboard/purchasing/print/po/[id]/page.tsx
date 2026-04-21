@@ -10,7 +10,7 @@ export default async function PrintPOPage({ params }: PrintPOPageProps) {
   const { id } = await params;
   const supabase = await createClient();
 
-  const { data: po } = await supabase
+  const { data: po, error } = await supabase
     .from("purchase_orders")
     .select(`
       *,
@@ -21,8 +21,23 @@ export default async function PrintPOPage({ params }: PrintPOPageProps) {
     .eq("id", id)
     .single();
 
-  if (!po) {
-    notFound();
+  if (error || !po) {
+    console.error("PO Error:", error);
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold text-red-600 mb-4">Data PO Tidak Ditemukan</h1>
+          <p className="text-gray-600 mb-4">ID: {id}</p>
+          <p className="text-gray-500">{error?.message || "PO tidak ada di database"}</p>
+          <a 
+            href="/dashboard/purchasing/po" 
+            className="mt-6 inline-block px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+          >
+            Kembali ke List PO
+          </a>
+        </div>
+      </div>
+    );
   }
 
   const statusBadge = getPOStatusLabel(po.status);
