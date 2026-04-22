@@ -6,381 +6,273 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowLeft, Save, Plus, Trash2, Package, ClipboardList } from "lucide-react";
-import { toast } from "sonner";
+import { Badge } from "@/components/ui/badge";
+import { Textarea } from "@/components/ui/textarea";
+import { useToast } from "@/components/ui/toast";
+import { BreadcrumbNav } from "@/modules/purchasing/components/breadcrumb/BreadcrumbNav";
 import {
-  PurchaseOrder,
-  PurchaseOrderItem,
-  GoodsReceiptFormData,
-  GoodsReceiptItemFormData,
-} from "@/types/purchasing";
-import {
-  listPurchaseOrders,
-  getPurchaseOrder,
-  createGoodsReceipt,
-  createGRNItem,
-} from "@/lib/purchasing";
+  ClipboardDocumentCheckIcon,
+  PlusIcon,
+  TrashIcon,
+  ArrowLeftIcon,
+  TruckIcon,
+} from "@heroicons/react/24/outline";
 
-interface GRNItemForm extends Partial<GoodsReceiptItemFormData> {
+interface Delivery {
   id: string;
-  material_name?: string;
-  material_code?: string;
-  unit_name?: string;
-  remaining_qty: number;
+  no_resi: string;
+  nomor_resi: string;
+  no_surat_jalan: string;
+  kurir: string;
+  status: string;
+  purchase_order_id: string;
+  supplier_id: string;
+  tanggal_kirim: string;
+  tanggal_estimasi_tiba: string;
 }
 
-export default function NewGRNPage() {
-  const router = useRouter();
-  const [pos, setPos] = useState<PurchaseOrder[]>([]);
-  const [selectedPO, setSelectedPO] = useState<PurchaseOrder | null>(null);
-  const [poItems, setPoItems] = useState<PurchaseOrderItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+interface POItem {
+  id: string;
+  raw_material_id: string;
+  nama_bahan: string;
+  qty_ordered: number;
+  qty_received: number;
+  satuan?: string;
+}
 
-  const [formData, setFormData] = useState<GoodsReceiptFormData>({
-    po_id: "",
-    gudang_tujuan: "GUDANG UTAMA",
-    kondisi_packing: "BAIK",
-    catatan_penerimaan: "",
+interface GrnItem {
+  id: string;
+  purchase_order_item_id?: string;
+  raw_material_id: string;
+  nama_bahan: string;
+  qty_diterima: number;
+  qty_ditolak: number;
+  kondisi: "baik" | "rusak" | "cacat";
+  catatan: string;
+}
+
+export default function CreateGrnPage() {
+  const router = useRouter();
+  const { toast } = useToast();
+  const [loading, setLoading] = useState(false);
+  const [fetchingDeliveries, setFetchingDeliveries] = useState(true);
+  const [deliveries, setDeliveries] = useState<Delivery[]>([]);
+  const [selectedDelivery, setSelectedDelivery] = useState<Delivery | null>(null);
+  const [poItems, setPoItems] = useState<POItem[]>([]);
+  const [grnItems, setGrnItems] = useState<GrnItem[]>([]);
+  const [formData, setFormData] = useState({
+    delivery_id: "",
+    tanggal_penerimaan: new Date().toISOString().split("T")[0],
+    catatan: "",
   });
 
-  const [items, setItems] = useState<GRNItemForm[]>([]);
-
+  // Fetch deliveries that can be received
   useEffect(() => {
-    loadPOs();
+    fetchDeliveries();
   }, []);
 
-  const loadPOs = async () => {
+  async function fetchDeliveries() {
+    setFetchingDeliveries(true);
     try {
-      const response = await listPurchaseOrders({
-        status: "SENT",
-        limit: 100,
+      const res = await fetch("/api/purchasing/delivery?limit=100");
+      const data = await res.json();
+      if (data.data) {
+        setDeliveries(data.data);
+      }
+    } catch (e) {
+      console.error(e);
+      toast({ 
+        title: "Error", 
+        description: "Gagal memuat data pengiriman", 
+        variant: "destructive" 
       });
-      setPos(response.data.filter((po) => po.status === "SENT" || po.status === "PARTIAL"));
-    } catch (error) {
-      console.error("Error loading POs:", error);
-      toast.error("Gagal memuat data PO");
+    } finally {
+      setFetchingDeliveries(false);
+    }
+  }
+
+  // Fetch PO items when delivery selected
+  useEffect(() => {
+    const poId = selectedDelivery?.purchase_order_id || selectedDelivery?.po_id;
+    if (poId) {
+      fetchPOItems(poId);
+    }
+  }, [selectedDelivery]);
+
+  async function fetchPOItems(poId: string) {
+    try {
+      const res = await fetch(`/api/purchasing/po/${poId}`);
+      const data = await res.json();
+      if (data.data?.items) {
+        const items = data.data.items.map((item: any) => ({
+          id: item.id,
+          raw_material_id: item.raw_material_id,
+          nama_bahan: item.raw_material?.nama || item.raw_material?.nama_bahan || "Unknown",
+          qty_ordered: item.qty_ordered || 0,
+          qty_received: item.qty_received || 0,
+          satuan: item.satuan?.nama || item.satuan?.nama_satuan || "pcs",
+        }));
+        setPoItems(items);
+        // Initialize GRN items
+        setGrnItems(items.map((item: POItem) => ({
+          id: item.id,
+          purchase_order_item_id: item.id,
+          raw_material_id: item.raw_material_id,
+          nama_bahan: item.nama_bahan,
+          qty_diterima: 0,
+          qty_ditolak: 0,
+          kondisi: "baik",
+          catatan: "",
+        })));
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  }
+
+  function handleDeliverySelect(deliveryId: string) {
+    const delivery = deliveries.find((d) => d.id === deliveryId);
+    setSelectedDelivery(delivery || null);
+    setFormData((prev) => ({ ...prev, delivery_id: deliveryId }));
+  }
+
+  function updateGrnItem(index: number, field: keyof GrnItem, value: any) {
+    setGrnItems((prev) => {
+      const updated = [...prev];
+      updated[index] = { ...updated[index], [field]: value };
+      return updated;
+    });
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setLoading(true);
+
+    try {
+      // Validate
+      const validItems = grnItems.filter((item) => item.qty_diterima > 0 || item.qty_ditolak > 0);
+      if (validItems.length === 0) {
+        toast({ 
+          title: "Error", 
+          description: "Minimal 1 item harus diisi", 
+          variant: "destructive" 
+        });
+        setLoading(false);
+        return;
+      }
+
+      const payload = {
+        ...formData,
+        items: validItems.map((item) => ({
+          purchase_order_item_id: item.purchase_order_item_id,
+          raw_material_id: item.raw_material_id,
+          qty_diterima: item.qty_diterima,
+          qty_ditolak: item.qty_ditolak,
+          kondisi: item.kondisi,
+          catatan: item.catatan || null,
+        })),
+      };
+
+      console.log("=== SUBMIT GRN ===");
+      console.log("Payload:", payload);
+
+      const res = await fetch("/api/purchasing/grn", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await res.json();
+      console.log("API Response:", res.status, data);
+
+      if (res.ok) {
+        toast({
+          title: "✅ Berhasil",
+          description: `GRN ${data.data?.nomor_grn || ""} berhasil dibuat`,
+        });
+        router.push("/dashboard/purchasing/grn");
+        router.refresh();
+      } else {
+        throw new Error(data.error?.message || data.message || data.error || "Gagal membuat GRN");
+      }
+    } catch (error: any) {
+      console.error("Submit error:", error);
+      toast({
+        title: "❌ Error",
+        description: error.message || "Gagal membuat GRN",
+        variant: "destructive",
+      });
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleSelectPO = async (poId: string) => {
-    if (!poId) {
-      setSelectedPO(null);
-      setPoItems([]);
-      setItems([]);
-      return;
-    }
-
-    try {
-      const po = await getPurchaseOrder(poId);
-      setSelectedPO(po);
-      setPoItems(po.items || []);
-
-      // Initialize items from PO
-      const initialItems = (po.items || [])
-        .filter((item) => item.qty_remaining > 0)
-        .map((item) => ({
-          id: crypto.randomUUID(),
-          po_item_id: item.id,
-          raw_material_id: item.raw_material_id,
-          material_name: item.raw_material?.nama,
-          material_code: item.raw_material?.kode,
-          unit_name: item.satuan?.nama,
-          satuan_id: item.satuan_id,
-          harga_satuan: item.harga_satuan,
-          remaining_qty: item.qty_remaining,
-          qty_diterima: 0,
-          qty_diterima_baik: 0,
-          qty_cacat: 0,
-        }));
-      setItems(initialItems);
-      setFormData((prev) => ({ ...prev, po_id: poId }));
-    } catch (error) {
-      console.error("Error loading PO details:", error);
-      toast.error("Gagal memuat detail PO");
-    }
-  };
-
-  const updateItem = (index: number, field: keyof GRNItemForm, value: any) => {
-    const newItems = [...items];
-    newItems[index] = { ...newItems[index], [field]: value };
-
-    // Auto-calculate good qty
-    if (field === "qty_diterima") {
-      newItems[index].qty_diterima_baik = value;
-      newItems[index].qty_cacat = 0;
-    }
-
-    setItems(newItems);
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!formData.po_id) {
-      toast.error("Pilih PO terlebih dahulu");
-      return;
-    }
-
-    const validItems = items.filter((item) => item.qty_diterima > 0);
-    if (validItems.length === 0) {
-      toast.error("Tambahkan minimal 1 item yang diterima");
-      return;
-    }
-
-    setIsSubmitting(true);
-    try {
-      // Create GRN
-      const grn = await createGoodsReceipt(formData);
-
-      // Create GRN items
-      for (const item of validItems) {
-        await createGRNItem(grn.id, {
-          po_item_id: item.po_item_id!,
-          raw_material_id: item.raw_material_id!,
-          qty_diterima: item.qty_diterima,
-          qty_diterima_baik: item.qty_diterima_baik,
-          qty_cacat: item.qty_cacat || 0,
-          satuan_id: item.satuan_id,
-          harga_satuan: item.harga_satuan || 0,
-          lokasi_rak: item.lokasi_rak,
-          catatan: item.catatan,
-        });
-      }
-
-      toast.success("GRN berhasil dibuat");
-      router.push(`/dashboard/purchasing/grn/${grn.id}`);
-    } catch (error: any) {
-      console.error("Error creating GRN:", error);
-      toast.error(error.message || "Gagal membuat GRN");
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const totalQty = items.reduce((sum, item) => sum + (item.qty_diterima || 0), 0);
+  }
 
   return (
-    <div className="container mx-auto py-6 space-y-6">
-      {/* Header */}
+    <div className="space-y-6">
+      <BreadcrumbNav
+        items={[
+          { label: "Dashboard", href: "/dashboard" },
+          { label: "Purchasing", href: "/dashboard/purchasing" },
+          { label: "Penerimaan", href: "/dashboard/purchasing/grn" },
+          { label: "Input Penerimaan" },
+        ]}
+      />
+
       <div className="flex items-center gap-4">
         <Link href="/dashboard/purchasing/grn">
           <Button variant="ghost" size="icon">
-            <ArrowLeft className="w-5 h-5" />
+            <ArrowLeftIcon className="w-5 h-5" />
           </Button>
         </Link>
         <div>
-          <h1 className="text-2xl font-bold">Buat GRN Baru</h1>
-          <p className="text-muted-foreground">
-            Catat penerimaan barang dari supplier
-          </p>
+          <h1 className="text-2xl font-bold text-gray-900">Input Penerimaan Barang</h1>
+          <p className="text-sm text-gray-500">Catat penerimaan barang dari pengiriman</p>
         </div>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* GRN Info */}
-          <Card className="lg:col-span-2">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Package className="w-5 h-5" />
-                Informasi Penerimaan
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label>
-                  Purchase Order <span className="text-red-500">*</span>
-                </Label>
-                <Select
-                  value={formData.po_id}
-                  onValueChange={handleSelectPO}
-                  disabled={loading}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Pilih PO" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="">Pilih PO</SelectItem>
-                    {pos.map((po) => (
-                      <SelectItem key={po.id} value={po.id}>
-                        {po.nomor_po} - {po.supplier?.nama_supplier}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {selectedPO && (
-                <div className="p-4 bg-muted rounded-lg space-y-2">
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Supplier:</span>
-                    <span className="font-medium">{selectedPO.supplier?.nama_supplier}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Tanggal PO:</span>
-                    <span>{new Date(selectedPO.tanggal_po).toLocaleDateString("id-ID")}</span>
-                  </div>
-                </div>
-              )}
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Gudang Tujuan</Label>
-                  <Input
-                    value={formData.gudang_tujuan}
-                    onChange={(e) =>
-                      setFormData({ ...formData, gudang_tujuan: e.target.value })
-                    }
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Kondisi Packing</Label>
-                  <Select
-                    value={formData.kondisi_packing}
-                    onValueChange={(v) =>
-                      setFormData({
-                        ...formData,
-                        kondisi_packing: v as "BAIK" | "RUSAK_RINGAN" | "RUSAK_BERAT",
-                      })
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="BAIK">Baik</SelectItem>
-                      <SelectItem value="RUSAK_RINGAN">Rusak Ringan</SelectItem>
-                      <SelectItem value="RUSAK_BERAT">Rusak Berat</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label>Catatan Penerimaan</Label>
-                <Textarea
-                  value={formData.catatan_penerimaan}
-                  onChange={(e) =>
-                    setFormData({ ...formData, catatan_penerimaan: e.target.value })
-                  }
-                  placeholder="Catatan tambahan..."
-                  rows={3}
-                />
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Summary */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Ringkasan</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Total Item</span>
-                <span className="font-medium">{items.filter((i) => i.qty_diterima > 0).length}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Total Qty</span>
-                <span className="font-medium">{totalQty}</span>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Items */}
+        {/* Delivery Selection */}
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <ClipboardList className="w-5 h-5" />
-              Item yang Diterima
+            <CardTitle className="text-lg flex items-center gap-2">
+              <TruckIcon className="w-5 h-5" />
+              Pilih Pengiriman
             </CardTitle>
           </CardHeader>
-          <CardContent>
-            {!selectedPO ? (
-              <div className="text-center py-8 text-muted-foreground">
-                Pilih PO terlebih dahulu
-              </div>
-            ) : items.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">
-                Tidak ada item yang perlu diterima
+          <CardContent className="space-y-4">
+            {fetchingDeliveries ? (
+              <p className="text-gray-500">Memuat data pengiriman...</p>
+            ) : deliveries.length === 0 ? (
+              <div className="text-center py-8 text-gray-500">
+                <TruckIcon className="w-12 h-12 mx-auto mb-3 opacity-30" />
+                <p>Tidak ada pengiriman yang menunggu penerimaan</p>
+                <Link href="/dashboard/purchasing/delivery/new">
+                  <Button variant="link" className="mt-2">Buat Pengiriman Baru</Button>
+                </Link>
               </div>
             ) : (
-              <div className="space-y-4">
-                {items.map((item, index) => (
+              <div className="grid gap-3">
+                {deliveries.map((d) => (
                   <div
-                    key={item.id}
-                    className="grid grid-cols-12 gap-4 items-start p-4 border rounded-lg"
+                    key={d.id}
+                    onClick={() => handleDeliverySelect(d.id)}
+                    className={`p-4 border rounded-lg cursor-pointer transition-colors ${
+                      selectedDelivery?.id === d.id
+                        ? "border-blue-500 bg-blue-50"
+                        : "border-gray-200 hover:border-gray-300"
+                    }`}
                   >
-                    <div className="col-span-4">
-                      <div className="font-medium">{item.material_name}</div>
-                      <div className="text-sm text-muted-foreground">{item.material_code}</div>
-                      <div className="text-xs text-muted-foreground mt-1">
-                        Sisa PO: {item.remaining_qty} {item.unit_name}
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="font-medium">{d.no_surat_jalan || "Tanpa Surat Jalan"}</p>
+                        <p className="text-sm text-gray-500">
+                          {d.kurir} • {d.no_resi || d.nomor_resi}
+                        </p>
                       </div>
-                    </div>
-
-                    <div className="col-span-2 space-y-1">
-                      <Label className="text-xs">Qty Diterima</Label>
-                      <Input
-                        type="number"
-                        step="0.0001"
-                        min="0"
-                        max={item.remaining_qty}
-                        value={item.qty_diterima}
-                        onChange={(e) =>
-                          updateItem(index, "qty_diterima", parseFloat(e.target.value) || 0)
-                        }
-                      />
-                    </div>
-
-                    <div className="col-span-2 space-y-1">
-                      <Label className="text-xs">Baik</Label>
-                      <Input
-                        type="number"
-                        step="0.0001"
-                        min="0"
-                        max={item.qty_diterima}
-                        value={item.qty_diterima_baik}
-                        onChange={(e) =>
-                          updateItem(index, "qty_diterima_baik", parseFloat(e.target.value) || 0)
-                        }
-                      />
-                    </div>
-
-                    <div className="col-span-2 space-y-1">
-                      <Label className="text-xs">Cacat</Label>
-                      <Input
-                        type="number"
-                        step="0.0001"
-                        min="0"
-                        value={item.qty_cacat}
-                        onChange={(e) =>
-                          updateItem(index, "qty_cacat", parseFloat(e.target.value) || 0)
-                        }
-                      />
-                    </div>
-
-                    <div className="col-span-2 space-y-1">
-                      <Label className="text-xs">Lokasi Rak</Label>
-                      <Input
-                        value={item.lokasi_rak || ""}
-                        onChange={(e) =>
-                          updateItem(index, "lokasi_rak", e.target.value)
-                        }
-                        placeholder="Rak A-1"
-                      />
+                      <Badge variant={d.status === "pending" ? "secondary" : "default"}>
+                        {d.status}
+                      </Badge>
                     </div>
                   </div>
                 ))}
@@ -389,18 +281,134 @@ export default function NewGRNPage() {
           </CardContent>
         </Card>
 
-        {/* Actions */}
-        <div className="flex justify-end gap-4">
-          <Link href="/dashboard/purchasing/grn">
-            <Button variant="outline" disabled={isSubmitting}>
-              Batal
-            </Button>
-          </Link>
-          <Button type="submit" disabled={isSubmitting || !selectedPO}>
-            <Save className="w-4 h-4 mr-2" />
-            {isSubmitting ? "Menyimpan..." : "Simpan GRN"}
-          </Button>
-        </div>
+        {selectedDelivery && (
+          <>
+            {/* GRN Info */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <ClipboardDocumentCheckIcon className="w-5 h-5" />
+                  Informasi Penerimaan
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="grid md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Tanggal Penerimaan *</Label>
+                  <Input
+                    type="date"
+                    value={formData.tanggal_penerimaan}
+                    onChange={(e) =>
+                      setFormData((prev) => ({ ...prev, tanggal_penerimaan: e.target.value }))
+                    }
+                    required
+                  />
+                </div>
+                <div className="space-y-2 md:col-span-2">
+                  <Label>Catatan</Label>
+                  <Textarea
+                    value={formData.catatan}
+                    onChange={(e) => setFormData((prev) => ({ ...prev, catatan: e.target.value }))}
+                    placeholder="Catatan penerimaan..."
+                    rows={3}
+                  />
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Items */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">Detail Item Diterima</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead className="bg-gray-50 border-b">
+                      <tr>
+                        <th className="text-left py-3 px-4 text-sm font-medium text-gray-700">Bahan Baku</th>
+                        <th className="text-center py-3 px-4 text-sm font-medium text-gray-700">Qty Order</th>
+                        <th className="text-center py-3 px-4 text-sm font-medium text-gray-700">Sudah Terima</th>
+                        <th className="text-center py-3 px-4 text-sm font-medium text-gray-700">Qty Diterima *</th>
+                        <th className="text-center py-3 px-4 text-sm font-medium text-gray-700">Qty Ditolak</th>
+                        <th className="text-center py-3 px-4 text-sm font-medium text-gray-700">Kondisi</th>
+                        <th className="text-left py-3 px-4 text-sm font-medium text-gray-700">Catatan</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y">
+                      {grnItems.map((item, index) => {
+                        const poItem = poItems.find((p) => p.id === item.id);
+                        const remaining = (poItem?.qty_ordered || 0) - (poItem?.qty_received || 0);
+                        return (
+                          <tr key={item.id}>
+                            <td className="py-3 px-4">
+                              <p className="font-medium">{item.nama_bahan}</p>
+                              <p className="text-xs text-gray-500">Sisa: {remaining} {poItem?.satuan}</p>
+                            </td>
+                            <td className="py-3 px-4 text-center">{poItem?.qty_ordered || 0}</td>
+                            <td className="py-3 px-4 text-center">{poItem?.qty_received || 0}</td>
+                            <td className="py-3 px-4">
+                              <Input
+                                type="number"
+                                min="0"
+                                max={remaining}
+                                value={item.qty_diterima}
+                                onChange={(e) =>
+                                  updateGrnItem(index, "qty_diterima", parseFloat(e.target.value) || 0)
+                                }
+                                className="w-24 mx-auto text-center"
+                              />
+                            </td>
+                            <td className="py-3 px-4">
+                              <Input
+                                type="number"
+                                min="0"
+                                value={item.qty_ditolak}
+                                onChange={(e) =>
+                                  updateGrnItem(index, "qty_ditolak", parseFloat(e.target.value) || 0)
+                                }
+                                className="w-24 mx-auto text-center"
+                              />
+                            </td>
+                            <td className="py-3 px-4">
+                              <select
+                                value={item.kondisi}
+                                onChange={(e) =>
+                                  updateGrnItem(index, "kondisi", e.target.value)
+                                }
+                                className="w-full p-2 border rounded text-sm"
+                              >
+                                <option value="baik">Baik</option>
+                                <option value="rusak">Rusak</option>
+                                <option value="cacat">Cacat</option>
+                              </select>
+                            </td>
+                            <td className="py-3 px-4">
+                              <Input
+                                value={item.catatan}
+                                onChange={(e) => updateGrnItem(index, "catatan", e.target.value)}
+                                placeholder="Catatan..."
+                                className="text-sm"
+                              />
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </CardContent>
+            </Card>
+
+            <div className="flex justify-end gap-3">
+              <Link href="/dashboard/purchasing/grn">
+                <Button type="button" variant="outline">Batal</Button>
+              </Link>
+              <Button type="submit" disabled={loading} className="bg-blue-600 hover:bg-blue-700">
+                {loading ? "Menyimpan..." : "Simpan Penerimaan"}
+              </Button>
+            </div>
+          </>
+        )}
       </form>
     </div>
   );

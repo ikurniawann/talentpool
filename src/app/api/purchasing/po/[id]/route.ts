@@ -3,7 +3,7 @@
 // ============================================
 
 import { NextRequest } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { createServiceClient } from "@/lib/supabase/service-client";
 import { z } from "zod";
 
 const poSchema = z.object({
@@ -24,7 +24,7 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
-    const supabase = await createClient();
+    const supabase = createServiceClient();
 
     // Get PO header
     const { data: po, error: poError } = await supabase
@@ -57,6 +57,8 @@ export async function GET(
 
     if (itemsError) throw itemsError;
 
+    if (itemsError) throw itemsError;
+
     return Response.json({
       success: true,
       data: {
@@ -80,7 +82,7 @@ export async function PUT(
 ) {
   try {
     const { id } = await params;
-    const supabase = await createClient();
+    const supabase = createServiceClient();
     const body = await request.json();
 
     // Validasi input
@@ -153,7 +155,7 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params;
-    const supabase = await createClient();
+    const supabase = createServiceClient();
 
     // Cek PO ada
     const { data: po, error: findError } = await supabase

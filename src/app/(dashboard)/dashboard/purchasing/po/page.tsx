@@ -283,12 +283,18 @@ export default function PurchaseOrdersPage() {
                       <div className="flex items-center gap-2">
                         <div className="w-24 h-2 bg-gray-200 rounded-full overflow-hidden">
                           <div
-                            className="h-full bg-green-500"
-                            style={{ width: `${po.receive_percentage}%` }}
+                            className={`h-full ${
+                              (po.receive_percentage || 0) >= 100
+                                ? "bg-green-500"
+                                : (po.receive_percentage || 0) > 0
+                                ? "bg-yellow-400"
+                                : "bg-gray-300"
+                            }`}
+                            style={{ width: `${po.receive_percentage || 0}%` }}
                           />
                         </div>
                         <span className="text-xs text-muted-foreground">
-                          {po.receive_percentage}%
+                          {po.receive_percentage || 0}%
                         </span>
                       </div>
                     )}

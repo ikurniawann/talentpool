@@ -119,11 +119,22 @@ export async function validatePOCanDelivery(
 ): Promise<{ valid: boolean; errors: string[]; po?: any }> {
   const errors: string[] = [];
 
-  const { data: po } = await supabase
+  console.log("=== validatePOCanDelivery ===");
+  console.log("Looking for PO with id:", poId);
+
+  const { data: po, error } = await supabase
     .from("purchase_orders")
-    .select("id, po_number, status, supplier_id, is_active")
+    .select("id, nomor_po, status, supplier_id, is_active")
     .eq("id", poId)
     .single();
+
+  console.log("Query result:", { po, error });
+  
+  if (error) {
+    console.error("Supabase query error:", error);
+    errors.push(`Database error: ${error.message}`);
+    return { valid: false, errors };
+  }
 
   if (!po) {
     errors.push("Purchase Order tidak ditemukan");
@@ -134,7 +145,8 @@ export async function validatePOCanDelivery(
     errors.push("Purchase Order sudah tidak aktif");
   }
 
-  if (po.status !== "sent" && po.status !== "partial" && po.status !== "approved") {
+  const statusLower = po.status?.toLowerCase();
+  if (statusLower !== "sent" && statusLower !== "partial" && statusLower !== "approved") {
     errors.push(
       `PO berstatus "${po.status}" — harus berstatus APPROVED, SENT, atau PARTIAL untuk dapat dibuatkan Delivery`
     );

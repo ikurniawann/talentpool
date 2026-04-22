@@ -321,35 +321,66 @@ export default function PODetailPage() {
             <CardTitle>Ringkasan</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Subtotal</span>
-              <span>{formatCurrency(po.subtotal)}</span>
-            </div>
-            <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Diskon</span>
-              <span>{formatCurrency(po.diskon_nominal)}</span>
-            </div>
-            <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">PPN ({po.ppn_persen}%)</span>
-              <span>{formatCurrency(po.ppn_nominal)}</span>
-            </div>
-            <div className="border-t pt-2 flex justify-between font-semibold text-lg">
-              <span>Total</span>
-              <span>{formatCurrency(po.total)}</span>
-            </div>
+            {(() => {
+              // Hitung dari items kalau po.subtotal = 0
+              const subtotalFromItems = po.items?.reduce((s: number, i: any) =>
+                s + (i.subtotal || (i.qty_ordered * i.harga_satuan) - (i.diskon_item || 0)), 0) || 0;
+              const subtotal = (po.subtotal && po.subtotal > 0) ? po.subtotal : subtotalFromItems;
+              const diskon = po.diskon_nominal || 0;
+              const ppnPersen = po.ppn_persen || 0;
+              const ppnNominal = po.ppn_nominal && po.ppn_nominal > 0
+                ? po.ppn_nominal
+                : Math.round((subtotal - diskon) * ppnPersen / 100);
+              const total = po.grand_total && po.grand_total > 0
+                ? po.grand_total
+                : (subtotal - diskon + ppnNominal);
+              return (
+                <>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Subtotal</span>
+                    <span>{formatCurrency(subtotal)}</span>
+                  </div>
+                  {diskon > 0 && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Diskon{po.diskon_persen ? ` (${po.diskon_persen}%)` : ""}</span>
+                      <span className="text-red-500">- {formatCurrency(diskon)}</span>
+                    </div>
+                  )}
+                  {ppnPersen > 0 && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">PPN ({ppnPersen}%)</span>
+                      <span>{formatCurrency(ppnNominal)}</span>
+                    </div>
+                  )}
+                  <div className="border-t pt-2 flex justify-between font-semibold text-lg">
+                    <span>Total</span>
+                    <span>{formatCurrency(total)}</span>
+                  </div>
+                </>
+              );
+            })()}
 
             {po.status !== "DRAFT" && po.status !== "CANCELLED" && (
               <div className="pt-4 border-t mt-4">
                 <div className="text-sm text-muted-foreground mb-2">Progress Penerimaan</div>
                 <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
                   <div
-                    className="h-full bg-green-500"
+                    className={`h-full transition-all duration-500 ${
+                      (po.receive_percentage || 0) >= 100
+                        ? "bg-green-500"
+                        : (po.receive_percentage || 0) > 0
+                        ? "bg-yellow-500"
+                        : "bg-gray-400"
+                    }`}
                     style={{ width: `${po.receive_percentage || 0}%` }}
                   />
                 </div>
                 <div className="text-right text-sm mt-1">
                   {po.total_qty_received || 0} / {po.total_qty_ordered || 0} item
                   ({po.receive_percentage || 0}%)
+                  {(po.receive_percentage || 0) > 0 && (po.receive_percentage || 0) < 100 && (
+                    <span className="ml-2 text-yellow-600 font-medium">(Sebagian)</span>
+                  )}
                 </div>
               </div>
             )}

@@ -4,295 +4,243 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { BreadcrumbNav } from "@/modules/purchasing/components/breadcrumb/BreadcrumbNav";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Plus, Search, MoreVertical, Package, ClipboardCheck, AlertCircle } from "lucide-react";
-import { toast } from "sonner";
-import { GoodsReceipt, GRNStatus, PaginatedResponse } from "@/types/purchasing";
-import { listGoodsReceipts } from "@/lib/purchasing";
-import {
-  Pagination,
-  PaginationContent,
-  PaginationItem,
-  PaginationLink,
-  PaginationNext,
-  PaginationPrevious,
-} from "@/components/ui/pagination";
+  ClipboardDocumentCheckIcon,
+  PlusIcon,
+  MagnifyingGlassIcon,
+  EyeIcon,
+} from "@heroicons/react/24/outline";
 
-const STATUS_OPTIONS: { value: GRNStatus | ""; label: string }[] = [
-  { value: "", label: "Semua Status" },
-  { value: "DRAFT", label: "Draft" },
-  { value: "QC_PENDING", label: "Menunggu QC" },
-  { value: "QC_APPROVED", label: "QC Approved" },
-  { value: "QC_REJECTED", label: "QC Rejected" },
-  { value: "COMPLETED", label: "Selesai" },
-];
+import { formatDate } from "@/lib/purchasing/utils";
 
-export default function GRNPage() {
-  const [grns, setGrns] = useState<GoodsReceipt[]>([]);
+type GrnStatus = "pending" | "partially_received" | "received" | "rejected";
+
+const STATUS_COLORS: Record<GrnStatus, string> = {
+  pending: "bg-yellow-100 text-yellow-800",
+  partially_received: "bg-orange-100 text-orange-800",
+  received: "bg-green-100 text-green-800",
+  rejected: "bg-red-100 text-red-800",
+};
+
+const STATUS_LABELS: Record<GrnStatus, string> = {
+  pending: "Menunggu",
+  partially_received: "Diterima Sebagian",
+  received: "Diterima",
+  rejected: "Ditolak",
+};
+
+interface GrnRow {
+  id: string;
+  nomor_grn: string;
+  delivery_id: string;
+  delivery_number: string;
+  po_id: string;
+  po_number: string;
+  supplier_name: string;
+  no_surat_jalan: string;
+  tanggal_penerimaan: string;
+  status: GrnStatus;
+  total_item_diterima: number;
+  total_item_ditolak: number;
+  created_at: string;
+}
+
+export default function GrnListPage() {
+  const [grns, setGrns] = useState<GrnRow[]>([]);
   const [loading, setLoading] = useState(true);
-  const [pagination, setPagination] = useState({
-    page: 1,
-    limit: 20,
-    total: 0,
-    total_pages: 0,
-  });
-  const [searchQuery, setSearchQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState<GRNStatus | "">("");
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const limit = 15;
 
   useEffect(() => {
-    loadGRNs();
-  }, [pagination.page, statusFilter]);
+    fetchGrns();
+  }, [page, statusFilter]);
 
-  useEffect(() => {
-    const timeout = setTimeout(() => {
-      loadGRNs();
-    }, 300);
-    return () => clearTimeout(timeout);
-  }, [searchQuery]);
-
-  const loadGRNs = async () => {
+  async function fetchGrns() {
+    setLoading(true);
     try {
-      setLoading(true);
-      const response = await listGoodsReceipts({
-        status: statusFilter || undefined,
-        page: pagination.page,
-        limit: pagination.limit,
-      });
-      setGrns(response.data);
-      setPagination((prev) => ({
-        ...prev,
-        total: response.pagination.total,
-        total_pages: response.pagination.total_pages,
-      }));
-    } catch (error) {
-      console.error("Error loading GRNs:", error);
-      toast.error("Gagal memuat data GRN");
+      const params = new URLSearchParams();
+      params.append("page", page.toString());
+      params.append("limit", limit.toString());
+      if (statusFilter !== "all") params.append("status", statusFilter);
+      if (search) params.append("search", search);
+
+      const res = await fetch(`/api/purchasing/grn?${params}`);
+      const data = await res.json();
+      if (data.data) {
+        setGrns(data.data);
+        setTotalPages(Math.ceil((data.pagination?.total || 0) / limit));
+      }
+    } catch (e) {
+      console.error(e);
     } finally {
       setLoading(false);
     }
-  };
-
-  const getStatusBadge = (status: GRNStatus) => {
-    const styles: Record<GRNStatus, string> = {
-      DRAFT: "bg-gray-100 text-gray-800",
-      QC_PENDING: "bg-yellow-100 text-yellow-800",
-      QC_APPROVED: "bg-green-100 text-green-800",
-      QC_REJECTED: "bg-red-100 text-red-800",
-      COMPLETED: "bg-blue-100 text-blue-800",
-    };
-    const labels: Record<GRNStatus, string> = {
-      DRAFT: "Draft",
-      QC_PENDING: "Menunggu QC",
-      QC_APPROVED: "QC Approved",
-      QC_REJECTED: "QC Rejected",
-      COMPLETED: "Selesai",
-    };
-    return <Badge className={styles[status]}>{labels[status]}</Badge>;
-  };
-
-  const formatDate = (dateStr?: string) => {
-    if (!dateStr) return "-";
-    return new Date(dateStr).toLocaleDateString("id-ID");
-  };
+  }
 
   return (
-    <div className="container mx-auto py-6 space-y-6">
-      {/* Header */}
-      <div className="flex justify-between items-center">
+    <div className="space-y-6">
+      <BreadcrumbNav
+        items={[
+          { label: "Dashboard", href: "/dashboard" },
+          { label: "Purchasing", href: "/dashboard/purchasing" },
+          { label: "Penerimaan" },
+        ]}
+      />
+
+      <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Penerimaan Barang (GRN)</h1>
-          <p className="text-muted-foreground">
-            Goods Receipt Note - Penerimaan barang dari supplier
-          </p>
+          <h1 className="text-2xl font-bold text-gray-900">Penerimaan Barang</h1>
+          <p className="text-sm text-gray-500">Catat penerimaan barang dari supplier</p>
         </div>
         <Link href="/dashboard/purchasing/grn/new">
-          <Button>
-            <Plus className="w-4 h-4 mr-2" />
-            Buat GRN Baru
+          <Button className="bg-blue-600 hover:bg-blue-700">
+            <PlusIcon className="w-4 h-4 mr-2" />
+            Input Penerimaan
           </Button>
         </Link>
       </div>
 
-      {/* Filters */}
-      <div className="flex flex-wrap gap-4">
-        <div className="relative flex-1 min-w-[300px]">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input
-            placeholder="Cari nomor GRN atau PO..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10"
-          />
-        </div>
-        <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as GRNStatus | "")}>
-          <SelectTrigger className="w-[200px]">
-            <SelectValue placeholder="Status" />
-          </SelectTrigger>
-          <SelectContent>
-            {STATUS_OPTIONS.map((opt) => (
-              <SelectItem key={opt.value || "all"} value={opt.value || "all"}>
-                {opt.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg flex items-center gap-2">
+            <ClipboardDocumentCheckIcon className="w-5 h-5" />
+            Filter Pencarian
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="flex flex-wrap gap-4">
+          <div className="relative flex-1 min-w-[200px]">
+            <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <Input
+              placeholder="Cari nomor GRN / surat jalan..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && fetchGrns()}
+              className="pl-9"
+            />
+          </div>
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="Semua Status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Semua Status</SelectItem>
+              <SelectItem value="pending">Menunggu</SelectItem>
+              <SelectItem value="partially_received">Diterima Sebagian</SelectItem>
+              <SelectItem value="received">Diterima</SelectItem>
+              <SelectItem value="rejected">Ditolak</SelectItem>
+            </SelectContent>
+          </Select>
+        </CardContent>
+      </Card>
 
-      {/* Table */}
-      <div className="border rounded-lg">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Nomor GRN</TableHead>
-              <TableHead>Nomor PO</TableHead>
-              <TableHead>Tanggal Terima</TableHead>
-              <TableHead>Gudang</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead className="w-[50px]"></TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {loading ? (
-              <TableRow>
-                <TableCell colSpan={6} className="text-center py-8">
-                  Memuat data...
-                </TableCell>
-              </TableRow>
-            ) : grns.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={6} className="text-center py-8">
-                  Tidak ada data GRN
-                </TableCell>
-              </TableRow>
-            ) : (
-              grns.map((grn) => (
-                <TableRow key={grn.id}>
-                  <TableCell className="font-medium">
-                    <Link
-                      href={`/dashboard/purchasing/grn/${grn.id}`}
-                      className="hover:underline text-blue-600"
-                    >
-                      {grn.nomor_grn}
-                    </Link>
-                  </TableCell>
-                  <TableCell>{grn.po?.nomor_po || "-"}</TableCell>
-                  <TableCell>{formatDate(grn.received_at)}</TableCell>
-                  <TableCell>{grn.gudang_tujuan}</TableCell>
-                  <TableCell>{getStatusBadge(grn.status)}</TableCell>
-                  <TableCell>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon">
-                          <MoreVertical className="w-4 h-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <Link href={`/dashboard/purchasing/grn/${grn.id}`}>
-                          <DropdownMenuItem>
-                            <Package className="w-4 h-4 mr-2" />
-                            Lihat Detail
-                          </DropdownMenuItem>
-                        </Link>
-                        {grn.status === "DRAFT" && (
-                          <Link href={`/dashboard/purchasing/grn/${grn.id}/edit`}>
-                            <DropdownMenuItem>Edit GRN</DropdownMenuItem>
-                          </Link>
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg flex items-center gap-2">
+            <ClipboardDocumentCheckIcon className="w-5 h-5" />
+            Daftar Penerimaan
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-gray-50 border-b">
+                <tr>
+                  {["No. GRN", "Supplier", "No. Surat Jalan", "PO", "Tgl Terima", "Status", "Item Diterima", "Aksi"].map((h) => (
+                    <th key={h} className="text-left py-3 px-4 text-sm font-medium text-gray-700">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y">
+                {loading ? (
+                  <tr>
+                    <td colSpan={8} className="py-8 text-center text-gray-400">Memuat...</td>
+                  </tr>
+                ) : grns.length === 0 ? (
+                  <tr>
+                    <td colSpan={8} className="py-12 text-center text-gray-400">
+                      <ClipboardDocumentCheckIcon className="w-12 h-12 mx-auto mb-3 opacity-30" />
+                      Belum ada data penerimaan
+                    </td>
+                  </tr>
+                ) : (
+                  grns.map((g) => (
+                    <tr key={g.id} className="hover:bg-gray-50">
+                      <td className="py-3 px-4 text-sm font-mono font-medium text-blue-600">{g.nomor_grn}</td>
+                      <td className="py-3 px-4 text-sm font-medium">{g.supplier_name || "—"}</td>
+                      <td className="py-3 px-4 text-sm">{g.no_surat_jalan || "—"}</td>
+                      <td className="py-3 px-4 text-sm">{g.po_number || "—"}</td>
+                      <td className="py-3 px-4 text-sm">{formatDate(g.tanggal_penerimaan)}</td>
+                      <td className="py-3 px-4">
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_COLORS[g.status]}`}>
+                          {STATUS_LABELS[g.status]}
+                        </span>
+                      </td>
+                      <td className="py-3 px-4 text-sm">
+                        {g.total_item_diterima || 0}
+                        {g.total_item_ditolak > 0 && (
+                          <span className="text-red-500 ml-1">({g.total_item_ditolak} ditolak)</span>
                         )}
-                        {(grn.status === "DRAFT" || grn.status === "QC_PENDING") && (
-                          <Link href={`/dashboard/purchasing/grn/${grn.id}/qc`}>
-                            <DropdownMenuItem>
-                              <ClipboardCheck className="w-4 h-4 mr-2" />
-                              QC Inspection
-                            </DropdownMenuItem>
+                      </td>
+                      <td className="py-3 px-4">
+                        <div className="flex items-center gap-1">
+                          <Link href={`/dashboard/purchasing/grn/${g.id}`}>
+                            <Button variant="ghost" size="sm" title="Lihat Detail">
+                              <EyeIcon className="w-4 h-4" />
+                            </Button>
                           </Link>
-                        )}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableCell>
-                </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </div>
+                          {g.status === "partially_received" && (
+                            <Link href={`/dashboard/purchasing/grn/continue/${g.id}`}>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="text-orange-600 border-orange-300 hover:bg-orange-50 text-xs px-2"
+                                title="Lanjutkan Penerimaan"
+                              >
+                                Lanjutkan
+                              </Button>
+                            </Link>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
 
-      {/* Pagination */}
-      {pagination.total_pages > 1 && (
-        <Pagination>
-          <PaginationContent>
-            <PaginationItem>
-              <PaginationPrevious
-                onClick={() =>
-                  setPagination((prev) => ({
-                    ...prev,
-                    page: Math.max(1, prev.page - 1),
-                  }))
-                }
-                className={
-                  pagination.page <= 1
-                    ? "pointer-events-none opacity-50"
-                    : "cursor-pointer"
-                }
-              />
-            </PaginationItem>
-            {Array.from(
-              { length: Math.min(5, pagination.total_pages) },
-              (_, i) => {
-                const pageNum = i + 1;
-                return (
-                  <PaginationItem key={pageNum}>
-                    <PaginationLink
-                      onClick={() =>
-                        setPagination((prev) => ({ ...prev, page: pageNum }))
-                      }
-                      isActive={pageNum === pagination.page}
-                      className="cursor-pointer"
-                    >
-                      {pageNum}
-                    </PaginationLink>
-                  </PaginationItem>
-                );
-              }
-            )}
-            <PaginationItem>
-              <PaginationNext
-                onClick={() =>
-                  setPagination((prev) => ({
-                    ...prev,
-                    page: Math.min(pagination.total_pages, prev.page + 1),
-                  }))
-                }
-                className={
-                  pagination.page >= pagination.total_pages
-                    ? "pointer-events-none opacity-50"
-                    : "cursor-pointer"
-                }
-              />
-            </PaginationItem>
-          </PaginationContent>
-        </Pagination>
-      )}
+          {totalPages > 1 && (
+            <div className="flex justify-center gap-2 mt-4">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={page === 1}
+              >
+                Prev
+              </Button>
+              <span className="py-2 px-4 text-sm text-gray-600">
+                Halaman {page} dari {totalPages}
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                disabled={page === totalPages}
+              >
+                Next
+              </Button>
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }

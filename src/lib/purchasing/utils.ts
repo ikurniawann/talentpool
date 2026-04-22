@@ -89,12 +89,18 @@ export function formatRupiah(amount: number): string {
 /**
  * Format date to Indonesian format
  */
-export function formatDate(date: string | Date): string {
-  return new Intl.DateTimeFormat("id-ID", {
-    day: "2-digit",
-    month: "long",
-    year: "numeric",
-  }).format(new Date(date));
+export function formatDate(date: string | Date | null | undefined): string {
+  if (!date) return "—";
+  try {
+    const d = new Date(date);
+    const day = String(d.getDate()).padStart(2, "0");
+    const months = ["Jan","Feb","Mar","Apr","Mei","Jun","Jul","Agt","Sep","Okt","Nov","Des"];
+    const month = months[d.getMonth()];
+    const year = d.getFullYear();
+    return `${day}-${month}-${year}`;
+  } catch {
+    return String(date);
+  }
 }
 
 /**

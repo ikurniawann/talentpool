@@ -67,14 +67,7 @@ export async function GET(request: NextRequest) {
 
     let query = supabase
       .from("deliveries")
-      .select(
-        `
-        *,
-        supplier:supplier_id(id, kode, nama),
-        purchase_order:purchase_order_id(id, po_number, status)
-      `,
-        { count: "exact" }
-      )
+      .select("*", { count: "exact" })
       .eq("is_active", true)
       .order("created_at", { ascending: false })
       .range(offset, offset + limit - 1);
@@ -92,8 +85,39 @@ export async function GET(request: NextRequest) {
 
     if (error) throw error;
 
+    // Fetch PO numbers for all deliveries
+    const poIds = [...new Set((data || []).map((d: any) => d.purchase_order_id).filter(Boolean))];
+    let poMap = new Map();
+    
+    if (poIds.length > 0) {
+      const { data: poData, error: poError } = await supabase
+        .from("purchase_orders")
+        .select("id, nomor_po")
+        .in("id", poIds);
+      
+      if (!poError && poData) {
+        poMap = new Map(poData.map((po: any) => [po.id, po.nomor_po]));
+      }
+    }
+
+    // Transform data to match frontend interface
+    const transformedData = (data || []).map((d: any) => ({
+      id: d.id,
+      delivery_number: d.nomor_resi,
+      po_id: d.purchase_order_id,
+      po_number: poMap.get(d.purchase_order_id) || d.purchase_order_id,
+      no_surat_jalan: d.no_surat_jalan,
+      ekspedisi: d.kurir,
+      no_resi: d.no_resi || d.nomor_resi, // Prioritaskan no_resi dari user
+      tanggal_kirim: d.tanggal_kirim,
+      tanggal_estimasi_tiba: d.tanggal_estimasi_tiba,
+      tanggal_aktual_tiba: d.tanggal_aktual_tiba,
+      status: d.status,
+      created_at: d.created_at,
+    }));
+
     return paginatedResponse(
-      data || [],
+      transformedData,
       {
         page,
         limit,
@@ -122,10 +146,14 @@ export async function POST(request: NextRequest) {
     const supabase = await createClient();
 
     const body = await request.json();
+    console.log("=== CREATE DELIVERY ===");
+    console.log("Body:", JSON.stringify(body, null, 2));
     const validated = createDeliverySchema.parse(body);
+    console.log("Validated po_id:", validated.po_id);
 
     // Validate PO can have delivery
     const { valid, errors, po } = await validatePOCanDelivery(supabase, validated.po_id);
+    console.log("PO validation result:", { valid, errors, po });
     if (!valid) {
       throw ApiError.badRequest(errors.join("; "));
     }
@@ -134,30 +162,30 @@ export async function POST(request: NextRequest) {
     const deliveryNumber = await generateDeliveryNumber(supabase);
 
     // Create delivery record
+    const insertData: any = {
+      nomor_resi: deliveryNumber,
+      no_resi: validated.no_resi || null,
+      purchase_order_id: validated.po_id,
+      supplier_id: po.supplier_id,
+      tanggal_kirim: validated.tanggal_kirim || new Date().toISOString().split("T")[0],
+      tanggal_estimasi_tiba: validated.tanggal_estimasi_tiba || null,
+      kurir: validated.ekspedisi || null,
+      no_surat_jalan: validated.no_surat_jalan,
+      status: "pending",
+      catatan: validated.catatan || null,
+      created_by: user.id,
+    };
+
     const { data: delivery, error } = await supabase
       .from("deliveries")
-      .insert({
-        nomor_resi: deliveryNumber,
-        purchase_order_id: validated.po_id,
-        supplier_id: po.supplier_id,
-        tanggal_kirim: validated.tanggal_kirim || new Date().toISOString().split("T")[0],
-        tanggal_estimasi_tiba: validated.tanggal_estimasi_tiba || null,
-        kurir: validated.ekspedisi || null,
-        no_surat_jalan: validated.no_surat_jalan,
-        status: "pending",
-        catatan: validated.catatan || null,
-        created_by: user.id,
-      })
-      .select(
-        `
-        *,
-        supplier:supplier_id(id, kode, nama),
-        purchase_order:purchase_order_id(id, po_number, status)
-      `
-      )
+      .insert(insertData)
+      .select()
       .single();
 
-    if (error) throw error;
+    if (error) {
+      console.error("Supabase insert error:", error);
+      throw error;
+    }
 
     return createdResponse(delivery, `Delivery ${deliveryNumber} berhasil dibuat`);
   } catch (error) {

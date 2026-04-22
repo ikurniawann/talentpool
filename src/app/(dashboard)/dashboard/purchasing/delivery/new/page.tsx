@@ -101,6 +101,9 @@ export default function CreateDeliveryPage() {
 
     setLoading(true);
     try {
+      console.log("=== SUBMIT DELIVERY FORM ===");
+      console.log("formData:", formData);
+      
       const res = await fetch("/api/purchasing/delivery", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -108,6 +111,7 @@ export default function CreateDeliveryPage() {
       });
 
       const data = await res.json();
+      console.log("API Response:", res.status, data);
       
       if (res.ok) {
         toast({
@@ -117,12 +121,13 @@ export default function CreateDeliveryPage() {
         router.push("/dashboard/purchasing/delivery");
         router.refresh();
       } else {
-        throw new Error(data.error?.message || data.message || "Gagal membuat delivery");
+        throw new Error(data.error?.message || data.message || data.error || "Gagal membuat delivery");
       }
     } catch (error: any) {
+      console.error("Submit error:", error);
       toast({
         title: "❌ Error",
-        description: error.message,
+        description: error.message || "Gagal membuat delivery",
         variant: "destructive",
       });
     } finally {
@@ -176,26 +181,26 @@ export default function CreateDeliveryPage() {
                     Purchase Order <span className="text-red-500">*</span>
                   </Label>
                   <Popover open={poPopoverOpen} onOpenChange={setPoPopoverOpen}>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant="outline"
-                        role="combobox"
-                        aria-expanded={poPopoverOpen}
-                        className="w-full justify-between h-12 text-left font-normal"
-                        disabled={fetchingPOs}
-                      >
-                        {fetchingPOs ? (
-                          <span className="text-gray-400">Memuat PO...</span>
-                        ) : selectedPO ? (
-                          <div className="flex flex-col items-start">
-                            <span className="font-medium">{selectedPO.nomor_po}</span>
-                            <span className="text-xs text-gray-500">{selectedPO.nama_supplier}</span>
-                          </div>
-                        ) : (
-                          <span className="text-gray-400">Pilih Purchase Order</span>
-                        )}
-                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                      </Button>
+                    <PopoverTrigger
+                      role="combobox"
+                      aria-expanded={poPopoverOpen}
+                      disabled={fetchingPOs}
+                      className={cn(
+                        "flex items-center w-full h-12 px-3 py-2 text-sm border rounded-lg border-gray-300 bg-white hover:bg-gray-50 text-left",
+                        fetchingPOs && "opacity-50 cursor-not-allowed"
+                      )}
+                    >
+                      {fetchingPOs ? (
+                        <span className="text-gray-400">Memuat PO...</span>
+                      ) : selectedPO ? (
+                        <div className="flex flex-col items-start">
+                          <span className="font-medium">{selectedPO.nomor_po}</span>
+                          <span className="text-xs text-gray-500">{selectedPO.nama_supplier}</span>
+                        </div>
+                      ) : (
+                        <span className="text-gray-400">Pilih Purchase Order</span>
+                      )}
+                      <ChevronsUpDown className="ml-auto h-4 w-4 shrink-0 opacity-50" />
                     </PopoverTrigger>
                     <PopoverContent className="w-[400px] p-0" align="start">
                       <Command>
@@ -204,13 +209,18 @@ export default function CreateDeliveryPage() {
                           <CommandEmpty>Tidak ada PO yang ditemukan</CommandEmpty>
                           <CommandGroup>
                             {poList.map((po) => (
-                              <CommandItem
+                              <div
                                 key={po.id}
-                                value={`${po.nomor_po} ${po.nama_supplier}`}
-                                onSelect={() => {
+                                role="option"
+                                aria-selected={formData.po_id === po.id}
+                                onClick={() => {
                                   setFormData({ ...formData, po_id: po.id });
                                   setPoPopoverOpen(false);
                                 }}
+                                className={cn(
+                                  "relative flex cursor-pointer select-none items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground",
+                                  formData.po_id === po.id && "bg-accent text-accent-foreground"
+                                )}
                               >
                                 <CheckIcon
                                   className={cn(
@@ -222,7 +232,7 @@ export default function CreateDeliveryPage() {
                                   <span className="font-medium">{po.nomor_po}</span>
                                   <span className="text-xs text-gray-500">{po.nama_supplier}</span>
                                 </div>
-                              </CommandItem>
+                              </div>
                             ))}
                           </CommandGroup>
                         </CommandList>

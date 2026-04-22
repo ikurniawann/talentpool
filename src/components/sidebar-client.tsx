@@ -18,6 +18,7 @@ import {
   DocumentTextIcon,
   ClipboardDocumentCheckIcon,
   BookOpenIcon,
+  CubeIcon,
 } from "@heroicons/react/24/outline";
 import {
   HomeIcon as HomeIconSolid,
@@ -32,6 +33,7 @@ import {
   DocumentTextIcon as DocumentTextIconSolid,
   ClipboardDocumentCheckIcon as ClipboardDocumentCheckIconSolid,
   BookOpenIcon as BookOpenIconSolid,
+  CubeIcon as CubeIconSolid,
 } from "@heroicons/react/24/solid";
 
 const iconMap: Record<string, { outline: React.ElementType; solid: React.ElementType }> = {
@@ -44,6 +46,7 @@ const iconMap: Record<string, { outline: React.ElementType; solid: React.Element
   logout: { outline: ArrowRightStartOnRectangleIcon, solid: LogoutIconSolid },
   briefcase: { outline: BriefcaseIcon, solid: BriefcaseIconSolid },
   shopping: { outline: ShoppingCartIcon, solid: ShoppingCartIconSolid },
+  cube: { outline: CubeIcon, solid: CubeIconSolid },
   pr: { outline: DocumentTextIcon, solid: DocumentTextIconSolid },
   po: { outline: ClipboardDocumentCheckIcon, solid: ClipboardDocumentCheckIconSolid },
   reports: { outline: BookOpenIcon, solid: BookOpenIconSolid },
