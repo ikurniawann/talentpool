@@ -94,13 +94,20 @@ export default function ContinueGrnPage() {
         catatan: grn.catatan || "",
       });
 
-      // Fetch PO items to get remaining quantities
-      await fetchPOItems(grn.po_id);
-
       // Initialize GRN items with existing data
       if (grn.items && grn.items.length > 0) {
-        setGrnItems(
-          grn.items.map((item: any) => ({
+        console.log("=== GRN ITEMS ===");
+        console.log("GRN Items:", grn.items);
+        
+        const mappedItems = grn.items.map((item: any) => {
+          console.log("Mapping GRN item:", {
+            id: item.id,
+            purchase_order_item_id: item.purchase_order_item_id,
+            raw_material_id: item.raw_material_id,
+            qty_diterima: item.qty_diterima,
+          });
+          
+          return {
             id: item.id,
             grn_id: item.grn_id,
             purchase_order_item_id: item.purchase_order_item_id,
@@ -111,8 +118,15 @@ export default function ContinueGrnPage() {
             kondisi: item.kondisi || "baik",
             catatan: item.catatan || "",
             satuan: item.satuan?.nama || item.satuan?.nama_satuan || "pcs",
-          }))
-        );
+          };
+        });
+        
+        setGrnItems(mappedItems);
+        
+        // After loading GRN items, try to enrich with PO data
+        if (grn.po_id) {
+          await fetchPOItems(grn.po_id);
+        }
       }
     } catch (error: any) {
       console.error("Fetch error:", error);
@@ -128,10 +142,15 @@ export default function ContinueGrnPage() {
 
   async function fetchPOItems(poId: string) {
     try {
+      // Try fetch from PO API first
       const res = await fetch(`/api/purchasing/po/${poId}`);
       const data = await res.json();
 
-      if (data.data?.items) {
+      console.log("=== FETCH PO ITEMS ===");
+      console.log("PO ID:", poId);
+      console.log("Response:", data);
+
+      if (data.data?.items && data.data.items.length > 0) {
         const items = data.data.items.map((item: any) => ({
           id: item.id,
           raw_material_id: item.raw_material_id,
@@ -140,10 +159,33 @@ export default function ContinueGrnPage() {
           qty_received: item.qty_received || 0,
           satuan: item.satuan?.nama || item.satuan?.nama_satuan || "pcs",
         }));
+        console.log("Mapped PO Items:", items);
         setPoItems(items);
+        return;
+      }
+
+      // Fallback: Fetch purchase_order_items directly
+      console.warn("No items in PO response, fetching directly from purchase_order_items...");
+      const directRes = await fetch(`/api/purchasing/po-items?po_id=${poId}`);
+      const directData = await directRes.json();
+      
+      if (directData.data && directData.data.length > 0) {
+        const items = directData.data.map((item: any) => ({
+          id: item.id,
+          raw_material_id: item.raw_material_id,
+          nama_bahan: item.raw_material?.nama || item.raw_material?.nama_bahan || "Unknown",
+          qty_ordered: item.qty_ordered || 0,
+          qty_received: item.qty_received || 0,
+          satuan: item.satuan?.nama || item.satuan?.nama_satuan || "pcs",
+        }));
+        console.log("Direct fetched PO Items:", items);
+        setPoItems(items);
+      } else {
+        console.warn("No PO items found even with direct fetch");
       }
     } catch (e) {
       console.error("Failed to fetch PO items:", e);
+      // Fallback: PO items will be empty, but GRN items already loaded
     }
   }
 
@@ -408,19 +450,42 @@ export default function ContinueGrnPage() {
                 </thead>
                 <tbody className="divide-y">
                   {grnItems.map((item, index) => {
-                    const poItem = poItems.find((p) => p.id === item.purchase_order_item_id);
-                    const remaining = getRemainingQty(item.purchase_order_item_id || "");
+                    // Try to find PO item by purchase_order_item_id first
+                    let poItem = poItems.find((p) => p.id === item.purchase_order_item_id);
+                    
+                    // Fallback: match by raw_material_id if purchase_order_item_id is null
+                    if (!poItem && item.raw_material_id) {
+                      console.log(`[Fallback] Matching by raw_material_id: ${item.raw_material_id}`);
+                      poItem = poItems.find((p) => p.raw_material_id === item.raw_material_id);
+                    }
+                    
+                    const qtyOrdered = poItem?.qty_ordered || 0;
+                    const qtyReceived = poItem?.qty_received || 0;
+                    const alreadyReceivedInThisGrn = item.qty_diterima || 0;
+                    const remaining = Math.max(0, qtyOrdered - qtyReceived - alreadyReceivedInThisGrn);
+                    
+                    console.log(`[Item ${index}]`, {
+                      nama: item.nama_bahan,
+                      purchase_order_item_id: item.purchase_order_item_id,
+                      raw_material_id: item.raw_material_id,
+                      qtyOrdered,
+                      qtyReceived,
+                      alreadyReceivedInThisGrn,
+                      remaining,
+                      poItemId: poItem?.id,
+                    });
+                    
                     return (
                       <tr key={item.id}>
                         <td className="py-3 px-4">
                           <p className="font-medium">{item.nama_bahan}</p>
                           <p className="text-xs text-gray-500">
-                            Satuan: {poItem?.satuan || "pcs"}
+                            Satuan: {poItem?.satuan || item.satuan || "pcs"}
                           </p>
                         </td>
-                        <td className="py-3 px-4 text-center">{poItem?.qty_ordered || 0}</td>
+                        <td className="py-3 px-4 text-center font-medium">{qtyOrdered}</td>
                         <td className="py-3 px-4 text-center text-blue-600 font-medium">
-                          {poItem?.qty_received || 0}
+                          {qtyReceived}
                         </td>
                         <td className="py-3 px-4 text-center text-orange-600 font-medium">
                           {remaining}

@@ -67,13 +67,30 @@ export async function GET(
     const { data: items, error: itemsError } = await supabase
       .from("grn_items")
       .select(`
-        *,
+        id,
+        grn_id,
+        delivery_id,
+        purchase_order_item_id,
+        raw_material_id,
+        qty_diterima,
+        qty_ditolak,
+        kondisi,
+        catatan,
+        satuan_id,
+        is_active,
+        created_at,
+        updated_at,
         raw_material:raw_material_id(id, nama, kode)
       `)
       .eq("grn_id", id)
       .eq("is_active", true);
 
     if (itemsError) throw itemsError;
+
+    console.log(`[GRN/${id}] Fetched ${items?.length || 0} items`);
+    if (items && items.length > 0) {
+      console.log(`[GRN/${id}] Sample item:`, items[0]);
+    }
 
     // Get related data
     const [{ data: delivery }, { data: po }, { data: supplier }] = await Promise.all([
