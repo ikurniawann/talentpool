@@ -14,11 +14,24 @@ import {
   updatePOStatusAfterGrn,
   GrnStatus,
 } from "@/lib/purchasing/grn";
-import { removeInventoryFromGrn } from "@/lib/inventory";
+import { removeInventoryFromGrn, addInventoryFromGrn } from "@/lib/inventory";
+
+const grnItemUpdateSchema = z.object({
+  id: z.string().uuid().optional(),
+  grn_id: z.string().uuid().optional(),
+  purchase_order_item_id: z.string().uuid().optional(),
+  raw_material_id: z.string().uuid(),
+  qty_diterima: z.number().min(0),
+  qty_ditolak: z.number().min(0),
+  kondisi: z.enum(["baik", "rusak", "cacat"]).default("baik"),
+  catatan: z.string().optional().nullable(),
+});
 
 const updateGrnSchema = z.object({
   status: z.enum(["pending", "partially_received", "received", "rejected"]).optional(),
   catatan: z.string().optional(),
+  items: z.array(grnItemUpdateSchema).optional(),
+  tanggal_penerimaan: z.string().optional(),
 });
 
 // GET /api/purchasing/grn/[id] - Get GRN detail
@@ -86,7 +99,7 @@ export async function GET(
   }
 }
 
-// PATCH /api/purchasing/grn/[id] - Update GRN status
+// PATCH /api/purchasing/grn/[id] - Update GRN status and items
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -123,12 +136,86 @@ export async function PATCH(
       validateGrnTransition(currentGrn.status as GrnStatus, validated.status);
     }
 
-    // Update GRN
+    // Get existing GRN items
+    const { data: existingItems } = await supabase
+      .from("grn_items")
+      .select("*")
+      .eq("grn_id", id)
+      .eq("is_active", true);
+
+    // Calculate qty changes for inventory and PO updates
+    const qtyChanges: {
+      raw_material_id: string;
+      purchase_order_item_id?: string;
+      oldQtyDiterima: number;
+      newQtyDiterima: number;
+      diff: number;
+    }[] = [];
+
+    // Build map of existing items
+    const existingItemsMap = new Map(
+      (existingItems || []).map((item) => [item.purchase_order_item_id || item.raw_material_id, item])
+    );
+
+    // Process new items from request
+    if (validated.items && validated.items.length > 0) {
+      for (const newItem of validated.items) {
+        const existingItem = existingItemsMap.get(
+          newItem.purchase_order_item_id || newItem.raw_material_id
+        );
+        const oldQty = existingItem?.qty_diterima || 0;
+        const newQty = newItem.qty_diterima;
+        const diff = newQty - oldQty;
+
+        if (diff !== 0) {
+          qtyChanges.push({
+            raw_material_id: newItem.raw_material_id,
+            purchase_order_item_id: newItem.purchase_order_item_id,
+            oldQtyDiterima: oldQty,
+            newQtyDiterima: newQty,
+            diff,
+          });
+        }
+      }
+    }
+
+    // Update GRN header
     const updateData: any = {
       ...validated,
       updated_by: user.id,
       updated_at: new Date().toISOString(),
     };
+
+    // Recalculate totals from items
+    if (validated.items && validated.items.length > 0) {
+      const totalDiterima = validated.items.reduce((sum, item) => sum + item.qty_diterima, 0);
+      const totalDitolak = validated.items.reduce((sum, item) => sum + item.qty_ditolak, 0);
+      updateData.total_item_diterima = totalDiterima;
+      updateData.total_item_ditolak = totalDitolak;
+
+      // Auto-calculate status based on PO completion
+      const { data: poItems } = await supabase
+        .from("purchase_order_items")
+        .select("qty_ordered, qty_received")
+        .eq("purchase_order_id", currentGrn.purchase_order_id)
+        .eq("is_active", true);
+
+      if (poItems && poItems.length > 0) {
+        const totalOrdered = poItems.reduce((sum, item) => sum + (item.qty_ordered || 0), 0);
+        // Calculate new total received (existing + changes from this update)
+        const currentTotalReceived = poItems.reduce((sum, item) => sum + (item.qty_received || 0), 0);
+        const additionalReceived = qtyChanges.reduce((sum, change) => sum + (change.diff > 0 ? change.diff : 0), 0);
+        const newTotalReceived = currentTotalReceived + additionalReceived;
+
+        if (validated.items.every(item => item.qty_diterima === 0) && totalDitolak > 0) {
+          updateData.status = "rejected";
+        } else if (newTotalReceived >= totalOrdered && totalDitolak === 0) {
+          updateData.status = "received";
+        } else if (newTotalReceived > 0) {
+          updateData.status = "partially_received";
+        }
+      }
+    }
 
     const { data: grn, error } = await supabase
       .from("grn")
@@ -139,9 +226,83 @@ export async function PATCH(
 
     if (error) throw error;
 
+    // Update GRN items if provided
+    if (validated.items && validated.items.length > 0) {
+      // Delete existing items
+      await supabase.from("grn_items").update({ is_active: false }).eq("grn_id", id);
+
+      // Insert new items
+      const grnItems = validated.items.map((item) => ({
+        grn_id: id,
+        delivery_id: currentGrn.delivery_id,
+        purchase_order_item_id: item.purchase_order_item_id,
+        raw_material_id: item.raw_material_id,
+        qty_diterima: item.qty_diterima,
+        qty_ditolak: item.qty_ditolak,
+        kondisi: item.kondisi,
+        catatan: item.catatan || null,
+      }));
+
+      const { error: itemsError } = await supabase.from("grn_items").insert(grnItems);
+      if (itemsError) throw itemsError;
+
+      // Update PO item received quantities based on qty changes
+      for (const change of qtyChanges) {
+        if (change.purchase_order_item_id && change.diff !== 0) {
+          const { data: poItem } = await supabase
+            .from("purchase_order_items")
+            .select("qty_received")
+            .eq("id", change.purchase_order_item_id)
+            .single();
+
+          if (poItem) {
+            const newQty = Math.max(0, (poItem.qty_received || 0) + change.diff);
+            await updatePOItemReceivedQty(supabase, change.purchase_order_item_id, newQty);
+          }
+        }
+      }
+
+      // Update inventory for qty changes
+      for (const change of qtyChanges) {
+        if (change.diff !== 0 && change.raw_material_id) {
+          try {
+            if (change.diff > 0) {
+              // Add inventory
+              await addInventoryFromGrn(
+                supabase,
+                change.raw_material_id,
+                change.diff,
+                0, // unit cost - would need to fetch from PO
+                id,
+                currentGrn.nomor_grn,
+                user.id
+              );
+            } else {
+              // Remove inventory
+              await removeInventoryFromGrn(
+                supabase,
+                change.raw_material_id,
+                Math.abs(change.diff),
+                id,
+                currentGrn.nomor_grn,
+                user.id
+              );
+            }
+          } catch (invErr) {
+            console.error("Inventory update error (non-fatal):", invErr);
+          }
+        }
+      }
+    }
+
     // Update delivery status if GRN status changed
-    if (validated.status && currentGrn.delivery_id) {
-      await updateDeliveryStatusAfterGrn(supabase, currentGrn.delivery_id, validated.status);
+    if (updateData.status && currentGrn.delivery_id) {
+      await updateDeliveryStatusAfterGrn(supabase, currentGrn.delivery_id, updateData.status as GrnStatus);
+    }
+
+    // Update PO status based on received quantities
+    if (currentGrn.purchase_order_id) {
+      await updatePOStatusAfterGrn(supabase, currentGrn.purchase_order_id);
     }
 
     return successResponse(grn, `GRN ${grn.nomor_grn} berhasil diupdate`);
