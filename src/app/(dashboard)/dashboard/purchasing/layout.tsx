@@ -123,20 +123,6 @@ export default function PurchasingLayout({ children }: { children: React.ReactNo
           );
         })}
 
-        {/* Inventori */}
-        <Link
-          href="/dashboard/purchasing/inventory"
-          className={clsx(
-            "flex items-center gap-1.5 px-3 py-2 text-xs font-medium border-b-2 transition-colors",
-            pathname === "/dashboard/purchasing/inventory"
-              ? "border-blue-600 text-blue-600"
-              : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-          )}
-        >
-          <ArchiveBoxIcon className="w-3.5 h-3.5" />
-          Inventori
-        </Link>
-
         {/* Laporan — dropdown */}
         <div className="relative" ref={reportRef}>
           <button
