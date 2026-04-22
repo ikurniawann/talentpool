@@ -1,6 +1,6 @@
-# Talent Pool & Recruitment System
+# Wonderland Backoffice
 
-Sistem Rekrutmen & Talent Pool untuk Aapex Technology.
+Sistem ERP Terintegrasi untuk Aapex Technology: Recruitment (Talent Pool), Purchasing, dan Inventory Management.
 
 ## Tech Stack
 

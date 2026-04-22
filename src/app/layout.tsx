@@ -8,8 +8,8 @@ import { ErrorBoundary } from "@/components/error-boundary";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Talent Pool - Aapex Technology",
-  description: "Sistem Rekrutmen & Talent Pool Aapex Technology",
+  title: "Wonderland Backoffice - Aapex Technology",
+  description: "Sistem ERP Terintegrasi: Talent Pool, Purchasing & Inventory Management",
 };
 
 export default function RootLayout({

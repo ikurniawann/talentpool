@@ -114,8 +114,8 @@ export default function SidebarClient({ user, navItems, children }: SidebarClien
         <div className="p-4 border-b border-white/10">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="font-bold text-base text-white">Talent Pool</h2>
-              <p className="text-xs text-white/60">Aapex Technology</p>
+              <h2 className="font-bold text-base text-white">Wonderland</h2>
+              <p className="text-xs text-white/60">Backoffice</p>
             </div>
             <button
               onClick={closeMobile}
@@ -173,7 +173,7 @@ export default function SidebarClient({ user, navItems, children }: SidebarClien
           >
             <Bars3Icon className="w-5 h-5 text-white" />
           </button>
-          <h2 className="font-semibold text-white text-sm">Talent Pool</h2>
+          <h2 className="font-semibold text-white text-sm">Wonderland</h2>
         </div>
 
         {/* Page content */}
