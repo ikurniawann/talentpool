@@ -8,7 +8,7 @@ import { ErrorBoundary } from "@/components/error-boundary";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Wonderland Backoffice - Aapex Technology",
+  title: "Wounderland Backoffice - Aapex Technology",
   description: "Sistem ERP Terintegrasi: Talent Pool, Purchasing & Inventory Management",
 };
 
