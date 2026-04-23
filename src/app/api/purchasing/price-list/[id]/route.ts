@@ -1,19 +1,22 @@
 // ============================================
-// API ROUTE: /api/purchasing/price-list/[id]
+// API ROUTE: /api/purchasing/price-list/:id
 // ============================================
 
 import { NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { z } from "zod";
 
-const priceListSchema = z.object({
+const updatePriceListSchema = z.object({
+  supplier_id: z.string().uuid().optional(),
+  bahan_baku_id: z.string().uuid().optional(),
   harga: z.number().min(0).optional(),
-  satuan_id: z.string().uuid().optional().nullable(),
-  min_qty: z.number().min(0).optional(),
+  satuan_id: z.string().uuid().optional(),
+  minimum_qty: z.number().min(0).optional(),
   lead_time_days: z.number().min(0).optional(),
   is_preferred: z.boolean().optional(),
-  berlaku_mulai: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
-  berlaku_sampai: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().nullable(),
+  berlaku_dari: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  berlaku_sampai: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  catatan: z.string().optional(),
   is_active: z.boolean().optional(),
 });
 
@@ -27,7 +30,7 @@ export async function GET(
     const supabase = await createClient();
 
     const { data, error } = await supabase
-      .from("supplier_price_list")
+      .from("supplier_price_lists")
       .select(`
         *,
         supplier:supplier_id (
@@ -35,8 +38,16 @@ export async function GET(
           kode,
           nama_supplier
         ),
-        raw_material:raw_material_id (*),
-        satuan:satuan_id (*)
+        bahan_baku:bahan_baku_id (
+          id,
+          kode,
+          nama
+        ),
+        satuan:satuan_id (
+          id,
+          kode,
+          nama
+        )
       `)
       .eq("id", id)
       .single();
@@ -44,7 +55,7 @@ export async function GET(
     if (error) {
       if (error.code === "PGRST116") {
         return Response.json(
-          { success: false, message: "Data harga tidak ditemukan" },
+          { success: false, message: "Price list tidak ditemukan" },
           { status: 404 }
         );
       }
@@ -55,7 +66,7 @@ export async function GET(
   } catch (error: any) {
     console.error("Error fetching price list:", error);
     return Response.json(
-      { success: false, message: error.message || "Gagal mengambil data harga" },
+      { success: false, message: error.message || "Gagal mengambil data" },
       { status: 500 }
     );
   }
@@ -71,29 +82,10 @@ export async function PUT(
     const supabase = await createClient();
     const body = await request.json();
 
-    // Validasi input
-    const validated = priceListSchema.parse(body);
+    const validated = updatePriceListSchema.parse(body);
 
-    // Handle is_preferred = true - reset preferred lain untuk bahan yang sama
-    if (validated.is_preferred) {
-      const { data: currentPrice } = await supabase
-        .from("supplier_price_list")
-        .select("raw_material_id")
-        .eq("id", id)
-        .single();
-
-      if (currentPrice) {
-        await supabase
-          .from("supplier_price_list")
-          .update({ is_preferred: false })
-          .eq("raw_material_id", currentPrice.raw_material_id)
-          .neq("id", id);
-      }
-    }
-
-    // Update data
     const { data, error } = await supabase
-      .from("supplier_price_list")
+      .from("supplier_price_lists")
       .update({
         ...validated,
         updated_at: new Date().toISOString(),
@@ -102,20 +94,12 @@ export async function PUT(
       .select()
       .single();
 
-    if (error) {
-      if (error.code === "PGRST116") {
-        return Response.json(
-          { success: false, message: "Data harga tidak ditemukan" },
-          { status: 404 }
-        );
-      }
-      throw error;
-    }
+    if (error) throw error;
 
     return Response.json({
       success: true,
       data,
-      message: "Harga berhasil diupdate",
+      message: "Price list berhasil diupdate",
     });
   } catch (error: any) {
     console.error("Error updating price list:", error);
@@ -132,7 +116,7 @@ export async function PUT(
     }
 
     return Response.json(
-      { success: false, message: error.message || "Gagal mengupdate harga" },
+      { success: false, message: error.message || "Gagal mengupdate price list" },
       { status: 500 }
     );
   }
@@ -147,30 +131,26 @@ export async function DELETE(
     const { id } = await params;
     const supabase = await createClient();
 
-    // Soft delete
+    // Soft delete - set is_active = false
     const { error } = await supabase
-      .from("supplier_price_list")
-      .update({ is_active: false })
+      .from("supplier_price_lists")
+      .update({
+        is_active: false,
+        deleted_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      })
       .eq("id", id);
 
-    if (error) {
-      if (error.code === "PGRST116") {
-        return Response.json(
-          { success: false, message: "Data harga tidak ditemukan" },
-          { status: 404 }
-        );
-      }
-      throw error;
-    }
+    if (error) throw error;
 
     return Response.json({
       success: true,
-      message: "Harga berhasil dinonaktifkan",
+      message: "Price list berhasil dihapus",
     });
   } catch (error: any) {
     console.error("Error deleting price list:", error);
     return Response.json(
-      { success: false, message: error.message || "Gagal menghapus harga" },
+      { success: false, message: error.message || "Gagal menghapus price list" },
       { status: 500 }
     );
   }
