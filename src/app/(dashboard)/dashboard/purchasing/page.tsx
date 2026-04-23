@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { usePurchasingDashboard } from "@/modules/purchasing/hooks/usePurchasingDashboard";
 import {
   KPICards,
@@ -9,8 +10,8 @@ import {
   HPPTrendPanel,
   SupplierPerfChart,
 } from "@/modules/purchasing/components/dashboard";
-import { Card, CardContent } from "@/components/ui/card";
-import { RefreshCw } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { RefreshCw, BuildingOffice, Cube, ShoppingCart, Truck, ArchiveBox, ArrowUturnLeft, DocumentChartBar } from "lucide-react";
 
 function DashboardSkeleton() {
   return (
@@ -48,6 +49,15 @@ function ErrorState({ error }: { error: string }) {
 export default function PurchasingDashboardPage() {
   const { data, isLoading, isError, error, refetch, isFetching } = usePurchasingDashboard();
 
+  const quickLinks = [
+    { href: "/dashboard/purchasing/suppliers", label: "Supplier", icon: BuildingOffice, color: "text-blue-600 bg-blue-50 hover:bg-blue-100" },
+    { href: "/dashboard/purchasing/raw-materials", label: "Bahan Baku", icon: Cube, color: "text-green-600 bg-green-50 hover:bg-green-100" },
+    { href: "/dashboard/purchasing/purchase-orders", label: "Purchase Order", icon: ShoppingCart, color: "text-purple-600 bg-purple-50 hover:bg-purple-100" },
+    { href: "/dashboard/purchasing/grn", label: "Penerimaan", icon: Truck, color: "text-orange-600 bg-orange-50 hover:bg-orange-100" },
+    { href: "/dashboard/inventory", label: "Inventory", icon: ArchiveBox, color: "text-teal-600 bg-teal-50 hover:bg-teal-100" },
+    { href: "/dashboard/inventory/low-stock", label: "Low Stock", icon: ArchiveBox, color: "text-red-600 bg-red-50 hover:bg-red-100" },
+  ];
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -67,6 +77,25 @@ export default function PurchasingDashboardPage() {
           {isFetching ? "Refreshing..." : "Refresh"}
         </button>
       </div>
+
+      {/* Quick Access Links */}
+      <Card className="border-0 shadow-sm">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base font-semibold">🚀 Quick Access</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+            {quickLinks.map((link) => (
+              <Link key={link.href} href={link.href}>
+                <div className={`flex flex-col items-center justify-center p-4 rounded-lg transition-colors ${link.color}`}>
+                  <link.icon className="w-8 h-8 mb-2" />
+                  <span className="text-sm font-medium text-center">{link.label}</span>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
 
       {isLoading ? (
         <DashboardSkeleton />
