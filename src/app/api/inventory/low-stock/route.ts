@@ -12,19 +12,10 @@ export async function GET(request: NextRequest) {
     const category = searchParams.get("category") || "";
     const status = searchParams.get("status") || ""; // out_of_stock | low_stock
 
-    // Query inventory with shortage calculation
+    // Query inventory - simple version without complex supplier join
     let query = supabase
       .from("v_inventory")
-      .select(`
-        *,
-        supplier:raw_material_id(
-          suppliers:pr_items!inner(
-            purchase_order:purchase_orders!inner(
-              supplier_id
-            )
-          )
-        )
-      `)
+      .select("*")
       .or(`stock_status.eq.out_of_stock,stock_status.eq.low_stock`)
       .order("qty_available", { ascending: true });
 
@@ -47,15 +38,6 @@ export async function GET(request: NextRequest) {
       const suggestedOrderQty = shortage > 0 ? Math.ceil(shortage * 1.5) : item.qty_minimum; // 1.5x safety stock
       const estimatedCost = suggestedOrderQty * (item.unit_cost || 0);
 
-      // Get supplier name from nested data
-      let supplierName = undefined;
-      if (item.supplier && Array.isArray(item.supplier)) {
-        const firstSupplier = item.supplier[0];
-        if (firstSupplier?.suppliers && Array.isArray(firstSupplier.suppliers)) {
-          supplierName = firstSupplier.suppliers[0]?.supplier_name;
-        }
-      }
-
       return {
         id: item.id,
         material_kode: item.material_kode,
@@ -70,7 +52,7 @@ export async function GET(request: NextRequest) {
         shortage_qty: shortage,
         suggested_order_qty: suggestedOrderQty,
         estimated_cost: estimatedCost,
-        supplier_name: supplierName,
+        supplier_name: undefined, // Will be fetched separately if needed
       };
     });
 
