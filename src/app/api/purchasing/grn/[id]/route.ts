@@ -320,41 +320,49 @@ export async function PATCH(
       }
       console.log(`[PATCH GRN/${id}] PO items updated`);
 
-      // Update inventory for qty changes
+      // Update inventory: REBUILD from scratch (remove old, add new)
       console.log(`[PATCH GRN/${id}] Updating inventory...`);
+      
       for (const change of qtyChanges) {
-        if (change.diff !== 0 && change.raw_material_id) {
+        if (change.raw_material_id) {
           try {
-            if (change.diff > 0) {
-              // Add inventory
-              console.log(`[PATCH GRN/${id}] Adding ${change.diff} to inventory for ${change.raw_material_id}`);
-              await addInventoryFromGrn(
+            const oldQty = change.oldQtyDiterima || 0;
+            const newQty = change.newQtyDiterima || 0;
+            
+            console.log(`[PATCH GRN/${id}] Material ${change.raw_material_id}: ${oldQty} → ${newQty}`);
+            
+            // Step 1: Remove OLD qty from inventory
+            if (oldQty > 0) {
+              console.log(`[PATCH GRN/${id}]   Removing old qty: ${oldQty}`);
+              await removeInventoryFromGrn(
                 supabase,
                 change.raw_material_id,
-                change.diff,
-                0, // unit cost - would need to fetch from PO
+                oldQty,
                 id,
                 currentGrn.nomor_grn,
                 user.id
               );
-            } else {
-              // Remove inventory
-              console.log(`[PATCH GRN/${id}] Removing ${Math.abs(change.diff)} from inventory for ${change.raw_material_id}`);
-              await removeInventoryFromGrn(
+            }
+            
+            // Step 2: Add NEW qty to inventory
+            if (newQty > 0) {
+              console.log(`[PATCH GRN/${id}]   Adding new qty: ${newQty}`);
+              await addInventoryFromGrn(
                 supabase,
                 change.raw_material_id,
-                Math.abs(change.diff),
+                newQty,
+                0, // unit cost - would need to fetch from PO
                 id,
                 currentGrn.nomor_grn,
                 user.id
               );
             }
           } catch (invErr) {
-            console.error("Inventory update error (non-fatal):", invErr);
+            console.error(`[PATCH GRN/${id}] Inventory update error for ${change.raw_material_id}:`, invErr);
           }
         }
       }
-      console.log(`[PATCH GRN/${id}] Inventory updated`);
+      console.log(`[PATCH GRN/${id}] Inventory rebuild complete`);
     }
 
     // Update delivery status if GRN status changed
