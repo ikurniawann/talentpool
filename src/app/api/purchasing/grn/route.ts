@@ -346,6 +346,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Update inventory untuk setiap item yang diterima
+    console.log(`\n[GRN/${grn.id}] Updating inventory for ${validated.items.length} items...`);
     for (const item of validated.items) {
       if (item.qty_diterima > 0) {
         const poItem = effectivePoItems.find((p: any) => p.id === item.purchase_order_item_id);
@@ -360,11 +361,14 @@ export async function POST(request: NextRequest) {
             grnNumber,
             user.id
           );
-        } catch (invErr) {
-          console.error("Inventory update error (non-fatal):", invErr);
+          console.log(`  ✅ ${item.raw_material_id}: +${item.qty_diterima} units @ Rp ${unitCost}`);
+        } catch (invErr: any) {
+          console.error(`  ❌ Inventory update failed for ${item.raw_material_id}:`, invErr.message);
+          // Don't fail the entire GRN, but log it
         }
       }
     }
+    console.log('[GRN/' + grn.id + '] Inventory update complete\n');
 
     return createdResponse(grn, `GRN ${grnNumber} berhasil dibuat`);
   } catch (error) {
