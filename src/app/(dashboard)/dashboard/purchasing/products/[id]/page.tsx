@@ -49,7 +49,7 @@ export default function ProductDetailPage() {
       setLoading(true);
       const [productData, bomData] = await Promise.all([
         getProduct(productId),
-        listBOM(productId),
+        listBOMItems(productId),
       ]);
       setProduct(productData);
       setBomItems(bomData);

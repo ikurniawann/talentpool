@@ -141,19 +141,21 @@ export default function NewProductPage() {
       // Create BOM items
       for (const item of bomItems) {
         if (item.raw_material_id && item.qty_needed) {
-          console.log("Creating BOM item:", {
+          const payload = {
             raw_material_id: item.raw_material_id,
             qty_required: item.qty_needed,
-            satuan_id: item.satuan_id,
-            waste_factor: (item.waste_persen || 0) / 100, // Convert percent to decimal
-          });
+            satuan_id: item.satuan_id || undefined,
+            waste_factor: (item.waste_persen || 0) / 100,
+          };
           
-          await createBOMItem(product.id, {
-            raw_material_id: item.raw_material_id,
-            qty_required: item.qty_needed,
-            satuan_id: item.satuan_id,
-            waste_factor: (item.waste_persen || 0) / 100, // Convert percent to decimal
-          });
+          console.log("Creating BOM item:", payload);
+          
+          try {
+            await createBOMItem(product.id, payload);
+          } catch (error: any) {
+            console.error("Failed to create BOM item:", error);
+            throw error; // Re-throw to stop the process
+          }
         }
       }
 
