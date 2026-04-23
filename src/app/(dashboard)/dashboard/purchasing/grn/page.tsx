@@ -174,6 +174,11 @@ export default function GrnListPage() {
                   grns.map((g) => (
                     <tr key={g.id} className="hover:bg-gray-50">
                       <td className="py-3 px-4 text-sm font-mono font-medium text-blue-600">{g.nomor_grn}</td>
+                      <td className="py-3 px-4 text-sm">
+                        <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+                          #{g.receive_count || 1}
+                        </Badge>
+                      </td>
                       <td className="py-3 px-4 text-sm font-medium">{g.supplier_name || "—"}</td>
                       <td className="py-3 px-4 text-sm">{g.no_surat_jalan || "—"}</td>
                       <td className="py-3 px-4 text-sm">{g.po_number || "—"}</td>
