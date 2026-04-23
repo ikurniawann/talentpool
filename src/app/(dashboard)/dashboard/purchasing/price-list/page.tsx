@@ -19,10 +19,10 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Search, MoreVertical, DollarSign, Package } from "lucide-react";
+import { Plus, Search, MoreVertical, DollarSign, Edit, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { SupplierPriceList } from "@/types/purchasing";
-import { listPriceLists } from "@/lib/purchasing";
+import { listPriceLists, deletePriceList } from "@/lib/purchasing";
 import {
   Dialog,
   DialogContent,
@@ -31,22 +31,14 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Label } from "@/components/ui/label";
 
 export default function PriceListPage() {
   const [priceLists, setPriceLists] = useState<SupplierPriceList[]>([]);
   const [loading, setLoading] = useState(true);
   const [filterSupplier, setFilterSupplier] = useState("");
   const [filterMaterial, setFilterMaterial] = useState("");
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [editingItem, setEditingItem] = useState<SupplierPriceList | null>(null);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [deletingItem, setDeletingItem] = useState<SupplierPriceList | null>(null);
 
   useEffect(() => {
     loadPriceLists();
@@ -68,6 +60,24 @@ export default function PriceListPage() {
     }
   };
 
+  const handleOpenDelete = (item: SupplierPriceList) => {
+    setDeletingItem(item);
+    setIsDeleteDialogOpen(true);
+  };
+
+  const handleDelete = async () => {
+    if (!deletingItem) return;
+    try {
+      await deletePriceList(deletingItem.id);
+      toast.success("Price list berhasil dihapus");
+      setIsDeleteDialogOpen(false);
+      loadPriceLists();
+    } catch (error: any) {
+      console.error("Error deleting price list:", error);
+      toast.error(error.message || "Gagal menghapus price list");
+    }
+  };
+
   const formatCurrency = (num: number) => {
     return `Rp ${num.toLocaleString("id-ID")}`;
   };
@@ -82,32 +92,34 @@ export default function PriceListPage() {
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-2xl font-bold">Price List Supplier</h1>
+          <h1 className="text-2xl font-bold">Supplier Price List</h1>
           <p className="text-muted-foreground">
-            Kelola harga bahan baku dari supplier
+            Daftar harga bahan baku per supplier
           </p>
         </div>
-        <Button onClick={() => { setEditingItem(null); setIsDialogOpen(true); }}>
-          <Plus className="w-4 h-4 mr-2" />
-          Tambah Harga
-        </Button>
+        <Link href="/dashboard/purchasing/price-list/new">
+          <Button>
+            <Plus className="w-4 h-4 mr-2" />
+            Tambah Price List
+          </Button>
+        </Link>
       </div>
 
       {/* Filters */}
-      <div className="flex flex-wrap gap-4">
-        <div className="relative flex-1 min-w-[200px]">
+      <div className="flex items-center gap-4">
+        <div className="relative flex-1 max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
-            placeholder="Filter supplier..."
+            placeholder="Cari supplier..."
             value={filterSupplier}
             onChange={(e) => setFilterSupplier(e.target.value)}
             className="pl-10"
           />
         </div>
-        <div className="relative flex-1 min-w-[200px]">
-          <Package className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+        <div className="relative flex-1 max-w-sm">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
-            placeholder="Filter bahan baku..."
+            placeholder="Cari bahan baku..."
             value={filterMaterial}
             onChange={(e) => setFilterMaterial(e.target.value)}
             className="pl-10"
@@ -123,24 +135,23 @@ export default function PriceListPage() {
               <TableHead>Supplier</TableHead>
               <TableHead>Bahan Baku</TableHead>
               <TableHead className="text-right">Harga</TableHead>
-              <TableHead>MOQ</TableHead>
+              <TableHead className="text-right">MOQ</TableHead>
               <TableHead>Lead Time</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Update Terakhir</TableHead>
-              <TableHead className="w-[50px]"></TableHead>
+              <TableHead>Validity</TableHead>
+              <TableHead></TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={8} className="text-center py-8">
+                <TableCell colSpan={7} className="text-center py-8">
                   Memuat data...
                 </TableCell>
               </TableRow>
             ) : priceLists.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={8} className="text-center py-8">
-                  Tidak ada data price list
+                <TableCell colSpan={7} className="text-center py-8">
+                  Belum ada price list
                 </TableCell>
               </TableRow>
             ) : (
@@ -148,29 +159,33 @@ export default function PriceListPage() {
                 <TableRow key={item.id}>
                   <TableCell>
                     <div className="font-medium">{item.supplier?.nama_supplier}</div>
-                    <div className="text-sm text-muted-foreground">
-                      {item.supplier?.kode}
-                    </div>
+                    <div className="text-sm text-muted-foreground">{item.supplier?.kode}</div>
                   </TableCell>
                   <TableCell>
-                    <div className="font-medium">{item.raw_material?.nama}</div>
-                    <div className="text-sm text-muted-foreground">
-                      {item.raw_material?.kode}
+                    <div className="font-medium">{item.bahan_baku?.nama}</div>
+                    <div className="text-sm text-muted-foreground">{item.bahan_baku?.kode}</div>
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <div className="flex items-center justify-end gap-1">
+                      <DollarSign className="w-3 h-3 text-muted-foreground" />
+                      {formatCurrency(item.harga)}
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      per {item.satuan?.nama || "unit"}
                     </div>
                   </TableCell>
-                  <TableCell className="text-right font-medium">
-                    {formatCurrency(item.harga)}
+                  <TableCell className="text-right">
+                    {item.minimum_qty} {item.satuan?.nama}
                   </TableCell>
-                  <TableCell>{item.moq || "-"}</TableCell>
-                  <TableCell>{item.lead_time_hari || "-"} hari</TableCell>
+                  <TableCell>{item.lead_time_days} hari</TableCell>
                   <TableCell>
-                    {item.is_active ? (
-                      <Badge className="bg-green-100 text-green-800">Aktif</Badge>
-                    ) : (
-                      <Badge variant="secondary">Nonaktif</Badge>
-                    )}
+                    <div className="text-sm">
+                      {formatDate(item.berlaku_dari)}
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      s/d {formatDate(item.berlaku_sampai)}
+                    </div>
                   </TableCell>
-                  <TableCell>{formatDate(item.updated_at)}</TableCell>
                   <TableCell>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
@@ -179,13 +194,24 @@ export default function PriceListPage() {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
+                        <Link href={`/dashboard/purchasing/price-list/${item.id}`}>
+                          <DropdownMenuItem>
+                            <DollarSign className="w-4 h-4 mr-2" />
+                            Lihat Detail
+                          </DropdownMenuItem>
+                        </Link>
+                        <Link href={`/dashboard/purchasing/price-list/${item.id}/edit`}>
+                          <DropdownMenuItem>
+                            <Edit className="w-4 h-4 mr-2" />
+                            Edit
+                          </DropdownMenuItem>
+                        </Link>
                         <DropdownMenuItem
-                          onClick={() => {
-                            setEditingItem(item);
-                            setIsDialogOpen(true);
-                          }}
+                          onClick={() => handleOpenDelete(item)}
+                          className="text-red-600"
                         >
-                          Edit
+                          <Trash2 className="w-4 h-4 mr-2" />
+                          Hapus
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
@@ -196,6 +222,26 @@ export default function PriceListPage() {
           </TableBody>
         </Table>
       </div>
+
+      {/* Delete Dialog */}
+      <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Konfirmasi Hapus</DialogTitle>
+            <DialogDescription>
+              Apakah Anda yakin ingin menghapus price list ini?
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)}>
+              Batal
+            </Button>
+            <Button variant="destructive" onClick={handleDelete}>
+              Hapus
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
