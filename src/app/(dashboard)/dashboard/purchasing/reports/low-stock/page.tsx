@@ -8,10 +8,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { formatRupiah } from "@/lib/purchasing/utils";
 import {
   ExclamationTriangleIcon,
-  ArrowDownIcon,
+  ArrowSmallDownIcon,
   ShoppingCartIcon,
   ArrowUpOnSquareIcon,
-  RefreshCwIcon,
+  ArrowPathIcon,
 } from "@heroicons/react/24/outline";
 import { CheckCircleIcon } from "@heroicons/react/24/solid";
 
@@ -103,7 +103,7 @@ export default function LowStockReportPage() {
         </div>
         <div className="flex gap-2">
           <Button variant="outline" size="sm" onClick={fetchLowStock}>
-            <RefreshCwIcon className="w-4 h-4 mr-2" />
+            <ArrowPathIcon className="w-4 h-4 mr-2" />
             Refresh
           </Button>
           <Button variant="outline" size="sm" onClick={exportToCSV}>
@@ -130,7 +130,7 @@ export default function LowStockReportPage() {
         <Card className="border-0 shadow-sm bg-orange-50">
           <CardContent className="pt-4">
             <div className="flex items-center gap-3">
-              <ArrowDownIcon className="w-8 h-8 text-orange-500" />
+              <ExclamationTriangleIcon className="w-8 h-8 text-orange-500" />
               <div>
                 <p className="text-xs text-orange-600">Stok Habis</p>
                 <p className="text-2xl font-bold text-orange-700">{summary.outOfStock}</p>
