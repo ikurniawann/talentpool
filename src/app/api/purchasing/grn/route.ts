@@ -226,14 +226,20 @@ export async function POST(request: NextRequest) {
     const totals = calculateGrnTotals(validated.items);
 
     // Count how many times this delivery has been received (receive counter)
-    const { count: previousGrnCount } = await supabase
+    // IMPORTANT: Count ALL GRNs for this delivery, including the one being created
+    // because we want THIS to be N+1 where N is existing count
+    const { count: previousGrnCount, error: countError } = await supabase
       .from("grn")
       .select("*", { count: "exact", head: true })
       .eq("delivery_id", validated.delivery_id)
-      .eq("is_active", true)
-      .neq("status", "rejected"); // Don't count rejected GRNs
+      .eq("is_active", true);
+    
+    if (countError) {
+      console.error("Error counting GRNs:", countError);
+    }
     
     const receiveCount = (previousGrnCount || 0) + 1; // This is the Nth receive
+    console.log(`GRN receive_count: ${receiveCount} (previous: ${previousGrnCount}, delivery: ${validated.delivery_id})`);
 
     // Determine GRN status based on qty_diterima vs total qty_ordered
     // FIX Issue #1: Status based on received vs ordered, not on reject count
