@@ -3,201 +3,379 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { BreadcrumbNav } from "@/modules/purchasing/components/breadcrumb/BreadcrumbNav";
 import {
-  DocumentChartBarIcon,
-  MagnifyingGlassIcon,
-  PrinterIcon,
-  DocumentArrowDownIcon,
-  TruckIcon,
-} from "@heroicons/react/24/outline";
-import { formatRupiah } from "@/lib/purchasing/utils";
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
+import { Download, Filter, Package, DollarSign, TrendingUp, Calendar } from "lucide-react";
+import { toast } from "sonner";
 
-interface POSummaryRow {
-  id: string;
-  no_po?: string;
-  supplier_name?: string;
-  tgl_po?: string;
-  total_amount?: number;
-  status?: string;
-  items_count?: number;
-  received_count?: number;
+interface POSummary {
+  po_number: string;
+  vendor: string;
+  vendor_code: string;
+  status: string;
+  tanggal_po: string;
+  tanggal_diterima?: string;
+  total_amount: number;
+  total_amount_formatted: string;
+  mata_uang: string;
+  item_count: number;
+  created_by: string;
 }
 
-export default function POSummaryPage() {
-  const [items, setItems] = useState<POSummaryRow[]>([]);
-  const [search, setSearch] = useState("");
-  const [status, setStatus] = useState("all");
+interface StatusSummary {
+  status: string;
+  count: number;
+  total: number;
+  total_formatted: string;
+}
+
+export default function POSummaryReport() {
   const [loading, setLoading] = useState(true);
+  const [data, setData] = useState<POSummary[]>([]);
+  const [statusSummary, setStatusSummary] = useState<StatusSummary[]>([]);
+  const [grandTotal, setGrandTotal] = useState(0);
+
+  // Filters
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
+  const [statusFilter, setStatusFilter] = useState("");
+  const [vendorId, setVendorId] = useState("");
 
   useEffect(() => {
-    fetchData();
-  }, []);
+    loadReport();
+  }, [dateFrom, dateTo, statusFilter, vendorId]);
 
-  const fetchData = async () => {
-    setLoading(true);
+  const loadReport = async () => {
     try {
-      const res = await fetch("/api/purchasing/reports/po-summary");
-      if (res.ok) {
-        const data = await res.json();
-        setItems(data.items || []);
+      setLoading(true);
+      const params = new URLSearchParams();
+      if (dateFrom) params.set("date_from", dateFrom);
+      if (dateTo) params.set("date_to", dateTo);
+      if (statusFilter) params.set("status", statusFilter);
+      if (vendorId) params.set("vendor_id", vendorId);
+
+      const response = await fetch(`/api/purchasing/reports/po-summary?${params.toString()}`);
+      const result = await response.json();
+
+      if (result.success) {
+        setData(result.data.summary || []);
+        setStatusSummary(result.data.by_status || []);
+        setGrandTotal(result.data.grand_total || 0);
+      } else {
+        toast.error("Gagal memuat laporan");
       }
-    } catch {
-      // fallback
+    } catch (error) {
+      console.error("Error loading report:", error);
+      toast.error("Gagal memuat laporan PO Summary");
     } finally {
       setLoading(false);
     }
   };
 
-  const filtered = items.filter((item) => {
-    const matchSearch =
-      !search ||
-      (item.no_po?.toLowerCase().includes(search.toLowerCase())) ||
-      (item.supplier_name?.toLowerCase().includes(search.toLowerCase()));
-    const matchStatus = status === "all" || item.status === status;
-    return matchSearch && matchStatus;
-  });
+  const handleExport = async (format: "csv" | "json") => {
+    try {
+      const params = new URLSearchParams({
+        export: format,
+        ...(dateFrom && { date_from: dateFrom }),
+        ...(dateTo && { date_to: dateTo }),
+        ...(statusFilter && { status: statusFilter }),
+        ...(vendorId && { vendor_id: vendorId }),
+      });
 
-  const totalAmount = filtered.reduce((sum, i) => sum + (i.total_amount || 0), 0);
+      const response = await fetch(`/api/purchasing/reports/po-summary?${params.toString()}`);
+      
+      if (format === "csv") {
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `po-summary-${new Date().toISOString().split("T")[0]}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+        toast.success("CSV exported successfully");
+      } else {
+        const result = await response.json();
+        const blob = new Blob([JSON.stringify(result, null, 2)], { type: "application/json" });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `po-summary-${new Date().toISOString().split("T")[0]}.json`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+        toast.success("JSON exported successfully");
+      }
+    } catch (error) {
+      console.error("Error exporting:", error);
+      toast.error("Gagal export laporan");
+    }
+  };
+
+  const getStatusBadge = (status: string) => {
+    const styles: Record<string, string> = {
+      DRAFT: "bg-gray-100 text-gray-800",
+      APPROVED: "bg-blue-100 text-blue-800",
+      SENT: "bg-purple-100 text-purple-800",
+      PARTIAL: "bg-yellow-100 text-yellow-800",
+      RECEIVED: "bg-green-100 text-green-800",
+      CANCELLED: "bg-red-100 text-red-800",
+    };
+    return <Badge className={styles[status] || "bg-gray-100 text-gray-600"}>{status}</Badge>;
+  };
+
+  const formatDate = (dateStr?: string) => {
+    if (!dateStr) return "-";
+    return new Date(dateStr).toLocaleDateString("id-ID", {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+    });
+  };
+
+  const formatCurrency = (amount: number) => {
+    return `Rp ${amount.toLocaleString("id-ID")}`;
+  };
 
   return (
-    <div className="p-6">
-      <BreadcrumbNav items={[
-        { label: "Purchasing", href: "/dashboard/purchasing" },
-        { label: "Laporan", href: "/dashboard/purchasing/reports" },
-        { label: "Ringkasan PO" },
-      ]} />
-
-      <div className="flex items-center justify-between mt-4 mb-6">
+    <div className="container mx-auto py-6 space-y-6">
+      {/* Header */}
+      <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-2xl font-bold">Ringkasan Purchase Order</h1>
-          <p className="text-sm text-gray-500">Rekap semua purchase order</p>
+          <h1 className="text-2xl font-bold">PO Summary Report</h1>
+          <p className="text-muted-foreground">Ringkasan Purchase Order</p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" size="sm">
-            <PrinterIcon className="w-4 h-4 mr-1" />
-            Cetak
+          <Button variant="outline" onClick={() => handleExport("csv")}>
+            <Download className="w-4 h-4 mr-2" />
+            Export CSV
           </Button>
-          <Button variant="outline" size="sm">
-            <DocumentArrowDownIcon className="w-4 h-4 mr-1" />
-            Export
+          <Button variant="outline" onClick={() => handleExport("json")}>
+            <Download className="w-4 h-4 mr-2" />
+            Export JSON
           </Button>
         </div>
       </div>
 
-      {/* Summary */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+      {/* Filters */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Filter className="w-5 h-5" />
+            Filters
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="space-y-2">
+              <Label>Dari Tanggal</Label>
+              <Input
+                type="date"
+                value={dateFrom}
+                onChange={(e) => setDateFrom(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Sampai Tanggal</Label>
+              <Input
+                type="date"
+                value={dateTo}
+                onChange={(e) => setDateTo(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Status</Label>
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Semua Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">Semua Status</SelectItem>
+                  <SelectItem value="DRAFT">Draft</SelectItem>
+                  <SelectItem value="APPROVED">Approved</SelectItem>
+                  <SelectItem value="SENT">Sent</SelectItem>
+                  <SelectItem value="PARTIAL">Partial</SelectItem>
+                  <SelectItem value="RECEIVED">Received</SelectItem>
+                  <SelectItem value="CANCELLED">Cancelled</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Vendor</Label>
+              <Input
+                placeholder="Search vendor..."
+                value={vendorId}
+                onChange={(e) => setVendorId(e.target.value)}
+              />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Summary Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-gray-500">Total PO</CardTitle>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total PO</CardTitle>
+            <Package className="w-4 h-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold">{filtered.length}</p>
+            <div className="text-2xl font-bold">{data.length}</div>
+            <p className="text-xs text-muted-foreground">Purchase Orders</p>
           </CardContent>
         </Card>
         <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-gray-500">Total Nilai</CardTitle>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Grand Total</CardTitle>
+            <DollarSign className="w-4 h-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold text-blue-600">{formatRupiah(totalAmount)}</p>
+            <div className="text-2xl font-bold">{formatCurrency(grandTotal)}</div>
+            <p className="text-xs text-muted-foreground">Total Value</p>
           </CardContent>
         </Card>
         <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-gray-500">Rata-rata per PO</CardTitle>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Approved</CardTitle>
+            <TrendingUp className="w-4 h-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold">
-              {filtered.length > 0 ? formatRupiah(totalAmount / filtered.length) : "-"}
+            <div className="text-2xl font-bold">
+              {statusSummary.find(s => s.status === "APPROVED")?.count || 0}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {formatCurrency(statusSummary.find(s => s.status === "APPROVED")?.total || 0)}
+            </p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Received</CardTitle>
+            <Calendar className="w-4 h-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {statusSummary.find(s => s.status === "RECEIVED")?.count || 0}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {formatCurrency(statusSummary.find(s => s.status === "RECEIVED")?.total || 0)}
             </p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Filters */}
-      <Card className="mb-4">
-        <CardContent className="pt-4">
-          <div className="flex flex-col sm:flex-row gap-3">
-            <div className="relative flex-1">
-              <MagnifyingGlassIcon className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-              <Input
-                placeholder="Cari no. PO, supplier..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="pl-9"
-              />
+      {/* Status Breakdown */}
+      {statusSummary.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Status Breakdown</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+              {statusSummary.map((item) => (
+                <div key={item.status} className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <Badge className={
+                      item.status === "DRAFT" ? "bg-gray-100 text-gray-800" :
+                      item.status === "APPROVED" ? "bg-blue-100 text-blue-800" :
+                      item.status === "SENT" ? "bg-purple-100 text-purple-800" :
+                      item.status === "PARTIAL" ? "bg-yellow-100 text-yellow-800" :
+                      item.status === "RECEIVED" ? "bg-green-100 text-green-800" :
+                      "bg-red-100 text-red-800"
+                    }>
+                      {item.status}
+                    </Badge>
+                  </div>
+                  <div className="text-lg font-bold">{item.count}</div>
+                  <div className="text-xs text-muted-foreground">
+                    {formatCurrency(item.total)}
+                  </div>
+                </div>
+              ))}
             </div>
-            <Select value={status} onValueChange={setStatus}>
-              <SelectTrigger className="w-full sm:w-48">
-                <SelectValue placeholder="Status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Semua Status</SelectItem>
-                <SelectItem value="draft">Draft</SelectItem>
-                <SelectItem value="submitted">Submitted</SelectItem>
-                <SelectItem value="approved">Approved</SelectItem>
-                <SelectItem value="received">Received</SelectItem>
-                <SelectItem value="closed">Closed</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      )}
 
-      {/* Table */}
+      {/* Detail Table */}
       <Card>
-        <CardContent className="p-0">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b bg-gray-50">
-                  <th className="text-left px-4 py-3 font-medium">No. PO</th>
-                  <th className="text-left px-4 py-3 font-medium">Supplier</th>
-                  <th className="text-left px-4 py-3 font-medium">Tgl PO</th>
-                  <th className="text-right px-4 py-3 font-medium">Jumlah Item</th>
-                  <th className="text-right px-4 py-3 font-medium">Diterima</th>
-                  <th className="text-right px-4 py-3 font-medium">Total Amount</th>
-                  <th className="text-left px-4 py-3 font-medium">Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {loading ? (
-                  <tr><td colSpan={7} className="text-center py-8 text-gray-400">Memuat...</td></tr>
-                ) : filtered.length === 0 ? (
-                  <tr>
-                    <td colSpan={7}>
-                      <div className="flex flex-col items-center py-12 text-gray-400">
-                        <TruckIcon className="w-12 h-12 mb-2" />
-                        <p>Belum ada data ringkasan PO</p>
-                      </div>
-                    </td>
-                  </tr>
-                ) : (
-                  filtered.map((item) => (
-                    <tr key={item.id} className="border-b hover:bg-gray-50">
-                      <td className="px-4 py-3 font-mono text-xs">{item.no_po || "-"}</td>
-                      <td className="px-4 py-3">{item.supplier_name || "-"}</td>
-                      <td className="px-4 py-3">{item.tgl_po ? new Date(item.tgl_po).toLocaleDateString("id-ID") : "-"}</td>
-                      <td className="px-4 py-3 text-right">{item.items_count || 0}</td>
-                      <td className="px-4 py-3 text-right">{item.received_count || 0}</td>
-                      <td className="px-4 py-3 text-right font-medium">
-                        {item.total_amount ? formatRupiah(item.total_amount) : "-"}
-                      </td>
-                      <td className="px-4 py-3">
-                        <Badge>{item.status || "-"}</Badge>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
+        <CardHeader>
+          <CardTitle>Detail Purchase Orders</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {loading ? (
+            <div className="text-center py-12">Memuat data...</div>
+          ) : data.length === 0 ? (
+            <div className="text-center py-12 text-muted-foreground">
+              Tidak ada data PO untuk periode ini
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>PO Number</TableHead>
+                  <TableHead>Vendor</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Tanggal PO</TableHead>
+                  <TableHead>Items</TableHead>
+                  <TableHead className="text-right">Total Amount</TableHead>
+                  <TableHead>Created By</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {data.map((po) => (
+                  <TableRow key={po.po_number}>
+                    <TableCell className="font-medium">{po.po_number}</TableCell>
+                    <TableCell>
+                      <div>{po.vendor}</div>
+                      <div className="text-xs text-muted-foreground">{po.vendor_code}</div>
+                    </TableCell>
+                    <TableCell>
+                      <StatusBadge status={po.status} />
+                    </TableCell>
+                    <TableCell>{formatDate(po.tanggal_po)}</TableCell>
+                    <TableCell>{po.item_count} items</TableCell>
+                    <TableCell className="text-right font-medium">
+                      {po.total_amount_formatted}
+                    </TableCell>
+                    <TableCell>{po.created_by}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
         </CardContent>
       </Card>
     </div>
   );
+}
+
+function StatusBadge({ status }: { status: string }) {
+  const styles: Record<string, string> = {
+    DRAFT: "bg-gray-100 text-gray-800",
+    APPROVED: "bg-blue-100 text-blue-800",
+    SENT: "bg-purple-100 text-purple-800",
+    PARTIAL: "bg-yellow-100 text-yellow-800",
+    RECEIVED: "bg-green-100 text-green-800",
+    CANCELLED: "bg-red-100 text-red-800",
+  };
+  return <Badge className={styles[status] || "bg-gray-100 text-gray-600"}>{status}</Badge>;
 }
