@@ -455,19 +455,19 @@ export default function EditProductPage() {
                     <TableRow key={item.id}>
                       <TableCell>
                         <Select
-                          value={item.raw_material_id}
+                          value={item.raw_material_id || ""}
                           onValueChange={(v) =>
                             updateBOMItemField(index, "raw_material_id", v)
                           }
                           disabled={loading}
                         >
                           <SelectTrigger className="w-[250px]">
-                            <SelectValue placeholder="Pilih bahan" />
+                            <SelectValue placeholder="Pilih bahan baku" />
                           </SelectTrigger>
                           <SelectContent>
                             {materials.map((m) => (
                               <SelectItem key={m.id} value={m.id}>
-                                {m.nama} ({m.kode})
+                                {m.nama} - {m.kode}
                               </SelectItem>
                             ))}
                           </SelectContent>

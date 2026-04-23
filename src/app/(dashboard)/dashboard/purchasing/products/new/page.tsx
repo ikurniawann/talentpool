@@ -342,17 +342,17 @@ export default function NewProductPage() {
                   <div className="col-span-4 space-y-1">
                     <Label className="text-xs">Bahan Baku *</Label>
                     <Select
-                      value={item.raw_material_id}
+                      value={item.raw_material_id || ""}
                       onValueChange={(v) => updateBOMItem(index, "raw_material_id", v)}
                       disabled={loading}
                     >
                       <SelectTrigger>
-                        <SelectValue placeholder="Pilih bahan" />
+                        <SelectValue placeholder="Pilih bahan baku" />
                       </SelectTrigger>
                       <SelectContent>
                         {materials.map((m) => (
                           <SelectItem key={m.id} value={m.id}>
-                            {m.nama} ({m.kode})
+                            {m.nama} - {m.kode}
                           </SelectItem>
                         ))}
                       </SelectContent>
