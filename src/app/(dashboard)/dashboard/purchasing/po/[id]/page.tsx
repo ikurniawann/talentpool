@@ -68,6 +68,43 @@ export default function PODetailPage() {
   const [sendVia, setSendVia] = useState<"EMAIL" | "WHATSAPP" | "PRINT" | "OTHER">("EMAIL");
   const [cancelReason, setCancelReason] = useState("");
 
+  // Add print styles
+  useEffect(() => {
+    const style = document.createElement('style');
+    style.textContent = `
+      @media print {
+        body * {
+          visibility: hidden;
+        }
+        .print-area, .print-area * {
+          visibility: visible;
+        }
+        .print-area {
+          position: absolute;
+          left: 0;
+          top: 0;
+          width: 100%;
+        }
+        .no-print {
+          display: none !important;
+        }
+        /* Hide sidebar and navigation */
+        aside, nav, header { display: none !important; }
+        /* Make content full width */
+        main { margin: 0 !important; padding: 0 !important; }
+        /* Ensure table borders print correctly */
+        table { border-collapse: collapse; width: 100%; }
+        th, td { border: 1px solid #ddd; padding: 8px; }
+        /* Page breaks */
+        .page-break { page-break-before: always; }
+      }
+    `;
+    document.head.appendChild(style);
+    return () => {
+      document.head.removeChild(style);
+    };
+  }, []);
+
   useEffect(() => {
     if (poId) {
       loadPO();
@@ -98,6 +135,11 @@ export default function PODetailPage() {
       console.error("Error approving PO:", error);
       toast.error(error.message || "Gagal mengapprove PO");
     }
+  };
+
+  const handlePrint = () => {
+    // Open print dialog
+    window.print();
   };
 
   const handleSend = async () => {
@@ -180,9 +222,9 @@ export default function PODetailPage() {
   }
 
   return (
-    <div className="container mx-auto py-6 space-y-6">
-      {/* Header */}
-      <div className="flex justify-between items-start">
+    <div className="container mx-auto py-6 space-y-6 print-area">
+      {/* Header - Hide from print */}
+      <div className="flex justify-between items-start no-print">
         <div className="flex items-center gap-4">
           <Link href="/dashboard/purchasing/po">
             <Button variant="ghost" size="icon">
@@ -195,7 +237,7 @@ export default function PODetailPage() {
           </div>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline">
+          <Button variant="outline" onClick={handlePrint}>
             <Printer className="w-4 h-4 mr-2" />
             Print
           </Button>
