@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useState } from "react";
 import {
   HomeIcon,
   UsersIcon,
@@ -10,6 +11,7 @@ import {
   ChartBarIcon,
   Cog6ToothIcon,
   ArrowRightStartOnRectangleIcon,
+  ChevronDownIcon,
 } from "@heroicons/react/24/outline";
 import {
   HomeIcon as HomeIconSolid,
@@ -42,6 +44,7 @@ interface NavItem {
   href: string;
   label: string;
   icon: string;
+  children?: NavItem[];
 }
 
 interface SidebarNavProps {
@@ -52,12 +55,21 @@ interface SidebarNavProps {
 
 export default function SidebarNav({ navItems, userName, userRole }: SidebarNavProps) {
   const pathname = usePathname();
+  const [expandedMenus, setExpandedMenus] = useState<string[]>([]);
 
   const isActive = (href: string) => {
     if (href === "/dashboard") {
       return pathname === "/dashboard";
     }
     return pathname.startsWith(href);
+  };
+
+  const toggleMenu = (key: string) => {
+    setExpandedMenus(prev => 
+      prev.includes(key) 
+        ? prev.filter(k => k !== key)
+        : [...prev, key]
+    );
   };
 
   return (
@@ -72,20 +84,56 @@ export default function SidebarNav({ navItems, userName, userRole }: SidebarNavP
       </div>
 
       <nav className="flex-1 p-4 space-y-1">
-        {navItems.map((item) => (
-          <Link
-            key={item.href}
-            href={item.href}
-            className={`flex items-center gap-3 px-3 py-2 text-sm rounded-lg transition-colors ${
-              isActive(item.href)
-                ? "bg-white/20 text-white font-medium"
-                : "text-white/80 hover:bg-white/10"
-            }`}
-          >
-            <NavIcon name={item.icon} isActive={isActive(item.href)} />
-            {item.label}
-          </Link>
-        ))}
+        {navItems.map((item) => {
+          const hasChildren = item.children && item.children.length > 0;
+          const isExpanded = expandedMenus.includes(item.label);
+          const itemActive = isActive(item.href);
+
+          return (
+            <div key={item.href}>
+              <button
+                onClick={() => hasChildren && toggleMenu(item.label)}
+                className={`w-full flex items-center justify-between gap-3 px-3 py-2 text-sm rounded-lg transition-colors ${
+                  itemActive
+                    ? "bg-white/20 text-white font-medium"
+                    : "text-white/80 hover:bg-white/10"
+                } ${hasChildren ? 'cursor-pointer' : ''}`}
+              >
+                <div className="flex items-center gap-3">
+                  <NavIcon name={item.icon} isActive={itemActive} />
+                  {item.label}
+                </div>
+                {hasChildren && (
+                  <ChevronDownIcon
+                    className={`w-4 h-4 transition-transform ${
+                      isExpanded ? 'rotate-180' : ''
+                    }`}
+                  />
+                )}
+              </button>
+              {hasChildren && isExpanded && (
+                <div className="ml-9 mt-1 space-y-1">
+                  {item.children!.map((child) => {
+                    const childActive = isActive(child.href);
+                    return (
+                      <Link
+                        key={child.href}
+                        href={child.href}
+                        className={`block px-3 py-1.5 text-sm rounded-lg transition-colors ${
+                          childActive
+                            ? 'bg-white/20 text-white font-medium'
+                            : 'text-white/60 hover:text-white hover:bg-white/10'
+                        }`}
+                      >
+                        {child.label}
+                      </Link>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          );
+        })}
       </nav>
 
       <div className="p-4 border-t border-white/10">

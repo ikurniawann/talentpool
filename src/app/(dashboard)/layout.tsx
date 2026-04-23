@@ -36,7 +36,15 @@ export default async function DashboardGroupLayout({
               user.role === "qc_staff"
               ? [
                   { href: "/dashboard/purchasing", label: "Purchasing", icon: "shopping" },
-                  { href: "/dashboard/inventory", label: "Inventory", icon: "cube" },
+                  {
+                    href: "/dashboard/inventory",
+                    label: "Inventory",
+                    icon: "cube",
+                    children: [
+                      { href: "/dashboard/inventory", label: "Daftar Stok" },
+                      { href: "/dashboard/inventory/low-stock", label: "Low Stock" },
+                    ],
+                  },
                 ]
               : [
                   { href: "/dashboard", label: "Beranda", icon: "home" },
