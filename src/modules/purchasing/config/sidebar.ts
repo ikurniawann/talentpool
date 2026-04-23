@@ -84,9 +84,24 @@ export const PURCHASING_MENU_ITEMS: SidebarItem[] = [
   {
     key: "inventory",
     label: "Inventori",
-    href: "/dashboard/purchasing/inventory",
+    href: "/dashboard/inventory",
     icon: ArchiveBoxIcon,
     badge: { key: "low_stock", label: "0", color: "red" },
+    children: [
+      {
+        key: "inventory-list",
+        label: "Daftar Stok",
+        href: "/dashboard/inventory",
+        icon: ArchiveBoxIcon,
+      },
+      {
+        key: "low-stock",
+        label: "Low Stock Alert",
+        href: "/dashboard/inventory/low-stock",
+        icon: DocumentChartBarIcon,
+        badge: { key: "low_stock_count", label: "0", color: "red" },
+      },
+    ],
   },
   {
     key: "reports",
