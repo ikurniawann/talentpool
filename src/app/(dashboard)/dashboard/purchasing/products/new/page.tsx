@@ -132,18 +132,27 @@ export default function NewProductPage() {
 
     setIsSubmitting(true);
     try {
+      console.log("Creating product with data:", formData);
+      
       // Create product
       const product = await createProduct(formData);
+      console.log("Product created:", product);
 
       // Create BOM items
       for (const item of bomItems) {
         if (item.raw_material_id && item.qty_needed) {
+          console.log("Creating BOM item:", {
+            raw_material_id: item.raw_material_id,
+            qty_required: item.qty_needed,
+            satuan_id: item.satuan_id,
+            waste_factor: (item.waste_persen || 0) / 100, // Convert percent to decimal
+          });
+          
           await createBOMItem(product.id, {
             raw_material_id: item.raw_material_id,
-            qty_needed: item.qty_needed,
+            qty_required: item.qty_needed,
             satuan_id: item.satuan_id,
-            waste_persen: item.waste_persen || 0,
-            catatan: item.catatan,
+            waste_factor: (item.waste_persen || 0) / 100, // Convert percent to decimal
           });
         }
       }
