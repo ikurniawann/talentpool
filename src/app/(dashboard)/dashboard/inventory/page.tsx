@@ -39,7 +39,6 @@ interface InventoryItem {
   stock_status: StockStatus;
   last_movement_at?: string;
   lokasi_rak?: string;
-  satuan?: string; // Add satuan field
 }
 
 export default function InventoryPage() {
@@ -183,17 +182,17 @@ export default function InventoryPage() {
             <table className="w-full text-sm">
               <thead className="bg-gray-50 border-y">
                 <tr>
-                  {["Kode", "Nama Bahan", "Kategori", "Satuan", "Stok Tersedia", "Stok Minimum", "Status", "Nilai Inventory", "Terakhir Update", "Aksi"].map(h => (
+                  {["Kode", "Nama Bahan", "Kategori", "Stok Tersedia", "Stok Minimum", "Status", "Nilai Inventory", "Terakhir Update", "Aksi"].map(h => (
                     <th key={h} className="text-left py-3 px-4 font-medium text-gray-700 whitespace-nowrap">{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody className="divide-y">
                 {loading ? (
-                  <tr><td colSpan={10} className="py-12 text-center text-gray-400">Memuat...</td></tr>
+                  <tr><td colSpan={9} className="py-12 text-center text-gray-400">Memuat...</td></tr>
                 ) : items.length === 0 ? (
                   <tr>
-                    <td colSpan={10} className="py-16 text-center text-gray-400">
+                    <td colSpan={9} className="py-16 text-center text-gray-400">
                       <CubeIcon className="w-12 h-12 mx-auto mb-3 opacity-30" />
                       <p>Belum ada data inventory</p>
                       <p className="text-xs mt-1">Data akan muncul otomatis setelah GRN dibuat</p>
@@ -206,7 +205,6 @@ export default function InventoryPage() {
                       <td className="py-3 px-4 font-mono text-xs text-gray-600">{item.material_kode}</td>
                       <td className="py-3 px-4 font-medium">{item.material_nama}</td>
                       <td className="py-3 px-4 text-gray-500 text-xs">{item.material_kategori || "—"}</td>
-                      <td className="py-3 px-4 text-gray-600 font-medium">{item.satuan || "Pcs"}</td>
                       <td className="py-3 px-4 font-semibold text-blue-700">{Number(item.qty_available).toFixed(2)}</td>
                       <td className="py-3 px-4 text-gray-500">{Number(item.qty_minimum).toFixed(2)}</td>
                       <td className="py-3 px-4">
