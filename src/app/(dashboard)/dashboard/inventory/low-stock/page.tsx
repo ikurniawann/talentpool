@@ -51,7 +51,7 @@ export default function LowStockReportPage() {
         ...(statusFilter !== "all" && { status: statusFilter }),
       });
       
-      const res = await fetch(`/api/purchasing/reports/low-stock?${params}`);
+      const res = await fetch(`/api/inventory/low-stock?${params}`);
       const data = await res.json();
       setItems(data.data || []);
     } catch (error) {
@@ -98,8 +98,8 @@ export default function LowStockReportPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">⚠️ Low Stock Alert</h1>
-          <p className="text-sm text-gray-500">Monitor stok di bawah minimum dan rencana reorder</p>
+          <h1 className="text-2xl font-bold text-gray-900">📦 Low Stock Alert</h1>
+          <p className="text-sm text-gray-500">Monitor stok bahan baku di bawah minimum</p>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" size="sm" onClick={fetchLowStock}>
