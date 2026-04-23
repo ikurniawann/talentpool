@@ -255,9 +255,11 @@ export default function LowStockReportPage() {
                           {item.supplier_name || "—"}
                         </td>
                         <td className="py-3 px-4">
-                          <Button variant="outline" size="sm" className="text-xs">
-                            Buat PO
-                          </Button>
+                          <Link href={`/dashboard/purchasing/purchase-orders/new?material=${item.material_kode}&qty=${item.suggested_order_qty}&supplier=${encodeURIComponent(item.supplier_name || '')}`}>
+                            <Button variant="outline" size="sm" className="text-xs">
+                              Buat PO
+                            </Button>
+                          </Link>
                         </td>
                       </tr>
                     );

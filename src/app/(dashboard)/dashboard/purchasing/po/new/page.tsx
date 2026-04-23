@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -36,6 +36,7 @@ interface POItemForm extends PurchaseOrderItemFormData {
 
 export default function NewPOPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [materials, setMaterials] = useState<RawMaterialWithStock[]>([]);
   const [units, setUnits] = useState<Unit[]>([]);
@@ -43,6 +44,45 @@ export default function NewPOPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [supplierModalOpen, setSupplierModalOpen] = useState(false);
   const [supplierSearch, setSupplierSearch] = useState("");
+
+  // Auto-fill from URL query params (from Low Stock Report)
+  useEffect(() => {
+    const materialCode = searchParams.get('material');
+    const qty = searchParams.get('qty');
+    const supplierName = searchParams.get('supplier');
+    
+    if (materialCode && qty && materials.length > 0) {
+      // Find material by code
+      const material = materials.find(m => m.kode === materialCode);
+      if (material) {
+        // Find supplier by name if provided
+        let supplierId = formData.supplier_id;
+        if (supplierName && suppliers.length > 0) {
+          const supplier = suppliers.find(s => s.nama.includes(supplierName));
+          if (supplier) {
+            supplierId = supplier.id;
+            setFormData(prev => ({ ...prev, supplier_id: supplier.id }));
+          }
+        }
+        
+        // Add item to PO
+        const unit = units.find(u => u.id === material.satuan_id);
+        const newItem: POItemForm = {
+          id: `temp-${Date.now()}`,
+          raw_material_id: material.id,
+          purchase_order_item_id: "",
+          qty: parseInt(qty),
+          harga_satuan: material.harga_terakhir || 0,
+          subtotal: parseInt(qty) * (material.harga_terakhir || 0),
+          raw_material_name: material.nama,
+          raw_material_unit: unit?.nama || 'Pcs',
+        };
+        
+        setItems([newItem]);
+        toast.success(`Material ${material.nama} ditambahkan ke PO (${qty} ${unit?.nama || 'pcs'})`);
+      }
+    }
+  }, [searchParams, materials, suppliers, units]);
 
   const [formData, setFormData] = useState<PurchaseOrderFormData>({
     supplier_id: "",
