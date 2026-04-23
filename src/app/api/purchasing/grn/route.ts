@@ -155,6 +155,7 @@ export async function GET(request: NextRequest) {
       status: d.status,
       total_item_diterima: d.total_item_diterima,
       total_item_ditolak: d.total_item_ditolak,
+      receive_count: d.receive_count || 1, // Penerimaan ke-berapa
       catatan: d.catatan,
       created_at: d.created_at,
     }));
@@ -224,6 +225,16 @@ export async function POST(request: NextRequest) {
     // Calculate totals
     const totals = calculateGrnTotals(validated.items);
 
+    // Count how many times this delivery has been received (receive counter)
+    const { count: previousGrnCount } = await supabase
+      .from("grn")
+      .select("*", { count: "exact", head: true })
+      .eq("delivery_id", validated.delivery_id)
+      .eq("is_active", true)
+      .neq("status", "rejected"); // Don't count rejected GRNs
+    
+    const receiveCount = (previousGrnCount || 0) + 1; // This is the Nth receive
+
     // Determine GRN status based on qty_diterima vs total qty_ordered
     // FIX Issue #1: Status based on received vs ordered, not on reject count
     const totalOrdered = effectivePoItems.reduce((s: number, i: any) => s + (i.qty_ordered || 0), 0);
@@ -258,6 +269,7 @@ export async function POST(request: NextRequest) {
       status: grnStatus,
       total_item_diterima: totals.total_diterima,
       total_item_ditolak: totals.total_ditolak,
+      receive_count: receiveCount, // Track: ini penerimaan ke-berapa
       penerima_id: user.id,
       created_by: user.id,
     };
