@@ -19,6 +19,7 @@ import {
   ClipboardDocumentCheckIcon,
   BookOpenIcon,
   CubeIcon,
+  ChevronDownIcon,
 } from "@heroicons/react/24/outline";
 import {
   HomeIcon as HomeIconSolid,
@@ -63,6 +64,7 @@ interface NavItem {
   href: string;
   label: string;
   icon: string;
+  children?: NavItem[];
 }
 
 interface SidebarClientProps {
@@ -74,12 +76,21 @@ interface SidebarClientProps {
 export default function SidebarClient({ user, navItems, children }: SidebarClientProps) {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [expandedMenus, setExpandedMenus] = useState<string[]>([]);
 
   const isActive = (href: string) => {
     if (href === "/dashboard") {
       return pathname === "/dashboard";
     }
     return pathname.startsWith(href);
+  };
+
+  const toggleMenu = (key: string) => {
+    setExpandedMenus(prev => 
+      prev.includes(key) 
+        ? prev.filter(k => k !== key)
+        : [...prev, key]
+    );
   };
 
   const handleLogout = async () => {
@@ -132,23 +143,62 @@ export default function SidebarClient({ user, navItems, children }: SidebarClien
 
         {/* Navigation */}
         <nav className="flex-1 p-3 space-y-0.5 overflow-y-auto">
-          {navItems.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              onClick={closeMobile}
-              className={`
-                flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg transition-colors
-                ${isActive(item.href)
-                  ? "bg-white/20 text-white font-medium"
-                  : "text-white/80 hover:bg-white/10"
-                }
-              `}
-            >
-              <NavIcon name={item.icon} isActive={isActive(item.href)} />
-              {item.label}
-            </Link>
-          ))}
+          {navItems.map((item) => {
+            const hasChildren = item.children && item.children.length > 0;
+            const isExpanded = expandedMenus.includes(item.label);
+            const itemActive = isActive(item.href);
+
+            return (
+              <div key={item.href}>
+                <button
+                  onClick={() => hasChildren ? toggleMenu(item.label) : null}
+                  className={`
+                    w-full flex items-center justify-between gap-3 px-3 py-2.5 text-sm rounded-lg transition-colors
+                    ${itemActive
+                      ? "bg-white/20 text-white font-medium"
+                      : "text-white/80 hover:bg-white/10"
+                    }
+                    ${hasChildren ? 'cursor-pointer' : ''}
+                  `}
+                >
+                  <div className="flex items-center gap-3">
+                    <NavIcon name={item.icon} isActive={itemActive} />
+                    {item.label}
+                  </div>
+                  {hasChildren && (
+                    <ChevronDownIcon
+                      className={`w-4 h-4 transition-transform ${
+                        isExpanded ? 'rotate-180' : ''
+                      }`}
+                    />
+                  )}
+                </button>
+                {hasChildren && isExpanded && (
+                  <div className="ml-9 mt-1 space-y-0.5">
+                    {item.children!.map((child) => {
+                      const childActive = isActive(child.href);
+                      return (
+                        <Link
+                          key={child.href}
+                          href={child.href}
+                          onClick={closeMobile}
+                          className={`
+                            block px-3 py-1.5 text-sm rounded-lg transition-colors
+                            ${childActive
+                              ? 'bg-white/20 text-white font-medium'
+                              : 'text-white/60 hover:text-white hover:bg-white/10'
+                            }
+                          `}
+                        >
+                          {child.label}
+                        </Link>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </nav>
 
         {/* Logout */}
