@@ -86,17 +86,6 @@ export default function NewProductPage() {
     const newItems = [...bomItems];
     newItems[index] = { ...newItems[index], [field]: value };
 
-    // Recalculate subtotal when qty or waste changes
-    if (field === "qty_needed" || field === "waste_persen") {
-      const qty = field === "qty_needed" ? value : newItems[index].qty_needed;
-      const waste = field === "waste_persen" ? value : newItems[index].waste_persen;
-      const material = materials.find((m) => m.id === newItems[index].raw_material_id);
-      if (material) {
-        const effectiveQty = qty * (1 + (waste || 0) / 100);
-        newItems[index].subtotal = effectiveQty * (material.harga_satuan || 0);
-      }
-    }
-
     // Update material info
     if (field === "raw_material_id") {
       const material = materials.find((m) => m.id === value);
@@ -107,7 +96,18 @@ export default function NewProductPage() {
       const qty = newItems[index].qty_needed || 0;
       const waste = newItems[index].waste_persen || 0;
       const effectiveQty = qty * (1 + waste / 100);
-      newItems[index].subtotal = effectiveQty * (material?.harga_satuan || 0);
+      newItems[index].subtotal = effectiveQty * (material?.avg_cost || 0);
+    }
+
+    // Recalculate subtotal when qty or waste changes
+    if (field === "qty_needed" || field === "waste_persen") {
+      const qty = field === "qty_needed" ? value : newItems[index].qty_needed;
+      const waste = field === "waste_persen" ? value : newItems[index].waste_persen;
+      const material = materials.find((m) => m.id === newItems[index].raw_material_id);
+      if (material) {
+        const effectiveQty = qty * (1 + (waste || 0) / 100);
+        newItems[index].subtotal = effectiveQty * (material.avg_cost || 0);
+      }
     }
 
     setBomItems(newItems);
@@ -347,7 +347,14 @@ export default function NewProductPage() {
                       disabled={loading}
                     >
                       <SelectTrigger>
-                        <SelectValue placeholder="Pilih bahan baku" />
+                        <SelectValue placeholder="Pilih bahan baku">
+                          {item.raw_material_id && materials.find((m) => m.id === item.raw_material_id) ? (
+                            <span className="truncate">
+                              {materials.find((m) => m.id === item.raw_material_id)?.nama} -{" "}
+                              {materials.find((m) => m.id === item.raw_material_id)?.kode}
+                            </span>
+                          ) : null}
+                        </SelectValue>
                       </SelectTrigger>
                       <SelectContent>
                         {materials.map((m) => (
