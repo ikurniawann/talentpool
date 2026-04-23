@@ -150,51 +150,68 @@ export default function SidebarClient({ user, navItems, children }: SidebarClien
 
             return (
               <div key={item.href}>
-                <button
-                  onClick={() => hasChildren ? toggleMenu(item.label) : null}
-                  className={`
-                    w-full flex items-center justify-between gap-3 px-3 py-2.5 text-sm rounded-lg transition-colors
-                    ${itemActive
-                      ? "bg-white/20 text-white font-medium"
-                      : "text-white/80 hover:bg-white/10"
-                    }
-                    ${hasChildren ? 'cursor-pointer' : ''}
-                  `}
-                >
-                  <div className="flex items-center gap-3">
+                {hasChildren ? (
+                  <>
+                    <button
+                      onClick={() => toggleMenu(item.label)}
+                      className={`
+                        w-full flex items-center justify-between gap-3 px-3 py-2.5 text-sm rounded-lg transition-colors
+                        ${itemActive
+                          ? "bg-white/20 text-white font-medium"
+                          : "text-white/80 hover:bg-white/10"
+                        }
+                        cursor-pointer
+                      `}
+                    >
+                      <div className="flex items-center gap-3">
+                        <NavIcon name={item.icon} isActive={itemActive} />
+                        {item.label}
+                      </div>
+                      <ChevronDownIcon
+                        className={`w-4 h-4 transition-transform ${
+                          isExpanded ? 'rotate-180' : ''
+                        }`}
+                      />
+                    </button>
+                    {isExpanded && (
+                      <div className="ml-9 mt-1 space-y-0.5">
+                        {item.children!.map((child) => {
+                          const childActive = isActive(child.href);
+                          return (
+                            <Link
+                              key={child.href}
+                              href={child.href}
+                              onClick={closeMobile}
+                              className={`
+                                block px-3 py-1.5 text-sm rounded-lg transition-colors
+                                ${childActive
+                                  ? 'bg-white/20 text-white font-medium'
+                                  : 'text-white/60 hover:text-white hover:bg-white/10'
+                                }
+                              `}
+                            >
+                              {child.label}
+                            </Link>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <Link
+                    href={item.href}
+                    onClick={closeMobile}
+                    className={`
+                      flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg transition-colors w-full
+                      ${itemActive
+                        ? "bg-white/20 text-white font-medium"
+                        : "text-white/80 hover:bg-white/10"
+                      }
+                    `}
+                  >
                     <NavIcon name={item.icon} isActive={itemActive} />
                     {item.label}
-                  </div>
-                  {hasChildren && (
-                    <ChevronDownIcon
-                      className={`w-4 h-4 transition-transform ${
-                        isExpanded ? 'rotate-180' : ''
-                      }`}
-                    />
-                  )}
-                </button>
-                {hasChildren && isExpanded && (
-                  <div className="ml-9 mt-1 space-y-0.5">
-                    {item.children!.map((child) => {
-                      const childActive = isActive(child.href);
-                      return (
-                        <Link
-                          key={child.href}
-                          href={child.href}
-                          onClick={closeMobile}
-                          className={`
-                            block px-3 py-1.5 text-sm rounded-lg transition-colors
-                            ${childActive
-                              ? 'bg-white/20 text-white font-medium'
-                              : 'text-white/60 hover:text-white hover:bg-white/10'
-                            }
-                          `}
-                        >
-                          {child.label}
-                        </Link>
-                      );
-                    })}
-                  </div>
+                  </Link>
                 )}
               </div>
             );
