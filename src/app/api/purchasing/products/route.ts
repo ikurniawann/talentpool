@@ -73,12 +73,34 @@ export async function POST(request: NextRequest) {
 
     const validated = productSchema.parse(body);
 
-    // Cek kode unik
-    if (validated.kode) {
+    // Auto-generate kode if not provided
+    let kode = validated.kode;
+    if (!kode) {
+      // Generate kode: PRD-YYYYMMDD-XXX
+      const date = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+      
+      // Get last product code for today
+      const { data: lastProduct } = await supabase
+        .from("products")
+        .select("kode")
+        .ilike("kode", `PRD-${date}-%`)
+        .order("kode", { ascending: false })
+        .limit(1)
+        .single();
+      
+      let seqNum = 1;
+      if (lastProduct && lastProduct.kode) {
+        const lastSeq = parseInt(lastProduct.kode.split('-')[2] || '0', 10);
+        seqNum = lastSeq + 1;
+      }
+      
+      kode = `PRD-${date}-${String(seqNum).padStart(3, '0')}`;
+    } else {
+      // Cek kode unik jika disediakan manual
       const { data: existing } = await supabase
         .from("products")
         .select("id")
-        .eq("kode", validated.kode)
+        .eq("kode", kode)
         .single();
 
       if (existing) {
@@ -93,6 +115,7 @@ export async function POST(request: NextRequest) {
       .from("products")
       .insert({
         ...validated,
+        kode,
         is_active: true,
       })
       .select()
