@@ -208,7 +208,7 @@ export async function POST(request: NextRequest) {
     // Re-fetch PO items directly with adminSupabase to ensure we get data (bypass RLS)
     const { data: freshPoItems } = await adminSupabase
       .from("purchase_order_items")
-      .select("id, raw_material_id, qty_ordered, qty_received")
+      .select("id, raw_material_id, qty_ordered, qty_received, harga_satuan, unit_price")
       .eq("purchase_order_id", delivery.purchase_order_id)
       .eq("is_active", true);
 
@@ -350,8 +350,9 @@ export async function POST(request: NextRequest) {
     for (const item of validated.items) {
       if (item.qty_diterima > 0) {
         const poItem = effectivePoItems.find((p: any) => p.id === item.purchase_order_item_id);
-        const unitCost = poItem?.harga_satuan || 0;
+        const unitCost = poItem?.harga_satuan || poItem?.unit_price || 0;
         try {
+          console.log(`  ${item.raw_material_id}: +${item.qty_diterima} @ Rp ${unitCost}`);
           await addInventoryFromGrn(
             adminSupabase,
             item.raw_material_id,
