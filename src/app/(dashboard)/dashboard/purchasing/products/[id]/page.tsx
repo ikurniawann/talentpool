@@ -51,8 +51,17 @@ export default function ProductDetailPage() {
         getProduct(productId),
         listBOMItems(productId),
       ]);
+      
+      // Map BOM data dengan fallback untuk field yang mungkin undefined
+      const mappedBomItems = bomData.map((item: any) => ({
+        ...item,
+        qty_needed: item.qty_required || item.qty_needed || 0,
+        waste_persen: ((item.waste_factor || 0) * 100) || 0,
+        subtotal: item.total_cost || item.subtotal || 0,
+      }));
+      
       setProduct(productData);
-      setBomItems(bomData);
+      setBomItems(mappedBomItems);
     } catch (error) {
       console.error("Error loading data:", error);
       toast.error("Gagal memuat data produk");
@@ -74,7 +83,8 @@ export default function ProductDetailPage() {
     }
   };
 
-  const formatCurrency = (num: number) => {
+  const formatCurrency = (num: number | undefined | null) => {
+    if (num === undefined || num === null) return "Rp 0";
     return `Rp ${num.toLocaleString("id-ID")}`;
   };
 
