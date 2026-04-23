@@ -183,7 +183,7 @@ export default function InventoryPage() {
             <table className="w-full text-sm">
               <thead className="bg-gray-50 border-y">
                 <tr>
-                  {["Kode", "Nama Bahan", "Kategori", "Stok Tersedia", "Stok Minimum", "Status", "Nilai Inventory", "Unit", "Terakhir Update", "Aksi"].map(h => (
+                  {["Kode", "Nama Bahan", "Kategori", "Stok Tersedia", "Stok Minimum", "Unit", "Status", "Nilai Inventory", "Terakhir Update", "Aksi"].map(h => (
                     <th key={h} className="text-left py-3 px-4 font-medium text-gray-700 whitespace-nowrap">{h}</th>
                   ))}
                 </tr>
@@ -208,6 +208,7 @@ export default function InventoryPage() {
                       <td className="py-3 px-4 text-gray-500 text-xs">{item.material_kategori || "—"}</td>
                       <td className="py-3 px-4 font-semibold text-blue-700">{Number(item.qty_available).toFixed(2)}</td>
                       <td className="py-3 px-4 text-gray-500">{Number(item.qty_minimum).toFixed(2)}</td>
+                      <td className="py-3 px-4 text-gray-600 font-medium">{item.satuan || "Pcs"}</td>
                       <td className="py-3 px-4">
                         <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium border ${sc.cls}`}>
                           <sc.icon className="w-3 h-3" />
@@ -215,7 +216,6 @@ export default function InventoryPage() {
                         </span>
                       </td>
                       <td className="py-3 px-4 font-medium text-gray-800">{formatRupiah(item.total_value || 0)}</td>
-                      <td className="py-3 px-4 text-gray-600 font-medium">{item.satuan || "Pcs"}</td>
                       <td className="py-3 px-4 text-gray-500 text-xs">{item.last_movement_at ? formatDate(item.last_movement_at) : "—"}</td>
                       <td className="py-3 px-4">
                         <Link href={`/dashboard/inventory/${item.id}`}>
