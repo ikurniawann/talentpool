@@ -225,18 +225,26 @@ export async function POST(request: NextRequest) {
     const totals = calculateGrnTotals(validated.items);
 
     // Determine GRN status based on qty_diterima vs total qty_ordered
+    // FIX Issue #1: Status based on received vs ordered, not on reject count
     const totalOrdered = effectivePoItems.reduce((s: number, i: any) => s + (i.qty_ordered || 0), 0);
     const totalReceived = effectivePoItems.reduce((s: number, i: any) => s + (i.qty_received || 0), 0);
     const newTotalReceived = totalReceived + totals.total_diterima;
 
     let grnStatus: GrnStatus = "pending";
+    
+    // Check if all items rejected (no good items at all)
     if (totals.total_diterima === 0 && totals.total_ditolak > 0) {
-      grnStatus = "rejected";
-    } else if (totalOrdered > 0 && newTotalReceived >= totalOrdered && totals.total_ditolak === 0) {
-      grnStatus = "received";
-    } else if (totals.total_diterima > 0) {
-      grnStatus = "partially_received";
+      grnStatus = "rejected"; // Semua ditolak, tidak ada yang bagus
+    } 
+    // Check if we've received enough (regardless of rejects)
+    else if (totalOrdered > 0 && newTotalReceived >= totalOrdered) {
+      grnStatus = "received"; // Sudah cukup yang diterima (bisa ada reject)
+    } 
+    // Check if we received some good items but not enough
+    else if (totals.total_diterima > 0) {
+      grnStatus = "partially_received"; // Ada yang diterima tapi belum cukup
     }
+    // Otherwise stays pending (no good items received yet)
 
     // Create GRN record
     const insertData: any = {
