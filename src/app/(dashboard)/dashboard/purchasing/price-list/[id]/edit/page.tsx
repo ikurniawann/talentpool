@@ -17,8 +17,8 @@ import {
 } from "@/components/ui/select";
 import { ArrowLeft, Save, DollarSign } from "lucide-react";
 import { toast } from "sonner";
-import { Supplier, RawMaterialWithStock, Unit, SupplierPriceListFormData } from "@/types/purchasing";
-import { listSuppliers, listRawMaterials, listUnits, listPriceLists, updatePriceList } from "@/lib/purchasing";
+import { Supplier, RawMaterialWithStock, Unit, SupplierPriceListFormData, SupplierPriceList } from "@/types/purchasing";
+import { listSuppliers, listRawMaterials, listUnits, getPriceList, updatePriceList } from "@/lib/purchasing";
 
 export default function EditPriceListPage() {
   const router = useRouter();
@@ -50,23 +50,22 @@ export default function EditPriceListPage() {
 
   const loadData = async () => {
     try {
-      const [suppliersData, materialsData, unitsData, priceListsData] = await Promise.all([
+      const [suppliersData, materialsData, unitsData, priceList] = await Promise.all([
         listSuppliers({ is_active: true }),
         listRawMaterials({ limit: 100, is_active: true }),
         listUnits(true),
-        listPriceLists({}),
+        getPriceList(priceListId),
       ]);
       setSuppliers(suppliersData);
       setMaterials(materialsData.data);
       setUnits(unitsData);
 
-      const priceList = priceListsData.find(p => p.id === priceListId);
       if (priceList) {
         setFormData({
           supplier_id: priceList.supplier_id,
           bahan_baku_id: priceList.bahan_baku_id,
           harga: priceList.harga,
-          satuan_id: priceList.satuan_id,
+          satuan_id: priceList.satuan_id || "",
           minimum_qty: priceList.minimum_qty,
           lead_time_days: priceList.lead_time_days,
           is_preferred: priceList.is_preferred,
@@ -78,9 +77,10 @@ export default function EditPriceListPage() {
         toast.error("Price list tidak ditemukan");
         router.push("/dashboard/purchasing/price-list");
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error loading data:", error);
-      toast.error("Gagal memuat data");
+      toast.error(error.message || "Gagal memuat data price list");
+      router.push("/dashboard/purchasing/price-list");
     } finally {
       setLoading(false);
     }

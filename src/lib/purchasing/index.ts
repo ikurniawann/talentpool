@@ -385,15 +385,23 @@ export async function deleteBOMItem(id: string): Promise<void> {
 // ============================================
 
 export async function listPriceLists(
-  params: { supplier_id?: string; raw_material_id?: string; is_active?: boolean } = {}
-): Promise<SupplierPriceList[]> {
+  params: { supplier_id?: string; raw_material_id?: string; is_active?: boolean; id?: string } = {}
+): Promise<SupplierPriceList[] | SupplierPriceList> {
   const sp = new URLSearchParams();
+  if (params.id) sp.set("id", params.id);
   if (params.supplier_id) sp.set("supplier_id", params.supplier_id);
   if (params.raw_material_id) sp.set("raw_material_id", params.raw_material_id);
   if (params.is_active !== undefined) sp.set("is_active", String(params.is_active));
 
-  const response = await fetchApi<{ data: SupplierPriceList[] }>(
+  const response = await fetchApi<{ data: SupplierPriceList[] | SupplierPriceList }>(
     `${BASE}/price-list?${sp.toString()}`
+  );
+  return response.data;
+}
+
+export async function getPriceList(id: string): Promise<SupplierPriceList> {
+  const response = await fetchApi<{ data: SupplierPriceList }>(
+    `${BASE}/price-list?id=${id}`
   );
   return response.data;
 }
