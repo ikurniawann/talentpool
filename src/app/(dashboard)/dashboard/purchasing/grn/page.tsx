@@ -46,6 +46,7 @@ interface GrnRow {
   status: GrnStatus;
   total_item_diterima: number;
   total_item_ditolak: number;
+  receive_count: number; // Penerimaan ke-berapa
   created_at: string;
 }
 
@@ -152,7 +153,7 @@ export default function GrnListPage() {
             <table className="w-full">
               <thead className="bg-gray-50 border-b">
                 <tr>
-                  {["No. GRN", "Supplier", "No. Surat Jalan", "PO", "Tgl Terima", "Status", "Item Diterima", "Aksi"].map((h) => (
+                  {["No. GRN", "Penerimaan Ke-", "Supplier", "No. Surat Jalan", "PO", "Tgl Terima", "Status", "Item Diterima", "Aksi"].map((h) => (
                     <th key={h} className="text-left py-3 px-4 text-sm font-medium text-gray-700">{h}</th>
                   ))}
                 </tr>
