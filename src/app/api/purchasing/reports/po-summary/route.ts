@@ -93,20 +93,18 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    return successResponse({
-      summary: {
-        total_po: pos?.length || 0,
+    return NextResponse.json({
+      success: true,
+      data: {
+        summary: summary,
+        by_status: Object.entries(byStatus).map(([k, v]) => ({
+          status: k,
+          count: v.count,
+          total: Math.round(v.total * 100) / 100,
+          total_formatted: formatRupiah(v.total),
+        })),
         grand_total: Math.round(grandTotal * 100) / 100,
-        grand_total_formatted: formatRupiah(grandTotal),
-        by_status: Object.fromEntries(
-          Object.entries(byStatus).map(([k, v]) => [
-            k,
-            { count: v.count, total: Math.round(v.total * 100) / 100 },
-          ])
-        ),
-        period: { from: date_from, to: date_to },
       },
-      purchase_orders: summary,
     });
   } catch (error) {
     if (error instanceof ApiError) return error.toResponse();
