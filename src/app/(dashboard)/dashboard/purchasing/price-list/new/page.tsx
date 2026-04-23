@@ -138,7 +138,11 @@ export default function NewPriceListPage() {
                   disabled={loading}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Pilih supplier" />
+                    <SelectValue placeholder="Pilih supplier">
+                      {formData.supplier_id && suppliers.find(s => s.id === formData.supplier_id) ? (
+                        <span>{suppliers.find(s => s.id === formData.supplier_id)?.nama_supplier} ({suppliers.find(s => s.id === formData.supplier_id)?.kode})</span>
+                      ) : null}
+                    </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
                     {suppliers.map((supplier) => (
@@ -160,7 +164,11 @@ export default function NewPriceListPage() {
                   disabled={loading}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Pilih bahan baku" />
+                    <SelectValue placeholder="Pilih bahan baku">
+                      {formData.bahan_baku_id && materials.find(m => m.id === formData.bahan_baku_id) ? (
+                        <span>{materials.find(m => m.id === formData.bahan_baku_id)?.nama} - {materials.find(m => m.id === formData.bahan_baku_id)?.kode}</span>
+                      ) : null}
+                    </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
                     {materials.map((material) => (
@@ -182,7 +190,11 @@ export default function NewPriceListPage() {
                   disabled={loading}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Pilih satuan" />
+                    <SelectValue placeholder="Pilih satuan">
+                      {formData.satuan_id && units.find(u => u.id === formData.satuan_id) ? (
+                        <span>{units.find(u => u.id === formData.satuan_id)?.nama} ({units.find(u => u.id === formData.satuan_id)?.kode})</span>
+                      ) : null}
+                    </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
                     {units.map((unit) => (
