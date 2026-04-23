@@ -120,7 +120,7 @@ export default function NewProductPage() {
   const calculateSuggestedPrice = () => {
     const hpp = calculateHPP();
     if (!hpp || !formData.markup_persen) return 0;
-    return hpp * (1 + formData.markup_persen / 100);
+    return hpp * (1 + (formData.markup_persen || 0) / 100);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -169,12 +169,15 @@ export default function NewProductPage() {
     }
   };
 
-  const formatCurrency = (num: number) => {
+  const formatCurrency = (num: number | undefined | null) => {
+    if (num === undefined || num === null) return "Rp 0";
     return `Rp ${num.toLocaleString("id-ID")}`;
   };
 
   const hpp = calculateHPP();
   const suggestedPrice = calculateSuggestedPrice();
+  const margin = (formData.harga_jual || 0) - hpp;
+  const marginPercent = hpp > 0 ? ((margin / hpp) * 100) : 0;
 
   return (
     <div className="container mx-auto py-6 space-y-6">
