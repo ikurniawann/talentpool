@@ -15,6 +15,7 @@ SELECT
     rm.kategori,
     rm.deskripsi,
     rm.stok_minimum,
+    rm.stok_maximum,
     rm.satuan_besar_id,
     rm.satuan_kecil_id,
     rm.is_active,
