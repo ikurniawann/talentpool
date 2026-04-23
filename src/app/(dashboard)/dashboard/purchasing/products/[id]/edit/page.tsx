@@ -107,14 +107,20 @@ export default function EditProductPage() {
         listRawMaterials({ limit: 100 }),
         listUnits(true),
       ]);
+      
+      console.log("BOM Data:", bomData);
+      
       setProduct(productData);
       setBomItems(
-        bomData.map((item) => ({
-          ...item,
+        bomData.map((item: any) => ({
           id: item.id,
+          raw_material_id: item.raw_material_id,
+          qty_required: item.qty_required,
+          satuan_id: item.satuan_id,
+          waste_factor: item.waste_factor,
           raw_material_name: item.raw_material?.nama,
-          raw_material_unit: item.satuan?.nama,
-          subtotal: item.subtotal || 0,
+          raw_material_unit: item.satuan?.nama || item.raw_material?.satuan_kecil_nama,
+          subtotal: item.total_cost || item.subtotal || 0,
           isNew: false,
         }))
       );
