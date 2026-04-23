@@ -90,8 +90,8 @@ export default function NewProductPage() {
     if (field === "raw_material_id") {
       const material = materials.find((m) => m.id === value);
       newItems[index].raw_material_name = material?.nama;
-      newItems[index].raw_material_unit = material?.satuan_besar_nama;
-      newItems[index].satuan_id = material?.satuan_besar_id;
+      newItems[index].raw_material_unit = material?.satuan_kecil_nama || material?.satuan_besar_nama;
+      newItems[index].satuan_id = material?.satuan_kecil_id || material?.satuan_besar_id;
       // Recalculate with new material price
       const qty = newItems[index].qty_needed || 0;
       const waste = newItems[index].waste_persen || 0;
@@ -386,21 +386,11 @@ export default function NewProductPage() {
 
                   <div className="col-span-2 space-y-1">
                     <Label className="text-xs">Satuan</Label>
-                    <Select
-                      value={item.satuan_id || ""}
-                      onValueChange={(v) => updateBOMItem(index, "satuan_id", v)}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Satuan" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {units.map((u) => (
-                          <SelectItem key={u.id} value={u.id}>
-                            {u.nama}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <Input
+                      value={item.raw_material_unit || "-"}
+                      disabled
+                      className="bg-gray-50"
+                    />
                   </div>
 
                   <div className="col-span-2 space-y-1">

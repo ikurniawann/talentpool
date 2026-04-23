@@ -183,8 +183,8 @@ export default function EditProductPage() {
     if (field === "raw_material_id") {
       const material = materials.find((m) => m.id === value);
       newItems[index].raw_material_name = material?.nama;
-      newItems[index].raw_material_unit = material?.satuan_besar_nama;
-      newItems[index].satuan_id = material?.satuan_besar_id;
+      newItems[index].raw_material_unit = material?.satuan_kecil_nama || material?.satuan_besar_nama;
+      newItems[index].satuan_id = material?.satuan_kecil_id || material?.satuan_besar_id;
       // Recalculate with new material price
       const qty = newItems[index].qty_required || 0;
       const waste = newItems[index].waste_factor || 0;
