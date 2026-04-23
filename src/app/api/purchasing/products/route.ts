@@ -80,17 +80,17 @@ export async function POST(request: NextRequest) {
       const date = new Date().toISOString().slice(0, 10).replace(/-/g, '');
       
       // Get last product code for today
-      const { data: lastProduct } = await supabase
+      const { data: productsToday } = await supabase
         .from("products")
         .select("kode")
-        .ilike("kode", `PRD-${date}-%`)
+        .like("kode", `PRD-${date}-%`)
         .order("kode", { ascending: false })
-        .limit(1)
-        .single();
+        .limit(1);
       
       let seqNum = 1;
-      if (lastProduct && lastProduct.kode) {
-        const lastSeq = parseInt(lastProduct.kode.split('-')[2] || '0', 10);
+      if (productsToday && productsToday.length > 0 && productsToday[0].kode) {
+        const parts = productsToday[0].kode.split('-');
+        const lastSeq = parseInt(parts[parts.length - 1] || '0', 10);
         seqNum = lastSeq + 1;
       }
       
