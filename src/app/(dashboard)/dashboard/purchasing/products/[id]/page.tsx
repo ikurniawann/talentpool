@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -18,7 +18,7 @@ import {
 import { ArrowLeft, Package, Calculator, Edit, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { ProductWithCOGS, BOMItem } from "@/types/purchasing";
-import { getProduct, listBOMItems } from "@/lib/purchasing";
+import { getProduct, listBOMItems, deleteProduct } from "@/lib/purchasing";
 import {
   Dialog,
   DialogContent,
@@ -30,6 +30,7 @@ import {
 
 export default function ProductDetailPage() {
   const params = useParams();
+  const router = useRouter();
   const productId = params.id as string;
 
   const [product, setProduct] = useState<ProductWithCOGS | null>(null);
@@ -57,6 +58,19 @@ export default function ProductDetailPage() {
       toast.error("Gagal memuat data produk");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!product) return;
+    try {
+      await deleteProduct(product.id);
+      toast.success("Produk berhasil dinonaktifkan");
+      setIsDeleteDialogOpen(false);
+      router.push("/dashboard/purchasing/products");
+    } catch (error: any) {
+      console.error("Error deleting product:", error);
+      toast.error(error.message || "Gagal menghapus produk");
     }
   };
 
@@ -124,8 +138,6 @@ export default function ProductDetailPage() {
             <Trash2 className="w-4 h-4 mr-2" />
             Hapus
           </Button>
-        </div>
-      </div>
 
       <Tabs defaultValue="info" className="space-y-6">
         <TabsList>
@@ -256,7 +268,7 @@ export default function ProductDetailPage() {
             <Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)}>
               Batal
             </Button>
-            <Button variant="destructive">
+            <Button variant="destructive" onClick={handleDelete}>
               Nonaktifkan
             </Button>
           </DialogFooter>

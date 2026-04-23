@@ -85,11 +85,15 @@ export async function GET(
       .eq("grn_id", id)
       .eq("is_active", true);
 
-    if (itemsError) throw itemsError;
+    if (itemsError) {
+      console.error(`[GRN/${id}] Error fetching items:`, itemsError);
+      throw itemsError;
+    }
 
     console.log(`[GRN/${id}] Fetched ${items?.length || 0} items`);
     if (items && items.length > 0) {
-      console.log(`[GRN/${id}] Sample item:`, items[0]);
+      console.log(`[GRN/${id}] First item:`, JSON.stringify(items[0], null, 2));
+      console.log(`[GRN/${id}] purchase_order_item_ids:`, items.map(i => i.purchase_order_item_id));
     }
 
     // Get related data
@@ -121,6 +125,8 @@ export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params; // Extract id at function scope
+  
   try {
     const user = await requireApiRole([
       "warehouse_staff",
@@ -131,10 +137,14 @@ export async function PATCH(
       "admin",
     ]);
     const supabase = createAdminClient(); // bypass RLS
-    const { id } = await params;
+
+    console.log(`\n=== [PATCH GRN/${id}] START ===`);
 
     const body = await request.json();
+    console.log(`[PATCH GRN/${id}] Request body:`, JSON.stringify(body, null, 2));
+    
     const validated = updateGrnSchema.parse(body);
+    console.log(`[PATCH GRN/${id}] Validated:`, JSON.stringify(validated, null, 2));
 
     // Get current GRN
     const { data: currentGrn, error: fetchError } = await supabase
@@ -198,10 +208,14 @@ export async function PATCH(
 
     // Update GRN header
     const updateData: any = {
-      ...validated,
       updated_by: user.id,
       updated_at: new Date().toISOString(),
     };
+
+    // Only include valid grn table columns (exclude items - handled separately)
+    if (validated.status) updateData.status = validated.status;
+    if (validated.catatan !== undefined) updateData.catatan = validated.catatan;
+    if (validated.tanggal_penerimaan) updateData.tanggal_penerimaan = validated.tanggal_penerimaan;
 
     // Recalculate totals from items
     if (validated.items && validated.items.length > 0) {
@@ -241,12 +255,24 @@ export async function PATCH(
       .select()
       .single();
 
-    if (error) throw error;
+    console.log(`[PATCH GRN/${id}] Update result:`, { grn, error });
+
+    if (error) {
+      console.error(`[PATCH GRN/${id}] Update error:`, error);
+      throw error;
+    }
 
     // Update GRN items if provided
     if (validated.items && validated.items.length > 0) {
+      console.log(`[PATCH GRN/${id}] Updating ${validated.items.length} items...`);
+      
       // Delete existing items
-      await supabase.from("grn_items").update({ is_active: false }).eq("grn_id", id);
+      const { error: deleteError } = await supabase.from("grn_items").update({ is_active: false }).eq("grn_id", id);
+      if (deleteError) {
+        console.error(`[PATCH GRN/${id}] Delete items error:`, deleteError);
+        throw deleteError;
+      }
+      console.log(`[PATCH GRN/${id}] Deleted old items`);
 
       // Insert new items
       const grnItems = validated.items.map((item) => ({
@@ -259,32 +285,49 @@ export async function PATCH(
         kondisi: item.kondisi,
         catatan: item.catatan || null,
       }));
+      
+      console.log(`[PATCH GRN/${id}] Inserting items:`, JSON.stringify(grnItems, null, 2));
 
       const { error: itemsError } = await supabase.from("grn_items").insert(grnItems);
-      if (itemsError) throw itemsError;
+      if (itemsError) {
+        console.error(`[PATCH GRN/${id}] Insert items error:`, itemsError);
+        throw itemsError;
+      }
+      console.log(`[PATCH GRN/${id}] Inserted new items successfully`);
 
       // Update PO item received quantities based on qty changes
+      console.log(`[PATCH GRN/${id}] Processing ${qtyChanges.length} qty changes...`);
       for (const change of qtyChanges) {
         if (change.purchase_order_item_id && change.diff !== 0) {
-          const { data: poItem } = await supabase
+          console.log(`[PATCH GRN/${id}] Updating PO item ${change.purchase_order_item_id}, diff: ${change.diff}`);
+          const { data: poItem, error: poError } = await supabase
             .from("purchase_order_items")
             .select("qty_received")
             .eq("id", change.purchase_order_item_id)
             .single();
 
+          if (poError) {
+            console.error(`[PATCH GRN/${id}] Fetch PO item error:`, poError);
+            continue;
+          }
+
           if (poItem) {
             const newQty = Math.max(0, (poItem.qty_received || 0) + change.diff);
+            console.log(`[PATCH GRN/${id}] Setting qty_received to ${newQty}`);
             await updatePOItemReceivedQty(supabase, change.purchase_order_item_id, newQty);
           }
         }
       }
+      console.log(`[PATCH GRN/${id}] PO items updated`);
 
       // Update inventory for qty changes
+      console.log(`[PATCH GRN/${id}] Updating inventory...`);
       for (const change of qtyChanges) {
         if (change.diff !== 0 && change.raw_material_id) {
           try {
             if (change.diff > 0) {
               // Add inventory
+              console.log(`[PATCH GRN/${id}] Adding ${change.diff} to inventory for ${change.raw_material_id}`);
               await addInventoryFromGrn(
                 supabase,
                 change.raw_material_id,
@@ -296,6 +339,7 @@ export async function PATCH(
               );
             } else {
               // Remove inventory
+              console.log(`[PATCH GRN/${id}] Removing ${Math.abs(change.diff)} from inventory for ${change.raw_material_id}`);
               await removeInventoryFromGrn(
                 supabase,
                 change.raw_material_id,
@@ -310,6 +354,7 @@ export async function PATCH(
           }
         }
       }
+      console.log(`[PATCH GRN/${id}] Inventory updated`);
     }
 
     // Update delivery status if GRN status changed
@@ -319,17 +364,34 @@ export async function PATCH(
 
     // Update PO status based on received quantities
     if (currentGrn.purchase_order_id) {
+      console.log(`[PATCH GRN/${id}] Updating PO status...`);
       await updatePOStatusAfterGrn(supabase, currentGrn.purchase_order_id);
+      console.log(`[PATCH GRN/${id}] PO status updated`);
     }
 
+    console.log(`[PATCH GRN/${id}] === SUCCESS ===\n`);
     return successResponse(grn, `GRN ${grn.nomor_grn} berhasil diupdate`);
   } catch (error) {
+    console.error(`[PATCH GRN/${id}] === ERROR ===`);
+    console.error(`[PATCH GRN/${id}] Error:`, error);
+    console.error(`[PATCH GRN/${id}] Error stack:`, error instanceof Error ? error.stack : 'N/A');
+    
     if (error instanceof ApiError) return error.toResponse();
     if (error instanceof z.ZodError) {
       return ApiError.badRequest("Validation failed", error.issues).toResponse();
     }
-    console.error("Error updating GRN:", error);
-    return ApiError.server("Failed to update GRN").toResponse();
+    
+    // Return detailed error for debugging
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    return Response.json(
+      { 
+        error: { 
+          message: `Failed to update GRN: ${errorMessage}`,
+          details: error instanceof Error ? error.stack : undefined
+        } 
+      },
+      { status: 500 }
+    );
   }
 }
 

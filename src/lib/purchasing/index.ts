@@ -342,6 +342,12 @@ export async function listBOMItems(
   return response.data;
 }
 
+export async function listBOM(
+  productId: string
+): Promise<BOMItem[]> {
+  return listBOMItems(productId);
+}
+
 export async function createBOMItem(
   productId: string,
   payload: BOMItemFormData

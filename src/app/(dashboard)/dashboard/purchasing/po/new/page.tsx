@@ -65,20 +65,44 @@ export default function NewPOPage() {
     setLoading(true);
     try {
       // Load suppliers
-      const suppliersRes = await listSuppliers();
-      const suppliersArray = Array.isArray(suppliersRes) ? suppliersRes : suppliersRes.data || [];
-      setSuppliers(suppliersArray);
+      console.log("Loading suppliers...");
+      try {
+        const suppliersRes = await listSuppliers();
+        const suppliersArray = Array.isArray(suppliersRes) ? suppliersRes : suppliersRes.data || [];
+        setSuppliers(suppliersArray);
+        console.log("Suppliers loaded:", suppliersArray.length);
+      } catch (err: any) {
+        console.error("Failed to load suppliers:", err.message);
+        // Continue without suppliers - user can still add items
+      }
       
-      // Load materials
-      const materialsRes = await listRawMaterials({ limit: 100 });
-      setMaterials(materialsRes.data || []);
+      // Load materials (include inactive)
+      console.log("Loading materials...");
+      try {
+        const materialsRes = await listRawMaterials({ limit: 100, is_active: undefined });
+        console.log("Materials response:", materialsRes);
+        const materialsArray = materialsRes.data || [];
+        setMaterials(materialsArray);
+        console.log("Materials loaded:", materialsArray.length);
+      } catch (err: any) {
+        console.error("Failed to load materials:", err.message);
+        toast.error(`Gagal memuat bahan baku: ${err.message}`);
+      }
       
       // Load units
-      const unitsRes = await listUnits(true);
-      setUnits(unitsRes || []);
-    } catch (error) {
+      console.log("Loading units...");
+      try {
+        const unitsRes = await listUnits(true);
+        console.log("Units loaded:", unitsRes?.length || 0);
+        setUnits(unitsRes || []);
+      } catch (err: any) {
+        console.error("Failed to load units:", err.message);
+        // Units are optional, continue
+      }
+    } catch (error: any) {
       console.error("Error loading data:", error);
-      toast.error("Gagal memuat data");
+      console.error("Error details:", JSON.stringify(error, null, 2));
+      toast.error(`Gagal memuat data: ${error.message}`);
     } finally {
       setLoading(false);
     }

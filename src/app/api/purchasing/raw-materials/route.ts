@@ -69,7 +69,12 @@ export async function GET(request: NextRequest) {
       .order(sortBy, { ascending: sortDir === "ASC" })
       .range(from, to);
 
-    if (error) throw error;
+    if (error) {
+      console.error("Supabase error fetching raw materials:", error);
+      throw error;
+    }
+
+    console.log(`Raw materials fetched: ${data?.length || 0} items`);
 
     return Response.json({
       data,

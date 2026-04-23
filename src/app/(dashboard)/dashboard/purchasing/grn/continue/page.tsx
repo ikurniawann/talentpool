@@ -68,8 +68,7 @@ export default function GrnContinueListPage() {
       const params = new URLSearchParams();
       params.append("page", page.toString());
       params.append("limit", limit.toString());
-      // Only fetch GRN that can be continued
-      params.append("status", "pending");
+      // Don't filter by status - we'll filter in frontend for pending + partially_received
       if (search) params.append("search", search);
 
       const res = await fetch(`/api/purchasing/grn?${params}`);

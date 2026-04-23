@@ -10,6 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/components/ui/toast";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { BreadcrumbNav } from "@/modules/purchasing/components/breadcrumb/BreadcrumbNav";
 import {
   ClipboardDocumentCheckIcon,
@@ -65,6 +66,8 @@ export default function ContinueGrnPage() {
   const [grnData, setGrnData] = useState<GRNData | null>(null);
   const [poItems, setPoItems] = useState<POItem[]>([]);
   const [grnItems, setGrnItems] = useState<GrnItem[]>([]);
+  const [showModal, setShowModal] = useState(false);
+  const [modalData, setModalData] = useState({ success: false, message: "" });
   const [formData, setFormData] = useState({
     tanggal_penerimaan: "",
     catatan: "",
@@ -113,10 +116,10 @@ export default function ContinueGrnPage() {
             purchase_order_item_id: item.purchase_order_item_id,
             raw_material_id: item.raw_material_id,
             nama_bahan: item.raw_material?.nama || item.nama_bahan || "Unknown",
-            qty_diterima: item.qty_diterima || 0,
-            qty_ditolak: item.qty_ditolak || 0,
-            kondisi: item.kondisi || "baik",
-            catatan: item.catatan || "",
+            qty_diterima: 0, // Reset to 0 for new receiving
+            qty_ditolak: 0,  // Reset to 0 for new receiving
+            kondisi: "baik" as "baik" | "rusak" | "cacat",
+            catatan: "",
             satuan: item.satuan?.nama || item.satuan?.nama_satuan || "pcs",
           };
         });
@@ -124,8 +127,26 @@ export default function ContinueGrnPage() {
         setGrnItems(mappedItems);
         
         // After loading GRN items, try to enrich with PO data
-        if (grn.po_id) {
-          await fetchPOItems(grn.po_id);
+        console.log("=== CHECKING PO_ID ===");
+        console.log("GRN po_id:", grn.po_id);
+        console.log("GRN purchase_order_id:", grn.purchase_order_id);
+        
+        const poIdToFetch = grn.po_id || grn.purchase_order_id;
+        if (poIdToFetch) {
+          console.log("Fetching PO items for PO ID:", poIdToFetch);
+          await fetchPOItems(poIdToFetch);
+        } else {
+          console.error("❌ No PO ID found in GRN data!");
+          console.error("GRN data:", grn);
+          
+          // DEBUG: Hardcode PO items for testing
+          console.warn("⚠️ DEBUG MODE: Using hardcoded PO items for testing");
+          const debugPoItems: POItem[] = [
+            { id: "1", raw_material_id: grn.items[0]?.raw_material_id, nama_bahan: "Mie Instant", qty_ordered: 100, qty_received: 50, satuan: "pcs" },
+            { id: "2", raw_material_id: grn.items[1]?.raw_material_id, nama_bahan: "Tepung Terigu", qty_ordered: 200, qty_received: 100, satuan: "pcs" },
+            { id: "3", raw_material_id: grn.items[2]?.raw_material_id, nama_bahan: "Gula Merah", qty_ordered: 50, qty_received: 25, satuan: "pcs" },
+          ];
+          setPoItems(debugPoItems);
         }
       }
     } catch (error: any) {
@@ -142,13 +163,15 @@ export default function ContinueGrnPage() {
 
   async function fetchPOItems(poId: string) {
     try {
+      console.log("=== FETCH PO ITEMS ===");
+      console.log("PO ID:", poId);
+      
       // Try fetch from PO API first
       const res = await fetch(`/api/purchasing/po/${poId}`);
       const data = await res.json();
 
-      console.log("=== FETCH PO ITEMS ===");
-      console.log("PO ID:", poId);
-      console.log("Response:", data);
+      console.log("PO API Response status:", res.status);
+      console.log("PO API Response data:", JSON.stringify(data, null, 2));
 
       if (data.data?.items && data.data.items.length > 0) {
         const items = data.data.items.map((item: any) => ({
@@ -159,15 +182,17 @@ export default function ContinueGrnPage() {
           qty_received: item.qty_received || 0,
           satuan: item.satuan?.nama || item.satuan?.nama_satuan || "pcs",
         }));
-        console.log("Mapped PO Items:", items);
+        console.log("✅ Mapped PO Items:", items);
         setPoItems(items);
         return;
       }
 
       // Fallback: Fetch purchase_order_items directly
-      console.warn("No items in PO response, fetching directly from purchase_order_items...");
+      console.warn("⚠️ No items in PO response, fetching directly from purchase_order_items...");
       const directRes = await fetch(`/api/purchasing/po-items?po_id=${poId}`);
       const directData = await directRes.json();
+      
+      console.log("Direct PO Items API Response:", JSON.stringify(directData, null, 2));
       
       if (directData.data && directData.data.length > 0) {
         const items = directData.data.map((item: any) => ({
@@ -178,14 +203,14 @@ export default function ContinueGrnPage() {
           qty_received: item.qty_received || 0,
           satuan: item.satuan?.nama || item.satuan?.nama_satuan || "pcs",
         }));
-        console.log("Direct fetched PO Items:", items);
+        console.log("✅ Direct fetched PO Items:", items);
         setPoItems(items);
       } else {
-        console.warn("No PO items found even with direct fetch");
+        console.error("❌ No PO items found even with direct fetch!");
+        console.error("This means purchase_order_items table is empty for PO", poId);
       }
     } catch (e) {
-      console.error("Failed to fetch PO items:", e);
-      // Fallback: PO items will be empty, but GRN items already loaded
+      console.error("❌ Failed to fetch PO items:", e);
     }
   }
 
@@ -268,28 +293,48 @@ export default function ContinueGrnPage() {
         body: JSON.stringify(payload),
       });
 
-      const data = await res.json();
+      // Handle empty or non-JSON response
+      const text = await res.text();
+      console.log("API Response (raw):", res.status, text);
+      
+      let data;
+      try {
+        data = text ? JSON.parse(text) : { error: { message: "Empty response from server" } };
+      } catch (e) {
+        console.error("Failed to parse response:", e);
+        data = { error: { message: "Invalid response from server" } };
+      }
+      
       console.log("API Response:", res.status, data);
 
       if (res.ok) {
-        toast({
-          title: "✅ Berhasil",
-          description: `GRN ${grnData?.nomor_grn || ""} berhasil diupdate`,
+        // Show success modal
+        setModalData({
+          success: true,
+          message: `GRN ${grnData?.nomor_grn || ""} berhasil diupdate`,
         });
-        router.push("/dashboard/purchasing/grn/continue");
-        router.refresh();
+        setShowModal(true);
       } else {
         throw new Error(data.error?.message || data.message || "Gagal mengupdate GRN");
       }
     } catch (error: any) {
       console.error("Submit error:", error);
-      toast({
-        title: "❌ Error",
-        description: error.message || "Gagal mengupdate GRN",
-        variant: "destructive",
+      // Show error modal
+      setModalData({
+        success: false,
+        message: error.message || "Gagal mengupdate GRN",
       });
+      setShowModal(true);
     } finally {
       setSaving(false);
+    }
+  }
+
+  function handleModalClose() {
+    setShowModal(false);
+    if (modalData.success) {
+      router.push("/dashboard/purchasing/grn");
+      router.refresh();
     }
   }
 
@@ -462,7 +507,7 @@ export default function ContinueGrnPage() {
                     const qtyOrdered = poItem?.qty_ordered || 0;
                     const qtyReceived = poItem?.qty_received || 0;
                     const alreadyReceivedInThisGrn = item.qty_diterima || 0;
-                    const remaining = Math.max(0, qtyOrdered - qtyReceived - alreadyReceivedInThisGrn);
+                    const remaining = Math.max(0, qtyOrdered - qtyReceived);
                     
                     console.log(`[Item ${index}]`, {
                       nama: item.nama_bahan,
@@ -473,6 +518,7 @@ export default function ContinueGrnPage() {
                       alreadyReceivedInThisGrn,
                       remaining,
                       poItemId: poItem?.id,
+                      matched: !!poItem,
                     });
                     
                     return (
@@ -500,7 +546,11 @@ export default function ContinueGrnPage() {
                               updateGrnItem(index, "qty_diterima", parseFloat(e.target.value) || 0)
                             }
                             className="w-24 mx-auto text-center"
+                            disabled={remaining <= 0}
                           />
+                          {remaining <= 0 && (
+                            <p className="text-xs text-orange-600 mt-1">Sudah lengkap</p>
+                          )}
                         </td>
                         <td className="py-3 px-4">
                           <Input
@@ -560,6 +610,30 @@ export default function ContinueGrnPage() {
           </div>
         </div>
       </form>
+
+      {/* Modal Popup */}
+      <Dialog open={showModal} onOpenChange={setShowModal}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              {modalData.success ? (
+                <CheckCircleIcon className="w-6 h-6 text-green-600" />
+              ) : (
+                <span className="text-red-600">⚠️</span>
+              )}
+              {modalData.success ? "✅ Berhasil" : "❌ Gagal"}
+            </DialogTitle>
+            <DialogDescription className="pt-2">
+              {modalData.message}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button onClick={handleModalClose} className="w-full">
+              OK
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
