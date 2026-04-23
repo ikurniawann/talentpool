@@ -138,6 +138,8 @@ export default function ProductDetailPage() {
             <Trash2 className="w-4 h-4 mr-2" />
             Hapus
           </Button>
+        </div>
+      </div>
 
       <Tabs defaultValue="info" className="space-y-6">
         <TabsList>
