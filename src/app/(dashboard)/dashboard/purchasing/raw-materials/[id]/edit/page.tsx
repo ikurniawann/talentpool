@@ -236,7 +236,11 @@ export default function EditRawMaterialPage() {
                   }
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Pilih satuan besar" />
+                    <SelectValue placeholder="Pilih satuan besar">
+                      {formData.satuan_besar_id && units.find(u => u.id === formData.satuan_besar_id) ? (
+                        <span>{units.find(u => u.id === formData.satuan_besar_id)?.nama} ({units.find(u => u.id === formData.satuan_besar_id)?.kode})</span>
+                      ) : null}
+                    </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
                     {units.filter(u => u.tipe === "BESAR" || u.tipe === "KONVERSI").map((unit) => (
@@ -257,7 +261,11 @@ export default function EditRawMaterialPage() {
                   }
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Opsional" />
+                    <SelectValue placeholder="Opsional">
+                      {formData.satuan_kecil_id && units.find(u => u.id === formData.satuan_kecil_id) ? (
+                        <span>{units.find(u => u.id === formData.satuan_kecil_id)?.nama} ({units.find(u => u.id === formData.satuan_kecil_id)?.kode})</span>
+                      ) : null}
+                    </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
                     {units.filter(u => u.tipe === "KECIL" || u.tipe === "KONVERSI").map((unit) => (
@@ -377,7 +385,11 @@ export default function EditRawMaterialPage() {
                   }
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Pilih kondisi" />
+                    <SelectValue placeholder="Pilih kondisi">
+                      {formData.storage_condition ? (
+                        <span>{STORAGE_OPTIONS.find(opt => opt.value === formData.storage_condition)?.label}</span>
+                      ) : null}
+                    </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
                     {STORAGE_OPTIONS.map((opt) => (
