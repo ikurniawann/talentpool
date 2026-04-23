@@ -348,8 +348,18 @@ export default function NewProductPage() {
                       }}
                       disabled={loading}
                     >
-                      <SelectTrigger>
-                        <SelectValue />
+                      <SelectTrigger className="w-full">
+                        <SelectValue>
+                          {item.raw_material_id ? (
+                            materials.find((m) => m.id === item.raw_material_id) ? (
+                              `${materials.find((m) => m.id === item.raw_material_id)?.nama} - ${materials.find((m) => m.id === item.raw_material_id)?.kode}`
+                            ) : (
+                              "Memuat..."
+                            )
+                          ) : (
+                            "Pilih bahan baku"
+                          )}
+                        </SelectValue>
                       </SelectTrigger>
                       <SelectContent>
                         {materials.map((m) => (
@@ -359,12 +369,6 @@ export default function NewProductPage() {
                         ))}
                       </SelectContent>
                     </Select>
-                    {item.raw_material_id && (
-                      <p className="text-xs text-muted-foreground mt-1">
-                        {materials.find((m) => m.id === item.raw_material_id)?.nama} -{" "}
-                        {materials.find((m) => m.id === item.raw_material_id)?.kode}
-                      </p>
-                    )}
                   </div>
 
                   <div className="col-span-2 space-y-1">
