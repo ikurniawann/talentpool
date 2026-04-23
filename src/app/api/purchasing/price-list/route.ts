@@ -25,6 +25,7 @@ export async function GET(request: NextRequest) {
     const supabase = await createClient();
     const { searchParams } = new URL(request.url);
 
+    const id = searchParams.get("id");
     const supplierId = searchParams.get("supplier_id");
     const bahanBakuId = searchParams.get("bahan_baku_id");
     const isActive = searchParams.get("is_active");
@@ -48,7 +49,25 @@ export async function GET(request: NextRequest) {
           kode,
           nama
         )
-      `)
+      `);
+
+    // If ID provided, get single record
+    if (id) {
+      const { data, error } = await query.eq("id", id).single();
+      if (error) {
+        if (error.code === "PGRST116") {
+          return Response.json(
+            { success: false, message: "Price list tidak ditemukan" },
+            { status: 404 }
+          );
+        }
+        throw error;
+      }
+      return Response.json({ success: true, data });
+    }
+
+    // Otherwise list with filters
+    query = query
       .eq("is_active", isActive === "false" ? false : true)
       .order("is_preferred", { ascending: false })
       .order("created_at", { ascending: false });
