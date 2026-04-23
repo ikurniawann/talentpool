@@ -35,7 +35,21 @@ export default async function DashboardGroupLayout({
               user.role === "warehouse_staff" ||
               user.role === "qc_staff"
               ? [
-                  { href: "/dashboard/purchasing", label: "Purchasing", icon: "shopping" },
+                  {
+                    href: "/dashboard/purchasing",
+                    label: "Purchasing",
+                    icon: "shopping",
+                    children: [
+                      { href: "/dashboard/purchasing/main", label: "Dashboard" },
+                      { href: "/dashboard/purchasing/suppliers", label: "Supplier" },
+                      { href: "/dashboard/purchasing/raw-materials", label: "Bahan Baku" },
+                      { href: "/dashboard/purchasing/purchase-orders", label: "Purchase Order" },
+                      { href: "/dashboard/purchasing/grn", label: "Penerimaan" },
+                      { href: "/dashboard/inventory", label: "Inventory" },
+                      { href: "/dashboard/purchasing/returns", label: "Retur" },
+                      { href: "/dashboard/purchasing/reports", label: "Laporan" },
+                    ],
+                  },
                   {
                     href: "/dashboard/inventory",
                     label: "Inventory",
