@@ -250,15 +250,16 @@ export interface BOMItemFormData {
 export interface SupplierPriceList {
   id: string;
   supplier_id: string;
-  raw_material_id: string;
+  bahan_baku_id: string;
   harga: number;
   satuan_id?: string;
-  min_qty: number;
+  minimum_qty: number;
   lead_time_days: number;
   is_preferred: boolean;
   is_active: boolean;
-  berlaku_mulai: string;
+  berlaku_dari?: string;
   berlaku_sampai?: string;
+  catatan?: string;
   created_at: string;
   updated_at: string;
   created_by?: string;
@@ -269,20 +270,21 @@ export interface SupplierPriceList {
     kode: string;
     nama_supplier: string;
   };
-  raw_material?: RawMaterial;
+  bahan_baku?: RawMaterial;
   satuan?: Unit;
 }
 
 export interface SupplierPriceListFormData {
   supplier_id: string;
-  raw_material_id: string;
+  bahan_baku_id: string;
   harga: number;
   satuan_id?: string;
-  min_qty: number;
+  minimum_qty: number;
   lead_time_days: number;
   is_preferred: boolean;
-  berlaku_mulai: string;
+  berlaku_dari?: string;
   berlaku_sampai?: string;
+  catatan?: string;
 }
 
 // ─── PURCHASE ORDERS ─────────────────────────
