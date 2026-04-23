@@ -343,18 +343,13 @@ export default function NewProductPage() {
                     <Label className="text-xs">Bahan Baku *</Label>
                     <Select
                       value={item.raw_material_id || ""}
-                      onValueChange={(v) => updateBOMItem(index, "raw_material_id", v)}
+                      onValueChange={(v) => {
+                        updateBOMItem(index, "raw_material_id", v);
+                      }}
                       disabled={loading}
                     >
                       <SelectTrigger>
-                        <SelectValue placeholder="Pilih bahan baku">
-                          {item.raw_material_id && materials.find((m) => m.id === item.raw_material_id) ? (
-                            <span className="truncate">
-                              {materials.find((m) => m.id === item.raw_material_id)?.nama} -{" "}
-                              {materials.find((m) => m.id === item.raw_material_id)?.kode}
-                            </span>
-                          ) : null}
-                        </SelectValue>
+                        <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
                         {materials.map((m) => (
@@ -364,6 +359,12 @@ export default function NewProductPage() {
                         ))}
                       </SelectContent>
                     </Select>
+                    {item.raw_material_id && (
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {materials.find((m) => m.id === item.raw_material_id)?.nama} -{" "}
+                        {materials.find((m) => m.id === item.raw_material_id)?.kode}
+                      </p>
+                    )}
                   </div>
 
                   <div className="col-span-2 space-y-1">

@@ -454,31 +454,32 @@ export default function EditProductPage() {
                   {bomItems.map((item, index) => (
                     <TableRow key={item.id}>
                       <TableCell>
-                        <Select
-                          value={item.raw_material_id || ""}
-                          onValueChange={(v) =>
-                            updateBOMItemField(index, "raw_material_id", v)
-                          }
-                          disabled={loading}
-                        >
-                          <SelectTrigger className="w-[250px]">
-                            <SelectValue placeholder="Pilih bahan baku">
-                              {item.raw_material_id && materials.find((m) => m.id === item.raw_material_id) ? (
-                                <span className="truncate">
-                                  {materials.find((m) => m.id === item.raw_material_id)?.nama} -{" "}
-                                  {materials.find((m) => m.id === item.raw_material_id)?.kode}
-                                </span>
-                              ) : null}
-                            </SelectValue>
-                          </SelectTrigger>
-                          <SelectContent>
-                            {materials.map((m) => (
-                              <SelectItem key={m.id} value={m.id}>
-                                {m.nama} - {m.kode}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                        <div className="space-y-1">
+                          <Select
+                            value={item.raw_material_id || ""}
+                            onValueChange={(v) =>
+                              updateBOMItemField(index, "raw_material_id", v)
+                            }
+                            disabled={loading}
+                          >
+                            <SelectTrigger className="w-[250px]">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {materials.map((m) => (
+                                <SelectItem key={m.id} value={m.id}>
+                                  {m.nama} - {m.kode}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          {item.raw_material_id && (
+                            <p className="text-xs text-muted-foreground">
+                              {materials.find((m) => m.id === item.raw_material_id)?.nama} -{" "}
+                              {materials.find((m) => m.id === item.raw_material_id)?.kode}
+                            </p>
+                          )}
+                        </div>
                       </TableCell>
                       <TableCell className="text-right">
                         <Input
