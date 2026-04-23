@@ -8,14 +8,15 @@ import { z } from "zod";
 
 const priceListSchema = z.object({
   supplier_id: z.string().uuid("Supplier wajib dipilih"),
-  raw_material_id: z.string().uuid("Bahan baku wajib dipilih"),
+  bahan_baku_id: z.string().uuid("Bahan baku wajib dipilih"),
   harga: z.number().min(0, "Harga tidak boleh negatif"),
   satuan_id: z.string().uuid().optional(),
-  min_qty: z.number().min(0).default(1),
+  minimum_qty: z.number().min(0).default(1),
   lead_time_days: z.number().min(0).default(0),
   is_preferred: z.boolean().default(false),
-  berlaku_mulai: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Format tanggal: YYYY-MM-DD"),
+  berlaku_dari: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Format tanggal: YYYY-MM-DD").optional(),
   berlaku_sampai: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Format tanggal: YYYY-MM-DD").optional(),
+  catatan: z.string().optional(),
 });
 
 // GET /api/purchasing/price-list
@@ -25,32 +26,38 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
 
     const supplierId = searchParams.get("supplier_id");
-    const rawMaterialId = searchParams.get("raw_material_id");
+    const bahanBakuId = searchParams.get("bahan_baku_id");
     const isActive = searchParams.get("is_active");
 
     let query = supabase
-      .from("supplier_price_list")
+      .from("supplier_price_lists")
       .select(`
         *,
         supplier:supplier_id (
           id,
           kode,
-          nama_supplier,
-          kontak_hp
+          nama_supplier
         ),
-        raw_material:raw_material_id (*),
-        satuan:satuan_id (*)
+        bahan_baku:bahan_baku_id (
+          id,
+          kode,
+          nama
+        ),
+        satuan:satuan_id (
+          id,
+          kode,
+          nama
+        )
       `)
-      .order("is_preferred", { ascending: false });
+      .eq("is_active", isActive === "false" ? false : true)
+      .order("is_preferred", { ascending: false })
+      .order("created_at", { ascending: false });
 
     if (supplierId) {
       query = query.eq("supplier_id", supplierId);
     }
-    if (rawMaterialId) {
-      query = query.eq("raw_material_id", rawMaterialId);
-    }
-    if (isActive !== null) {
-      query = query.eq("is_active", isActive === "true");
+    if (bahanBakuId) {
+      query = query.eq("bahan_baku_id", bahanBakuId);
     }
 
     const { data, error } = await query;
@@ -76,40 +83,14 @@ export async function POST(request: NextRequest) {
     // Validasi input
     const validated = priceListSchema.parse(body);
 
-    // Cek apakah sudah ada harga untuk kombinasi ini
-    const { data: existing } = await supabase
-      .from("supplier_price_list")
-      .select("id")
-      .eq("supplier_id", validated.supplier_id)
-      .eq("raw_material_id", validated.raw_material_id)
-      .eq("is_active", true)
-      .single();
-
-    if (existing) {
-      // Update existing price
-      const { data, error } = await supabase
-        .from("supplier_price_list")
-        .update({
-          ...validated,
-          is_active: true,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", existing.id)
-        .select()
-        .single();
-
-      if (error) throw error;
-
-      return Response.json({
-        success: true,
-        data,
-        message: "Harga berhasil diupdate",
-      });
+    // Set default berlaku_dari to today if not provided
+    if (!validated.berlaku_dari) {
+      validated.berlaku_dari = new Date().toISOString().split("T")[0];
     }
 
-    // Insert new price
+    // Insert new price list
     const { data, error } = await supabase
-      .from("supplier_price_list")
+      .from("supplier_price_lists")
       .insert({
         ...validated,
         is_active: true,
@@ -120,7 +101,7 @@ export async function POST(request: NextRequest) {
     if (error) throw error;
 
     return Response.json(
-      { success: true, data, message: "Harga berhasil ditambahkan" },
+      { success: true, data, message: "Price list berhasil dibuat" },
       { status: 201 }
     );
   } catch (error: any) {
@@ -138,7 +119,101 @@ export async function POST(request: NextRequest) {
     }
 
     return Response.json(
-      { success: false, message: error.message || "Gagal menambahkan harga" },
+      { success: false, message: error.message || "Gagal membuat price list" },
+      { status: 500 }
+    );
+  }
+}
+
+// PUT /api/purchasing/price-list/:id
+export async function PUT(request: NextRequest) {
+  try {
+    const supabase = await createClient();
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get("id");
+
+    if (!id) {
+      return Response.json(
+        { success: false, message: "ID diperlukan" },
+        { status: 400 }
+      );
+    }
+
+    const body = await request.json();
+    const validated = priceListSchema.partial().parse(body);
+
+    const { data, error } = await supabase
+      .from("supplier_price_lists")
+      .update({
+        ...validated,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", id)
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    return Response.json({
+      success: true,
+      data,
+      message: "Price list berhasil diupdate",
+    });
+  } catch (error: any) {
+    console.error("Error updating price list:", error);
+
+    if (error instanceof z.ZodError) {
+      return Response.json(
+        {
+          success: false,
+          message: "Validasi gagal",
+          errors: error.flatten().fieldErrors,
+        },
+        { status: 400 }
+      );
+    }
+
+    return Response.json(
+      { success: false, message: error.message || "Gagal mengupdate price list" },
+      { status: 500 }
+    );
+  }
+}
+
+// DELETE /api/purchasing/price-list/:id
+export async function DELETE(request: NextRequest) {
+  try {
+    const supabase = await createClient();
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get("id");
+
+    if (!id) {
+      return Response.json(
+        { success: false, message: "ID diperlukan" },
+        { status: 400 }
+      );
+    }
+
+    // Soft delete - set is_active = false
+    const { error } = await supabase
+      .from("supplier_price_lists")
+      .update({
+        is_active: false,
+        deleted_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", id);
+
+    if (error) throw error;
+
+    return Response.json({
+      success: true,
+      message: "Price list berhasil dihapus",
+    });
+  } catch (error: any) {
+    console.error("Error deleting price list:", error);
+    return Response.json(
+      { success: false, message: error.message || "Gagal menghapus price list" },
       { status: 500 }
     );
   }
