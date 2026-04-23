@@ -10,7 +10,7 @@ import {
   ExclamationTriangleIcon,
   ArrowDownIcon,
   ShoppingCartIcon,
-  DownloadIcon,
+  ArrowUpOnSquareIcon,
   RefreshCwIcon,
 } from "@heroicons/react/24/outline";
 import { CheckCircleIcon } from "@heroicons/react/24/solid";
@@ -107,7 +107,7 @@ export default function LowStockReportPage() {
             Refresh
           </Button>
           <Button variant="outline" size="sm" onClick={exportToCSV}>
-            <DownloadIcon className="w-4 h-4 mr-2" />
+            <ArrowUpOnSquareIcon className="w-4 h-4 mr-2" />
             Export CSV
           </Button>
         </div>
