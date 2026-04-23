@@ -71,6 +71,9 @@ export default function EditRawMaterialPage() {
         getRawMaterial(materialId),
         listUnits(true),
       ]);
+      
+      console.log("Loaded material:", materialData);
+      
       setMaterial(materialData);
       setUnits(unitsData);
 
