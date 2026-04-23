@@ -78,10 +78,15 @@ export default function SidebarClient({ user, navItems, children }: SidebarClien
   const [mobileOpen, setMobileOpen] = useState(false);
   const [expandedMenus, setExpandedMenus] = useState<string[]>([]);
 
-  const isActive = (href: string) => {
+  const isActive = (href: string, isChildItem = false) => {
     if (href === "/dashboard") {
       return pathname === "/dashboard";
     }
+    // For child items, use exact match
+    if (isChildItem) {
+      return pathname === href;
+    }
+    // For parent items, use startsWith
     return pathname.startsWith(href);
   };
 
@@ -176,7 +181,7 @@ export default function SidebarClient({ user, navItems, children }: SidebarClien
                     {isExpanded && (
                       <div className="ml-9 mt-1 space-y-0.5">
                         {item.children!.map((child) => {
-                          const childActive = isActive(child.href);
+                          const childActive = isActive(child.href, true); // exact match for child
                           return (
                             <Link
                               key={child.href}
