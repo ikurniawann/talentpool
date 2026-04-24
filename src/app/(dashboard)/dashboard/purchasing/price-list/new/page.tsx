@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/select";
 import { ArrowLeft, Save, DollarSign } from "lucide-react";
 import { toast } from "sonner";
+import { Combobox } from "@/components/ui/combobox";
 import { Supplier, RawMaterialWithStock, Unit, SupplierPriceListFormData } from "@/types/purchasing";
 import { listSuppliers, listRawMaterials, listUnits, createPriceList } from "@/lib/purchasing";
 

@@ -17,6 +17,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowLeft, Save, Package, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
+import { Combobox } from "@/components/ui/combobox";
 import { RawMaterialWithStock, Unit, MaterialCategory } from "@/types/purchasing";
 import { getRawMaterial, updateRawMaterial, listUnits } from "@/lib/purchasing";
 
@@ -196,23 +197,23 @@ export default function EditRawMaterialPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Kategori</Label>
-                  <Select
+                  <Combobox
+                    options={CATEGORY_OPTIONS.map((opt) => ({
+                      value: opt.value,
+                      label: opt.label,
+                    }))}
                     value={formData.kategori}
-                    onValueChange={(v: MaterialCategory) =>
+                    onChange={(v: MaterialCategory) =>
                       setFormData({ ...formData, kategori: v })
                     }
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Pilih kategori" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {CATEGORY_OPTIONS.map((opt) => (
-                        <SelectItem key={opt.value} value={opt.value}>
-                          {opt.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                    placeholder="Pilih kategori..."
+                    searchPlaceholder="Cari kategori..."
+                    emptyMessage="Kategori tidak ditemukan"
+                    allowClear
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Contoh: Bahan Pangan, Bahan Non-Pangan, Kemasan
+                  </p>
                 </div>
                 <div className="space-y-2">
                   <Label>Deskripsi</Label>
@@ -239,52 +240,49 @@ export default function EditRawMaterialPage() {
                 <Label>
                   Satuan Besar <span className="text-red-500">*</span>
                 </Label>
-                <Select
+                <Combobox
+                  options={units.filter(u => u.tipe === "BESAR" || u.tipe === "KONVERSI").map((unit) => ({
+                    value: unit.id,
+                    label: unit.nama,
+                    description: unit.kode,
+                  }))}
                   value={formData.satuan_besar_id}
-                  onValueChange={(v) =>
+                  onChange={(v) =>
                     setFormData({ ...formData, satuan_besar_id: v })
                   }
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Pilih satuan besar">
-                      {formData.satuan_besar_id && units.find(u => u.id === formData.satuan_besar_id) ? (
-                        <span>{units.find(u => u.id === formData.satuan_besar_id)?.nama} ({units.find(u => u.id === formData.satuan_besar_id)?.kode})</span>
-                      ) : null}
-                    </SelectValue>
-                  </SelectTrigger>
-                  <SelectContent>
-                    {units.filter(u => u.tipe === "BESAR" || u.tipe === "KONVERSI").map((unit) => (
-                      <SelectItem key={unit.id} value={unit.id}>
-                        {unit.nama} ({unit.kode})
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  placeholder="Pilih satuan besar..."
+                  searchPlaceholder="Cari satuan (nama/kode)..."
+                  emptyMessage="Tidak ada satuan yang cocok"
+                  allowClear
+                />
+                <p className="text-xs text-muted-foreground">
+                  Contoh: Kilogram (KG), Liter (LT)
+                </p>
               </div>
 
               <div className="space-y-2">
                 <Label>Satuan Kecil (opsional)</Label>
-                <Select
+                <Combobox
+                  options={[
+                    { value: "", label: "Tidak ada", description: "Tanpa satuan kecil" },
+                    ...units.filter(u => u.tipe === "KECIL" || u.tipe === "KONVERSI").map((unit) => ({
+                      value: unit.id,
+                      label: unit.nama,
+                      description: unit.kode,
+                    })),
+                  ]}
                   value={formData.satuan_kecil_id || ""}
-                  onValueChange={(v) =>
+                  onChange={(v) =>
                     setFormData({ ...formData, satuan_kecil_id: v || undefined })
                   }
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Opsional">
-                      {formData.satuan_kecil_id && units.find(u => u.id === formData.satuan_kecil_id) ? (
-                        <span>{units.find(u => u.id === formData.satuan_kecil_id)?.nama} ({units.find(u => u.id === formData.satuan_kecil_id)?.kode})</span>
-                      ) : null}
-                    </SelectValue>
-                  </SelectTrigger>
-                  <SelectContent>
-                    {units.filter(u => u.tipe === "KECIL" || u.tipe === "KONVERSI").map((unit) => (
-                      <SelectItem key={unit.id} value={unit.id}>
-                        {unit.nama} ({unit.kode})
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  placeholder="Pilih satuan kecil (opsional)..."
+                  searchPlaceholder="Cari satuan (nama/kode)..."
+                  emptyMessage="Tidak ada satuan yang cocok"
+                  allowClear
+                />
+                <p className="text-xs text-muted-foreground">
+                  Contoh: Gram (GR), Milliliter (ML) - untuk konversi
+                </p>
               </div>
 
               <div className="space-y-2">
@@ -385,30 +383,29 @@ export default function EditRawMaterialPage() {
             <CardContent className="space-y-4">
               <div className="space-y-2">
                 <Label>Storage Condition</Label>
-                <Select
+                <Combobox
+                  options={[
+                    { value: "", label: "Tidak ada", description: "Tanpa kondisi khusus" },
+                    ...STORAGE_OPTIONS.map((opt) => ({
+                      value: opt.value,
+                      label: opt.label,
+                    })),
+                  ]}
                   value={formData.storage_condition || ""}
-                  onValueChange={(v) =>
+                  onChange={(v) =>
                     setFormData({
                       ...formData,
                       storage_condition: v || undefined,
                     })
                   }
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Pilih kondisi">
-                      {formData.storage_condition ? (
-                        <span>{STORAGE_OPTIONS.find(opt => opt.value === formData.storage_condition)?.label}</span>
-                      ) : null}
-                    </SelectValue>
-                  </SelectTrigger>
-                  <SelectContent>
-                    {STORAGE_OPTIONS.map((opt) => (
-                      <SelectItem key={opt.value} value={opt.value}>
-                        {opt.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  placeholder="Pilih kondisi penyimpanan..."
+                  searchPlaceholder="Cari kondisi..."
+                  emptyMessage="Kondisi tidak ditemukan"
+                  allowClear
+                />
+                <p className="text-xs text-muted-foreground">
+                  Contoh: Suhu Ruang, Dingin, Beku, Kering
+                </p>
               </div>
 
               {formData.storage_condition && (
