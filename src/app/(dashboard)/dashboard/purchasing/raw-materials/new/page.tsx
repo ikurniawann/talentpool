@@ -19,6 +19,7 @@ import { ArrowLeft, Save, Package } from "lucide-react";
 import { toast } from "sonner";
 import { Unit, MaterialCategory, RawMaterialFormData } from "@/types/purchasing";
 import { listUnits, createRawMaterial } from "@/lib/purchasing";
+import { Combobox } from "@/components/ui/combobox";
 
 const CATEGORY_OPTIONS: { value: MaterialCategory; label: string }[] = [
   { value: "BAHAN_PANGAN", label: "Bahan Pangan" },
@@ -230,51 +231,51 @@ export default function NewRawMaterialPage() {
                 <Label htmlFor="satuan_besar">
                   Satuan Besar <span className="text-red-500">*</span>
                 </Label>
-                <Select
+                <Combobox
+                  options={satuanBesar.map((u) => ({
+                    value: u.id,
+                    label: u.nama,
+                    description: u.kode,
+                  }))}
                   value={formData.satuan_besar_id}
-                  onValueChange={(v) =>
+                  onChange={(v) =>
                     setFormData({ ...formData, satuan_besar_id: v })
                   }
+                  placeholder="Pilih satuan besar..."
+                  searchPlaceholder="Cari satuan (nama/kode)..."
+                  emptyMessage="Tidak ada satuan yang cocok"
                   disabled={loading}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Pilih satuan besar">
-                      {formData.satuan_besar_id && units.find(u => u.id === formData.satuan_besar_id)?.nama}
-                    </SelectValue>
-                  </SelectTrigger>
-                  <SelectContent>
-                    {satuanBesar.map((unit) => (
-                      <SelectItem key={unit.id} value={unit.id}>
-                        {unit.nama} ({unit.kode})
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  allowClear
+                />
+                <p className="text-xs text-muted-foreground">
+                  Contoh: Kilogram (KG), Liter (LT)
+                </p>
               </div>
 
               <div className="space-y-2">
                 <Label htmlFor="satuan_kecil">Satuan Kecil</Label>
-                <Select
+                <Combobox
+                  options={[
+                    { value: "", label: "Tidak ada", description: "Tanpa satuan kecil" },
+                    ...satuanKecil.map((u) => ({
+                      value: u.id,
+                      label: u.nama,
+                      description: u.kode,
+                    })),
+                  ]}
                   value={formData.satuan_kecil_id || ""}
-                  onValueChange={(v) =>
+                  onChange={(v) =>
                     setFormData({ ...formData, satuan_kecil_id: v || undefined })
                   }
+                  placeholder="Pilih satuan kecil (opsional)..."
+                  searchPlaceholder="Cari satuan (nama/kode)..."
+                  emptyMessage="Tidak ada satuan yang cocok"
                   disabled={loading}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Opsional">
-                      {formData.satuan_kecil_id && units.find(u => u.id === formData.satuan_kecil_id)?.nama}
-                    </SelectValue>
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="">&mdash; Tidak ada &mdash;</SelectItem>
-                    {satuanKecil.map((unit) => (
-                      <SelectItem key={unit.id} value={unit.id}>
-                        {unit.nama} ({unit.kode})
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  allowClear
+                />
+                <p className="text-xs text-muted-foreground">
+                  Contoh: Gram (GR), Milliliter (ML) - untuk konversi
+                </p>
               </div>
 
               {formData.satuan_kecil_id && (
