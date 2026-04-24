@@ -1359,3 +1359,13 @@ Import trace:
 ✓ Compiled in 49ms
 ✓ Compiled in 44ms
 [browser] Encountered two children with the same key, `/dashboard/purchasing`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. 
+ GET /dashboard/purchasing 200 in 965ms (next.js: 949ms, application-code: 16ms)
+[browser] Encountered two children with the same key, `/dashboard/purchasing`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. 
+[browser] Encountered two children with the same key, `/dashboard/purchasing`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. 
+[browser] Encountered two children with the same key, `/dashboard/purchasing`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. 
+[browser] Encountered two children with the same key, `/dashboard/purchasing`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. 
+[browser] Encountered two children with the same key, `/dashboard/purchasing`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. 
+[browser] Encountered two children with the same key, `/dashboard/purchasing`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. 
+ GET /dashboard/purchasing 200 in 34ms (next.js: 4ms, application-code: 30ms)
+[browser] Encountered two children with the same key, `/dashboard/purchasing`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. 
+ GET /api/purchasing/dashboard? 200 in 2.8s (next.js: 97ms, application-code: 2.7s)
