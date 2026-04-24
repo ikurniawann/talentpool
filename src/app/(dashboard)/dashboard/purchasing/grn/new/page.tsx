@@ -281,9 +281,9 @@ export default function CreateGrnPage() {
                   Pilih Pengiriman
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-3">
+              <CardContent className="space-y-4 p-4">
                 <div className="space-y-2">
-                  <Label>Pengiriman</Label>
+                  <Label className="text-sm font-medium">Pengiriman</Label>
                   <Popover open={openDelivery} onOpenChange={setOpenDelivery}>
                     <PopoverTrigger asChild>
                       <Button
@@ -360,30 +360,32 @@ export default function CreateGrnPage() {
                 </div>
 
                 {selectedDelivery && (
-                  <div className="space-y-2 pt-2 border-t">
-                    <div className="text-sm">
-                      <span className="text-gray-500">No. Resi:</span>
-                      <p className="font-medium">{selectedDelivery.no_resi}</p>
+                  <div className="space-y-3 pt-4 border-t mt-4">
+                    <div>
+                      <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">No. Resi</span>
+                      <p className="text-sm font-semibold text-gray-900 mt-0.5">{selectedDelivery.no_resi}</p>
                     </div>
-                    <div className="text-sm">
-                      <span className="text-gray-500">Surat Jalan:</span>
-                      <p className="font-medium">{selectedDelivery.no_surat_jalan || "-"}</p>
+                    <div>
+                      <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">Surat Jalan</span>
+                      <p className="text-sm font-medium text-gray-900 mt-0.5">{selectedDelivery.no_surat_jalan || "-"}</p>
                     </div>
-                    <div className="text-sm">
-                      <span className="text-gray-500">Kurir/Ekspedisi:</span>
-                      <p className="font-medium">{selectedDelivery.kurir || "-"}</p>
+                    <div>
+                      <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">Kurir/Ekspedisi</span>
+                      <p className="text-sm font-medium text-gray-900 mt-0.5">{selectedDelivery.kurir || "-"}</p>
                     </div>
-                    <div className="text-sm">
-                      <span className="text-gray-500">Status:</span>
-                      <Badge>{selectedDelivery.status}</Badge>
+                    <div>
+                      <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">Status</span>
+                      <div className="mt-1">
+                        <Badge variant="outline" className="font-medium">{selectedDelivery.status}</Badge>
+                      </div>
                     </div>
                   </div>
                 )}
 
                 {/* Informasi Penerimaan */}
-                <div className="pt-3 border-t mt-3 space-y-3">
-                  <div>
-                    <Label htmlFor="tanggal">Tanggal Penerimaan</Label>
+                <div className="space-y-3 pt-4 border-t mt-4">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="tanggal" className="text-sm font-medium">Tanggal Penerimaan</Label>
                     <DatePicker
                       id="tanggal"
                       date={formData.tanggal_penerimaan ? new Date(formData.tanggal_penerimaan) : new Date()}
@@ -392,14 +394,15 @@ export default function CreateGrnPage() {
                       }
                     />
                   </div>
-                  <div>
-                    <Label htmlFor="catatan">Catatan</Label>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="catatan" className="text-sm font-medium">Catatan</Label>
                     <Textarea
                       id="catatan"
                       value={formData.catatan || ""}
                       onChange={(e) => setFormData({ ...formData, catatan: e.target.value })}
                       placeholder="Catatan tambahan (opsional)"
                       rows={2}
+                      className="resize-none"
                     />
                   </div>
                 </div>
@@ -410,14 +413,14 @@ export default function CreateGrnPage() {
           {/* Right Panel - Items Table (8 cols) */}
           <div className="lg:col-span-8">
             <Card className="h-full">
-              <CardHeader className="pb-3">
+              <CardHeader className="pb-3 px-4">
                 <div className="flex items-center justify-between">
-                  <CardTitle className="text-base flex items-center gap-2">
+                  <CardTitle className="text-base font-semibold flex items-center gap-2">
                     <ClipboardDocumentCheckIcon className="w-5 h-5 text-pink-600" />
                     Item Penerimaan
                   </CardTitle>
                   <Button type="button" variant="outline" size="sm" onClick={handleAddItem}>
-                    <PlusIcon className="w-4 h-4 mr-2" />
+                    <PlusIcon className="w-4 h-4 mr-1.5" />
                     Tambah Item
                   </Button>
                 </div>
@@ -429,18 +432,18 @@ export default function CreateGrnPage() {
                   </div>
                 ) : (
                   <table className="w-full">
-                    <thead className="bg-gray-50 sticky top-0">
+                    <thead className="bg-gray-50 sticky top-0 z-10">
                       <tr>
-                        <th className="text-left text-xs font-medium text-gray-500 uppercase px-4 py-2">Bahan Baku</th>
-                        <th className="text-center text-xs font-medium text-gray-500 uppercase px-4 py-2 w-24">Ordered</th>
-                        <th className="text-center text-xs font-medium text-gray-500 uppercase px-4 py-2 w-24">Received</th>
-                        <th className="text-center text-xs font-medium text-gray-500 uppercase px-4 py-2 w-24">Diterima</th>
-                        <th className="text-center text-xs font-medium text-gray-500 uppercase px-4 py-2 w-24">Ditolak</th>
-                        <th className="text-center text-xs font-medium text-gray-500 uppercase px-4 py-2 w-24">Kondisi</th>
-                        <th className="text-right text-xs font-medium text-gray-500 uppercase px-4 py-2 w-16">Aksi</th>
+                        <th className="text-left text-xs font-semibold text-gray-600 uppercase tracking-wide px-4 py-2.5">Bahan Baku</th>
+                        <th className="text-center text-xs font-semibold text-gray-600 uppercase tracking-wide px-3 py-2.5 w-20">Ordered</th>
+                        <th className="text-center text-xs font-semibold text-gray-600 uppercase tracking-wide px-3 py-2.5 w-20">Received</th>
+                        <th className="text-center text-xs font-semibold text-gray-600 uppercase tracking-wide px-3 py-2.5 w-24">Diterima</th>
+                        <th className="text-center text-xs font-semibold text-gray-600 uppercase tracking-wide px-3 py-2.5 w-24">Ditolak</th>
+                        <th className="text-center text-xs font-semibold text-gray-600 uppercase tracking-wide px-3 py-2.5 w-28">Kondisi</th>
+                        <th className="text-right text-xs font-semibold text-gray-600 uppercase tracking-wide px-4 py-2.5 w-16">Aksi</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y">
+                    <tbody className="divide-y divide-gray-100">
                       {grnItems.map((item, idx) => {
                         const poItem = poItems.find((p) => p.id === item.purchase_order_item_id);
                         const qtyOrdered = typeof poItem?.qty_ordered === 'number' ? poItem.qty_ordered : 0;
@@ -448,22 +451,22 @@ export default function CreateGrnPage() {
                         const satuan = typeof poItem?.satuan === 'string' ? poItem.satuan : 'pcs';
                         
                         return (
-                          <tr key={item.id} className="hover:bg-gray-50">
+                          <tr key={item.id} className="hover:bg-gray-50 transition-colors">
                             <td className="px-4 py-3">
-                              <div className="text-sm font-medium">{item.nama_bahan || "Item manual"}</div>
+                              <div className="text-sm font-medium text-gray-900">{item.nama_bahan || "Item manual"}</div>
                               {poItem && qtyOrdered > 0 && (
-                                <div className="text-xs text-gray-500">
+                                <div className="text-xs text-gray-500 mt-0.5">
                                   PO: {qtyOrdered} {satuan}
                                 </div>
                               )}
                             </td>
-                            <td className="px-4 py-3 text-center text-sm text-gray-500">
-                              {qtyOrdered}
+                            <td className="px-3 py-3 text-center">
+                              <span className="text-sm text-gray-600">{qtyOrdered}</span>
                             </td>
-                            <td className="px-4 py-3 text-center text-sm text-gray-500">
-                              {qtyReceived}
+                            <td className="px-3 py-3 text-center">
+                              <span className="text-sm text-gray-600">{qtyReceived}</span>
                             </td>
-                            <td className="px-4 py-3">
+                            <td className="px-3 py-3">
                               <Input
                                 type="number"
                                 min="0"
@@ -471,10 +474,10 @@ export default function CreateGrnPage() {
                                 onChange={(e) =>
                                   handleUpdateItem(item.id, "qty_diterima", parseFloat(e.target.value) || 0)
                                 }
-                                className="w-20 text-center"
+                                className="w-20 text-center text-sm h-9"
                               />
                             </td>
-                            <td className="px-4 py-3">
+                            <td className="px-3 py-3">
                               <Input
                                 type="number"
                                 min="0"
@@ -482,16 +485,16 @@ export default function CreateGrnPage() {
                                 onChange={(e) =>
                                   handleUpdateItem(item.id, "qty_ditolak", parseFloat(e.target.value) || 0)
                                 }
-                                className="w-20 text-center"
+                                className="w-20 text-center text-sm h-9"
                               />
                             </td>
-                            <td className="px-4 py-3">
+                            <td className="px-3 py-3">
                               <select
                                 value={item.kondisi}
                                 onChange={(e) =>
                                   handleUpdateItem(item.id, "kondisi", e.target.value as "baik" | "rusak" | "cacat")
                                 }
-                                className="w-full text-sm border rounded px-2 py-1 text-center"
+                                className="w-full text-sm border border-gray-300 rounded-md px-2.5 py-1.5 text-center bg-white focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-transparent"
                               >
                                 <option value="baik">Baik</option>
                                 <option value="rusak">Rusak</option>
@@ -504,7 +507,7 @@ export default function CreateGrnPage() {
                                 variant="ghost"
                                 size="icon"
                                 onClick={() => handleRemoveItem(item.id)}
-                                className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                                className="h-9 w-9 text-red-600 hover:text-red-700 hover:bg-red-50"
                               >
                                 <TrashIcon className="w-4 h-4" />
                               </Button>
@@ -516,11 +519,11 @@ export default function CreateGrnPage() {
                   </table>
                 )}
               </CardContent>
-              <div className="border-t p-4 flex justify-end gap-3">
-                <Button type="button" variant="outline" onClick={() => router.back()}>
+              <div className="border-t border-gray-200 px-4 py-4 flex justify-end gap-3 bg-gray-50">
+                <Button type="button" variant="outline" onClick={() => router.back()} className="px-6">
                   Batal
                 </Button>
-                <Button type="submit" disabled={loading || grnItems.length === 0}>
+                <Button type="submit" disabled={loading || grnItems.length === 0} className="px-6">
                   <ClipboardDocumentCheckIcon className="w-4 h-4 mr-2" />
                   {loading ? "Menyimpan..." : "Simpan GRN"}
                 </Button>
