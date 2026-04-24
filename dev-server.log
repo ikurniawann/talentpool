@@ -4,474 +4,65 @@
 
 ▲ Next.js 16.2.3 (Turbopack)
 - Local:         http://localhost:3000
-- Network:       http://192.168.0.117:3000
+- Network:       http://192.168.60.184:3000
 - Environments: .env.local, .env
-✓ Ready in 208ms
+✓ Ready in 260ms
 
+ GET /dashboard/purchasing/po/new 200 in 4.2s (next.js: 2.3s, application-code: 1852ms)
 [browser] Encountered two children with the same key, `/dashboard/purchasing`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. 
-    at runWithFiberInDEV (file:///Users/ilham/Desktop/talentpool/.next/dev/static/chunks/node_modules_next_dist_compiled_react-dom_058-ah~._.js:965:139)
-    at warnOnInvalidKey (file:///Users/ilham/Desktop/talentpool/.next/dev/static/chunks/node_modules_next_dist_compiled_react-dom_058-ah~._.js:4103:38)
-    at reconcileChildrenArray (file:///Users/ilham/Desktop/talentpool/.next/dev/static/chunks/node_modules_next_dist_compiled_react-dom_058-ah~._.js:4129:176)
-    at <unknown> (file:///Users/ilham/Desktop/talentpool/.next/dev/static/chunks/node_modules_next_dist_compiled_react-dom_058-ah~._.js:4261:63)
-    at reconcileChildren (file:///Users/ilham/Desktop/talentpool/.next/dev/static/chunks/node_modules_next_dist_compiled_react-dom_058-ah~._.js:5898:67)
-    at beginWork (file:///Users/ilham/Desktop/talentpool/.next/dev/static/chunks/node_modules_next_dist_compiled_react-dom_058-ah~._.js:6758:1590)
-    at runWithFiberInDEV (file:///Users/ilham/Desktop/talentpool/.next/dev/static/chunks/node_modules_next_dist_compiled_react-dom_058-ah~._.js:965:139)
-    at performUnitOfWork (file:///Users/ilham/Desktop/talentpool/.next/dev/static/chunks/node_modules_next_dist_compiled_react-dom_058-ah~._.js:9555:114)
-    at workLoopConcurrentByScheduler (file:///Users/ilham/Desktop/talentpool/.next/dev/static/chunks/node_modules_next_dist_compiled_react-dom_058-ah~._.js:9551:75)
-    at renderRootConcurrent (file:///Users/ilham/Desktop/talentpool/.next/dev/static/chunks/node_modules_next_dist_compiled_react-dom_058-ah~._.js:9534:100)
-    at performWorkOnRoot (file:///Users/ilham/Desktop/talentpool/.next/dev/static/chunks/node_modules_next_dist_compiled_react-dom_058-ah~._.js:9061:170)
-    at performWorkOnRootViaSchedulerTask (file:///Users/ilham/Desktop/talentpool/.next/dev/static/chunks/node_modules_next_dist_compiled_react-dom_058-ah~._.js:10255:26)
-    at performWorkUntilDeadline (file:///Users/ilham/Desktop/talentpool/.next/dev/static/chunks/node_modules_next_dist_compiled_0rpq4pf._.js:2647:72) (file:///Users/ilham/Desktop/talentpool/.next/dev/static/chunks/node_modules_next_dist_compiled_react-dom_058-ah~._.js:965:139)
- GET /dashboard/purchasing/grn 200 in 2.5s (next.js: 1950ms, application-code: 584ms)
- GET /dashboard/purchasing/po/new 200 in 2.8s (next.js: 2.3s, application-code: 548ms)
-[browser] Encountered two children with the same key, `/dashboard/purchasing`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. 
- GET /api/purchasing/suppliers? 200 in 482ms (next.js: 64ms, application-code: 418ms)
+ GET /api/purchasing/suppliers? 200 in 1274ms (next.js: 410ms, application-code: 864ms)
 Raw materials fetched: 10 items
- GET /api/purchasing/raw-materials?limit=100 200 in 252ms (next.js: 99ms, application-code: 152ms)
- GET /api/purchasing/grn?page=1&limit=15 200 in 1188ms (next.js: 304ms, application-code: 884ms)
- GET /api/purchasing/units? 200 in 208ms (next.js: 71ms, application-code: 137ms)
+ GET /api/purchasing/raw-materials?limit=100 200 in 285ms (next.js: 106ms, application-code: 179ms)
+ GET /api/purchasing/units? 200 in 252ms (next.js: 77ms, application-code: 175ms)
+ GET /dashboard/purchasing/po/new 200 in 417ms (next.js: 9ms, application-code: 408ms)
 [browser] Encountered two children with the same key, `/dashboard/purchasing`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. 
-[browser] React does not recognize the `currentPage` prop on a DOM element. If you intentionally want it to appear in the DOM as a custom attribute, spell it as lowercase `currentpage` instead. If you accidentally passed it from a parent component, remove it from the DOM element. 
-[browser] React does not recognize the `totalPages` prop on a DOM element. If you intentionally want it to appear in the DOM as a custom attribute, spell it as lowercase `totalpages` instead. If you accidentally passed it from a parent component, remove it from the DOM element. 
-[browser] React does not recognize the `totalItems` prop on a DOM element. If you intentionally want it to appear in the DOM as a custom attribute, spell it as lowercase `totalitems` instead. If you accidentally passed it from a parent component, remove it from the DOM element. 
-[browser] Unknown event handler property `onPageChange`. It will be ignored. 
- GET /api/purchasing/grn?page=1&limit=15 200 in 912ms (next.js: 843µs, application-code: 911ms)
- GET /dashboard/purchasing/suppliers 200 in 754ms (next.js: 407ms, application-code: 348ms)
- GET /api/purchasing/suppliers?is_active=true&page=1&limit=20&sort_by=nama_supplier&sort_dir=ASC 200 in 442ms (next.js: 1239µs, application-code: 441ms)
- GET /api/purchasing/suppliers?is_active=true&page=1&limit=20&sort_by=nama_supplier&sort_dir=ASC 200 in 438ms (next.js: 3ms, application-code: 435ms)
- GET /dashboard/purchasing/grn/continue/b4260d11-922a-498b-9627-c209ef43f40c 200 in 519ms (next.js: 509ms, application-code: 11ms)
-[browser] Encountered two children with the same key, `/dashboard/purchasing`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. 
-[GRN/b4260d11-922a-498b-9627-c209ef43f40c] Fetched 1 items
-[GRN/b4260d11-922a-498b-9627-c209ef43f40c] First item: {
-  "id": "31fe0bd6-8c11-480f-b095-d44242adfd13",
-  "grn_id": "b4260d11-922a-498b-9627-c209ef43f40c",
-  "delivery_id": "bc782ed2-dd2f-4fd8-ba41-537be56b8e81",
-  "purchase_order_item_id": "1cd2ccdb-6691-40b0-80f2-269e7d0f7b5a",
-  "raw_material_id": "0c513f9c-f987-4b87-ae68-78a6081a899d",
-  "qty_diterima": 20,
-  "qty_ditolak": 0,
-  "kondisi": "baik",
-  "catatan": null,
-  "satuan_id": null,
-  "is_active": true,
-  "created_at": "2026-04-23T08:57:00.06037+00:00",
-  "updated_at": "2026-04-23T08:57:00.06037+00:00",
-  "raw_material": {
-    "id": "0c513f9c-f987-4b87-ae68-78a6081a899d",
-    "kode": "BHN-2026-0002",
-    "nama": "Gula Merah"
-  }
-}
-[GRN/b4260d11-922a-498b-9627-c209ef43f40c] purchase_order_item_ids: [ '1cd2ccdb-6691-40b0-80f2-269e7d0f7b5a' ]
- GET /api/purchasing/grn/b4260d11-922a-498b-9627-c209ef43f40c 200 in 1231ms (next.js: 496ms, application-code: 734ms)
-[GRN/b4260d11-922a-498b-9627-c209ef43f40c] Fetched 1 items
-[GRN/b4260d11-922a-498b-9627-c209ef43f40c] First item: {
-  "id": "31fe0bd6-8c11-480f-b095-d44242adfd13",
-  "grn_id": "b4260d11-922a-498b-9627-c209ef43f40c",
-  "delivery_id": "bc782ed2-dd2f-4fd8-ba41-537be56b8e81",
-  "purchase_order_item_id": "1cd2ccdb-6691-40b0-80f2-269e7d0f7b5a",
-  "raw_material_id": "0c513f9c-f987-4b87-ae68-78a6081a899d",
-  "qty_diterima": 20,
-  "qty_ditolak": 0,
-  "kondisi": "baik",
-  "catatan": null,
-  "satuan_id": null,
-  "is_active": true,
-  "created_at": "2026-04-23T08:57:00.06037+00:00",
-  "updated_at": "2026-04-23T08:57:00.06037+00:00",
-  "raw_material": {
-    "id": "0c513f9c-f987-4b87-ae68-78a6081a899d",
-    "kode": "BHN-2026-0002",
-    "nama": "Gula Merah"
-  }
-}
-[GRN/b4260d11-922a-498b-9627-c209ef43f40c] purchase_order_item_ids: [ '1cd2ccdb-6691-40b0-80f2-269e7d0f7b5a' ]
- GET /api/purchasing/grn/b4260d11-922a-498b-9627-c209ef43f40c 200 in 728ms (next.js: 6ms, application-code: 721ms)
- GET /api/purchasing/po/09b55dce-8fae-498b-93b9-661feeedd5ab 200 in 731ms (next.js: 464ms, application-code: 267ms)
- GET /api/purchasing/po/09b55dce-8fae-498b-93b9-661feeedd5ab 200 in 285ms (next.js: 8ms, application-code: 277ms)
- GET /dashboard/purchasing/grn/continue/b4260d11-922a-498b-9627-c209ef43f40c 200 in 613ms (next.js: 10ms, application-code: 604ms)
-[browser] Encountered two children with the same key, `/dashboard/purchasing`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. 
-[GRN/b4260d11-922a-498b-9627-c209ef43f40c] Fetched 1 items
-[GRN/b4260d11-922a-498b-9627-c209ef43f40c] First item: {
-  "id": "31fe0bd6-8c11-480f-b095-d44242adfd13",
-  "grn_id": "b4260d11-922a-498b-9627-c209ef43f40c",
-  "delivery_id": "bc782ed2-dd2f-4fd8-ba41-537be56b8e81",
-  "purchase_order_item_id": "1cd2ccdb-6691-40b0-80f2-269e7d0f7b5a",
-  "raw_material_id": "0c513f9c-f987-4b87-ae68-78a6081a899d",
-  "qty_diterima": 20,
-  "qty_ditolak": 0,
-  "kondisi": "baik",
-  "catatan": null,
-  "satuan_id": null,
-  "is_active": true,
-  "created_at": "2026-04-23T08:57:00.06037+00:00",
-  "updated_at": "2026-04-23T08:57:00.06037+00:00",
-  "raw_material": {
-    "id": "0c513f9c-f987-4b87-ae68-78a6081a899d",
-    "kode": "BHN-2026-0002",
-    "nama": "Gula Merah"
-  }
-}
-[GRN/b4260d11-922a-498b-9627-c209ef43f40c] purchase_order_item_ids: [ '1cd2ccdb-6691-40b0-80f2-269e7d0f7b5a' ]
- GET /api/purchasing/grn/b4260d11-922a-498b-9627-c209ef43f40c 200 in 789ms (next.js: 3ms, application-code: 787ms)
- GET /api/purchasing/po/09b55dce-8fae-498b-93b9-661feeedd5ab 200 in 265ms (next.js: 2ms, application-code: 263ms)
- GET /dashboard/purchasing/po 200 in 493ms (next.js: 482ms, application-code: 10ms)
-[browser] Encountered two children with the same key, `/dashboard/purchasing`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. 
-[browser] Encountered two children with the same key, `/dashboard/purchasing`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. 
-[browser] Encountered two children with the same key, `/dashboard/purchasing`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. 
- GET /api/purchasing/po?page=1&limit=20 200 in 207ms (next.js: 56ms, application-code: 151ms)
-[browser] In HTML, <button> cannot be a descendant of <button>.
-This will cause a hydration error.
-
-  ...
-    <table data-slot="table" className="w-full cap...">
-      <TableHeader>
-      <TableBody>
-        <tbody data-slot="table-body" className={"[&_tr:la..."}>
-          <TableRow>
-            <tr data-slot="table-row" className="border-b t...">
-              <TableCell>
-              <TableCell>
-              <TableCell>
-              <TableCell>
-              <TableCell>
-              <TableCell>
-              <TableCell>
-              <TableCell>
-                <td data-slot="table-cell" className={"p-2 alig..."}>
-                  <DropdownMenu>
-                    <MenuRoot data-slot="dropdown-menu">
-                      <FloatingTree externalTree={{nodesRef:{...}, ...}}>
-                        <DropdownMenuTrigger>
-                          <MenuTrigger data-slot="dropdown-m...">
->                           <button
->                             type="button"
->                             onClick={function}
->                             onMouseDown={function}
->                             onKeyDown={function}
->                             onKeyUp={function}
->                             onPointerDown={function}
->                             tabIndex={0}
->                             disabled={false}
->                             aria-haspopup="menu"
->                             id="base-ui-_r_m_"
->                             data-slot="dropdown-menu-trigger"
->                             ref={function}
->                           >
-                              <Button variant="ghost" size="icon">
-                                <Button data-slot="button" className={"group/bu..."}>
->                                 <button
->                                   type="button"
->                                   onClick={function}
->                                   onMouseDown={function}
->                                   onKeyDown={function}
->                                   onKeyUp={function}
->                                   onPointerDown={function}
->                                   tabIndex={0}
->                                   disabled={false}
->                                   data-slot="button"
->                                   ref={function}
->                                   className={"group/button inline-flex shrink-0 items-center justify-center rounded..."}
->                                 >
-                        ...
-          ...
- 
-[browser] <button> cannot contain a nested <button>.
-See this log for the ancestor stack trace. 
- GET /api/purchasing/po?page=1&limit=20 200 in 154ms (next.js: 1448µs, application-code: 153ms)
- GET /api/purchasing/po?page=1&limit=20 200 in 158ms (next.js: 1946µs, application-code: 156ms)
- GET /dashboard/purchasing/po/new 200 in 28ms (next.js: 4ms, application-code: 24ms)
-[browser] Encountered two children with the same key, `/dashboard/purchasing`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. 
-[browser] Encountered two children with the same key, `/dashboard/purchasing`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. 
-[browser] Encountered two children with the same key, `/dashboard/purchasing`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. 
- GET /api/purchasing/suppliers? 200 in 509ms (next.js: 942µs, application-code: 508ms)
+ GET /api/purchasing/suppliers? 200 in 453ms (next.js: 977µs, application-code: 452ms)
 Raw materials fetched: 10 items
- GET /api/purchasing/raw-materials?limit=100 200 in 182ms (next.js: 3ms, application-code: 179ms)
- GET /api/purchasing/units? 200 in 183ms (next.js: 3ms, application-code: 180ms)
- GET /api/purchasing/suppliers? 200 in 493ms (next.js: 5ms, application-code: 488ms)
-Raw materials fetched: 10 items
- GET /api/purchasing/raw-materials?limit=100 200 in 144ms (next.js: 2ms, application-code: 142ms)
- GET /api/purchasing/units? 200 in 141ms (next.js: 1547µs, application-code: 139ms)
-✓ Compiled in 93ms
+ GET /api/purchasing/raw-materials?limit=100 200 in 176ms (next.js: 3ms, application-code: 173ms)
+ GET /api/purchasing/units? 200 in 162ms (next.js: 3ms, application-code: 160ms)
 [browser] Encountered two children with the same key, `/dashboard/purchasing`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. 
- GET /dashboard/reports/inventory-valuation 404 in 209ms (next.js: 202ms, application-code: 7ms)
- GET /dashboard/reports/inventory-valuation 404 in 20ms (next.js: 3ms, application-code: 17ms)
- GET /dashboard/purchasing/po/new 200 in 520ms (next.js: 14ms, application-code: 506ms)
-[browser] Encountered two children with the same key, `/dashboard/purchasing`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. 
- GET /api/purchasing/suppliers? 200 in 507ms (next.js: 1626µs, application-code: 506ms)
-Raw materials fetched: 10 items
- GET /api/purchasing/raw-materials?limit=100 200 in 170ms (next.js: 3ms, application-code: 167ms)
- GET /api/purchasing/units? 200 in 175ms (next.js: 6ms, application-code: 169ms)
- GET /dashboard/purchasing/po/new 200 in 460ms (next.js: 4ms, application-code: 455ms)
-[browser] Encountered two children with the same key, `/dashboard/purchasing`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. 
- GET /api/purchasing/suppliers? 200 in 458ms (next.js: 1011µs, application-code: 457ms)
-Raw materials fetched: 10 items
- GET /api/purchasing/raw-materials?limit=100 200 in 151ms (next.js: 3ms, application-code: 148ms)
- GET /api/purchasing/units? 200 in 162ms (next.js: 21ms, application-code: 141ms)
-✓ Compiled in 113ms
- GET /dashboard/purchasing/po 200 in 39ms (next.js: 6ms, application-code: 32ms)
-[browser] Encountered two children with the same key, `/dashboard/purchasing`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. 
-[browser] Encountered two children with the same key, `/dashboard/purchasing`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. 
- GET /api/purchasing/po?page=1&limit=20 200 in 447ms (next.js: 3ms, application-code: 444ms)
-[browser] In HTML, <button> cannot be a descendant of <button>.
-This will cause a hydration error.
-
-  ...
-    <table data-slot="table" className="w-full cap...">
-      <TableHeader>
-      <TableBody>
-        <tbody data-slot="table-body" className={"[&_tr:la..."}>
-          <TableRow>
-            <tr data-slot="table-row" className="border-b t...">
-              <TableCell>
-              <TableCell>
-              <TableCell>
-              <TableCell>
-              <TableCell>
-              <TableCell>
-              <TableCell>
-              <TableCell>
-                <td data-slot="table-cell" className={"p-2 alig..."}>
-                  <DropdownMenu>
-                    <MenuRoot data-slot="dropdown-menu">
-                      <FloatingTree externalTree={{nodesRef:{...}, ...}}>
-                        <DropdownMenuTrigger>
-                          <MenuTrigger data-slot="dropdown-m...">
->                           <button
->                             type="button"
->                             onClick={function}
->                             onMouseDown={function}
->                             onKeyDown={function}
->                             onKeyUp={function}
->                             onPointerDown={function}
->                             tabIndex={0}
->                             disabled={false}
->                             aria-haspopup="menu"
->                             id="base-ui-_r_g_"
->                             data-slot="dropdown-menu-trigger"
->                             ref={function}
->                           >
-                              <Button variant="ghost" size="icon">
-                                <Button data-slot="button" className={"group/bu..."}>
->                                 <button
->                                   type="button"
->                                   onClick={function}
->                                   onMouseDown={function}
->                                   onKeyDown={function}
->                                   onKeyUp={function}
->                                   onPointerDown={function}
->                                   tabIndex={0}
->                                   disabled={false}
->                                   data-slot="button"
->                                   ref={function}
->                                   className={"group/button inline-flex shrink-0 items-center justify-center rounded..."}
->                                 >
-                        ...
-          ...
- 
-[browser] <button> cannot contain a nested <button>.
-See this log for the ancestor stack trace. 
- GET /api/purchasing/po?page=1&limit=20 200 in 196ms (next.js: 3ms, application-code: 193ms)
- GET /api/purchasing/po?page=1&limit=20 200 in 175ms (next.js: 2ms, application-code: 173ms)
- GET /dashboard/purchasing/po/7b4bb047-7eb1-416b-8de9-e2a44d7de0e3 200 in 683ms (next.js: 674ms, application-code: 9ms)
+ GET /dashboard/purchasing 200 in 830ms (next.js: 814ms, application-code: 17ms)
+ GET /dashboard/purchasing 200 in 9ms (next.js: 1068µs, application-code: 8ms)
 [browser] Encountered two children with the same key, `/dashboard/purchasing`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. 
 [browser] Encountered two children with the same key, `/dashboard/purchasing`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. 
 [browser] Encountered two children with the same key, `/dashboard/purchasing`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. 
- GET /api/purchasing/po/7b4bb047-7eb1-416b-8de9-e2a44d7de0e3 200 in 354ms (next.js: 3ms, application-code: 351ms)
- GET /api/purchasing/po/7b4bb047-7eb1-416b-8de9-e2a44d7de0e3 200 in 281ms (next.js: 1910µs, application-code: 279ms)
 [browser] Encountered two children with the same key, `/dashboard/purchasing`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. 
- GET /api/purchasing/po?page=1&limit=20 200 in 216ms (next.js: 1956µs, application-code: 214ms)
- GET /api/purchasing/po?page=1&limit=20 200 in 144ms (next.js: 4ms, application-code: 140ms)
- GET /api/purchasing/po?page=1&limit=20 200 in 147ms (next.js: 2ms, application-code: 145ms)
-[browser] Encountered two children with the same key, `/dashboard/purchasing`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. 
- GET /dashboard/purchasing/po 200 in 35ms (next.js: 6ms, application-code: 29ms)
-[browser] Encountered two children with the same key, `/dashboard/purchasing`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. 
- GET /dashboard/purchasing/po/new 200 in 42ms (next.js: 10ms, application-code: 32ms)
-[browser] Encountered two children with the same key, `/dashboard/purchasing`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. 
- GET /api/purchasing/suppliers? 200 in 561ms (next.js: 2ms, application-code: 558ms)
-Raw materials fetched: 10 items
- GET /api/purchasing/raw-materials?limit=100 200 in 181ms (next.js: 2ms, application-code: 178ms)
- GET /api/purchasing/units? 200 in 145ms (next.js: 6ms, application-code: 138ms)
- GET /api/purchasing/suppliers? 200 in 462ms (next.js: 5ms, application-code: 457ms)
-Raw materials fetched: 10 items
- GET /api/purchasing/raw-materials?limit=100 200 in 140ms (next.js: 1708µs, application-code: 139ms)
- GET /api/purchasing/units? 200 in 155ms (next.js: 3ms, application-code: 152ms)
- GET /dashboard/purchasing/po/new 200 in 390ms (next.js: 5ms, application-code: 386ms)
-[browser] Encountered two children with the same key, `/dashboard/purchasing`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. 
- GET /api/purchasing/suppliers? 200 in 420ms (next.js: 1012µs, application-code: 419ms)
-Raw materials fetched: 10 items
- GET /api/purchasing/raw-materials?limit=100 200 in 168ms (next.js: 3ms, application-code: 165ms)
- GET /api/purchasing/units? 200 in 152ms (next.js: 4ms, application-code: 149ms)
-✓ Compiled in 108ms
- GET /dashboard/purchasing/po/new 200 in 1758ms (next.js: 13ms, application-code: 1745ms)
-[browser] Encountered two children with the same key, `/dashboard/purchasing`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. 
- GET /api/purchasing/suppliers? 200 in 518ms (next.js: 1553µs, application-code: 517ms)
-Raw materials fetched: 10 items
- GET /api/purchasing/raw-materials?limit=100 200 in 177ms (next.js: 6ms, application-code: 171ms)
- GET /api/purchasing/units? 200 in 177ms (next.js: 3ms, application-code: 174ms)
- GET /dashboard/purchasing/po/new 200 in 718ms (next.js: 4ms, application-code: 713ms)
-[browser] Encountered two children with the same key, `/dashboard/purchasing`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. 
- GET /api/purchasing/suppliers? 200 in 504ms (next.js: 1116µs, application-code: 502ms)
-Raw materials fetched: 10 items
- GET /api/purchasing/raw-materials?limit=100 200 in 156ms (next.js: 3ms, application-code: 153ms)
- GET /api/purchasing/units? 200 in 152ms (next.js: 3ms, application-code: 149ms)
-✓ Compiled in 82ms
-✓ Compiled in 110ms
- GET /dashboard/purchasing/po/new 200 in 459ms (next.js: 10ms, application-code: 449ms)
-[browser] Encountered two children with the same key, `/dashboard/purchasing`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. 
- GET /api/purchasing/suppliers? 200 in 512ms (next.js: 1387µs, application-code: 511ms)
-Raw materials fetched: 10 items
- GET /api/purchasing/raw-materials?limit=100 200 in 168ms (next.js: 3ms, application-code: 165ms)
- GET /api/purchasing/units? 200 in 164ms (next.js: 7ms, application-code: 157ms)
- GET /dashboard/purchasing/po 200 in 39ms (next.js: 11ms, application-code: 28ms)
+ GET /api/purchasing/dashboard? 200 in 1751ms (next.js: 58ms, application-code: 1693ms)
+ GET /dashboard/purchasing/main 200 in 284ms (next.js: 274ms, application-code: 10ms)
 [browser] Encountered two children with the same key, `/dashboard/purchasing`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. 
 [browser] Encountered two children with the same key, `/dashboard/purchasing`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. 
- GET /api/purchasing/po?page=1&limit=20 200 in 234ms (next.js: 6ms, application-code: 228ms)
-[browser] In HTML, <button> cannot be a descendant of <button>.
-This will cause a hydration error.
-
-  ...
-    <table data-slot="table" className="w-full cap...">
-      <TableHeader>
-      <TableBody>
-        <tbody data-slot="table-body" className={"[&_tr:la..."}>
-          <TableRow>
-            <tr data-slot="table-row" className="border-b t...">
-              <TableCell>
-              <TableCell>
-              <TableCell>
-              <TableCell>
-              <TableCell>
-              <TableCell>
-              <TableCell>
-              <TableCell>
-                <td data-slot="table-cell" className={"p-2 alig..."}>
-                  <DropdownMenu>
-                    <MenuRoot data-slot="dropdown-menu">
-                      <FloatingTree externalTree={{nodesRef:{...}, ...}}>
-                        <DropdownMenuTrigger>
-                          <MenuTrigger data-slot="dropdown-m...">
->                           <button
->                             type="button"
->                             onClick={function}
->                             onMouseDown={function}
->                             onKeyDown={function}
->                             onKeyUp={function}
->                             onPointerDown={function}
->                             tabIndex={0}
->                             disabled={false}
->                             aria-haspopup="menu"
->                             id="base-ui-_r_l_"
->                             data-slot="dropdown-menu-trigger"
->                             ref={function}
->                           >
-                              <Button variant="ghost" size="icon">
-                                <Button data-slot="button" className={"group/bu..."}>
->                                 <button
->                                   type="button"
->                                   onClick={function}
->                                   onMouseDown={function}
->                                   onKeyDown={function}
->                                   onKeyUp={function}
->                                   onPointerDown={function}
->                                   tabIndex={0}
->                                   disabled={false}
->                                   data-slot="button"
->                                   ref={function}
->                                   className={"group/button inline-flex shrink-0 items-center justify-center rounded..."}
->                                 >
-                        ...
-          ...
- 
-[browser] <button> cannot contain a nested <button>.
-See this log for the ancestor stack trace. 
- GET /api/purchasing/po?page=1&limit=20 200 in 157ms (next.js: 3ms, application-code: 154ms)
- GET /api/purchasing/po?page=1&limit=20 200 in 166ms (next.js: 3ms, application-code: 163ms)
-✓ Compiled in 79ms
-✓ Compiled in 92ms
- GET /dashboard/purchasing/po 200 in 668ms (next.js: 13ms, application-code: 655ms)
+ GET /dashboard/purchasing/po/new 307 in 74ms (next.js: 12ms, application-code: 61ms)
+ GET /login 200 in 332ms (next.js: 298ms, application-code: 34ms)
+ GET /dashboard 200 in 1725ms (next.js: 611ms, application-code: 1113ms)
 [browser] Encountered two children with the same key, `/dashboard/purchasing`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. 
- GET /api/purchasing/po?page=1&limit=20 200 in 161ms (next.js: 968µs, application-code: 160ms)
-[browser] In HTML, <button> cannot be a descendant of <button>.
-This will cause a hydration error.
-
-  ...
-    <table data-slot="table" className="w-full cap...">
-      <TableHeader>
-      <TableBody>
-        <tbody data-slot="table-body" className={"[&_tr:la..."}>
-          <TableRow>
-            <tr data-slot="table-row" className="border-b t...">
-              <TableCell>
-              <TableCell>
-              <TableCell>
-              <TableCell>
-              <TableCell>
-              <TableCell>
-              <TableCell>
-              <TableCell>
-                <td data-slot="table-cell" className={"p-2 alig..."}>
-                  <DropdownMenu>
-                    <MenuRoot data-slot="dropdown-menu">
-                      <FloatingTree externalTree={{nodesRef:{...}, ...}}>
-                        <DropdownMenuTrigger>
-                          <MenuTrigger data-slot="dropdown-m...">
->                           <button
->                             type="button"
->                             onClick={function}
->                             onMouseDown={function}
->                             onKeyDown={function}
->                             onKeyUp={function}
->                             onPointerDown={function}
->                             tabIndex={0}
->                             disabled={false}
->                             aria-haspopup="menu"
->                             id="base-ui-_r_g_"
->                             data-slot="dropdown-menu-trigger"
->                             ref={function}
->                           >
-                              <Button variant="ghost" size="icon">
-                                <Button data-slot="button" className={"group/bu..."}>
->                                 <button
->                                   type="button"
->                                   onClick={function}
->                                   onMouseDown={function}
->                                   onKeyDown={function}
->                                   onKeyUp={function}
->                                   onPointerDown={function}
->                                   tabIndex={0}
->                                   disabled={false}
->                                   data-slot="button"
->                                   ref={function}
->                                   className={"group/button inline-flex shrink-0 items-center justify-center rounded..."}
->                                 >
-                        ...
-          ...
- 
-[browser] <button> cannot contain a nested <button>.
-See this log for the ancestor stack trace. 
- GET /api/purchasing/po?page=1&limit=20 200 in 167ms (next.js: 1949µs, application-code: 165ms)
+ GET /api/dashboard/weekly?period=month 200 in 614ms (next.js: 195ms, application-code: 419ms)
+ GET /api/dashboard/attention? 200 in 623ms (next.js: 163ms, application-code: 461ms)
+ GET /api/dashboard/funnel? 200 in 626ms (next.js: 151ms, application-code: 475ms)
+ GET /api/dashboard/sources? 200 in 763ms (next.js: 136ms, application-code: 627ms)
+ GET /api/dashboard/funnel? 200 in 151ms (next.js: 3ms, application-code: 148ms)
+ GET /api/dashboard/weekly?period=month 200 in 174ms (next.js: 2ms, application-code: 172ms)
+ GET /api/dashboard/attention? 200 in 157ms (next.js: 1397µs, application-code: 156ms)
+ GET /api/dashboard/sources? 200 in 311ms (next.js: 8ms, application-code: 303ms)
+ GET /api/dashboard/stats? 200 in 1601ms (next.js: 183ms, application-code: 1419ms)
+ GET /api/dashboard/stats? 200 in 778ms (next.js: 5ms, application-code: 773ms)
+ GET /dashboard/purchasing 200 in 43ms (next.js: 7ms, application-code: 37ms)
+[browser] Encountered two children with the same key, `/dashboard/purchasing`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. 
+[browser] Encountered two children with the same key, `/dashboard/purchasing`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. 
+ GET /api/purchasing/dashboard? 200 in 2.2s (next.js: 3ms, application-code: 2.2s)
  GET /dashboard/purchasing/units 200 in 382ms (next.js: 372ms, application-code: 10ms)
 [browser] Encountered two children with the same key, `/dashboard/purchasing`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. 
 [browser] Encountered two children with the same key, `/dashboard/purchasing`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. 
 [browser] Encountered two children with the same key, `/dashboard/purchasing`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. 
- GET /api/purchasing/units?page=1&limit=20 200 in 157ms (next.js: 4ms, application-code: 153ms)
+ GET /api/purchasing/units?page=1&limit=20 200 in 173ms (next.js: 1662µs, application-code: 172ms)
 [browser] React does not recognize the `currentPage` prop on a DOM element. If you intentionally want it to appear in the DOM as a custom attribute, spell it as lowercase `currentpage` instead. If you accidentally passed it from a parent component, remove it from the DOM element. 
 [browser] React does not recognize the `totalPages` prop on a DOM element. If you intentionally want it to appear in the DOM as a custom attribute, spell it as lowercase `totalpages` instead. If you accidentally passed it from a parent component, remove it from the DOM element. 
 [browser] React does not recognize the `totalItems` prop on a DOM element. If you intentionally want it to appear in the DOM as a custom attribute, spell it as lowercase `totalitems` instead. If you accidentally passed it from a parent component, remove it from the DOM element. 
 [browser] Unknown event handler property `onPageChange`. It will be ignored. 
- GET /api/purchasing/units?page=1&limit=20 200 in 162ms (next.js: 1433µs, application-code: 161ms)
- GET /dashboard/purchasing/units 200 in 489ms (next.js: 6ms, application-code: 484ms)
-[browser] Encountered two children with the same key, `/dashboard/purchasing`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. 
- GET /api/purchasing/units?page=1&limit=20 200 in 147ms (next.js: 3ms, application-code: 145ms)
-[browser] React does not recognize the `currentPage` prop on a DOM element. If you intentionally want it to appear in the DOM as a custom attribute, spell it as lowercase `currentpage` instead. If you accidentally passed it from a parent component, remove it from the DOM element. 
-[browser] React does not recognize the `totalPages` prop on a DOM element. If you intentionally want it to appear in the DOM as a custom attribute, spell it as lowercase `totalpages` instead. If you accidentally passed it from a parent component, remove it from the DOM element. 
-[browser] React does not recognize the `totalItems` prop on a DOM element. If you intentionally want it to appear in the DOM as a custom attribute, spell it as lowercase `totalitems` instead. If you accidentally passed it from a parent component, remove it from the DOM element. 
-[browser] Unknown event handler property `onPageChange`. It will be ignored. 
- GET /dashboard/purchasing/po 200 in 34ms (next.js: 7ms, application-code: 27ms)
+ GET /api/purchasing/units?page=1&limit=20 200 in 158ms (next.js: 1697µs, application-code: 156ms)
+ GET /dashboard/purchasing/po 200 in 453ms (next.js: 442ms, application-code: 10ms)
 [browser] Encountered two children with the same key, `/dashboard/purchasing`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. 
 [browser] Encountered two children with the same key, `/dashboard/purchasing`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. 
- GET /api/purchasing/po?page=1&limit=20 200 in 148ms (next.js: 1513µs, application-code: 147ms)
+ GET /api/purchasing/po?page=1&limit=20 200 in 233ms (next.js: 68ms, application-code: 165ms)
 [browser] In HTML, <button> cannot be a descendant of <button>.
 This will cause a hydration error.
 
@@ -506,7 +97,7 @@ This will cause a hydration error.
 >                             tabIndex={0}
 >                             disabled={false}
 >                             aria-haspopup="menu"
->                             id="base-ui-_r_o_"
+>                             id="base-ui-_r_12_"
 >                             data-slot="dropdown-menu-trigger"
 >                             ref={function}
 >                           >
@@ -530,21 +121,17 @@ This will cause a hydration error.
  
 [browser] <button> cannot contain a nested <button>.
 See this log for the ancestor stack trace. 
- GET /api/purchasing/po?page=1&limit=20 200 in 147ms (next.js: 1951µs, application-code: 145ms)
- GET /api/purchasing/po?page=1&limit=20 200 in 147ms (next.js: 2ms, application-code: 145ms)
- GET /dashboard/purchasing/po/new 200 in 34ms (next.js: 8ms, application-code: 26ms)
+ GET /api/purchasing/po?page=1&limit=20 200 in 151ms (next.js: 1476µs, application-code: 150ms)
+ GET /api/purchasing/po?page=1&limit=20 200 in 170ms (next.js: 1896µs, application-code: 168ms)
+ GET /dashboard/purchasing/po/new 200 in 40ms (next.js: 9ms, application-code: 31ms)
 [browser] Encountered two children with the same key, `/dashboard/purchasing`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. 
 [browser] Encountered two children with the same key, `/dashboard/purchasing`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. 
 [browser] Encountered two children with the same key, `/dashboard/purchasing`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. 
- GET /api/purchasing/suppliers? 200 in 471ms (next.js: 1886µs, application-code: 469ms)
+ GET /api/purchasing/suppliers? 200 in 1055ms (next.js: 1507µs, application-code: 1053ms)
 Raw materials fetched: 10 items
- GET /api/purchasing/raw-materials?limit=100 200 in 151ms (next.js: 3ms, application-code: 148ms)
- GET /api/purchasing/units? 200 in 143ms (next.js: 2ms, application-code: 141ms)
- GET /api/purchasing/suppliers? 200 in 484ms (next.js: 3ms, application-code: 481ms)
+ GET /api/purchasing/raw-materials?limit=100 200 in 177ms (next.js: 6ms, application-code: 171ms)
+ GET /api/purchasing/units? 200 in 167ms (next.js: 3ms, application-code: 164ms)
+ GET /api/purchasing/suppliers? 200 in 546ms (next.js: 2ms, application-code: 543ms)
 Raw materials fetched: 10 items
- GET /api/purchasing/raw-materials?limit=100 200 in 151ms (next.js: 4ms, application-code: 147ms)
- GET /api/purchasing/units? 200 in 141ms (next.js: 2ms, application-code: 138ms)
-[browser] React does not recognize the `asChild` prop on a DOM element. If you intentionally want it to appear in the DOM as a custom attribute, spell it as lowercase `aschild` instead. If you accidentally passed it from a parent component, remove it from the DOM element. 
-✓ Compiled in 109ms
-✓ Compiled in 69ms
-✓ Compiled in 97ms
+ GET /api/purchasing/raw-materials?limit=100 200 in 202ms (next.js: 3ms, application-code: 199ms)
+ GET /api/purchasing/units? 200 in 158ms (next.js: 5ms, application-code: 153ms)

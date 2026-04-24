@@ -70,6 +70,7 @@ export default function PurchasingLayout({ children }: { children: React.ReactNo
 
   return (
     <div>
+      <Header />
       {/* Sub-nav: grouped tabs */}
       <div className="flex flex-wrap gap-1 border-b border-gray-200 mb-6">
         
