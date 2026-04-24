@@ -122,16 +122,25 @@ export async function deleteSupplier(id: string): Promise<void> {
 // UNITS API
 // ============================================
 
-export async function listUnits(
-  isActive?: boolean
-): Promise<Unit[]> {
-  const sp = new URLSearchParams();
-  if (isActive !== undefined) sp.set("is_active", String(isActive));
+export interface UnitListParams {
+  search?: string;
+  page?: number;
+  limit?: number;
+}
 
-  const response = await fetchApi<{ data: Unit[] }>(
-    `${BASE}/units?${sp.toString()}`
-  );
-  return response.data;
+export async function listUnits(
+  params?: UnitListParams
+): Promise<{ data: Unit[]; pagination: { page: number; limit: number; total: number; total_pages: number } }> {
+  const sp = new URLSearchParams();
+  if (params?.search) sp.set("search", params.search);
+  if (params?.page) sp.set("page", String(params.page));
+  if (params?.limit) sp.set("limit", String(params.limit));
+
+  const response = await fetchApi<{
+    data: Unit[];
+    pagination: { page: number; limit: number; total: number; total_pages: number };
+  }>(`${BASE}/units?${sp.toString()}`);
+  return response;
 }
 
 export async function createUnit(

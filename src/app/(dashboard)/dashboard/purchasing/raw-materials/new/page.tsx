@@ -94,7 +94,14 @@ export default function NewRawMaterialPage() {
         satuan_kecil_id: formData.satuan_kecil_id || undefined,
         shelf_life_days: formData.shelf_life_days || undefined,
         storage_condition: formData.storage_condition || undefined,
+        // Map field names to match API schema
+        minimum_stock: formData.stok_minimum,
+        maximum_stock: formData.stok_maximum,
       };
+
+      // Remove old field names
+      delete (dataToSubmit as any).stok_minimum;
+      delete (dataToSubmit as any).stok_maximum;
 
       await createRawMaterial(dataToSubmit);
       toast.success("Bahan baku berhasil ditambahkan");

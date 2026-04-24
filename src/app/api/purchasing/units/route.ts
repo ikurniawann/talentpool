@@ -20,22 +20,42 @@ export async function GET(request: NextRequest) {
     const supabase = await createClient();
     const { searchParams } = new URL(request.url);
     
+    const search = searchParams.get("search");
     const isActive = searchParams.get("is_active");
+    const page = parseInt(searchParams.get("page") || "1");
+    const limit = parseInt(searchParams.get("limit") || "20");
     
     let query = supabase
       .from("units")
-      .select("*")
+      .select("*", { count: "exact" })
       .order("nama", { ascending: true });
     
+    // Search filter
+    if (search) {
+      query = query.or(`kode.ilike.%${search}%,nama.ilike.%${search}%`);
+    }
+    
+    // Active filter
     if (isActive !== null) {
       query = query.eq("is_active", isActive === "true");
     }
     
-    const { data, error } = await query;
+    // Pagination
+    const from = (page - 1) * limit;
+    const to = from + limit - 1;
+    const { data, error, count } = await query.range(from, to);
     
     if (error) throw error;
     
-    return Response.json({ data });
+    return Response.json({ 
+      data,
+      pagination: {
+        page,
+        limit,
+        total: count || 0,
+        total_pages: Math.ceil((count || 0) / limit),
+      }
+    });
   } catch (error: any) {
     console.error("Error fetching units:", error);
     return Response.json(

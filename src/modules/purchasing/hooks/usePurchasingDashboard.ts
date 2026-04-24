@@ -136,16 +136,11 @@ export function usePurchasingDashboard() {
   return useQuery<PurchasingDashboardData>({
     queryKey: ["purchasing-dashboard"],
     queryFn: async () => {
-      // All data is mock for now — tables need to be created first
-      // Real queries can be added once the DB schema is ready
-      return {
-        kpis: buildMockKPIs(),
-        monthlyTrends: buildMockTrends(),
-        actionPOs: buildMockActionPOs(),
-        stockAlerts: buildMockStockAlerts(),
-        hppTrends: buildMockHPPTrends(),
-        supplierPerformance: buildMockSupplierPerf(),
-      };
+      const response = await fetch("/api/purchasing/dashboard");
+      if (!response.ok) {
+        throw new Error("Failed to fetch dashboard data");
+      }
+      return response.json();
     },
     refetchInterval: 1000 * 60 * 5, // 5 menit
     staleTime: 1000 * 60 * 2,
