@@ -416,16 +416,18 @@ function SupplierFormInner({ isEdit, supplierId, initialData }: SupplierFormProp
             {/* Kota */}
             <div className="space-y-2">
               <Label htmlFor="kota">Kota *</Label>
-              <Select value={kota.value} onValueChange={(v) => { kota.setValue(v); kota.setTouched(); }}>
-                <SelectTrigger className={inputClass("kota")}>
-                  <SelectValue placeholder="— Pilih Kota —" />
-                </SelectTrigger>
-                <SelectContent>
-                  {KOTA_OPTIONS.map((k) => (
-                    <SelectItem key={k} value={k}>{k}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Combobox
+                options={KOTA_OPTIONS.map((k) => ({ value: k, label: k }))}
+                value={kota.value}
+                onChange={(v) => { kota.setValue(v); kota.setTouched(); }}
+                placeholder="Pilih kota..."
+                searchPlaceholder="Cari kota..."
+                emptyMessage="Kota tidak ditemukan"
+                allowClear
+              />
+              <p className="text-xs text-muted-foreground">
+                Contoh: Jakarta, Surabaya, Bandung
+              </p>
               {kota.touched && kota.error && (
                 <p className="text-xs text-red-500 mt-1 flex items-center gap-1">
                   <XCircleIcon className="w-3 h-3" />{kota.error}
