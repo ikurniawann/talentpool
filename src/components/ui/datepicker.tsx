@@ -38,13 +38,17 @@ export function DatePicker({
   // Initialize flatpickr
   useEffect(() => {
     if (inputRef.current && !fpInstance.current) {
+      // Get today's date in Jakarta timezone
+      const today = new Date();
+      const jakartaTime = new Date(today.toLocaleString('en-US', { timeZone: 'Asia/Jakarta' }));
+      
       fpInstance.current = flatpickr(inputRef.current, {
         dateFormat: "d M Y",
         locale: Indonesian,
         disableMobile: true,
         minDate: minDate,
         maxDate: maxDate,
-        defaultDate: value || new Date(), // Default to today if no value
+        defaultDate: value || jakartaTime, // Force Jakarta timezone
         onChange: (selectedDates, dateStr) => {
           setDisplayDate(dateStr);
           onChange?.(dateStr);
