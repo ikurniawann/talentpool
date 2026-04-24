@@ -126,3 +126,6 @@ https://react.dev/link/hydration-mismatch
   51 |       data-slot="button"
   52 |       className={cn(buttonVariants({ variant, size, className }))}
   53 |       {...props}
+✓ Compiled in 100ms
+✓ Compiled in 61ms
+✓ Compiled in 85ms

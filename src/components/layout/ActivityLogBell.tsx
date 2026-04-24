@@ -67,9 +67,15 @@ export function ActivityLogBell() {
           )}
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-80 max-h-[500px] p-0">
+      <DropdownMenuContent 
+        align="end" 
+        className="w-80 max-h-[500px] p-0 z-50 shadow-2xl border-gray-200 bg-white" 
+        sideOffset={8}
+        avoidCollisions
+        collisionPadding={16}
+      >
         {/* Header */}
-        <div className="flex items-center justify-between p-3 border-b">
+        <div className="flex items-center justify-between p-3 border-b bg-gray-50 sticky top-0 z-10">
           <div>
             <h3 className="text-sm font-semibold">Activity Log</h3>
             <p className="text-xs text-muted-foreground">
@@ -103,7 +109,7 @@ export function ActivityLogBell() {
         </div>
 
         {/* Logs List */}
-        <div className="max-h-[400px] overflow-y-auto">
+        <div className="max-h-[400px] overflow-y-auto bg-white">
           {logs.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 text-center">
               <Bell className="h-12 w-12 text-muted-foreground mb-3" />
