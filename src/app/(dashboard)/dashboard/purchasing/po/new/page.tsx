@@ -444,26 +444,22 @@ export default function NewPOPage() {
                 >
                   <div className="col-span-4 space-y-1">
                     <Label className="text-xs">Bahan Baku *</Label>
-                    <Select
+                    <Combobox
+                      options={materials.map((m) => ({
+                        value: m.id,
+                        label: m.nama,
+                        description: m.kode,
+                      }))}
                       value={item.raw_material_id}
-                      onValueChange={(v) =>
+                      onChange={(v) =>
                         updateItem(index, "raw_material_id", v)
                       }
+                      placeholder="Pilih bahan baku..."
+                      searchPlaceholder="Cari bahan (nama/kode)..."
+                      emptyMessage="Bahan baku tidak ditemukan"
+                      allowClear
                       disabled={loading}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Pilih bahan">
-                          {item.raw_material_id && materials.find(m => m.id === item.raw_material_id)?.nama}
-                        </SelectValue>
-                      </SelectTrigger>
-                      <SelectContent>
-                        {materials.map((m) => (
-                          <SelectItem key={m.id} value={m.id}>
-                            {m.nama} ({m.kode})
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    />
                   </div>
 
                   <div className="col-span-2 space-y-1">
@@ -485,25 +481,21 @@ export default function NewPOPage() {
 
                   <div className="col-span-2 space-y-1">
                     <Label className="text-xs">Satuan</Label>
-                    <Select
+                    <Combobox
+                      options={(units || []).map((u) => ({
+                        value: u.id,
+                        label: u.nama,
+                        description: u.kode,
+                      }))}
                       value={item.satuan_id || ""}
-                      onValueChange={(v) =>
+                      onChange={(v) =>
                         updateItem(index, "satuan_id", v)
                       }
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Satuan">
-                          {item.satuan_id && units.find(u => u.id === item.satuan_id)?.nama}
-                        </SelectValue>
-                      </SelectTrigger>
-                      <SelectContent>
-                        {(units || []).map((u) => (
-                          <SelectItem key={u.id} value={u.id}>
-                            {u.nama}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                      placeholder="Pilih satuan..."
+                      searchPlaceholder="Cari satuan..."
+                      emptyMessage="Satuan tidak ditemukan"
+                      allowClear
+                    />
                   </div>
 
                   <div className="col-span-2 space-y-1">
