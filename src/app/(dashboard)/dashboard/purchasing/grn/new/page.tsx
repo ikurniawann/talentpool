@@ -307,8 +307,13 @@ export default function CreateGrnPage() {
                         <span className="truncate text-left font-medium">
                           {selectedDelivery
                             ? (() => {
-                                const kurir = selectedDelivery.kurir || 'No Kurir';
-                                return `${selectedDelivery.no_resi} - ${kurir}`;
+                                // Prioritize kurir, then ekspedisi, then show no resi only
+                                const displayKurir = selectedDelivery.kurir || selectedDelivery.ekspedisi || '';
+                                if (displayKurir) {
+                                  return `${selectedDelivery.no_resi} - ${displayKurir}`;
+                                }
+                                // If no kurir, just show no resi
+                                return selectedDelivery.no_resi;
                               })()
                             : "Pilih pengiriman..."}
                         </span>
@@ -362,15 +367,27 @@ export default function CreateGrnPage() {
                                     />
                                   </div>
                                   <div className="flex items-center gap-1.5 text-xs text-gray-500">
-                                    {d.supplier_name || d.kurir ? (
-                                      <span className="font-medium">{d.supplier_name || d.kurir}</span>
-                                    ) : null}
-                                    {(d.supplier_name || d.kurir) && (d.po_number || d.nomor_resi) && (
-                                      <span className="text-gray-300">•</span>
-                                    )}
-                                    {d.po_number || d.nomor_resi ? (
-                                      <span>{d.po_number || d.nomor_resi}</span>
-                                    ) : null}
+                                    {(() => {
+                                      const supplierOrKurir = d.supplier_name || d.kurir || d.ekspedisi || '';
+                                      const poOrResi = d.po_number || d.nomor_resi || d.no_resi || '';
+                                      
+                                      if (supplierOrKurir && poOrResi) {
+                                        return (
+                                          <>
+                                            <span className="font-medium">{supplierOrKurir}</span>
+                                            <span className="text-gray-300">•</span>
+                                            <span>{poOrResi}</span>
+                                          </>
+                                        );
+                                      }
+                                      if (supplierOrKurir) {
+                                        return <span className="font-medium">{supplierOrKurir}</span>;
+                                      }
+                                      if (poOrResi) {
+                                        return <span>{poOrResi}</span>;
+                                      }
+                                      return null;
+                                    })()}
                                   </div>
                                 </div>
                               </CommandItem>
@@ -394,7 +411,7 @@ export default function CreateGrnPage() {
                     </div>
                     <div>
                       <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">Kurir/Ekspedisi</span>
-                      <p className="text-sm font-medium text-gray-900 mt-0.5">{selectedDelivery.kurir || "-"}</p>
+                      <p className="text-sm font-medium text-gray-900 mt-0.5">{(selectedDelivery.kurir || selectedDelivery.ekspedisi) || "-"}</p>
                     </div>
                     <div>
                       <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">Status</span>
