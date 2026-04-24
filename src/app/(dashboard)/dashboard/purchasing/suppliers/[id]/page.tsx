@@ -71,11 +71,17 @@ function formatCurrency(amount: number, currency: string = "IDR"): string {
 }
 
 function formatDate(dateStr: string): string {
-  return new Intl.DateTimeFormat("id-ID", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  }).format(new Date(dateStr));
+  if (!dateStr) return "-";
+  try {
+    return new Intl.DateTimeFormat("id-ID", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    }).format(new Date(dateStr));
+  } catch (e) {
+    console.error("Invalid date:", dateStr, e);
+    return "-";
+  }
 }
 
 // ─── PO Status Badge ───────────────────────────────────────────
