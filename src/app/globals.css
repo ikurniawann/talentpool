@@ -1,5 +1,16 @@
 @import "tailwindcss";
 
+/* Force solid white backgrounds for ALL dropdowns/popovers */
+[data-slot="popover"],
+[data-slot="dropdown-menu"],
+[data-slot="combobox"],
+.popover,
+.dropdown-menu,
+[role="listbox"] {
+  background-color: #ffffff !important;
+  background: white !important;
+}
+
 /* Soft gray borders for cards */
 [data-slot="card"] {
   border-color: #e5e7eb !important; /* gray-200 - soft gray */

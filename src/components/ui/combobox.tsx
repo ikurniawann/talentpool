@@ -97,20 +97,22 @@ export function Combobox({
         </Button>
       </PopoverTrigger>
       <PopoverContent 
-        className="w-[--radix-popover-trigger-width] p-0 shadow-2xl z-[9999] border-gray-200 bg-white" 
+        className="w-[--radix-popover-trigger-width] p-0 shadow-2xl z-[9999] border-gray-200" 
         align="start"
         sideOffset={4}
         avoidCollisions
         collisionPadding={16}
+        style={{ backgroundColor: 'white' }}
       >
-        <Command shouldFilter={false}>
+        <Command shouldFilter={false} className="bg-white">
           <CommandInput
             placeholder={searchPlaceholder}
             value={searchValue}
             onValueChange={setSearchValue}
             className="h-9 border-b bg-white"
+            style={{ backgroundColor: 'white' }}
           />
-          <CommandList className="max-h-[300px] overflow-y-auto bg-white shadow-lg">
+          <CommandList className="max-h-[300px] overflow-y-auto bg-white shadow-lg" style={{ backgroundColor: 'white' }}>
             <CommandEmpty>{emptyMessage}</CommandEmpty>
             <CommandGroup>
               {filteredOptions.map((option) => (
