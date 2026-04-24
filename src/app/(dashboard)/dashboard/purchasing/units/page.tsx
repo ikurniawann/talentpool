@@ -157,9 +157,14 @@ export default function UnitsPage() {
     try {
       if (editingUnit) {
         await updateUnit(editingUnit.id, formData);
+        logger.updateRawMaterial("Satuan Updated", formData.kode || "N/A", `Updated ${formData.nama}`);
         toast.success("Satuan berhasil diupdate");
       } else {
         await createUnit(formData);
+        logger.createRawMaterial("Satuan Created", formData.kode || "N/A", { 
+          nama: formData.nama, 
+          tipe: formData.tipe 
+        });
         toast.success("Satuan berhasil ditambahkan");
       }
       setIsDialogOpen(false);
