@@ -137,17 +137,17 @@ export default function PurchasingDashboardPage() {
       </div>
 
       {/* Quick Access Links */}
-      <Card className="border-0 shadow-sm">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base font-semibold">🚀 Quick Access</CardTitle>
+      <Card className="border-0 shadow-sm bg-transparent">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm font-semibold text-gray-900">Quick Access</CardTitle>
         </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-3">
+        <CardContent className="pt-0">
+          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-2">
             {quickLinks.map((link) => (
               <Link key={link.href} href={link.href}>
-                <div className="flex flex-col items-center justify-center p-4 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 hover:border-gray-300 transition-all group">
-                  <link.icon className="w-8 h-8 mb-2 text-gray-700 group-hover:text-gray-900" />
-                  <span className="text-sm font-medium text-center text-gray-700 group-hover:text-gray-900">{link.label}</span>
+                <div className="flex flex-col items-center justify-center p-2 rounded-md hover:bg-gray-100 transition-all group">
+                  <link.icon className="w-5 h-5 mb-1 text-gray-600 group-hover:text-gray-900" />
+                  <span className="text-xs font-medium text-center text-gray-700 group-hover:text-gray-900">{link.label}</span>
                 </div>
               </Link>
             ))}
