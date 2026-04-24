@@ -17,6 +17,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowLeft, Save, Plus, Trash2, Package, Calculator } from "lucide-react";
 import { toast } from "sonner";
+import { Combobox } from "@/components/ui/combobox";
 import { ProductFormData, RawMaterialWithStock, Unit, BOMItemFormData } from "@/types/purchasing";
 import { listRawMaterials, listUnits, createProduct, createBOMItem } from "@/lib/purchasing";
 
