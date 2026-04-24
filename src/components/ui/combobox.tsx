@@ -96,15 +96,19 @@ export function Combobox({
           </div>
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+      <PopoverContent 
+        className="w-[--radix-popover-trigger-width] p-0 shadow-2xl z-50 border-gray-200" 
+        align="start"
+        sideOffset={4}
+      >
         <Command shouldFilter={false}>
           <CommandInput
             placeholder={searchPlaceholder}
             value={searchValue}
             onValueChange={setSearchValue}
-            className="h-9"
+            className="h-9 border-b"
           />
-          <CommandList>
+          <CommandList className="max-h-[300px] overflow-y-auto bg-white">
             <CommandEmpty>{emptyMessage}</CommandEmpty>
             <CommandGroup>
               {filteredOptions.map((option) => (
@@ -116,6 +120,7 @@ export function Combobox({
                     setOpen(false);
                     setSearchValue("");
                   }}
+                  className="hover:bg-gray-100 data-[selected=true]:bg-gray-200 cursor-pointer py-2"
                 >
                   {option.label}
                   {option.description && (

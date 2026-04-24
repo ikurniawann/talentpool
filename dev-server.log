@@ -461,3 +461,90 @@ See this log for the ancestor stack trace.
 [browser] React does not recognize the `totalItems` prop on a DOM element. If you intentionally want it to appear in the DOM as a custom attribute, spell it as lowercase `totalitems` instead. If you accidentally passed it from a parent component, remove it from the DOM element. 
 [browser] Unknown event handler property `onPageChange`. It will be ignored. 
  GET /api/purchasing/units?page=1&limit=20 200 in 162ms (next.js: 1433µs, application-code: 161ms)
+ GET /dashboard/purchasing/units 200 in 489ms (next.js: 6ms, application-code: 484ms)
+[browser] Encountered two children with the same key, `/dashboard/purchasing`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. 
+ GET /api/purchasing/units?page=1&limit=20 200 in 147ms (next.js: 3ms, application-code: 145ms)
+[browser] React does not recognize the `currentPage` prop on a DOM element. If you intentionally want it to appear in the DOM as a custom attribute, spell it as lowercase `currentpage` instead. If you accidentally passed it from a parent component, remove it from the DOM element. 
+[browser] React does not recognize the `totalPages` prop on a DOM element. If you intentionally want it to appear in the DOM as a custom attribute, spell it as lowercase `totalpages` instead. If you accidentally passed it from a parent component, remove it from the DOM element. 
+[browser] React does not recognize the `totalItems` prop on a DOM element. If you intentionally want it to appear in the DOM as a custom attribute, spell it as lowercase `totalitems` instead. If you accidentally passed it from a parent component, remove it from the DOM element. 
+[browser] Unknown event handler property `onPageChange`. It will be ignored. 
+ GET /dashboard/purchasing/po 200 in 34ms (next.js: 7ms, application-code: 27ms)
+[browser] Encountered two children with the same key, `/dashboard/purchasing`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. 
+[browser] Encountered two children with the same key, `/dashboard/purchasing`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. 
+ GET /api/purchasing/po?page=1&limit=20 200 in 148ms (next.js: 1513µs, application-code: 147ms)
+[browser] In HTML, <button> cannot be a descendant of <button>.
+This will cause a hydration error.
+
+  ...
+    <table data-slot="table" className="w-full cap...">
+      <TableHeader>
+      <TableBody>
+        <tbody data-slot="table-body" className={"[&_tr:la..."}>
+          <TableRow>
+            <tr data-slot="table-row" className="border-b t...">
+              <TableCell>
+              <TableCell>
+              <TableCell>
+              <TableCell>
+              <TableCell>
+              <TableCell>
+              <TableCell>
+              <TableCell>
+                <td data-slot="table-cell" className={"p-2 alig..."}>
+                  <DropdownMenu>
+                    <MenuRoot data-slot="dropdown-menu">
+                      <FloatingTree externalTree={{nodesRef:{...}, ...}}>
+                        <DropdownMenuTrigger>
+                          <MenuTrigger data-slot="dropdown-m...">
+>                           <button
+>                             type="button"
+>                             onClick={function}
+>                             onMouseDown={function}
+>                             onKeyDown={function}
+>                             onKeyUp={function}
+>                             onPointerDown={function}
+>                             tabIndex={0}
+>                             disabled={false}
+>                             aria-haspopup="menu"
+>                             id="base-ui-_r_o_"
+>                             data-slot="dropdown-menu-trigger"
+>                             ref={function}
+>                           >
+                              <Button variant="ghost" size="icon">
+                                <Button data-slot="button" className={"group/bu..."}>
+>                                 <button
+>                                   type="button"
+>                                   onClick={function}
+>                                   onMouseDown={function}
+>                                   onKeyDown={function}
+>                                   onKeyUp={function}
+>                                   onPointerDown={function}
+>                                   tabIndex={0}
+>                                   disabled={false}
+>                                   data-slot="button"
+>                                   ref={function}
+>                                   className={"group/button inline-flex shrink-0 items-center justify-center rounded..."}
+>                                 >
+                        ...
+          ...
+ 
+[browser] <button> cannot contain a nested <button>.
+See this log for the ancestor stack trace. 
+ GET /api/purchasing/po?page=1&limit=20 200 in 147ms (next.js: 1951µs, application-code: 145ms)
+ GET /api/purchasing/po?page=1&limit=20 200 in 147ms (next.js: 2ms, application-code: 145ms)
+ GET /dashboard/purchasing/po/new 200 in 34ms (next.js: 8ms, application-code: 26ms)
+[browser] Encountered two children with the same key, `/dashboard/purchasing`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. 
+[browser] Encountered two children with the same key, `/dashboard/purchasing`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. 
+[browser] Encountered two children with the same key, `/dashboard/purchasing`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. 
+ GET /api/purchasing/suppliers? 200 in 471ms (next.js: 1886µs, application-code: 469ms)
+Raw materials fetched: 10 items
+ GET /api/purchasing/raw-materials?limit=100 200 in 151ms (next.js: 3ms, application-code: 148ms)
+ GET /api/purchasing/units? 200 in 143ms (next.js: 2ms, application-code: 141ms)
+ GET /api/purchasing/suppliers? 200 in 484ms (next.js: 3ms, application-code: 481ms)
+Raw materials fetched: 10 items
+ GET /api/purchasing/raw-materials?limit=100 200 in 151ms (next.js: 4ms, application-code: 147ms)
+ GET /api/purchasing/units? 200 in 141ms (next.js: 2ms, application-code: 138ms)
+[browser] React does not recognize the `asChild` prop on a DOM element. If you intentionally want it to appear in the DOM as a custom attribute, spell it as lowercase `aschild` instead. If you accidentally passed it from a parent component, remove it from the DOM element. 
+✓ Compiled in 109ms
+✓ Compiled in 69ms
+✓ Compiled in 97ms
