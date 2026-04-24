@@ -4,7 +4,8 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, useRef, useEffect } from "react";
 import { Toaster } from "sonner";
-import { Header } from "@/components/layout/Header";
+import { ActivityLogBell } from "@/components/layout/ActivityLogBell";
+import { UserCircle } from "lucide-react";
 import {
   BuildingOfficeIcon,
   CubeIcon,
@@ -71,94 +72,111 @@ export default function PurchasingLayout({ children }: { children: React.ReactNo
 
   return (
     <div>
-      <Header />
-      {/* Sub-nav: grouped tabs */}
-      <div className="flex flex-wrap gap-1 border-b border-gray-200 mb-6">
-        
-        {/* Master Data — dropdown (paling atas) */}
-        <div className="relative" ref={masterRef}>
-          <button
-            onClick={() => setMasterOpen((v) => !v)}
-            className={clsx(
-              "flex items-center gap-1.5 px-3 py-2 text-sm font-medium border-b-2 transition-colors cursor-pointer",
-              isInMasterSection
-                ? "border-gray-400 text-gray-700"
-                : "border-transparent text-gray-600 hover:text-gray-800 hover:border-gray-300"
-            )}
-          >
-            <CubeIcon className="w-4 h-4" />
-            Master Data
-            <ChevronDownIcon className={clsx("w-3.5 h-3.5 transition-transform", masterOpen && "rotate-180")} />
-          </button>
+      {/* Single navigation bar with bell icon - ALL IN ONE ROW */}
+      <div className="sticky top-0 z-40 w-full bg-white border-b border-gray-200">
+        <div className="flex h-12 items-center justify-between px-4">
+          {/* Left - Navigation tabs */}
+          <div className="flex flex-wrap items-center gap-1 flex-1">
+            
+            {/* Master Data — dropdown */}
+            <div className="relative" ref={masterRef}>
+              <button
+                onClick={() => setMasterOpen((v) => !v)}
+                className={clsx(
+                  "flex items-center gap-1.5 px-3 py-2 text-sm font-medium border-b-2 transition-colors cursor-pointer",
+                  isInMasterSection
+                    ? "border-gray-400 text-gray-700"
+                    : "border-transparent text-gray-600 hover:text-gray-800 hover:border-gray-300"
+                )}
+              >
+                <CubeIcon className="w-4 h-4" />
+                Master Data
+                <ChevronDownIcon className={clsx("w-3.5 h-3.5 transition-transform", masterOpen && "rotate-180")} />
+              </button>
 
-          {masterOpen && (
-            <div className="absolute top-full left-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-50 py-1 min-w-48">
-              <p className="px-3 py-1 text-xs font-semibold text-gray-400 uppercase tracking-wide">Wounderland Backoffice</p>
-              {MASTER_ITEMS.map((item) => (
-                <DropdownItem 
-                  key={item.href} 
-                  href={item.href} 
-                  label={item.label} 
-                  icon={item.icon}
-                  onClick={() => setMasterOpen(false)} 
-                />
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Transaksi */}
-        {TRANSAKSI_ITEMS.map((item) => {
-          const active = pathname === item.href;
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={clsx(
-                "flex items-center gap-1.5 px-3 py-2 text-sm font-medium border-b-2 transition-colors",
-                active ? "border-gray-400 text-gray-700" : "border-transparent text-gray-600 hover:text-gray-800 hover:border-gray-300"
+              {masterOpen && (
+                <div className="absolute top-full left-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-50 py-1 min-w-48">
+                  <p className="px-3 py-1 text-xs font-semibold text-gray-400 uppercase tracking-wide">Wounderland Backoffice</p>
+                  {MASTER_ITEMS.map((item) => (
+                    <DropdownItem 
+                      key={item.href} 
+                      href={item.href} 
+                      label={item.label} 
+                      icon={item.icon}
+                      onClick={() => setMasterOpen(false)} 
+                    />
+                  ))}
+                </div>
               )}
-            >
-              <item.icon className="w-4 h-4" />
-              {item.label}
-            </Link>
-          );
-        })}
-
-        {/* Laporan — dropdown */}
-        <div className="relative" ref={reportRef}>
-          <button
-            onClick={() => setReportOpen((v) => !v)}
-            className={clsx(
-              "flex items-center gap-1.5 px-3 py-2 text-sm font-medium border-b-2 transition-colors cursor-pointer",
-              isInReportSection
-                ? "border-gray-400 text-gray-700"
-                : "border-transparent text-gray-600 hover:text-gray-800 hover:border-gray-300"
-            )}
-          >
-            <DocumentChartBarIcon className="w-4 h-4" />
-            Laporan
-            <ChevronDownIcon className={clsx("w-3.5 h-3.5 transition-transform", reportOpen && "rotate-180")} />
-          </button>
-
-          {reportOpen && (
-            <div className="absolute top-full left-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-50 py-1 min-w-48">
-              <p className="px-3 py-1 text-xs font-semibold text-gray-400 uppercase tracking-wide">Laporan</p>
-              {REPORT_ITEMS.map((item) => (
-                <DropdownItem 
-                  key={item.href} 
-                  href={item.href} 
-                  label={item.label} 
-                  icon={item.icon}
-                  onClick={() => setReportOpen(false)} 
-                />
-              ))}
             </div>
-          )}
+
+            {/* Transaksi - direct links */}
+            {TRANSAKSI_ITEMS.map((item) => {
+              const active = pathname === item.href;
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={clsx(
+                    "flex items-center gap-1.5 px-3 py-2 text-sm font-medium border-b-2 transition-colors",
+                    active ? "border-gray-400 text-gray-700" : "border-transparent text-gray-600 hover:text-gray-800 hover:border-gray-300"
+                  )}
+                >
+                  <item.icon className="w-4 h-4" />
+                  {item.label}
+                </Link>
+              );
+            })}
+
+            {/* Laporan — dropdown */}
+            <div className="relative" ref={reportRef}>
+              <button
+                onClick={() => setReportOpen((v) => !v)}
+                className={clsx(
+                  "flex items-center gap-1.5 px-3 py-2 text-sm font-medium border-b-2 transition-colors cursor-pointer",
+                  isInReportSection
+                    ? "border-gray-400 text-gray-700"
+                    : "border-transparent text-gray-600 hover:text-gray-800 hover:border-gray-300"
+                )}
+              >
+                <DocumentChartBarIcon className="w-4 h-4" />
+                Laporan
+                <ChevronDownIcon className={clsx("w-3.5 h-3.5 transition-transform", reportOpen && "rotate-180")} />
+              </button>
+
+              {reportOpen && (
+                <div className="absolute top-full left-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-50 py-1 min-w-48">
+                  <p className="px-3 py-1 text-xs font-semibold text-gray-400 uppercase tracking-wide">Laporan</p>
+                  {REPORT_ITEMS.map((item) => (
+                    <DropdownItem 
+                      key={item.href} 
+                      href={item.href} 
+                      label={item.label} 
+                      icon={item.icon}
+                      onClick={() => setReportOpen(false)} 
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+          
+          {/* Right - Bell icon and user profile */}
+          <div className="flex items-center gap-4 pl-4 border-l border-gray-200">
+            <ActivityLogBell />
+            <div className="flex items-center gap-2 text-sm text-gray-700">
+              <UserCircle className="w-5 h-5 text-gray-600" />
+              <span className="hidden md:inline-block">User</span>
+            </div>
+          </div>
         </div>
       </div>
-      {children}
-      <Toaster position="top-right" richColors />
+
+      {/* Page content */}
+      <main className="p-6">
+        {children}
+        <Toaster position="bottom-right" />
+      </main>
     </div>
   );
 }
@@ -167,7 +185,7 @@ function DropdownItem({ href, label, icon: Icon, onClick }: {
   href: string; 
   label: string; 
   icon: React.ComponentType<{ className?: string }>;
-  onClick: () => void;
+  onClick?: () => void;
 }) {
   const pathname = usePathname();
   const active = pathname === href;
@@ -176,11 +194,11 @@ function DropdownItem({ href, label, icon: Icon, onClick }: {
       href={href}
       onClick={onClick}
       className={clsx(
-        "flex items-center gap-2 px-3 py-2 text-xs transition-colors",
+        "flex items-center gap-2 px-3 py-2 text-sm transition-colors",
         active ? "bg-blue-50 text-blue-600 font-medium" : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
       )}
     >
-      <Icon className="w-3.5 h-3.5" />
+      <Icon className="w-4 h-4" />
       {label}
     </Link>
   );
