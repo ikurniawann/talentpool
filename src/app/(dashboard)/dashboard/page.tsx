@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -39,8 +40,23 @@ import { useToast, ToastContainer } from "@/components/ui/toast";
 const SOURCE_COLORS = ["#6366f1", "#22c55e", "#f59e0b", "#ef4444", "#8b5cf6", "#06b6d4", "#ec4899"];
 
 export default function DashboardPage() {
+  const router = useRouter();
   const supabase = createClient();
   const { toasts, toast, dismiss } = useToast();
+
+  // Redirect purchasing users to /dashboard/purchasing
+  useEffect(() => {
+    const checkRole = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data: profile } = await supabase.from("users").select("role").eq("id", user.id).single();
+        if (profile && ["purchasing_manager", "purchasing_staff", "purchasing_admin", "warehouse_staff", "qc_staff"].includes(profile.role)) {
+          router.replace("/dashboard/purchasing");
+        }
+      }
+    };
+    checkRole();
+  }, [router, supabase]);
 
   const [loading, setLoading] = useState(true);
   const [brandFilter, setBrandFilter] = useState("all");
