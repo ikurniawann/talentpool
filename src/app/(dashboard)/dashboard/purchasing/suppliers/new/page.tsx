@@ -46,6 +46,7 @@ import {
 import { createSupplier, updateSupplier } from "@/lib/purchasing/supplier";
 import { useToast } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
+import { Combobox } from "@/components/ui/combobox";
 
 // ─── Field state ─────────────────────────────────────────────────
 
@@ -381,14 +382,18 @@ function SupplierFormInner({ isEdit, supplierId, initialData }: SupplierFormProp
             {/* Payment Terms */}
             <div className="space-y-2">
               <Label>Payment Terms *</Label>
-              <Select value={paymentTerms} onValueChange={(v) => setPaymentTerms(v as PaymentTerms)}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {PAYMENT_TERMS_OPTIONS.map((pt) => (
-                    <SelectItem key={pt} value={pt}>{pt}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Combobox
+                options={PAYMENT_TERMS_OPTIONS.map((pt) => ({ value: pt, label: pt }))}
+                value={paymentTerms}
+                onChange={(v) => setPaymentTerms(v as PaymentTerms)}
+                placeholder="Pilih payment terms..."
+                searchPlaceholder="Cari terms (contoh: 30 hari)..."
+                emptyMessage="Payment terms tidak ditemukan"
+                allowClear
+              />
+              <p className="text-xs text-muted-foreground">
+                Contoh: NET 30, COD, CAD
+              </p>
             </div>
 
             {/* Currency */}
