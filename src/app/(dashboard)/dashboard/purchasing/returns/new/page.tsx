@@ -1,12 +1,14 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import {
   Select,
   SelectContent,
@@ -14,323 +16,534 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Checkbox } from "@/components/ui/checkbox";
-import { toast } from "sonner";
 import {
-  ArrowLeftIcon,
-  PlusIcon,
-  TrashIcon,
-  ArrowUturnLeftIcon,
-} from "@heroicons/react/24/outline";
+  Table,
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableHead,
+  TableCell,
+} from "@/components/ui/table";
 import { BreadcrumbNav } from "@/modules/purchasing/components/breadcrumb/BreadcrumbNav";
-import { GoodsReceipt, GoodsReceiptItem } from "@/types/purchasing";
-import { listGoodsReceipts, listGRNItems, createReturn } from "@/lib/purchasing";
-import { ReturnReason, ReturnResolution, ReturnFormData, ReturnItemFormData } from "@/types/purchasing";
+import { createReturn, getReturnableItems } from "@/lib/purchasing/return";
+import { listSuppliers } from "@/lib/purchasing";
+import {
+  RETURN_REASON_LABELS,
+  ReturnReasonType,
+  ReturnableItem,
+} from "@/types/purchasing";
+import { ArrowLeft, Save, Plus, Trash2, AlertCircle } from "lucide-react";
+import { formatRupiah } from "@/lib/purchasing/utils";
+import { toast } from "sonner";
+import { Supplier } from "@/types/supplier";
 
-const RETURN_REASONS: { value: ReturnReason; label: string }[] = [
-  { value: "CACAT", label: "Barang Cacat/Rusak" },
-  { value: "KADALUARSA", label: "Kadaluarsa" },
-  { value: "SALAH_KIRIM", label: "Salah Kirim" },
-  { value: "KELEBIHAN", label: "Kelebihan Jumlah" },
-  { value: "LAINNYA", label: "Lainnya" },
-];
-
-const RESOLUTION_OPTIONS: { value: ReturnResolution; label: string }[] = [
-  { value: "REPLACEMENT", label: "Ganti Barang" },
-  { value: "REFUND", label: "Refund/Pengembalian Dana" },
-  { value: "CREDIT_NOTE", label: "Credit Note" },
-];
-
-interface SelectedItem extends ReturnItemFormData {
-  tempId: string;
-  raw_material_name?: string;
+interface ReturnItem extends ReturnableItem {
+  selected: boolean;
+  qty_return: number;
+  condition_notes: string;
 }
 
 export default function NewReturnPage() {
   const router = useRouter();
-  const [loading, setLoading] = useState(false);
-  const [grns, setGrns] = useState<GoodsReceipt[]>([]);
-  const [selectedGRN, setSelectedGRN] = useState<GoodsReceipt | null>(null);
-  const [grnItems, setGrnItems] = useState<GoodsReceiptItem[]>([]);
+  const searchParams = useSearchParams();
+  const grnId = searchParams.get("grn_id");
 
-  const [formData, setFormData] = useState<ReturnFormData>({
-    grn_id: "",
-    alasan_return: "CACAT",
-    keterangan: "",
-    jenis_resolusi: "REPLACEMENT",
+  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
+  const [returnableItems, setReturnableItems] = useState<ReturnItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const [formData, setFormData] = useState({
+    grn_id: grnId || "",
+    supplier_id: "",
+    return_date: new Date().toISOString().split("T")[0],
+    reason_type: "" as ReturnReasonType,
+    reason_notes: "",
+    notes: "",
   });
 
-  const [selectedItems, setSelectedItems] = useState<SelectedItem[]>([]);
-
-  // Load GRN list (yang sudah completed)
   useEffect(() => {
-    loadGRNs();
-  }, []);
+    loadData();
+  }, [grnId]);
 
-  async function loadGRNs() {
+  const loadData = async () => {
     try {
-      const data = await listGoodsReceipts({ status: "COMPLETED" });
-      setGrns(data);
-    } catch (error) {
-      toast.error("Gagal memuat data GRN");
-    }
-  }
+      const [suppliersData, itemsData] = await Promise.all([
+        listSuppliers({ is_active: true }),
+        grnId ? getReturnableItems(grnId) : Promise.resolve([]),
+      ]);
 
-  // Load GRN items when selected
-  useEffect(() => {
-    if (formData.grn_id) {
-      loadGRNDetail(formData.grn_id);
-    }
-  }, [formData.grn_id]);
-
-  async function loadGRNDetail(grnId: string) {
-    try {
-      const items = await listGRNItems(grnId);
-      setGrnItems(items);
-      // Auto-select all items with default return qty = 0
-      const mappedItems: SelectedItem[] = items.map((item) => ({
-        tempId: crypto.randomUUID(),
-        grn_item_id: item.id,
-        raw_material_id: item.raw_material_id,
+      setSuppliers(suppliersData);
+      
+      // Map returnable items with selection state
+      const mappedItems = itemsData.map((item: ReturnableItem) => ({
+        ...item,
+        selected: false,
         qty_return: 0,
-        harga_satuan: item.harga_satuan,
-        alasan_item: "",
-        raw_material_name: item.raw_material?.nama_bahan || item.raw_material_id,
+        condition_notes: "",
       }));
-      setSelectedItems(mappedItems);
+      setReturnableItems(mappedItems);
+
+      // Auto-select supplier if only one item
+      if (itemsData.length > 0) {
+        setFormData((prev) => ({
+          ...prev,
+          supplier_id: itemsData[0].supplier_id,
+          grn_id: itemsData[0].grn_id,
+        }));
+      }
     } catch (error) {
-      toast.error("Gagal memuat item GRN");
-    }
-  }
-
-  function handleItemQtyChange(tempId: string, qty: number) {
-    setSelectedItems((prev) =>
-      prev.map((item) =>
-        item.tempId === tempId ? { ...item, qty_return: Math.max(0, qty) } : item
-      )
-    );
-  }
-
-  function handleItemAlasanChange(tempId: string, alasan: string) {
-    setSelectedItems((prev) =>
-      prev.map((item) => (item.tempId === tempId ? { ...item, alasan_item: alasan } : item))
-    );
-  }
-
-  const totalQty = selectedItems.reduce((sum, item) => sum + item.qty_return, 0);
-  const totalNilai = selectedItems.reduce(
-    (sum, item) => sum + item.qty_return * item.harga_satuan,
-    0
-  );
-
-  async function handleSubmit() {
-    // Validation
-    if (!formData.grn_id) {
-      toast.error("Pilih GRN terlebih dahulu");
-      return;
-    }
-
-    const itemsToReturn = selectedItems.filter((item) => item.qty_return > 0);
-    if (itemsToReturn.length === 0) {
-      toast.error("Pilih minimal 1 item yang akan diretur");
-      return;
-    }
-
-    setLoading(true);
-    try {
-      const payload = {
-        ...formData,
-        items: itemsToReturn.map(({ tempId, raw_material_name, ...item }) => item),
-      };
-
-      const result = await createReturn(payload);
-      toast.success("Retur berhasil dibuat");
-      router.push(`/dashboard/purchasing/returns/${result.id}`);
-    } catch (error: any) {
-      toast.error(error.message || "Gagal membuat retur");
+      console.error("Error loading data:", error);
+      toast.error("Gagal memuat data");
     } finally {
       setLoading(false);
     }
+  };
+
+  const toggleItem = (grnItemId: string) => {
+    setReturnableItems((items) =>
+      items.map((item) =>
+        item.grn_item_id === grnItemId
+          ? { ...item, selected: !item.selected }
+          : item
+      )
+    );
+  };
+
+  const updateQtyReturn = (grnItemId: string, qty: number) => {
+    setReturnableItems((items) =>
+      items.map((item) =>
+        item.grn_item_id === grnItemId
+          ? {
+              ...item,
+              qty_return: Math.min(qty, item.qty_available_to_return),
+            }
+          : item
+      )
+    );
+  };
+
+  const updateConditionNotes = (grnItemId: string, notes: string) => {
+    setReturnableItems((items) =>
+      items.map((item) =>
+        item.grn_item_id === grnItemId
+          ? { ...item, condition_notes: notes }
+          : item
+      )
+    );
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    // Validation
+    if (!formData.supplier_id) {
+      toast.error("Supplier wajib dipilih");
+      return;
+    }
+    if (!formData.reason_type) {
+      toast.error("Alasan return wajib dipilih");
+      return;
+    }
+
+    const selectedItems = returnableItems.filter(
+      (item) => item.selected && item.qty_return > 0
+    );
+
+    if (selectedItems.length === 0) {
+      toast.error("Pilih minimal 1 item untuk di-return");
+      return;
+    }
+
+    // Validate qty
+    for (const item of selectedItems) {
+      if (item.qty_return > item.qty_available_to_return) {
+        toast.error(`Qty return ${item.raw_material_nama} melebihi yang tersedia`);
+        return;
+      }
+      if (item.qty_return <= 0) {
+        toast.error(`Qty return ${item.raw_material_nama} harus > 0`);
+        return;
+      }
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      const returnData = {
+        grn_id: formData.grn_id,
+        supplier_id: formData.supplier_id,
+        return_date: formData.return_date,
+        reason_type: formData.reason_type,
+        reason_notes: formData.reason_notes,
+        notes: formData.notes,
+        items: selectedItems.map((item) => ({
+          grn_item_id: item.grn_item_id,
+          raw_material_id: item.raw_material_id,
+          qty_returned: item.qty_return,
+          unit_cost: item.unit_price,
+          batch_number: item.batch_number,
+          expiry_date: item.expiry_date,
+          condition_notes: item.condition_notes,
+        })),
+      };
+
+      await createReturn(returnData);
+      toast.success("Return berhasil dibuat dan menunggu persetujuan");
+      router.push("/dashboard/purchasing/returns");
+    } catch (error: any) {
+      console.error("Error creating return:", error);
+      toast.error(error.message || "Gagal membuat return");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const selectedCount = returnableItems.filter((i) => i.selected).length;
+  const totalQty = returnableItems
+    .filter((i) => i.selected)
+    .reduce((sum, i) => sum + i.qty_return, 0);
+  const totalAmount = returnableItems
+    .filter((i) => i.selected)
+    .reduce((sum, i) => sum + i.qty_return * i.unit_price, 0);
+
+  if (loading) {
+    return (
+      <div className="p-6 flex items-center justify-center min-h-[400px]">
+        <p className="text-gray-500">Memuat data...</p>
+      </div>
+    );
   }
 
   return (
-    <div className="space-y-6">
+    <div className="p-6">
       <BreadcrumbNav
         items={[
-          { label: "Dashboard", href: "/dashboard" },
           { label: "Purchasing", href: "/dashboard/purchasing" },
-          { label: "Retur", href: "/dashboard/purchasing/returns" },
-          { label: "Baru" },
+          { label: "Retur Pembelian", href: "/dashboard/purchasing/returns" },
+          { label: "Buat Return Baru" },
         ]}
       />
 
-      {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between mt-4 mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Retur Baru</h1>
-          <p className="text-sm text-gray-500">Buat pengembalian barang ke supplier</p>
+          <h1 className="text-2xl font-bold">Buat Return Baru</h1>
+          <p className="text-sm text-gray-500">
+            Retur barang ke supplier
+          </p>
         </div>
-        <div className="flex gap-2">
-          <Link href="/dashboard/purchasing/returns">
-            <Button variant="outline">
-              <ArrowLeftIcon className="w-4 h-4 mr-2" />
-              Batal
-            </Button>
-          </Link>
-          <Button onClick={handleSubmit} disabled={loading}>
-            {loading ? "Menyimpan..." : "Simpan Retur"}
+        <Link href="/dashboard/purchasing/returns">
+          <Button variant="outline">
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Kembali
           </Button>
-        </div>
+        </Link>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Form Utama */}
-        <div className="lg:col-span-2 space-y-6">
-          {/* Pilih GRN */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Pilih Goods Receipt (GRN)</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <Label>GRN *</Label>
-                <Select value={formData.grn_id} onValueChange={(v) => setFormData({ ...formData, grn_id: v })}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Pilih GRN" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {grns.map((grn) => (
-                      <SelectItem key={grn.id} value={grn.id}>
-                        {grn.nomor_grn} - PO {grn.po?.nomor_po || grn.po_id}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Item yang Diretur */}
-          {formData.grn_id && selectedItems.length > 0 && (
+      <form onSubmit={handleSubmit}>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Left Column - Form */}
+          <div className="lg:col-span-2 space-y-4">
+            {/* Return Info */}
             <Card>
               <CardHeader>
-                <CardTitle className="text-base">Item yang Diretur</CardTitle>
+                <CardTitle className="text-lg">Informasi Return</CardTitle>
               </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {selectedItems.map((item) => (
-                    <div key={item.tempId} className="border rounded-lg p-4 space-y-3">
-                      <div className="flex items-center justify-between">
-                        <span className="font-medium">{item.raw_material_name}</span>
-                        <Badge variant="outline">Rp {item.harga_satuan.toLocaleString("id-ID")}</Badge>
-                      </div>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <Label className="text-xs">Qty Retur *</Label>
-                          <Input
-                            type="number"
-                            min={0}
-                            step="0.0001"
-                            value={item.qty_return}
-                            onChange={(e) =>
-                              handleItemQtyChange(item.tempId, parseFloat(e.target.value) || 0)
-                            }
-                          />
-                        </div>
-                        <div>
-                          <Label className="text-xs">Alasan Item</Label>
-                          <Input
-                            value={item.alasan_item || ""}
-                            onChange={(e) => handleItemAlasanChange(item.tempId, e.target.value)}
-                            placeholder="Opsional"
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  ))}
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="return_date">Tanggal Return *</Label>
+                    <Input
+                      id="return_date"
+                      type="date"
+                      value={formData.return_date}
+                      onChange={(e) =>
+                        setFormData((prev) => ({
+                          ...prev,
+                          return_date: e.target.value,
+                        }))
+                      }
+                      required
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="supplier_id">Supplier *</Label>
+                    <Select
+                      value={formData.supplier_id}
+                      onValueChange={(value) =>
+                        setFormData((prev) => ({
+                          ...prev,
+                          supplier_id: value,
+                        }))
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Pilih supplier" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {suppliers.map((supplier) => (
+                          <SelectItem
+                            key={supplier.id}
+                            value={supplier.id}
+                          >
+                            {supplier.nama_supplier}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <div>
+                  <Label htmlFor="reason_type">Alasan Return *</Label>
+                  <Select
+                    value={formData.reason_type}
+                    onValueChange={(value) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        reason_type: value as ReturnReasonType,
+                      }))
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Pilih alasan" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {Object.entries(RETURN_REASON_LABELS).map(
+                        ([key, label]) => (
+                          <SelectItem key={key} value={key}>
+                            {label}
+                          </SelectItem>
+                        )
+                      )}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div>
+                  <Label htmlFor="reason_notes">Catatan Alasan</Label>
+                  <Textarea
+                    id="reason_notes"
+                    placeholder="Jelaskan alasan return secara detail..."
+                    value={formData.reason_notes}
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        reason_notes: e.target.value,
+                      }))
+                    }
+                    rows={3}
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="notes">Catatan Tambahan</Label>
+                  <Textarea
+                    id="notes"
+                    placeholder="Catatan internal (opsional)..."
+                    value={formData.notes}
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        notes: e.target.value,
+                      }))
+                    }
+                    rows={2}
+                  />
                 </div>
               </CardContent>
             </Card>
-          )}
-        </div>
 
-        {/* Sidebar Info */}
-        <div className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Informasi Retur</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <Label>Alasan Return *</Label>
-                <Select
-                  value={formData.alasan_return}
-                  onValueChange={(v) => setFormData({ ...formData, alasan_return: v as ReturnReason })}
+            {/* Items Selection */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">Pilih Item untuk Return</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {returnableItems.length === 0 ? (
+                  <div className="flex flex-col items-center py-12 text-gray-400">
+                    <AlertCircle className="w-12 h-12 mb-2" />
+                    <p>Tidak ada item yang bisa di-return</p>
+                    <p className="text-sm">
+                      Pastikan GRN memiliki item dengan QC status rejected
+                    </p>
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead className="bg-gray-50 border-b">
+                        <tr>
+                          <th className="text-left px-4 py-3 w-10">
+                            <input
+                              type="checkbox"
+                              checked={
+                                selectedCount === returnableItems.length &&
+                                returnableItems.length > 0
+                              }
+                              onChange={(e) => {
+                                const checked = e.target.checked;
+                                setReturnableItems((items) =>
+                                  items.map((item) => ({
+                                    ...item,
+                                    selected: checked,
+                                  }))
+                                );
+                              }}
+                              className="rounded border-gray-300"
+                            />
+                          </th>
+                          <th className="text-left px-4 py-3">Bahan Baku</th>
+                          <th className="text-right px-4 py-3">Qty Diterima</th>
+                          <th className="text-right px-4 py-3">Sudah Return</th>
+                          <th className="text-right px-4 py-3">Bisa Return</th>
+                          <th className="text-right px-4 py-3 w-32">Qty Return</th>
+                          <th className="text-left px-4 py-3">Kondisi</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y">
+                        {returnableItems.map((item) => (
+                          <TableRow
+                            key={item.grn_item_id}
+                            className={item.selected ? "bg-pink-50" : ""}
+                          >
+                            <td className="px-4 py-3">
+                              <input
+                                type="checkbox"
+                                checked={item.selected}
+                                onChange={() => toggleItem(item.grn_item_id)}
+                                className="rounded border-gray-300"
+                              />
+                            </td>
+                            <td className="px-4 py-3">
+                              <div>
+                                <p className="font-medium">{item.raw_material_nama}</p>
+                                <p className="text-xs text-gray-500">
+                                  {item.raw_material_kode}
+                                </p>
+                              </div>
+                            </td>
+                            <td className="px-4 py-3 text-right">
+                              {item.qty_diterima.toLocaleString()} {item.satuan || ""}
+                            </td>
+                            <td className="px-4 py-3 text-right text-gray-500">
+                              {item.qty_returned.toLocaleString()}
+                            </td>
+                            <td className="px-4 py-3 text-right font-medium text-green-600">
+                              {item.qty_available_to_return.toLocaleString()}
+                            </td>
+                            <td className="px-4 py-3">
+                              <Input
+                                type="number"
+                                min="0"
+                                max={item.qty_available_to_return}
+                                value={
+                                  item.selected ? item.qty_return || "" : ""
+                                }
+                                onChange={(e) =>
+                                  updateQtyReturn(
+                                    item.grn_item_id,
+                                    parseFloat(e.target.value) || 0
+                                  )
+                                }
+                                disabled={!item.selected}
+                                className="w-24 text-right"
+                                placeholder="0"
+                              />
+                            </td>
+                            <td className="px-4 py-3">
+                              <Input
+                                type="text"
+                                value={item.condition_notes}
+                                onChange={(e) =>
+                                  updateConditionNotes(
+                                    item.grn_item_id,
+                                    e.target.value
+                                  )
+                                }
+                                disabled={!item.selected}
+                                placeholder="Kondisi barang..."
+                                className="text-xs"
+                              />
+                            </td>
+                          </TableRow>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Right Column - Summary */}
+          <div className="space-y-4">
+            <Card className="sticky top-6">
+              <CardHeader>
+                <CardTitle className="text-lg">Summary</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-500">Item Dipilih</span>
+                    <span className="font-medium">{selectedCount} item</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-500">Total Qty</span>
+                    <span className="font-medium">
+                      {totalQty.toLocaleString()}
+                    </span>
+                  </div>
+                  <div className="border-t pt-2">
+                    <div className="flex justify-between">
+                      <span className="font-medium">Total Nilai</span>
+                      <span className="font-bold text-pink-600">
+                        {formatRupiah(totalAmount)}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+                  <div className="flex items-start gap-2">
+                    <AlertCircle className="w-5 h-5 text-yellow-600 mt-0.5" />
+                    <div className="text-xs text-yellow-800">
+                      <p className="font-medium mb-1">Info Penting:</p>
+                      <ul className="list-disc list-inside space-y-1">
+                        <li>Return akan menunggu persetujuan Purchasing Manager</li>
+                        <li>Stock inventory akan berkurang setelah approved</li>
+                        <li>GRN akan diupdate dengan qty returned</li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+
+                <Button
+                  type="submit"
+                  className="w-full"
+                  disabled={
+                    isSubmitting ||
+                    selectedCount === 0 ||
+                    totalQty <= 0
+                  }
                 >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {RETURN_REASONS.map((r) => (
-                      <SelectItem key={r.value} value={r.value}>
-                        {r.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+                  <Save className="w-4 h-4 mr-2" />
+                  {isSubmitting ? "Menyimpan..." : "Submit Return"}
+                </Button>
 
-              <div>
-                <Label>Jenis Resolusi *</Label>
-                <Select
-                  value={formData.jenis_resolusi}
-                  onValueChange={(v) => setFormData({ ...formData, jenis_resolusi: v as ReturnResolution })}
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full"
+                  onClick={() => router.back()}
+                  disabled={isSubmitting}
                 >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {RESOLUTION_OPTIONS.map((r) => (
-                      <SelectItem key={r.value} value={r.value}>
-                        {r.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div>
-                <Label>Keterangan</Label>
-                <Textarea
-                  value={formData.keterangan || ""}
-                  onChange={(e) => setFormData({ ...formData, keterangan: e.target.value })}
-                  placeholder="Keterangan tambahan..."
-                  rows={4}
-                />
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Ringkasan */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Ringkasan</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-500">Total Qty Retur</span>
-                <span className="font-medium">{totalQty}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-500">Total Nilai</span>
-                <span className="font-medium">Rp {totalNilai.toLocaleString("id-ID")}</span>
-              </div>
-            </CardContent>
-          </Card>
+                  Batal
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
         </div>
-      </div>
+      </form>
     </div>
   );
 }

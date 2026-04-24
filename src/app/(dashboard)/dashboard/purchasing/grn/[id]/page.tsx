@@ -23,7 +23,7 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { ArrowLeft, Package, ClipboardCheck, CheckCircle, AlertCircle, Printer } from "lucide-react";
+import { ArrowLeft, Package, ClipboardCheck, CheckCircle, AlertCircle, Printer, PlusCircle } from "lucide-react";
 import { toast } from "sonner";
 import { GoodsReceipt, GoodsReceiptItem, GRNStatus, QCInspection } from "@/types/purchasing";
 import { getGoodsReceipt, getQCInspection } from "@/lib/purchasing";
@@ -119,6 +119,14 @@ export default function GRNDetailPage() {
             <Printer className="w-4 h-4 mr-2" />
             Print
           </Button>
+          {(grn.status === "RECEIVED" || grn.status === "PARTIALLY_RECEIVED") && (
+            <Link href={`/dashboard/purchasing/returns/new?grn_id=${grn.id}`}>
+              <Button variant="outline" className="text-orange-600 border-orange-600 hover:bg-orange-50">
+                <PlusCircle className="w-4 h-4 mr-2" />
+                Create Return
+              </Button>
+            </Link>
+          )}
           {(grn.status === "DRAFT" || grn.status === "QC_PENDING") && (
             <Link href={`/dashboard/purchasing/grn/${grn.id}/qc`}>
               <Button>
