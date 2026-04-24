@@ -167,26 +167,26 @@ export default function NewRawMaterialPage() {
                   <Label htmlFor="kategori">
                     Kategori <span className="text-red-500">*</span>
                   </Label>
-                  <Select
+                  <Combobox
+                    options={CATEGORY_OPTIONS.map((opt) => ({
+                      value: opt.value,
+                      label: opt.label,
+                    }))}
                     value={formData.kategori}
-                    onValueChange={(v) =>
+                    onChange={(v) =>
                       setFormData({
                         ...formData,
                         kategori: v as MaterialCategory,
                       })
                     }
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Pilih kategori" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {CATEGORY_OPTIONS.map((opt) => (
-                        <SelectItem key={opt.value} value={opt.value}>
-                          {opt.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                    placeholder="Pilih kategori..."
+                    searchPlaceholder="Cari kategori..."
+                    emptyMessage="Kategori tidak ditemukan"
+                    allowClear
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Contoh: Bahan Pangan, Bahan Non-Pangan, Kemasan
+                  </p>
                 </div>
               </div>
 
@@ -372,27 +372,29 @@ export default function NewRawMaterialPage() {
 
               <div className="space-y-2">
                 <Label htmlFor="storage">Kondisi Penyimpanan</Label>
-                <Select
+                <Combobox
+                  options={[
+                    { value: "", label: "Tidak ada", description: "Tanpa kondisi khusus" },
+                    ...STORAGE_OPTIONS.map((opt) => ({
+                      value: opt.value,
+                      label: opt.label,
+                    })),
+                  ]}
                   value={formData.storage_condition || ""}
-                  onValueChange={(v) =>
+                  onChange={(v) =>
                     setFormData({
                       ...formData,
                       storage_condition: (v as any) || undefined,
                     })
                   }
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Pilih kondisi" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="">&mdash; Tidak ada &mdash;</SelectItem>
-                    {STORAGE_OPTIONS.map((opt) => (
-                      <SelectItem key={opt.value} value={opt.value}>
-                        {opt.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  placeholder="Pilih kondisi penyimpanan (opsional)..."
+                  searchPlaceholder="Cari kondisi..."
+                  emptyMessage="Kondisi tidak ditemukan"
+                  allowClear
+                />
+                <p className="text-xs text-muted-foreground">
+                  Contoh: Suhu Ruang, Dingin, Beku
+                </p>
               </div>
             </CardContent>
           </Card>
