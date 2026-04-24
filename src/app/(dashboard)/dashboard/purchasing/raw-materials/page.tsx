@@ -26,7 +26,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Plus, Search, MoreVertical, ArrowUpDown, AlertCircle, ArrowUpTray } from "lucide-react";
+import { Plus, Search, MoreVertical, ArrowUpDown, AlertCircle, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { RawMaterialWithStock, MaterialCategory, PaginatedResponse } from "@/types/purchasing";
 import { listRawMaterials } from "@/lib/purchasing";
@@ -164,7 +164,7 @@ export default function RawMaterialsPage() {
         </div>
         <div className="flex gap-2">
           <Button variant="outline" onClick={() => setImportDialogOpen(true)}>
-            <ArrowUpTray className="w-4 h-4 mr-2" />
+            <Upload className="w-4 h-4 mr-2" />
             Import
           </Button>
           <Link href="/dashboard/purchasing/raw-materials/new">

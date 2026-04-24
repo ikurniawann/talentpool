@@ -19,7 +19,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Search, MoreVertical, Package, Calculator } from "lucide-react";
+import { Plus, Search, MoreVertical, Package, Calculator, ArrowUpTray } from "lucide-react";
 import { toast } from "sonner";
 import { ProductWithCOGS, PaginatedResponse } from "@/types/purchasing";
 import { listProducts, deleteProduct } from "@/lib/purchasing";
