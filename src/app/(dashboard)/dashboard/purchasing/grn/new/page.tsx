@@ -320,7 +320,13 @@ export default function CreateGrnPage() {
                         <ChevronsUpDown className="h-4 w-4 shrink-0 opacity-50" />
                       </Button>
                     </PopoverTrigger>
-                    <PopoverContent className="w-[--radix-popover-trigger-width] p-0 shadow-2xl z-[100] border-gray-200 bg-white" align="start" sideOffset={8} avoidCollisions collisionPadding={16}>
+                    <PopoverContent 
+                      className="w-[calc(var(--radix-popover-trigger-width)-16px)] p-0 shadow-2xl z-[100] border-gray-200 bg-white ml-2" 
+                      align="start" 
+                      sideOffset={8} 
+                      avoidCollisions 
+                      collisionPadding={16}
+                    >
                       <Command shouldFilter={false} className="bg-white">
                         <CommandInput
                           placeholder="Cari nomor resi / surat jalan..."
