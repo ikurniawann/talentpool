@@ -1,5 +1,10 @@
 @import "tailwindcss";
 
+/* Soft gray borders for cards */
+[data-slot="card"] {
+  border-color: #e5e7eb !important; /* gray-200 - soft gray */
+}
+
 /* Custom react-datepicker styles */
 .react-datepicker {
   font-family: inherit;
