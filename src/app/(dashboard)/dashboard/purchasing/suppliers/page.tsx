@@ -35,6 +35,7 @@ import {
   PaginationProps,
 } from "@/components/ui/pagination";
 import { BreadcrumbNav } from "@/modules/purchasing/components/breadcrumb/BreadcrumbNav";
+import { CsvImporter } from "@/components/ui/csv-importer";
 import {
   BuildingOfficeIcon,
   PlusIcon,
@@ -140,6 +141,7 @@ function SuppliersListInner() {
   // Debounce search
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [importDialogOpen, setImportDialogOpen] = useState(false);
 
   // ── Fetch ────────────────────────────────────────────────────
 
@@ -256,12 +258,18 @@ function SuppliersListInner() {
           </p>
         </div>
         {isAdmin && (
-          <Link href="/dashboard/purchasing/suppliers/new">
-            <Button>
-              <PlusIcon className="w-4 h-4 mr-2" />
-              Tambah Supplier
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => setImportDialogOpen(true)}>
+              <ArrowUpTrayIcon className="w-4 h-4 mr-2" />
+              Import
             </Button>
-          </Link>
+            <Link href="/dashboard/purchasing/suppliers/new">
+              <Button>
+                <PlusIcon className="w-4 h-4 mr-2" />
+                Tambah Supplier
+              </Button>
+            </Link>
+          </div>
         )}
       </div>
 
@@ -523,6 +531,43 @@ function SuppliersListInner() {
               {deactivateLoading ? "Menonaktifkan..." : "Nonaktifkan"}
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Import Dialog */}
+      <Dialog open={importDialogOpen} onOpenChange={setImportDialogOpen}>
+        <DialogContent className="sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Import Supplier dari CSV</DialogTitle>
+            <DialogDescription>
+              Upload file CSV untuk menambahkan supplier secara massal
+            </DialogDescription>
+          </DialogHeader>
+          <CsvImporter
+            title="Import Supplier"
+            description="Import data supplier dari file CSV"
+            templateName="template-supplier.csv"
+            apiEndpoint="/api/purchasing/import/suppliers"
+            onSuccess={() => {
+              loadSuppliers();
+            }}
+            columns={[
+              { key: "kode", label: "Kode", required: true, type: "text" },
+              { key: "nama", label: "Nama Supplier", required: true, type: "text" },
+              { key: "email", label: "Email", required: false, type: "email" },
+              { key: "telepon", label: "Telepon", required: false, type: "text" },
+              { key: "alamat", label: "Alamat", required: false, type: "text" },
+              { key: "kota", label: "Kota", required: false, type: "text" },
+              { key: "provinsi", label: "Provinsi", required: false, type: "text" },
+              { key: "kode_pos", label: "Kode Pos", required: false, type: "text" },
+              { key: "npwp", label: "NPWP", required: false, type: "text" },
+              { key: "termin_pembayaran", label: "Termin Pembayaran (hari)", required: false, type: "number" },
+              { key: "mata_uang", label: "Mata Uang", required: false, type: "text" },
+              { key: "kategori", label: "Kategori", required: false, type: "text" },
+              { key: "deskripsi", label: "Deskripsi", required: false, type: "text" },
+              { key: "status", label: "Status", required: false, type: "text" },
+            ]}
+          />
         </DialogContent>
       </Dialog>
     </div>
