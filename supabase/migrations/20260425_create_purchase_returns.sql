@@ -73,14 +73,30 @@ CREATE INDEX IF NOT EXISTS idx_purchase_return_items_grn_item ON purchase_return
 ALTER TABLE grn_items 
 ADD COLUMN IF NOT EXISTS qty_returned DECIMAL(10,3) DEFAULT 0 CHECK (qty_returned >= 0);
 
--- Add batch tracking columns if not exist
+-- Add batch tracking columns
 ALTER TABLE grn_items
 ADD COLUMN IF NOT EXISTS batch_number VARCHAR(100),
 ADD COLUMN IF NOT EXISTS expiry_date DATE;
 
+-- Add qc_status column for return tracking
+ALTER TABLE grn_items
+ADD COLUMN IF NOT EXISTS qc_status VARCHAR(50) DEFAULT 'rejected' CHECK (qc_status IN ('rejected', 'partially_rejected', 'accepted'));
+
+-- Map existing kondisi to qc_status
+UPDATE grn_items
+SET qc_status = CASE
+  WHEN kondisi = 'rusak' OR kondisi = 'cacat' THEN 'rejected'
+  WHEN kondisi = 'baik' THEN 'accepted'
+  ELSE 'rejected'
+END
+WHERE qc_status IS NULL;
+
 -- Add return-related columns to inventory_movements
 ALTER TABLE inventory_movements
 ADD COLUMN IF NOT EXISTS return_id UUID REFERENCES purchase_returns(id) ON DELETE SET NULL;
+
+-- Drop existing view if exists (to avoid column mismatch)
+DROP VIEW IF EXISTS v_returnable_items CASCADE;
 
 -- Create view for returnable items (items that can be returned)
 CREATE OR REPLACE VIEW v_returnable_items AS
@@ -93,7 +109,7 @@ SELECT
   gi.qty_diterima,
   gi.qty_returned,
   (gi.qty_diterima - gi.qty_returned) AS qty_available_to_return,
-  COALESCE(poi.harga_satuan, poi.unit_price, 0) AS unit_price,
+  COALESCE(poi.harga_satuan, 0) AS unit_price,
   gi.batch_number,
   gi.expiry_date,
   gi.qc_status,
@@ -169,7 +185,7 @@ BEGIN
     SELECT 
       pri.raw_material_id,
       'RETURN_OUT',
-      -pri.qty_returned, -- Negative = stock out
+      -pri.qty_returned,
       NEW.id,
       'purchase_return',
       'Return to supplier: ' || NEW.return_number || ' - ' || COALESCE(pri.condition_notes, ''),
