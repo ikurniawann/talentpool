@@ -73,6 +73,11 @@ CREATE INDEX IF NOT EXISTS idx_purchase_return_items_grn_item ON purchase_return
 ALTER TABLE grn_items 
 ADD COLUMN IF NOT EXISTS qty_returned DECIMAL(10,3) DEFAULT 0 CHECK (qty_returned >= 0);
 
+-- Add batch tracking columns if not exist
+ALTER TABLE grn_items
+ADD COLUMN IF NOT EXISTS batch_number VARCHAR(100),
+ADD COLUMN IF NOT EXISTS expiry_date DATE;
+
 -- Add return-related columns to inventory_movements
 ALTER TABLE inventory_movements
 ADD COLUMN IF NOT EXISTS return_id UUID REFERENCES purchase_returns(id) ON DELETE SET NULL;
@@ -88,18 +93,21 @@ SELECT
   gi.qty_diterima,
   gi.qty_returned,
   (gi.qty_diterima - gi.qty_returned) AS qty_available_to_return,
-  gi.unit_price,
+  COALESCE(poi.harga_satuan, poi.unit_price, 0) AS unit_price,
   gi.batch_number,
   gi.expiry_date,
   gi.qc_status,
   g.supplier_id,
-  s.nama_supplier
+  s.nama_supplier,
+  u.nama AS satuan
 FROM grn_items gi
 JOIN grn g ON g.id = gi.grn_id
 JOIN raw_materials rm ON rm.id = gi.raw_material_id
 JOIN suppliers s ON s.id = g.supplier_id
+LEFT JOIN purchase_order_items poi ON poi.id = gi.purchase_order_item_id
+LEFT JOIN units u ON u.id = gi.satuan_id
 WHERE g.status IN ('received', 'partially_received')
-  AND gi.qty_diterima > gi.qty_returned
+  AND gi.qty_diterima > COALESCE(gi.qty_returned, 0)
   AND gi.qc_status IN ('rejected', 'partially_rejected');
 
 -- Function to auto-generate return number
