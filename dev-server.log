@@ -1,0 +1,82 @@
+
+> talentpool@0.1.0 dev
+> next dev
+
+▲ Next.js 16.2.3 (Turbopack)
+- Local:         http://localhost:3000
+- Network:       http://192.168.0.117:3000
+- Environments: .env.local, .env
+✓ Ready in 265ms
+
+React does not recognize the `asChild` prop on a DOM element. If you intentionally want it to appear in the DOM as a custom attribute, spell it as lowercase `aschild` instead. If you accidentally passed it from a parent component, remove it from the DOM element.
+ GET /dashboard/purchasing/po/new 200 in 3.7s (next.js: 2.6s, application-code: 1109ms)
+ GET /dashboard/purchasing/po/new 200 in 2.4s (next.js: 1457ms, application-code: 965ms)
+[browser] In HTML, <button> cannot be a descendant of <button>.
+This will cause a hydration error.
+
+  ...
+    <div data-slot="card" data-size="default" className={"group/ca..."}>
+      <CardHeader>
+      <CardContent className="space-y-4">
+        <div data-slot="card-content" className="px-4 group...">
+          <div className="grid grid-...">
+            <div>
+            <div className="space-y-2">
+              <Label>
+              <DatePicker value="2026-04-24" onChange={function onChange} placeholder="Tanggal PO...">
+                <Popover>
+                  <PopoverRoot data-slot="popover">
+                    <FloatingTree>
+                      <PopoverRootComponent props={{...}}>
+                        <PopoverTrigger asChild={true}>
+                          <PopoverTrigger data-slot="popover-tr..." asChild={true}>
+>                           <button
+>                             type="button"
+>                             onClick={function}
+>                             onMouseDown={function}
+>                             onKeyDown={function}
+>                             onKeyUp={function}
+>                             onPointerDown={function}
+>                             tabIndex={0}
+>                             disabled={false}
+>                             data-base-ui-click-trigger=""
+>                             id="base-ui-_r_3_"
+>                             data-slot="popover-trigger"
+>                             asChild={true}
+>                             ref={function}
+>                           >
+                              <Button variant="outline" className="w-full jus..." disabled={undefined}>
+                                <Button data-slot="button" className={"group/bu..."} disabled={undefined}>
+>                                 <button
+>                                   type="button"
+>                                   onClick={function}
+>                                   onMouseDown={function}
+>                                   onKeyDown={function}
+>                                   onKeyUp={function}
+>                                   onPointerDown={function}
+>                                   tabIndex={0}
+>                                   disabled={false}
+>                                   data-slot="button"
+>                                   ref={function}
+>                                   className={"group/button inline-flex shrink-0 items-center rounded-lg border bg-c..."}
+>                                 >
+                        ...
+          ...
+ 
+[browser] <button> cannot contain a nested <button>.
+See this log for the ancestor stack trace. 
+[browser] React does not recognize the `asChild` prop on a DOM element. If you intentionally want it to appear in the DOM as a custom attribute, spell it as lowercase `aschild` instead. If you accidentally passed it from a parent component, remove it from the DOM element. 
+[browser] Encountered two children with the same key, `/dashboard/purchasing`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. 
+ GET /api/purchasing/suppliers? 200 in 1134ms (next.js: 439ms, application-code: 695ms)
+ GET /api/purchasing/suppliers? 200 in 443ms (next.js: 2ms, application-code: 441ms)
+Raw materials fetched: 10 items
+ GET /api/purchasing/raw-materials?limit=100 200 in 184ms (next.js: 34ms, application-code: 150ms)
+Raw materials fetched: 10 items
+ GET /api/purchasing/raw-materials?limit=100 200 in 274ms (next.js: 125ms, application-code: 149ms)
+ GET /api/purchasing/units? 200 in 701ms (next.js: 74ms, application-code: 627ms)
+ GET /api/purchasing/units? 200 in 705ms (next.js: 77ms, application-code: 628ms)
+ GET /api/purchasing/suppliers? 200 in 1171ms (next.js: 7ms, application-code: 1165ms)
+Raw materials fetched: 10 items
+ GET /api/purchasing/raw-materials?limit=100 200 in 164ms (next.js: 4ms, application-code: 160ms)
+ GET /api/purchasing/units? 200 in 155ms (next.js: 7ms, application-code: 148ms)
+✓ Compiled in 76ms

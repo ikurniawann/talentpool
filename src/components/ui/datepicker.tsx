@@ -67,13 +67,14 @@ export function DatePicker({
             className
           )}
           disabled={disabled}
+          type="button"
         >
           <CalendarIcon className="mr-2 h-4 w-4" />
           {date ? format(date, "dd MMM yyyy") : <span>{placeholder}</span>}
           {showClear && date && (
             <span
               onClick={handleClear}
-              className="ml-auto text-muted-foreground hover:text-foreground"
+              className="ml-auto text-muted-foreground hover:text-foreground cursor-pointer"
             >
               ×
             </span>
