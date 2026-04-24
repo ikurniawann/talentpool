@@ -86,7 +86,7 @@ export default function PurchasingLayout({ children }: { children: React.ReactNo
                   "flex items-center gap-1.5 px-3 py-2 text-sm font-medium border-b-2 transition-colors cursor-pointer",
                   isInMasterSection
                     ? "border-pink-600 text-pink-600"
-                    : "border-transparent text-gray-600 hover:text-pink-600 hover:border-pink-400"
+                    : "border-transparent text-gray-900 hover:text-pink-600 hover:border-pink-400"
                 )}
               >
                 <CubeIcon className="w-4 h-4" />
@@ -118,7 +118,7 @@ export default function PurchasingLayout({ children }: { children: React.ReactNo
                   href={item.href}
                   className={clsx(
                     "flex items-center gap-1.5 px-3 py-2 text-sm font-medium border-b-2 transition-colors",
-                    active ? "border-pink-600 text-pink-600" : "border-transparent text-gray-600 hover:text-pink-600 hover:border-pink-400"
+                    active ? "border-pink-600 text-pink-600" : "border-transparent text-gray-900 hover:text-pink-600 hover:border-pink-400"
                   )}
                 >
                   <item.icon className="w-4 h-4" />
@@ -135,7 +135,7 @@ export default function PurchasingLayout({ children }: { children: React.ReactNo
                   "flex items-center gap-1.5 px-3 py-2 text-sm font-medium border-b-2 transition-colors cursor-pointer",
                   isInReportSection
                     ? "border-pink-600 text-pink-600"
-                    : "border-transparent text-gray-600 hover:text-pink-600 hover:border-pink-400"
+                    : "border-transparent text-gray-900 hover:text-pink-600 hover:border-pink-400"
                 )}
               >
                 <DocumentChartBarIcon className="w-4 h-4" />
@@ -163,9 +163,9 @@ export default function PurchasingLayout({ children }: { children: React.ReactNo
           {/* Right - Bell icon and user profile */}
           <div className="flex items-center gap-4 pl-4 border-l border-gray-200">
             <ActivityLogBell />
-            <div className="flex items-center gap-2 text-sm text-gray-700">
-              <UserCircle className="w-5 h-5 text-gray-600" />
-              <span className="hidden md:inline-block">User</span>
+            <div className="flex items-center gap-2 text-sm text-gray-900">
+              <UserCircle className="w-5 h-5 text-gray-900" />
+              <span className="hidden md:inline-block font-medium">User</span>
             </div>
           </div>
         </div>
@@ -194,7 +194,7 @@ function DropdownItem({ href, label, icon: Icon, onClick }: {
       onClick={onClick}
       className={clsx(
         "flex items-center gap-2 px-3 py-2 text-sm transition-colors",
-        active ? "bg-pink-50 text-pink-600 font-medium" : "text-gray-600 hover:bg-pink-50 hover:text-pink-600"
+        active ? "bg-pink-50 text-pink-600 font-medium" : "text-gray-900 hover:bg-pink-50 hover:text-pink-600"
       )}
     >
       <Icon className="w-4 h-4" />
