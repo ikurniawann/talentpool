@@ -132,11 +132,18 @@ function buildMockSupplierPerf(): SupplierPerformance[] {
 
 // ── Main hook ───────────────────────────────────────────────────────────────
 
-export function usePurchasingDashboard() {
+export function usePurchasingDashboard(
+  startDate?: string,
+  endDate?: string
+) {
   return useQuery<PurchasingDashboardData>({
-    queryKey: ["purchasing-dashboard"],
+    queryKey: ["purchasing-dashboard", startDate, endDate],
     queryFn: async () => {
-      const response = await fetch("/api/purchasing/dashboard");
+      const params = new URLSearchParams();
+      if (startDate) params.set("start_date", startDate);
+      if (endDate) params.set("end_date", endDate);
+
+      const response = await fetch(`/api/purchasing/dashboard?${params.toString()}`);
       if (!response.ok) {
         throw new Error("Failed to fetch dashboard data");
       }

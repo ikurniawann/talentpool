@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useState } from "react";
 import { usePurchasingDashboard } from "@/modules/purchasing/hooks/usePurchasingDashboard";
 import {
   KPICards,
@@ -11,7 +12,8 @@ import {
   SupplierPerfChart,
 } from "@/modules/purchasing/components/dashboard";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { RefreshCw, Building2, Package, ShoppingCart, Truck, Archive, ArrowUturnLeft } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { RefreshCw, Building2, Package, ShoppingCart, Truck, Archive, ArrowUturnLeft, Calendar } from "lucide-react";
 
 function DashboardSkeleton() {
   return (
@@ -47,7 +49,15 @@ function ErrorState({ error }: { error: string }) {
 }
 
 export default function PurchasingDashboardPage() {
-  const { data, isLoading, isError, error, refetch, isFetching } = usePurchasingDashboard();
+  const [dateRange, setDateRange] = useState({
+    start: "",
+    end: "",
+  });
+
+  const { data, isLoading, isError, error, refetch, isFetching } = usePurchasingDashboard(
+    dateRange.start || undefined,
+    dateRange.end || undefined
+  );
 
   const quickLinks = [
     { href: "/dashboard/purchasing/suppliers", label: "Supplier", icon: Building2, color: "text-blue-600 bg-blue-50 hover:bg-blue-100" },
@@ -61,21 +71,76 @@ export default function PurchasingDashboardPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Dashboard Purchasing</h1>
-          <p className="text-sm text-gray-500">
-            Ringkasan performa procurement & supply chain
-          </p>
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">Dashboard Purchasing</h1>
+            <p className="text-sm text-gray-500">
+              Ringkasan performa procurement & supply chain
+            </p>
+          </div>
+          <button
+            onClick={() => refetch()}
+            disabled={isFetching}
+            className="flex items-center gap-2 text-xs text-gray-500 hover:text-gray-700 transition-colors"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${isFetching ? "animate-spin" : ""}`} />
+            {isFetching ? "Refreshing..." : "Refresh"}
+          </button>
         </div>
-        <button
-          onClick={() => refetch()}
-          disabled={isFetching}
-          className="flex items-center gap-2 text-xs text-gray-500 hover:text-gray-700 transition-colors"
-        >
-          <RefreshCw className={`w-3.5 h-3.5 ${isFetching ? "animate-spin" : ""}`} />
-          {isFetching ? "Refreshing..." : "Refresh"}
-        </button>
+
+        {/* Date Range Filter */}
+        <Card className="border-0 shadow-sm">
+          <CardContent className="p-4">
+            <div className="flex flex-wrap items-end gap-3">
+              <div className="flex-1 min-w-[200px]">
+                <label className="block text-xs font-medium text-gray-600 mb-1">
+                  Tanggal Mulai
+                </label>
+                <div className="relative">
+                  <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                  <input
+                    type="date"
+                    value={dateRange.start}
+                    onChange={(e) => setDateRange({ ...dateRange, start: e.target.value })}
+                    className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+              </div>
+              <div className="flex-1 min-w-[200px]">
+                <label className="block text-xs font-medium text-gray-600 mb-1">
+                  Tanggal Akhir
+                </label>
+                <div className="relative">
+                  <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                  <input
+                    type="date"
+                    value={dateRange.end}
+                    onChange={(e) => setDateRange({ ...dateRange, end: e.target.value })}
+                    className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setDateRange({ start: "", end: "" })}
+                  disabled={!dateRange.start && !dateRange.end}
+                >
+                  Reset
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={() => refetch()}
+                  disabled={isFetching}
+                >
+                  {isFetching ? "Loading..." : "Terapkan Filter"}
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Quick Access Links */}

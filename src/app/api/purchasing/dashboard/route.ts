@@ -1,20 +1,46 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
     const supabase = await createClient();
+    const { searchParams } = new URL(request.url);
+
+    // Get date range from query params
+    const startDate = searchParams.get("start_date");
+    const endDate = searchParams.get("end_date");
+
+    // Date range for filtering POs
+    let poDateFilter = {};
+    if (startDate || endDate) {
+      if (startDate) {
+        poDateFilter = { ...poDateFilter, gte: `${startDate}T00:00:00.000Z` };
+      }
+      if (endDate) {
+        poDateFilter = { ...poDateFilter, lte: `${endDate}T23:59:59.999Z` };
+      }
+    }
 
     // ── KPIs ───────────────────────────────────────────────────────────────
     
-    // Total PO Bulan Ini
-    const startOfMonth = new Date();
-    startOfMonth.setDate(1);
-    startOfMonth.setHours(0, 0, 0, 0);
+    // Total PO Bulan Ini (or date range if specified)
+    const startOfMonth = startDate
+      ? new Date(startDate)
+      : (() => {
+          const d = new Date();
+          d.setDate(1);
+          d.setHours(0, 0, 0, 0);
+          return d;
+        })();
     
-    const endOfMonth = new Date();
-    endOfMonth.setMonth(endOfMonth.getMonth() + 1, 0);
-    endOfMonth.setHours(23, 59, 59, 999);
+    const endOfMonth = endDate
+      ? new Date(endDate)
+      : (() => {
+          const d = new Date();
+          d.setMonth(d.getMonth() + 1, 0);
+          d.setHours(23, 59, 59, 999);
+          return d;
+        })();
 
     // Use v_purchase_orders view which has total
     const { data: currentMonthPOs, error: poError } = await supabase
@@ -28,7 +54,7 @@ export async function GET() {
       throw poError;
     }
 
-    // Previous month for comparison
+    // Previous month for comparison (same period in previous month)
     const prevMonthStart = new Date(startOfMonth);
     prevMonthStart.setMonth(prevMonthStart.getMonth() - 1);
     const prevMonthEnd = new Date(endOfMonth);
