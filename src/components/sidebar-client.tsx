@@ -128,20 +128,8 @@ export default function SidebarClient({ user, navItems, children }: SidebarClien
       >
         {/* Logo / Brand */}
         <div className="p-4 border-b border-white/10">
-          <div className="flex items-center justify-between">
-            <div>
-              {/* Logo Section */}
-          <div className="flex items-center gap-3 px-6 py-5">
-            <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-pink-500 to-purple-600 flex items-center justify-center shadow-lg">
-              <span className="text-white font-bold text-xl">W</span>
-            </div>
-            <div>
-              <h2 className="font-bold text-lg text-white">Wounderland</h2>
-              <p className="text-xs text-gray-400">Backoffice</p>
-            </div>
-          </div>
-              <p className="text-xs text-white/60">Backoffice</p>
-            </div>
+          <img src="/logos/logo.png" alt="Prologue in Wounderland" className="w-full h-auto bg-white rounded-lg p-2 mb-2" />
+          <p className="text-xs text-white/60 px-2">Backoffice</p>
             <button
               onClick={closeMobile}
               className="p-1.5 rounded-lg hover:bg-white/10 lg:hidden"

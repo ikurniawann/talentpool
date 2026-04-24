@@ -96,7 +96,6 @@ export default function PurchasingLayout({ children }: { children: React.ReactNo
 
               {masterOpen && (
                 <div className="absolute top-full left-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-50 py-1 min-w-48">
-                  <p className="px-3 py-1 text-xs font-semibold text-gray-400 uppercase tracking-wide">Wounderland Backoffice</p>
                   {MASTER_ITEMS.map((item) => (
                     <DropdownItem 
                       key={item.href} 
