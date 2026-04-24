@@ -119,6 +119,7 @@ export default function CreateGrnPage() {
   useEffect(() => {
     const poId = selectedDelivery?.purchase_order_id || selectedDelivery?.po_id;
     if (poId) {
+      console.log('Fetching PO items for:', poId);
       fetchPOItems(poId);
     } else {
       setPoItems([]);
@@ -130,17 +131,27 @@ export default function CreateGrnPage() {
     try {
       const res = await fetch(`/api/purchasing/po/${poId}/items`);
       const data = await res.json();
-      if (data.data) {
-        setPoItems(data.data);
+      console.log('PO Items response:', data);
+      if (data.data && Array.isArray(data.data)) {
+        // Extract only the fields we need to avoid rendering complex objects
+        const simplifiedPoItems: POItem[] = data.data.map((item: any) => ({
+          id: item.id,
+          raw_material_id: item.raw_material_id,
+          nama_bahan: typeof item.nama_bahan === 'string' ? item.nama_bahan : (item.raw_material?.nama || 'Unknown'),
+          qty_ordered: typeof item.qty_ordered === 'number' ? item.qty_ordered : 0,
+          qty_received: typeof item.qty_received === 'number' ? item.qty_received : 0,
+          satuan: typeof item.satuan === 'string' ? item.satuan : (item.unit?.nama || 'pcs'),
+        }));
+        setPoItems(simplifiedPoItems);
         // Initialize GRN items from PO items
-        const initialGrnItems: GrnItem[] = data.data.map((item: POItem) => ({
+        const initialGrnItems: GrnItem[] = simplifiedPoItems.map((item: POItem) => ({
           id: crypto.randomUUID(),
           purchase_order_item_id: item.id,
           raw_material_id: item.raw_material_id,
           nama_bahan: item.nama_bahan,
           qty_diterima: 0,
           qty_ditolak: 0,
-          kondisi: "baik",
+          kondisi: "baik" as const,
           catatan: "",
         }));
         setGrnItems(initialGrnItems);
@@ -419,21 +430,25 @@ export default function CreateGrnPage() {
                     <tbody className="divide-y">
                       {grnItems.map((item, idx) => {
                         const poItem = poItems.find((p) => p.id === item.purchase_order_item_id);
+                        const qtyOrdered = typeof poItem?.qty_ordered === 'number' ? poItem.qty_ordered : 0;
+                        const qtyReceived = typeof poItem?.qty_received === 'number' ? poItem.qty_received : 0;
+                        const satuan = typeof poItem?.satuan === 'string' ? poItem.satuan : 'pcs';
+                        
                         return (
                           <tr key={item.id} className="hover:bg-gray-50">
                             <td className="px-4 py-3">
                               <div className="text-sm font-medium">{item.nama_bahan || "Item manual"}</div>
-                              {poItem && poItem.qty_ordered !== undefined && (
+                              {poItem && qtyOrdered > 0 && (
                                 <div className="text-xs text-gray-500">
-                                  PO: {poItem.qty_ordered} {poItem.satuan || "pcs"}
+                                  PO: {qtyOrdered} {satuan}
                                 </div>
                               )}
                             </td>
                             <td className="px-4 py-3 text-center text-sm text-gray-500">
-                              {poItem?.qty_ordered ?? 0}
+                              {qtyOrdered}
                             </td>
                             <td className="px-4 py-3 text-center text-sm text-gray-500">
-                              {poItem?.qty_received ?? 0}
+                              {qtyReceived}
                             </td>
                             <td className="px-4 py-3">
                               <Input
