@@ -129,3 +129,16 @@ https://react.dev/link/hydration-mismatch
 ✓ Compiled in 100ms
 ✓ Compiled in 61ms
 ✓ Compiled in 85ms
+[browser] React does not recognize the `avoidCollisions` prop on a DOM element. If you intentionally want it to appear in the DOM as a custom attribute, spell it as lowercase `avoidcollisions` instead. If you accidentally passed it from a parent component, remove it from the DOM element. 
+[browser] React does not recognize the `collisionPadding` prop on a DOM element. If you intentionally want it to appear in the DOM as a custom attribute, spell it as lowercase `collisionpadding` instead. If you accidentally passed it from a parent component, remove it from the DOM element. 
+[browser] Encountered two children with the same key, `/dashboard/purchasing`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. 
+ GET /dashboard/purchasing/units 200 in 616ms (next.js: 601ms, application-code: 15ms)
+[browser] Encountered two children with the same key, `/dashboard/purchasing`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. 
+[browser] Encountered two children with the same key, `/dashboard/purchasing`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. 
+ GET /api/purchasing/units?page=1&limit=20 200 in 1733ms (next.js: 251ms, application-code: 1482ms)
+[browser] React does not recognize the `currentPage` prop on a DOM element. If you intentionally want it to appear in the DOM as a custom attribute, spell it as lowercase `currentpage` instead. If you accidentally passed it from a parent component, remove it from the DOM element. 
+[browser] React does not recognize the `totalPages` prop on a DOM element. If you intentionally want it to appear in the DOM as a custom attribute, spell it as lowercase `totalpages` instead. If you accidentally passed it from a parent component, remove it from the DOM element. 
+[browser] React does not recognize the `totalItems` prop on a DOM element. If you intentionally want it to appear in the DOM as a custom attribute, spell it as lowercase `totalitems` instead. If you accidentally passed it from a parent component, remove it from the DOM element. 
+[browser] Unknown event handler property `onPageChange`. It will be ignored. 
+ GET /api/purchasing/units?page=1&limit=20 200 in 402ms (next.js: 4ms, application-code: 399ms)
+✓ Compiled in 82ms
