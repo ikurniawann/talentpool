@@ -4,89 +4,67 @@
 
 ▲ Next.js 16.2.3 (Turbopack)
 - Local:         http://localhost:3000
-- Network:       http://192.168.60.184:3000
+- Network:       http://10.112.191.84:3000
 - Environments: .env.local, .env
-✓ Ready in 260ms
+✓ Ready in 281ms
 
- GET /dashboard/purchasing/po/new 200 in 4.2s (next.js: 2.3s, application-code: 1852ms)
+⨯ ReferenceError: Header is not defined
+    at PurchasingLayout (src/app/(dashboard)/dashboard/purchasing/layout.tsx:73:8)
+  71 |   return (
+  72 |     <div>
+> 73 |       <Header />
+     |        ^
+  74 |       {/* Sub-nav: grouped tabs */}
+  75 |       <div className="flex flex-wrap gap-1 border-b border-gray-200 mb-6">
+  76 |          {
+  digest: '902907195'
+}
+ GET /dashboard/purchasing/test-activity-log 200 in 4.4s (next.js: 2.2s, application-code: 2.2s)
 [browser] Encountered two children with the same key, `/dashboard/purchasing`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. 
- GET /api/purchasing/suppliers? 200 in 1274ms (next.js: 410ms, application-code: 864ms)
-Raw materials fetched: 10 items
- GET /api/purchasing/raw-materials?limit=100 200 in 285ms (next.js: 106ms, application-code: 179ms)
- GET /api/purchasing/units? 200 in 252ms (next.js: 77ms, application-code: 175ms)
- GET /dashboard/purchasing/po/new 200 in 417ms (next.js: 9ms, application-code: 408ms)
+[browser] Dashboard error: ReferenceError: Header is not defined
+    at PurchasingLayout (src/app/(dashboard)/dashboard/purchasing/layout.tsx:73:8)
+  71 |   return (
+  72 |     <div>
+> 73 |       <Header />
+     |        ^
+  74 |       {/* Sub-nav: grouped tabs */}
+  75 |       <div className="flex flex-wrap gap-1 border-b border-gray-200 mb-6">
+  76 |          (src/app/(dashboard)
+[browser] Dashboard error: ReferenceError: Header is not defined
+    at PurchasingLayout (src/app/(dashboard)/dashboard/purchasing/layout.tsx:73:8)
+  71 |   return (
+  72 |     <div>
+> 73 |       <Header />
+     |        ^
+  74 |       {/* Sub-nav: grouped tabs */}
+  75 |       <div className="flex flex-wrap gap-1 border-b border-gray-200 mb-6">
+  76 |          (src/app/(dashboard)
+✓ Compiled in 436ms
+✓ Compiled in 0ms
+ GET /dashboard/purchasing/test-activity-log 200 in 200ms (next.js: 36ms, application-code: 165ms)
+ GET /dashboard/purchasing/test-activity-log 200 in 144ms (next.js: 84ms, application-code: 60ms)
+ GET /dashboard/purchasing/test-activity-log 200 in 23ms (next.js: 2ms, application-code: 21ms)
 [browser] Encountered two children with the same key, `/dashboard/purchasing`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. 
- GET /api/purchasing/suppliers? 200 in 453ms (next.js: 977µs, application-code: 452ms)
-Raw materials fetched: 10 items
- GET /api/purchasing/raw-materials?limit=100 200 in 176ms (next.js: 3ms, application-code: 173ms)
- GET /api/purchasing/units? 200 in 162ms (next.js: 3ms, application-code: 160ms)
+React does not recognize the `asChild` prop on a DOM element. If you intentionally want it to appear in the DOM as a custom attribute, spell it as lowercase `aschild` instead. If you accidentally passed it from a parent component, remove it from the DOM element.
+ GET /dashboard/purchasing/test-activity-log 200 in 1100ms (next.js: 2ms, application-code: 1098ms)
 [browser] Encountered two children with the same key, `/dashboard/purchasing`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. 
- GET /dashboard/purchasing 200 in 830ms (next.js: 814ms, application-code: 17ms)
- GET /dashboard/purchasing 200 in 9ms (next.js: 1068µs, application-code: 8ms)
-[browser] Encountered two children with the same key, `/dashboard/purchasing`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. 
-[browser] Encountered two children with the same key, `/dashboard/purchasing`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. 
-[browser] Encountered two children with the same key, `/dashboard/purchasing`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. 
-[browser] Encountered two children with the same key, `/dashboard/purchasing`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. 
- GET /api/purchasing/dashboard? 200 in 1751ms (next.js: 58ms, application-code: 1693ms)
- GET /dashboard/purchasing/main 200 in 284ms (next.js: 274ms, application-code: 10ms)
-[browser] Encountered two children with the same key, `/dashboard/purchasing`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. 
-[browser] Encountered two children with the same key, `/dashboard/purchasing`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. 
- GET /dashboard/purchasing/po/new 307 in 74ms (next.js: 12ms, application-code: 61ms)
- GET /login 200 in 332ms (next.js: 298ms, application-code: 34ms)
- GET /dashboard 200 in 1725ms (next.js: 611ms, application-code: 1113ms)
-[browser] Encountered two children with the same key, `/dashboard/purchasing`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. 
- GET /api/dashboard/weekly?period=month 200 in 614ms (next.js: 195ms, application-code: 419ms)
- GET /api/dashboard/attention? 200 in 623ms (next.js: 163ms, application-code: 461ms)
- GET /api/dashboard/funnel? 200 in 626ms (next.js: 151ms, application-code: 475ms)
- GET /api/dashboard/sources? 200 in 763ms (next.js: 136ms, application-code: 627ms)
- GET /api/dashboard/funnel? 200 in 151ms (next.js: 3ms, application-code: 148ms)
- GET /api/dashboard/weekly?period=month 200 in 174ms (next.js: 2ms, application-code: 172ms)
- GET /api/dashboard/attention? 200 in 157ms (next.js: 1397µs, application-code: 156ms)
- GET /api/dashboard/sources? 200 in 311ms (next.js: 8ms, application-code: 303ms)
- GET /api/dashboard/stats? 200 in 1601ms (next.js: 183ms, application-code: 1419ms)
- GET /api/dashboard/stats? 200 in 778ms (next.js: 5ms, application-code: 773ms)
- GET /dashboard/purchasing 200 in 43ms (next.js: 7ms, application-code: 37ms)
-[browser] Encountered two children with the same key, `/dashboard/purchasing`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. 
-[browser] Encountered two children with the same key, `/dashboard/purchasing`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. 
- GET /api/purchasing/dashboard? 200 in 2.2s (next.js: 3ms, application-code: 2.2s)
- GET /dashboard/purchasing/units 200 in 382ms (next.js: 372ms, application-code: 10ms)
-[browser] Encountered two children with the same key, `/dashboard/purchasing`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. 
-[browser] Encountered two children with the same key, `/dashboard/purchasing`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. 
-[browser] Encountered two children with the same key, `/dashboard/purchasing`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. 
- GET /api/purchasing/units?page=1&limit=20 200 in 173ms (next.js: 1662µs, application-code: 172ms)
-[browser] React does not recognize the `currentPage` prop on a DOM element. If you intentionally want it to appear in the DOM as a custom attribute, spell it as lowercase `currentpage` instead. If you accidentally passed it from a parent component, remove it from the DOM element. 
-[browser] React does not recognize the `totalPages` prop on a DOM element. If you intentionally want it to appear in the DOM as a custom attribute, spell it as lowercase `totalpages` instead. If you accidentally passed it from a parent component, remove it from the DOM element. 
-[browser] React does not recognize the `totalItems` prop on a DOM element. If you intentionally want it to appear in the DOM as a custom attribute, spell it as lowercase `totalitems` instead. If you accidentally passed it from a parent component, remove it from the DOM element. 
-[browser] Unknown event handler property `onPageChange`. It will be ignored. 
- GET /api/purchasing/units?page=1&limit=20 200 in 158ms (next.js: 1697µs, application-code: 156ms)
- GET /dashboard/purchasing/po 200 in 453ms (next.js: 442ms, application-code: 10ms)
-[browser] Encountered two children with the same key, `/dashboard/purchasing`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. 
-[browser] Encountered two children with the same key, `/dashboard/purchasing`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. 
- GET /api/purchasing/po?page=1&limit=20 200 in 233ms (next.js: 68ms, application-code: 165ms)
 [browser] In HTML, <button> cannot be a descendant of <button>.
 This will cause a hydration error.
 
   ...
-    <table data-slot="table" className="w-full cap...">
-      <TableHeader>
-      <TableBody>
-        <tbody data-slot="table-body" className={"[&_tr:la..."}>
-          <TableRow>
-            <tr data-slot="table-row" className="border-b t...">
-              <TableCell>
-              <TableCell>
-              <TableCell>
-              <TableCell>
-              <TableCell>
-              <TableCell>
-              <TableCell>
-              <TableCell>
-                <td data-slot="table-cell" className={"p-2 alig..."}>
-                  <DropdownMenu>
-                    <MenuRoot data-slot="dropdown-menu">
+    <PurchasingLayout sidebar={{...}} params={Promise}>
+      <div>
+        <Header>
+          <header className="sticky top...">
+            <div className="flex h-14 ...">
+              <div>
+              <div className="flex items...">
+                <ActivityLogBell>
+                  <DropdownMenu open={false} onOpenChange={function bound dispatchSetState}>
+                    <MenuRoot data-slot="dropdown-menu" open={false} onOpenChange={function bound dispatchSetState}>
                       <FloatingTree externalTree={{nodesRef:{...}, ...}}>
-                        <DropdownMenuTrigger>
-                          <MenuTrigger data-slot="dropdown-m...">
+                        <DropdownMenuTrigger asChild={true}>
+                          <MenuTrigger data-slot="dropdown-m..." asChild={true}>
 >                           <button
 >                             type="button"
 >                             onClick={function}
@@ -97,11 +75,12 @@ This will cause a hydration error.
 >                             tabIndex={0}
 >                             disabled={false}
 >                             aria-haspopup="menu"
->                             id="base-ui-_r_12_"
+>                             id="base-ui-_R_dhknebneitllb_"
 >                             data-slot="dropdown-menu-trigger"
+>                             asChild={true}
 >                             ref={function}
 >                           >
-                              <Button variant="ghost" size="icon">
+                              <Button variant="ghost" size="icon" className="relative h...">
                                 <Button data-slot="button" className={"group/bu..."}>
 >                                 <button
 >                                   type="button"
@@ -117,21 +96,33 @@ This will cause a hydration error.
 >                                   className={"group/button inline-flex shrink-0 items-center justify-center rounded..."}
 >                                 >
                         ...
-          ...
+                ...
+        ...
  
 [browser] <button> cannot contain a nested <button>.
 See this log for the ancestor stack trace. 
- GET /api/purchasing/po?page=1&limit=20 200 in 151ms (next.js: 1476µs, application-code: 150ms)
- GET /api/purchasing/po?page=1&limit=20 200 in 170ms (next.js: 1896µs, application-code: 168ms)
- GET /dashboard/purchasing/po/new 200 in 40ms (next.js: 9ms, application-code: 31ms)
-[browser] Encountered two children with the same key, `/dashboard/purchasing`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. 
-[browser] Encountered two children with the same key, `/dashboard/purchasing`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. 
-[browser] Encountered two children with the same key, `/dashboard/purchasing`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. 
- GET /api/purchasing/suppliers? 200 in 1055ms (next.js: 1507µs, application-code: 1053ms)
-Raw materials fetched: 10 items
- GET /api/purchasing/raw-materials?limit=100 200 in 177ms (next.js: 6ms, application-code: 171ms)
- GET /api/purchasing/units? 200 in 167ms (next.js: 3ms, application-code: 164ms)
- GET /api/purchasing/suppliers? 200 in 546ms (next.js: 2ms, application-code: 543ms)
-Raw materials fetched: 10 items
- GET /api/purchasing/raw-materials?limit=100 200 in 202ms (next.js: 3ms, application-code: 199ms)
- GET /api/purchasing/units? 200 in 158ms (next.js: 5ms, application-code: 153ms)
+[browser] React does not recognize the `asChild` prop on a DOM element. If you intentionally want it to appear in the DOM as a custom attribute, spell it as lowercase `aschild` instead. If you accidentally passed it from a parent component, remove it from the DOM element. 
+[browser] Uncaught Error: Hydration failed because the server rendered HTML didn't match the client. As a result this tree will be regenerated on the client. This can happen if a SSR-ed Client Component used:
+
+- A server/client branch `if (typeof window !== 'undefined')`.
+- Variable input such as `Date.now()` or `Math.random()` which changes each time it's called.
+- Date formatting in a user's locale which doesn't match the server.
+- External changing data without sending a snapshot of it along with the HTML.
+- Invalid HTML tag nesting.
+
+It can also happen if the client has a browser extension installed which messes with the HTML before React loaded.
+
+https://react.dev/link/hydration-mismatch
+    at <unknown> (https://react.dev/link/hydration-mismatch)
+    at button (<anonymous>)
+    at Button (src/components/ui/button.tsx:50:5)
+    at ActivityLogBell (src/components/layout/ActivityLogBell.tsx:58:9)
+    at Header (src/components/layout/Header.tsx:16:11)
+    at PurchasingLayout (src/app/(dashboard)/dashboard/purchasing/layout.tsx:74:7)
+  48 | }: ButtonPrimitive.Props & VariantProps<typeof buttonVariants>) {
+  49 |   return (
+> 50 |     <ButtonPrimitive
+     |     ^
+  51 |       data-slot="button"
+  52 |       className={cn(buttonVariants({ variant, size, className }))}
+  53 |       {...props}
