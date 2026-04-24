@@ -39,7 +39,7 @@ import {
   Printer,
   Download,
   Calendar,
-  BuildingOffice,
+  Building,
   FileText,
   AlertCircle,
 } from "lucide-react";
@@ -215,7 +215,7 @@ export default function ReturnDetailPage() {
                 <div>
                   <dt className="text-sm text-gray-500">Supplier</dt>
                   <dd className="font-medium flex items-center gap-2 mt-1">
-                    <BuildingOffice className="w-4 h-4 text-gray-400" />
+                    <Building className="w-4 h-4 text-gray-400" />
                     {ret.supplier?.nama_supplier || "-"}
                   </dd>
                 </div>
