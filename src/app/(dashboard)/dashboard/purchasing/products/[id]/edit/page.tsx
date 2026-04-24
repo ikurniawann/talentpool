@@ -344,20 +344,23 @@ export default function EditProductPage() {
                 </div>
                 <div className="space-y-2">
                   <Label>Status</Label>
-                  <Select
+                  <Combobox
+                    options={[
+                      { value: "active", label: "Aktif" },
+                      { value: "inactive", label: "Nonaktif" },
+                    ]}
                     value={formData.is_active ? "active" : "inactive"}
-                    onValueChange={(v) =>
+                    onChange={(v) =>
                       setFormData({ ...formData, is_active: v === "active" })
                     }
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="active">Aktif</SelectItem>
-                      <SelectItem value="inactive">Nonaktif</SelectItem>
-                    </SelectContent>
-                  </Select>
+                    placeholder="Pilih status..."
+                    searchPlaceholder="Cari status..."
+                    emptyMessage="Status tidak ditemukan"
+                    allowClear
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Aktif = produk tersedia, Nonaktif = disembunyikan
+                  </p>
                 </div>
               </div>
 
