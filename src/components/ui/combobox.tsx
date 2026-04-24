@@ -97,18 +97,20 @@ export function Combobox({
         </Button>
       </PopoverTrigger>
       <PopoverContent 
-        className="w-[--radix-popover-trigger-width] p-0 shadow-2xl z-50 border-gray-200" 
+        className="w-[--radix-popover-trigger-width] p-0 shadow-2xl z-[9999] border-gray-200 bg-white" 
         align="start"
         sideOffset={4}
+        avoidCollisions
+        collisionPadding={16}
       >
         <Command shouldFilter={false}>
           <CommandInput
             placeholder={searchPlaceholder}
             value={searchValue}
             onValueChange={setSearchValue}
-            className="h-9 border-b"
+            className="h-9 border-b bg-white"
           />
-          <CommandList className="max-h-[300px] overflow-y-auto bg-white">
+          <CommandList className="max-h-[300px] overflow-y-auto bg-white shadow-lg">
             <CommandEmpty>{emptyMessage}</CommandEmpty>
             <CommandGroup>
               {filteredOptions.map((option) => (
@@ -120,7 +122,7 @@ export function Combobox({
                     setOpen(false);
                     setSearchValue("");
                   }}
-                  className="hover:bg-gray-100 data-[selected=true]:bg-gray-200 cursor-pointer py-2"
+                  className="hover:bg-gray-100 data-[selected=true]:bg-gray-200 cursor-pointer py-2 px-3 bg-white"
                 >
                   {option.label}
                   {option.description && (

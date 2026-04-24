@@ -165,3 +165,153 @@ https://react.dev/link/hydration-mismatch
  GET /api/purchasing/units?page=1&limit=20 200 in 234ms (next.js: 1801µs, application-code: 232ms)
  GET /dashboard/purchasing/units 200 in 1048ms (next.js: 1422µs, application-code: 1046ms)
  GET /api/purchasing/units?page=1&limit=20 200 in 217ms (next.js: 933µs, application-code: 216ms)
+[browser] Encountered two children with the same key, `/dashboard/purchasing`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. 
+[browser] In HTML, <button> cannot be a descendant of <button>.
+This will cause a hydration error.
+
+  ...
+    <ClientSegmentRoot Component={function PurchasingLayout} slots={{children:{...}, ...}} ...>
+      <PurchasingLayout sidebar={{...}} params={Promise}>
+        <div>
+          <div className="sticky top...">
+            <div className="flex h-12 ...">
+              <div>
+              <div className="flex items...">
+                <ActivityLogBell>
+                  <DropdownMenu open={false} onOpenChange={function bound dispatchSetState}>
+                    <MenuRoot data-slot="dropdown-menu" open={false} onOpenChange={function bound dispatchSetState}>
+                      <FloatingTree externalTree={{nodesRef:{...}, ...}}>
+                        <DropdownMenuTrigger asChild={true}>
+                          <MenuTrigger data-slot="dropdown-m..." asChild={true}>
+>                           <button
+>                             type="button"
+>                             onClick={function}
+>                             onMouseDown={function}
+>                             onKeyDown={function}
+>                             onKeyUp={function}
+>                             onPointerDown={function}
+>                             tabIndex={0}
+>                             disabled={false}
+>                             aria-haspopup="menu"
+>                             id="base-ui-_r_4_"
+>                             data-slot="dropdown-menu-trigger"
+>                             asChild={true}
+>                             ref={function}
+>                           >
+                              <Button variant="ghost" size="icon" className="relative h...">
+                                <Button data-slot="button" className={"group/bu..."}>
+>                                 <button
+>                                   type="button"
+>                                   onClick={function}
+>                                   onMouseDown={function}
+>                                   onKeyDown={function}
+>                                   onKeyUp={function}
+>                                   onPointerDown={function}
+>                                   tabIndex={0}
+>                                   disabled={false}
+>                                   data-slot="button"
+>                                   ref={function}
+>                                   className={"group/button inline-flex shrink-0 items-center justify-center rounded..."}
+>                                 >
+                        ...
+                ...
+          ...
+ 
+[browser] <button> cannot contain a nested <button>.
+See this log for the ancestor stack trace. 
+[browser] React does not recognize the `asChild` prop on a DOM element. If you intentionally want it to appear in the DOM as a custom attribute, spell it as lowercase `aschild` instead. If you accidentally passed it from a parent component, remove it from the DOM element. 
+[browser] React does not recognize the `currentPage` prop on a DOM element. If you intentionally want it to appear in the DOM as a custom attribute, spell it as lowercase `currentpage` instead. If you accidentally passed it from a parent component, remove it from the DOM element. 
+[browser] React does not recognize the `totalPages` prop on a DOM element. If you intentionally want it to appear in the DOM as a custom attribute, spell it as lowercase `totalpages` instead. If you accidentally passed it from a parent component, remove it from the DOM element. 
+[browser] React does not recognize the `totalItems` prop on a DOM element. If you intentionally want it to appear in the DOM as a custom attribute, spell it as lowercase `totalitems` instead. If you accidentally passed it from a parent component, remove it from the DOM element. 
+[browser] Unknown event handler property `onPageChange`. It will be ignored. 
+[browser] React does not recognize the `avoidCollisions` prop on a DOM element. If you intentionally want it to appear in the DOM as a custom attribute, spell it as lowercase `avoidcollisions` instead. If you accidentally passed it from a parent component, remove it from the DOM element. 
+[browser] React does not recognize the `collisionPadding` prop on a DOM element. If you intentionally want it to appear in the DOM as a custom attribute, spell it as lowercase `collisionpadding` instead. If you accidentally passed it from a parent component, remove it from the DOM element. 
+ POST /api/purchasing/units 201 in 1092ms (next.js: 4ms, application-code: 1089ms)
+ GET /api/purchasing/units?page=1&limit=20 200 in 238ms (next.js: 3ms, application-code: 235ms)
+ GET /dashboard/purchasing/units 200 in 1101ms (next.js: 7ms, application-code: 1094ms)
+[browser] Encountered two children with the same key, `/dashboard/purchasing`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. 
+[browser] In HTML, <button> cannot be a descendant of <button>.
+This will cause a hydration error.
+
+  ...
+    <ClientSegmentRoot Component={function PurchasingLayout} slots={{children:{...}, ...}} ...>
+      <PurchasingLayout sidebar={{...}} params={Promise}>
+        <div>
+          <div className="sticky top...">
+            <div className="flex h-12 ...">
+              <div>
+              <div className="flex items...">
+                <ActivityLogBell>
+                  <DropdownMenu open={false} onOpenChange={function bound dispatchSetState}>
+                    <MenuRoot data-slot="dropdown-menu" open={false} onOpenChange={function bound dispatchSetState}>
+                      <FloatingTree externalTree={{nodesRef:{...}, ...}}>
+                        <DropdownMenuTrigger asChild={true}>
+                          <MenuTrigger data-slot="dropdown-m..." asChild={true}>
+>                           <button
+>                             type="button"
+>                             onClick={function}
+>                             onMouseDown={function}
+>                             onKeyDown={function}
+>                             onKeyUp={function}
+>                             onPointerDown={function}
+>                             tabIndex={0}
+>                             disabled={false}
+>                             aria-haspopup="menu"
+>                             id="base-ui-_R_6pknebneitllb_"
+>                             data-slot="dropdown-menu-trigger"
+>                             asChild={true}
+>                             ref={function}
+>                           >
+                              <Button variant="ghost" size="icon" className="relative h...">
+                                <Button data-slot="button" className={"group/bu..."}>
+>                                 <button
+>                                   type="button"
+>                                   onClick={function}
+>                                   onMouseDown={function}
+>                                   onKeyDown={function}
+>                                   onKeyUp={function}
+>                                   onPointerDown={function}
+>                                   tabIndex={0}
+>                                   disabled={false}
+>                                   data-slot="button"
+>                                   ref={function}
+>                                   className={"group/button inline-flex shrink-0 items-center justify-center rounded..."}
+>                                 >
+                        ...
+                ...
+          ...
+ 
+[browser] <button> cannot contain a nested <button>.
+See this log for the ancestor stack trace. 
+[browser] React does not recognize the `asChild` prop on a DOM element. If you intentionally want it to appear in the DOM as a custom attribute, spell it as lowercase `aschild` instead. If you accidentally passed it from a parent component, remove it from the DOM element. 
+[browser] Uncaught Error: Hydration failed because the server rendered HTML didn't match the client. As a result this tree will be regenerated on the client. This can happen if a SSR-ed Client Component used:
+
+- A server/client branch `if (typeof window !== 'undefined')`.
+- Variable input such as `Date.now()` or `Math.random()` which changes each time it's called.
+- Date formatting in a user's locale which doesn't match the server.
+- External changing data without sending a snapshot of it along with the HTML.
+- Invalid HTML tag nesting.
+
+It can also happen if the client has a browser extension installed which messes with the HTML before React loaded.
+
+https://react.dev/link/hydration-mismatch
+    at <unknown> (https://react.dev/link/hydration-mismatch)
+    at button (<anonymous>)
+    at Button (src/components/ui/button.tsx:50:5)
+    at ActivityLogBell (src/components/layout/ActivityLogBell.tsx:58:9)
+    at PurchasingLayout (src/app/(dashboard)/dashboard/purchasing/layout.tsx:166:13)
+  48 | }: ButtonPrimitive.Props & VariantProps<typeof buttonVariants>) {
+  49 |   return (
+> 50 |     <ButtonPrimitive
+     |     ^
+  51 |       data-slot="button"
+  52 |       className={cn(buttonVariants({ variant, size, className }))}
+  53 |       {...props}
+ GET /api/purchasing/units?page=1&limit=20 200 in 209ms (next.js: 961µs, application-code: 208ms)
+[browser] React does not recognize the `currentPage` prop on a DOM element. If you intentionally want it to appear in the DOM as a custom attribute, spell it as lowercase `currentpage` instead. If you accidentally passed it from a parent component, remove it from the DOM element. 
+[browser] React does not recognize the `totalPages` prop on a DOM element. If you intentionally want it to appear in the DOM as a custom attribute, spell it as lowercase `totalpages` instead. If you accidentally passed it from a parent component, remove it from the DOM element. 
+[browser] React does not recognize the `totalItems` prop on a DOM element. If you intentionally want it to appear in the DOM as a custom attribute, spell it as lowercase `totalitems` instead. If you accidentally passed it from a parent component, remove it from the DOM element. 
+[browser] Unknown event handler property `onPageChange`. It will be ignored. 
+[browser] React does not recognize the `avoidCollisions` prop on a DOM element. If you intentionally want it to appear in the DOM as a custom attribute, spell it as lowercase `avoidcollisions` instead. If you accidentally passed it from a parent component, remove it from the DOM element. 
+[browser] React does not recognize the `collisionPadding` prop on a DOM element. If you intentionally want it to appear in the DOM as a custom attribute, spell it as lowercase `collisionpadding` instead. If you accidentally passed it from a parent component, remove it from the DOM element. 
+✓ Compiled in 69ms
