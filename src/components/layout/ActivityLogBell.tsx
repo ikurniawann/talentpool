@@ -54,7 +54,7 @@ export function ActivityLogBell() {
 
   return (
     <DropdownMenu open={open} onOpenChange={setOpen}>
-      <DropdownMenuTrigger asChild disabled={false}>
+      <DropdownMenuTrigger disabled={false}>
         <button className="relative h-9 w-9 rounded-md hover:bg-accent hover:text-accent-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2">
           <Bell className="h-5 w-5" />
           {unreadCount > 0 && (
