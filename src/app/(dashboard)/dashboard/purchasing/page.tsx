@@ -61,12 +61,12 @@ export default function PurchasingDashboardPage() {
   );
 
   const quickLinks = [
-    { href: "/dashboard/purchasing/suppliers", label: "Supplier", icon: Building2, color: "text-pink-600 bg-pink-50 hover:bg-pink-100" },
-    { href: "/dashboard/purchasing/raw-materials", label: "Bahan Baku", icon: Package, color: "text-green-600 bg-green-50 hover:bg-green-100" },
-    { href: "/dashboard/purchasing/purchase-orders", label: "Purchase Order", icon: ShoppingCart, color: "text-purple-600 bg-purple-50 hover:bg-purple-100" },
-    { href: "/dashboard/purchasing/grn", label: "Penerimaan", icon: Truck, color: "text-orange-600 bg-orange-50 hover:bg-orange-100" },
-    { href: "/dashboard/inventory", label: "Inventory", icon: Archive, color: "text-teal-600 bg-teal-50 hover:bg-teal-100" },
-    { href: "/dashboard/inventory/low-stock", label: "Low Stock", icon: Archive, color: "text-red-600 bg-red-50 hover:bg-red-100" },
+    { href: "/dashboard/purchasing/suppliers", label: "Supplier", icon: Building2,  },
+    { href: "/dashboard/purchasing/raw-materials", label: "Bahan Baku", icon: Package,  },
+    { href: "/dashboard/purchasing/purchase-orders", label: "Purchase Order", icon: ShoppingCart,  },
+    { href: "/dashboard/purchasing/grn", label: "Penerimaan", icon: Truck,  },
+    { href: "/dashboard/inventory", label: "Inventory", icon: Archive,  },
+    { href: "/dashboard/inventory/low-stock", label: "Low Stock", icon: Archive,  },
   ];
 
   return (
@@ -142,12 +142,12 @@ export default function PurchasingDashboardPage() {
           <CardTitle className="text-base font-semibold">🚀 Quick Access</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-3">
             {quickLinks.map((link) => (
               <Link key={link.href} href={link.href}>
-                <div className={`flex flex-col items-center justify-center p-4 rounded-lg transition-colors ${link.color}`}>
-                  <link.icon className="w-8 h-8 mb-2" />
-                  <span className="text-sm font-medium text-center">{link.label}</span>
+                <div className="flex flex-col items-center justify-center p-4 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 hover:border-gray-300 transition-all group">
+                  <link.icon className="w-8 h-8 mb-2 text-gray-700 group-hover:text-gray-900" />
+                  <span className="text-sm font-medium text-center text-gray-700 group-hover:text-gray-900">{link.label}</span>
                 </div>
               </Link>
             ))}
