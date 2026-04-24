@@ -25,6 +25,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowLeft, Save, Plus, Trash2, Package, Search, User } from "lucide-react";
 import { toast } from "sonner";
 import { Combobox } from "@/components/ui/combobox";
+import { DatePicker } from "@/components/ui/datepicker";
 import { Supplier, RawMaterialWithStock, PurchaseOrderFormData, PurchaseOrderItemFormData, Unit } from "@/types/purchasing";
 import { listSuppliers, listRawMaterials, listUnits, createPurchaseOrder, createPOItem } from "@/lib/purchasing";
 
@@ -311,12 +312,10 @@ export default function NewPOPage() {
                 </div>
                 <div className="space-y-2">
                   <Label>Tanggal PO</Label>
-                  <Input
-                    type="date"
+                  <DatePicker
                     value={formData.tanggal_po}
-                    onChange={(e) =>
-                      setFormData({ ...formData, tanggal_po: e.target.value })
-                    }
+                    onChange={(v) => setFormData({ ...formData, tanggal_po: v })}
+                    placeholder="Tanggal PO..."
                   />
                 </div>
               </div>
@@ -324,15 +323,15 @@ export default function NewPOPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Tanggal Kirim Estimasi</Label>
-                  <Input
-                    type="date"
+                  <DatePicker
                     value={formData.tanggal_kirim_estimasi}
-                    onChange={(e) =>
+                    onChange={(v) =>
                       setFormData({
                         ...formData,
-                        tanggal_kirim_estimasi: e.target.value,
+                        tanggal_kirim_estimasi: v,
                       })
                     }
+                    placeholder="Estimasi kirim..."
                   />
                 </div>
               </div>

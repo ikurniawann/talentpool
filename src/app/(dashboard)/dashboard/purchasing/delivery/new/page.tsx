@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
+import { DatePicker } from "@/components/ui/datepicker";
 import { BreadcrumbNav } from "@/modules/purchasing/components/breadcrumb/BreadcrumbNav";
 import { useToast } from "@/components/ui/toast";
 import {
@@ -282,24 +283,20 @@ export default function CreateDeliveryPage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="tanggal_kirim">Tanggal Kirim</Label>
-                    <Input
+                    <DatePicker
                       id="tanggal_kirim"
-                      type="date"
                       value={formData.tanggal_kirim}
-                      onChange={(e) =>
-                        setFormData({ ...formData, tanggal_kirim: e.target.value })
-                      }
+                      onChange={(v) => setFormData({ ...formData, tanggal_kirim: v })}
+                      placeholder="Tanggal kirim..."
                     />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="tanggal_estimasi_tiba">Estimasi Tiba</Label>
-                    <Input
+                    <DatePicker
                       id="tanggal_estimasi_tiba"
-                      type="date"
                       value={formData.tanggal_estimasi_tiba}
-                      onChange={(e) =>
-                        setFormData({ ...formData, tanggal_estimasi_tiba: e.target.value })
-                      }
+                      onChange={(v) => setFormData({ ...formData, tanggal_estimasi_tiba: v })}
+                      placeholder="Estimasi tiba..."
                     />
                   </div>
                 </div>
