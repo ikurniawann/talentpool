@@ -14,7 +14,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { DatePicker } from "@/components/ui/datepicker";
-import { RefreshCw, Building2, Package, ShoppingCart, Truck, Archive, ArrowUturnLeft, Calendar } from "lucide-react";
+import { RefreshCw, Building2, Package, ShoppingCart, Truck, Archive } from "lucide-react";
 
 function DashboardSkeleton() {
   return (
@@ -60,14 +60,7 @@ export default function PurchasingDashboardPage() {
     dateRange.end || undefined
   );
 
-  const quickLinks = [
-    { href: "/dashboard/purchasing/suppliers", label: "Supplier", icon: Building2,  },
-    { href: "/dashboard/purchasing/raw-materials", label: "Bahan Baku", icon: Package,  },
-    { href: "/dashboard/purchasing/purchase-orders", label: "Purchase Order", icon: ShoppingCart,  },
-    { href: "/dashboard/purchasing/grn", label: "Penerimaan", icon: Truck,  },
-    { href: "/dashboard/inventory", label: "Inventory", icon: Archive,  },
-    { href: "/dashboard/inventory/low-stock", label: "Low Stock", icon: Archive,  },
-  ];
+
 
   return (
     <div className="space-y-6">
@@ -137,23 +130,7 @@ export default function PurchasingDashboardPage() {
       </div>
 
       {/* Quick Access Links */}
-      <Card className="border-0 shadow-sm bg-transparent">
-        <CardHeader className="pb-2">
-          <CardTitle className="text-sm font-semibold text-gray-900">Quick Access</CardTitle>
-        </CardHeader>
-        <CardContent className="pt-0">
-          <div className="grid grid-cols-2 md:grid-cols-5 lg:grid-cols-9 gap-2">
-            {quickLinks.map((link) => (
-              <Link key={link.href} href={link.href}>
-                <div className="flex flex-col items-center justify-center p-3 rounded-lg bg-white hover:bg-gray-50 transition-all group border border-gray-100">
-                  <link.icon className="w-8 h-8 mb-2 text-gray-900" />
-                  <span className="text-sm font-medium text-center text-gray-700">{link.label}</span>
-                </div>
-              </Link>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
+      {/* Quick Access Links */}
 
       {isLoading ? (
         <DashboardSkeleton />
