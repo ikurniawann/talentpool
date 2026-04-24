@@ -291,16 +291,17 @@ function SupplierDetailInner() {
       </div>
 
       {/* Tabs */}
-      <Tabs defaultValue="info" className="w-full">
-        <TabsList className="grid grid-cols-2 md:grid-cols-4 w-full max-w-2xl">
-          <TabsTrigger value="info" className="text-sm">Informasi</TabsTrigger>
-          <TabsTrigger value="materials" className="text-sm">Bahan Dibeli</TabsTrigger>
-          <TabsTrigger value="po" className="text-sm">Riwayat PO</TabsTrigger>
-          <TabsTrigger value="prices" className="text-sm">Price History</TabsTrigger>
-        </TabsList>
+      <div className="w-full">
+        <Tabs defaultValue="info" className="w-full">
+          <TabsList className="grid grid-cols-2 md:grid-cols-4 w-full">
+            <TabsTrigger value="info" className="text-xs md:text-sm">Informasi</TabsTrigger>
+            <TabsTrigger value="materials" className="text-xs md:text-sm">Bahan Dibeli</TabsTrigger>
+            <TabsTrigger value="po" className="text-xs md:text-sm">Riwayat PO</TabsTrigger>
+            <TabsTrigger value="prices" className="text-xs md:text-sm">Price History</TabsTrigger>
+          </TabsList>
 
-        {/* Info Tab */}
-        <TabsContent value="info" className="w-full mt-4">
+          {/* Info Tab */}
+          <TabsContent value="info" className="mt-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Supplier Info Card */}
             <Card>
