@@ -399,14 +399,18 @@ function SupplierFormInner({ isEdit, supplierId, initialData }: SupplierFormProp
             {/* Currency */}
             <div className="space-y-2">
               <Label>Mata Uang *</Label>
-              <Select value={currency} onValueChange={(v) => setCurrency(v as Currency)}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {CURRENCY_OPTIONS.map((c) => (
-                    <SelectItem key={c} value={c}>{c}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Combobox
+                options={CURRENCY_OPTIONS.map((c) => ({ value: c, label: c }))}
+                value={currency}
+                onChange={(v) => setCurrency(v as Currency)}
+                placeholder="Pilih mata uang..."
+                searchPlaceholder="Cari currency (contoh: IDR)..."
+                emptyMessage="Mata uang tidak ditemukan"
+                allowClear
+              />
+              <p className="text-xs text-muted-foreground">
+                Contoh: IDR (Rupiah), USD (US Dollar)
+              </p>
             </div>
 
             {/* Kota */}
