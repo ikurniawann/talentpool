@@ -142,7 +142,7 @@ export default function PurchasingDashboardPage() {
           <CardTitle className="text-sm font-semibold text-gray-900">Quick Access</CardTitle>
         </CardHeader>
         <CardContent className="pt-0">
-          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-2">
+          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-2">
             {quickLinks.map((link) => (
               <Link key={link.href} href={link.href}>
                 <div className="flex flex-col items-center justify-center p-3 rounded-lg bg-gradient-to-br from-gray-50 to-gray-100 hover:from-gray-100 hover:to-gray-200 transition-all group border border-gray-200/50">
