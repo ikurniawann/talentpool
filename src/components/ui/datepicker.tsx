@@ -32,27 +32,26 @@ export function DatePicker({
   id,
 }: DatePickerProps) {
   const inputRef = useRef<HTMLInputElement>(null);
-  const [date, setDate] = useState<string | undefined>(value);
+  const [displayDate, setDisplayDate] = useState<string>(value || "");
   const fpInstance = useRef<flatpickr.Instance | null>(null);
 
+  // Initialize flatpickr
   useEffect(() => {
     if (inputRef.current && !fpInstance.current) {
       fpInstance.current = flatpickr(inputRef.current, {
         dateFormat: "d M Y",
         locale: Indonesian,
-        disableMobile: true, // Force desktop calendar on mobile too
+        disableMobile: true,
         minDate: minDate,
         maxDate: maxDate,
         defaultDate: value || undefined,
-        onChange: (selectedDates) => {
-          const selectedDate = selectedDates[0];
-          const dateStr = selectedDate
-            ? selectedDate.toISOString().split("T")[0]
-            : "";
-          setDate(dateStr || undefined);
+        onChange: (selectedDates, dateStr) => {
+          setDisplayDate(dateStr);
           onChange?.(dateStr);
         },
-        clickOpens: !disabled,
+        onClose: () => {
+          // Ensure the input stays closed
+        },
       });
     }
 
@@ -64,70 +63,79 @@ export function DatePicker({
     };
   }, []);
 
+  // Update flatpickr when external value changes
   useEffect(() => {
     if (fpInstance.current && value !== undefined) {
       fpInstance.current.setDate(value, true);
+      setDisplayDate(value);
     }
   }, [value]);
 
+  // Update flatpickr config
   useEffect(() => {
     if (fpInstance.current) {
       fpInstance.current.set("minDate", minDate);
       fpInstance.current.set("maxDate", maxDate);
-      fpInstance.current.set("disabled", disabled);
+      if (disabled) {
+        fpInstance.current.close();
+      }
     }
   }, [minDate, maxDate, disabled]);
 
   const handleClear = (e: React.MouseEvent) => {
     e.stopPropagation();
-    setDate(undefined);
+    setDisplayDate("");
     onChange?.("");
     if (fpInstance.current) {
       fpInstance.current.clear();
     }
   };
 
+  const openCalendar = () => {
+    if (!disabled && fpInstance.current) {
+      fpInstance.current.open();
+    }
+  };
+
   return (
     <div className="relative">
+      {/* Hidden input for flatpickr */}
       <input
         ref={inputRef}
         id={id}
         type="text"
-        readOnly
-        placeholder={placeholder}
-        disabled={disabled}
         className="sr-only"
         aria-label={placeholder}
       />
+      
+      {/* Visible button that triggers calendar */}
       <Button
         variant="outline"
         className={cn(
-          "w-full justify-start text-left font-normal h-9 text-sm",
-          !date && "text-muted-foreground",
+          "w-full justify-start text-left font-normal h-9 text-sm cursor-pointer",
+          !displayDate && "text-muted-foreground",
           className
         )}
         type="button"
         disabled={disabled}
-        onClick={() => {
-          if (!disabled && fpInstance.current) {
-            fpInstance.current.open();
-          }
-        }}
+        onClick={openCalendar}
       >
         <CalendarIcon className="mr-2 h-4 w-4" />
-        {date ? (
+        {displayDate ? (
           <span>
             {new Intl.DateTimeFormat("id-ID", {
               day: "numeric",
               month: "short",
               year: "numeric",
-            }).format(new Date(date))}
+            }).format(new Date(displayDate))}
           </span>
         ) : (
           <span>{placeholder}</span>
         )}
       </Button>
-      {showClear && date && !disabled && (
+      
+      {/* Clear button */}
+      {showClear && displayDate && !disabled && (
         <button
           type="button"
           onClick={handleClear}
