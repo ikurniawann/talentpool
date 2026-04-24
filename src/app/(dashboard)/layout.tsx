@@ -53,14 +53,14 @@ export default async function DashboardGroupLayout({
                     ],
                   },
                   {
-                    href: "/dashboard/reports",
+                    href: "/dashboard/purchasing/reports",
                     label: "Laporan",
                     icon: "chart",
                     children: [
-                      { href: "/dashboard/reports/inventory-valuation", label: "Valuasi Inventory" },
-                      { href: "/dashboard/reports/po-summary", label: "Ringkasan PO" },
-                      { href: "/dashboard/reports/po-detail", label: "Detail PO" },
-                      { href: "/dashboard/reports/supplier-performance", label: "Performa Supplier" },
+                      { href: "/dashboard/purchasing/reports/inventory-valuation", label: "Valuasi Inventory" },
+                      { href: "/dashboard/purchasing/reports/po-summary", label: "Ringkasan PO" },
+                      { href: "/dashboard/purchasing/reports/po-detail", label: "Detail PO" },
+                      { href: "/dashboard/purchasing/reports/supplier-performance", label: "Performa Supplier" },
                     ],
                   },
                 ]
