@@ -127,16 +127,17 @@ export default function SidebarClient({ user, navItems, children }: SidebarClien
         `}
       >
         {/* Logo / Brand */}
-        <div className="p-4 border-b border-white/10">
+        <div className="p-4 border-b border-white/10 flex items-center justify-between">
           <img src="/logos/logo.png" alt="Prologue in Wounderland" className="w-full h-auto bg-white rounded-lg p-2 mb-2" />
-          <p className="text-xs text-white/60 px-2">Backoffice</p>
-            <button
-              onClick={closeMobile}
-              className="p-1.5 rounded-lg hover:bg-white/10 lg:hidden"
-            >
-              <XMarkIcon className="w-5 h-5 text-white/70" />
-            </button>
-          </div>
+          <button
+            onClick={closeMobile}
+            className="p-1.5 rounded-lg hover:bg-white/10 lg:hidden"
+          >
+            <XMarkIcon className="w-5 h-5 text-white/70" />
+          </button>
+        </div>
+        <div className="px-4 pb-3">
+          <p className="text-xs text-white/60 px-2 mb-2">Backoffice</p>
           <div className="mt-3 p-2.5 bg-white/10 backdrop-blur-sm rounded-lg">
             <p className="text-xs font-medium text-white">{user.full_name}</p>
             <p className="text-xs text-white/60 capitalize">{user.role.replace("_", " ")}</p>
