@@ -45,6 +45,7 @@ import {
 import { createSupplier, updateSupplier } from "@/lib/purchasing/supplier";
 import { useToast } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
+import { Combobox } from "@/components/ui/combobox";
 
 // ─── Field hook ─────────────────────────────────────────────────
 
@@ -316,37 +317,56 @@ function EditSupplierInner() {
 
             <div className="space-y-2">
               <Label>Kota *</Label>
-              <Select value={kota.value} onValueChange={(v) => { kota.setValue(v); kota.setTouched(); }}>
-                <SelectTrigger className={inputClass(!!formErrors.kota, kota.touched)}>
-                  <SelectValue placeholder="— Pilih Kota —" />
-                </SelectTrigger>
-                <SelectContent>
-                  {KOTA_OPTIONS.map((k) => <SelectItem key={k} value={k}>{k}</SelectItem>)}
-                </SelectContent>
-              </Select>
+              <Combobox
+                options={KOTA_OPTIONS.map((k) => ({ value: k, label: k }))}
+                value={kota.value}
+                onChange={(v) => { kota.setValue(v); kota.setTouched(); }}
+                placeholder="Pilih kota..."
+                searchPlaceholder="Cari kota..."
+                emptyMessage="Kota tidak ditemukan"
+                allowClear
+                className={formErrors.kota && kota.touched ? "border-red-500" : ""}
+              />
+              <p className="text-xs text-muted-foreground">
+                Contoh: Jakarta, Surabaya, Bandung
+              </p>
               {kota.touched && kota.error && (
-                <p className="text-xs text-red-500 mt-1 flex items-center gap-1"><XCircleIcon className="w-3 h-3" />{kota.error}</p>
+                <p className="text-xs text-red-500 mt-1 flex items-center gap-1">
+                  <XCircleIcon className="w-3 h-3" />{kota.error}
+                </p>
               )}
             </div>
 
             <div className="space-y-2">
               <Label>Payment Terms *</Label>
-              <Select value={paymentTerms} onValueChange={(v) => setPaymentTerms(v as PaymentTerms)}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {PAYMENT_TERMS_OPTIONS.map((pt) => <SelectItem key={pt} value={pt}>{pt}</SelectItem>)}
-                </SelectContent>
-              </Select>
+              <Combobox
+                options={PAYMENT_TERMS_OPTIONS.map((pt) => ({ value: pt, label: pt }))}
+                value={paymentTerms}
+                onChange={(v) => setPaymentTerms(v as PaymentTerms)}
+                placeholder="Pilih payment terms..."
+                searchPlaceholder="Cari terms (contoh: 30 hari)..."
+                emptyMessage="Payment terms tidak ditemukan"
+                allowClear
+              />
+              <p className="text-xs text-muted-foreground">
+                Contoh: NET 30, COD, CAD
+              </p>
             </div>
 
             <div className="space-y-2">
               <Label>Mata Uang *</Label>
-              <Select value={currency} onValueChange={(v) => setCurrency(v as Currency)}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {CURRENCY_OPTIONS.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
-                </SelectContent>
-              </Select>
+              <Combobox
+                options={CURRENCY_OPTIONS.map((c) => ({ value: c, label: c }))}
+                value={currency}
+                onChange={(v) => setCurrency(v as Currency)}
+                placeholder="Pilih mata uang..."
+                searchPlaceholder="Cari currency (contoh: IDR)..."
+                emptyMessage="Mata uang tidak ditemukan"
+                allowClear
+              />
+              <p className="text-xs text-muted-foreground">
+                Contoh: IDR (Rupiah), USD (US Dollar)
+              </p>
             </div>
 
             <div className="space-y-2">
