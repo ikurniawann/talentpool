@@ -518,7 +518,10 @@ export default function PurchaseOrdersPage() {
                         {po.status === "DRAFT" && (
                           <>
                             <Link href={`/dashboard/purchasing/po/${po.id}/edit`}>
-                              <DropdownMenuItem>Edit PO</DropdownMenuItem>
+                              <DropdownMenuItem>
+                                <FileText className="w-4 h-4 mr-2 text-blue-600" />
+                                Edit PO
+                              </DropdownMenuItem>
                             </Link>
                             <DropdownMenuItem onClick={() => handleApprove(po)}>
                               <CheckCircle className="w-4 h-4 mr-2 text-green-600" />
