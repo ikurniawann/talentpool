@@ -132,9 +132,9 @@ export default function NewPOPage() {
       // Load units
       console.log("Loading units...");
       try {
-        const unitsRes = await listUnits(true);
-        console.log("Units loaded:", unitsRes?.length || 0);
-        setUnits(unitsRes || []);
+        const unitsRes = await listUnits();
+        console.log("Units loaded:", unitsRes?.data?.length || 0);
+        setUnits(unitsRes?.data || []);
       } catch (err: any) {
         console.error("Failed to load units:", err.message);
         // Units are optional, continue
