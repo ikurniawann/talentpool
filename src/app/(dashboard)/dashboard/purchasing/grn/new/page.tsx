@@ -362,7 +362,7 @@ export default function CreateGrnPage() {
                     <Label htmlFor="tanggal">Tanggal Penerimaan</Label>
                     <DatePicker
                       id="tanggal"
-                      date={formData.tanggal_penerimaan ? new Date(formData.tanggal_penerimaan) : undefined}
+                      date={formData.tanggal_penerimaan ? new Date(formData.tanggal_penerimaan) : new Date()}
                       onChange={(date) =>
                         setFormData({ ...formData, tanggal_penerimaan: date?.toISOString().split("T")[0] || "" })
                       }
@@ -372,7 +372,7 @@ export default function CreateGrnPage() {
                     <Label htmlFor="catatan">Catatan</Label>
                     <Textarea
                       id="catatan"
-                      value={formData.catatan}
+                      value={formData.catatan || ""}
                       onChange={(e) => setFormData({ ...formData, catatan: e.target.value })}
                       placeholder="Catatan tambahan (opsional)"
                       rows={2}
@@ -423,17 +423,17 @@ export default function CreateGrnPage() {
                           <tr key={item.id} className="hover:bg-gray-50">
                             <td className="px-4 py-3">
                               <div className="text-sm font-medium">{item.nama_bahan || "Item manual"}</div>
-                              {poItem && (
+                              {poItem && poItem.qty_ordered !== undefined && (
                                 <div className="text-xs text-gray-500">
                                   PO: {poItem.qty_ordered} {poItem.satuan || "pcs"}
                                 </div>
                               )}
                             </td>
                             <td className="px-4 py-3 text-center text-sm text-gray-500">
-                              {poItem?.qty_ordered || 0}
+                              {poItem?.qty_ordered ?? 0}
                             </td>
                             <td className="px-4 py-3 text-center text-sm text-gray-500">
-                              {poItem?.qty_received || 0}
+                              {poItem?.qty_received ?? 0}
                             </td>
                             <td className="px-4 py-3">
                               <Input
