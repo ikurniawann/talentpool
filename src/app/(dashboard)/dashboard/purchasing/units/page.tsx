@@ -31,6 +31,7 @@ import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { Plus, Pencil, Trash2, Search, X } from "lucide-react";
 import { toast } from "sonner";
+import { useActivityLogger } from "@/hooks/useActivityLogger";
 import { Unit, UnitFormData } from "@/types/purchasing";
 import {
   listUnits,
@@ -51,6 +52,7 @@ const TIPE_OPTIONS = [
 
 export default function UnitsPage() {
   const router = useRouter();
+  const logger = useActivityLogger();
   
   // State
   const [units, setUnits] = useState<Unit[]>([]);

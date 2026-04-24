@@ -570,3 +570,71 @@ https://react.dev/link/hydration-mismatch
 ✓ Compiled in 112ms
 [browser] React does not recognize the `avoidCollisions` prop on a DOM element. If you intentionally want it to appear in the DOM as a custom attribute, spell it as lowercase `avoidcollisions` instead. If you accidentally passed it from a parent component, remove it from the DOM element. 
 [browser] React does not recognize the `collisionPadding` prop on a DOM element. If you intentionally want it to appear in the DOM as a custom attribute, spell it as lowercase `collisionpadding` instead. If you accidentally passed it from a parent component, remove it from the DOM element. 
+ GET /dashboard/purchasing/units 200 in 1083ms (next.js: 6ms, application-code: 1077ms)
+[browser] Encountered two children with the same key, `/dashboard/purchasing`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. 
+[browser] In HTML, <button> cannot be a descendant of <button>.
+This will cause a hydration error.
+
+  ...
+    <ClientSegmentRoot Component={function PurchasingLayout} slots={{children:{...}, ...}} ...>
+      <PurchasingLayout sidebar={{...}} params={Promise}>
+        <div>
+          <div className="sticky top...">
+            <div className="flex h-12 ...">
+              <div>
+              <div className="flex items...">
+                <ActivityLogBell>
+                  <DropdownMenu open={false} onOpenChange={function bound dispatchSetState}>
+                    <MenuRoot data-slot="dropdown-menu" open={false} onOpenChange={function bound dispatchSetState}>
+                      <FloatingTree externalTree={{nodesRef:{...}, ...}}>
+                        <DropdownMenuTrigger asChild={true}>
+                          <MenuTrigger data-slot="dropdown-m..." asChild={true}>
+>                           <button
+>                             type="button"
+>                             onClick={function}
+>                             onMouseDown={function}
+>                             onKeyDown={function}
+>                             onKeyUp={function}
+>                             onPointerDown={function}
+>                             tabIndex={0}
+>                             disabled={false}
+>                             aria-haspopup="menu"
+>                             id="base-ui-_r_4_"
+>                             data-slot="dropdown-menu-trigger"
+>                             asChild={true}
+>                             ref={function}
+>                           >
+                              <Button variant="ghost" size="icon" className="relative h...">
+                                <Button data-slot="button" className={"group/bu..."}>
+>                                 <button
+>                                   type="button"
+>                                   onClick={function}
+>                                   onMouseDown={function}
+>                                   onKeyDown={function}
+>                                   onKeyUp={function}
+>                                   onPointerDown={function}
+>                                   tabIndex={0}
+>                                   disabled={false}
+>                                   data-slot="button"
+>                                   ref={function}
+>                                   className={"group/button inline-flex shrink-0 items-center justify-center rounded..."}
+>                                 >
+                        ...
+                ...
+          ...
+ 
+[browser] <button> cannot contain a nested <button>.
+See this log for the ancestor stack trace. 
+[browser] React does not recognize the `asChild` prop on a DOM element. If you intentionally want it to appear in the DOM as a custom attribute, spell it as lowercase `aschild` instead. If you accidentally passed it from a parent component, remove it from the DOM element. 
+ GET /api/purchasing/units?page=1&limit=20 200 in 194ms (next.js: 1674µs, application-code: 193ms)
+[browser] React does not recognize the `currentPage` prop on a DOM element. If you intentionally want it to appear in the DOM as a custom attribute, spell it as lowercase `currentpage` instead. If you accidentally passed it from a parent component, remove it from the DOM element. 
+[browser] React does not recognize the `totalPages` prop on a DOM element. If you intentionally want it to appear in the DOM as a custom attribute, spell it as lowercase `totalpages` instead. If you accidentally passed it from a parent component, remove it from the DOM element. 
+[browser] React does not recognize the `totalItems` prop on a DOM element. If you intentionally want it to appear in the DOM as a custom attribute, spell it as lowercase `totalitems` instead. If you accidentally passed it from a parent component, remove it from the DOM element. 
+[browser] Unknown event handler property `onPageChange`. It will be ignored. 
+✓ Compiled in 86ms
+ GET /dashboard/purchasing/units 200 in 171ms (next.js: 70ms, application-code: 101ms)
+ GET /dashboard/purchasing/units 200 in 72ms (next.js: 1047µs, application-code: 71ms)
+ GET /api/purchasing/units?page=1&limit=20 200 in 406ms (next.js: 63ms, application-code: 343ms)
+[browser] Encountered two children with the same key, `/dashboard/purchasing`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. 
+[browser] React does not recognize the `avoidCollisions` prop on a DOM element. If you intentionally want it to appear in the DOM as a custom attribute, spell it as lowercase `avoidcollisions` instead. If you accidentally passed it from a parent component, remove it from the DOM element. 
+[browser] React does not recognize the `collisionPadding` prop on a DOM element. If you intentionally want it to appear in the DOM as a custom attribute, spell it as lowercase `collisionpadding` instead. If you accidentally passed it from a parent component, remove it from the DOM element. 
