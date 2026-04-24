@@ -58,33 +58,31 @@ export default function PurchasingMainMenuPage() {
   ];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">🛒 Purchasing Modules</h1>
-          <p className="text-sm text-gray-500">Pilih modul untuk memulai</p>
-        </div>
+      <div>
+        <h1 className="text-xl font-bold text-gray-900">🛒 Purchasing Modules</h1>
+        <p className="text-xs text-gray-500 mt-0.5">Pilih modul untuk memulai</p>
       </div>
 
       {/* Modules Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {modules.map((module) => (
           <Link key={module.href} href={module.href}>
-            <Card className="border-0 shadow-md hover:shadow-xl transition-all cursor-pointer h-full group">
-              <CardHeader className="pb-4">
-                <div className="w-16 h-16 bg-gray-900 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                  <module.icon className="w-8 h-8 text-white" />
+            <Card className="border-0 shadow-md hover:shadow-lg transition-all cursor-pointer h-full group">
+              <CardHeader className="pb-3">
+                <div className="w-12 h-12 bg-gray-900 rounded-lg flex items-center justify-center mb-3 group-hover:scale-105 transition-transform">
+                  <module.icon className="w-6 h-6 text-white" />
                 </div>
-                <CardTitle className="text-xl">{module.title}</CardTitle>
+                <CardTitle className="text-base">{module.title}</CardTitle>
               </CardHeader>
-              <CardContent>
-                <p className="text-sm text-gray-600 mb-4">{module.description}</p>
-                <div className="space-y-2">
+              <CardContent className="pt-0">
+                <p className="text-xs text-gray-600 mb-3">{module.description}</p>
+                <div className="space-y-1.5">
                   {module.features.map((feature, idx) => (
-                    <div key={idx} className="flex items-center gap-2 text-xs text-gray-500">
-                      <div className="w-1.5 h-1.5 bg-gray-400 rounded-full" />
-                      <span>{feature}</span>
+                    <div key={idx} className="flex items-center gap-1.5 text-xs text-gray-500">
+                      <div className="w-1 h-1 bg-gray-400 rounded-full flex-shrink-0" />
+                      <span className="truncate">{feature}</span>
                     </div>
                   ))}
                 </div>
