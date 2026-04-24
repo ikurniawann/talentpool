@@ -26,6 +26,13 @@ const STATUS_COLORS: Record<StockStatus, string> = {
   empty: "bg-red-100 text-red-800",
 };
 
+const STATUS_LABELS: Record<StockStatus, string> = {
+  normal: "Normal",
+  warning: "Warning",
+  critical: "Critical",
+  empty: "Empty",
+};
+
 interface InventoryRow {
   id: string;
   kode?: string;
@@ -53,13 +60,34 @@ export default function InventoryValuationPage() {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/purchasing/inventory-valuation");
+      const res = await fetch("/api/purchasing/reports/inventory-valuation");
       if (res.ok) {
-        const data = await res.json();
-        setItems(data.items || []);
+        const result = await res.json();
+        // Map API response to expected format
+        const mappedItems = (result.data || []).map((item: any) => {
+          let stockStatus: StockStatus = "normal";
+          if (!item.qty_onhand || item.qty_onhand === 0) stockStatus = "empty";
+          else if (item.qty_onhand <= (item.min_stock || 0) * 0.25) stockStatus = "critical";
+          else if (item.qty_onhand <= (item.min_stock || 0)) stockStatus = "warning";
+          
+          return {
+            id: item.id || item.raw_material_id,
+            kode: item.kode,
+            nama: item.nama,
+            kategori: item.kategori,
+            lokasi_rak: item.lokasi_rak,
+            qty_in_stock: item.qty_onhand || 0,
+            minimum_stock: item.min_stock,
+            maximum_stock: item.max_stock,
+            avg_unit_cost: item.avg_cost || 0,
+            stock_status: stockStatus,
+            satuan: item.satuan,
+          };
+        });
+        setItems(mappedItems);
       }
-    } catch {
-      // fallback empty
+    } catch (error) {
+      console.error("Error fetching inventory valuation:", error);
     } finally {
       setLoading(false);
     }
@@ -76,6 +104,9 @@ export default function InventoryValuationPage() {
 
   const totalNilai = filtered.reduce((sum, i) => sum + (i.qty_in_stock * (i.avg_unit_cost || 0)), 0);
   const totalStok = filtered.reduce((sum, i) => sum + i.qty_in_stock, 0);
+  const totalItems = items.length;
+  const warningCount = items.filter(i => i.stock_status === "warning").length;
+  const criticalCount = items.filter(i => i.stock_status === "critical" || i.stock_status === "empty").length;
 
   return (
     <div className="p-6">
@@ -103,7 +134,7 @@ export default function InventoryValuationPage() {
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-gray-500">Total Nilai Inventori</CardTitle>
@@ -125,7 +156,31 @@ export default function InventoryValuationPage() {
             <CardTitle className="text-sm font-medium text-gray-500">Jumlah Item</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold">{filtered.length}</p>
+            <p className="text-2xl font-bold">{totalItems}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-gray-500">Status Stock</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center gap-3">
+              {warningCount > 0 && (
+                <Badge className="bg-yellow-100 text-yellow-800">
+                  <ExclamationTriangleIcon className="w-3 h-3 mr-1" />
+                  {warningCount} Warning
+                </Badge>
+              )}
+              {criticalCount > 0 && (
+                <Badge className="bg-red-100 text-red-800">
+                  <ExclamationTriangleIcon className="w-3 h-3 mr-1" />
+                  {criticalCount} Critical
+                </Badge>
+              )}
+              {warningCount === 0 && criticalCount === 0 && (
+                <Badge className="bg-green-100 text-green-800">All Normal</Badge>
+              )}
+            </div>
           </CardContent>
         </Card>
       </div>
@@ -209,7 +264,7 @@ export default function InventoryValuationPage() {
                       </td>
                       <td className="px-4 py-3">
                         <Badge className={STATUS_COLORS[item.stock_status]}>
-                          {item.stock_status}
+                          {STATUS_LABELS[item.stock_status]}
                         </Badge>
                       </td>
                     </tr>
