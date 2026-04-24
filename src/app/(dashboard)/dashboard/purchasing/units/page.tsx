@@ -158,6 +158,7 @@ export default function UnitsPage() {
       if (editingUnit) {
         await updateUnit(editingUnit.id, formData);
         logger.updateRawMaterial("Satuan Updated", formData.kode || "N/A", `Updated ${formData.nama}`);
+        console.log('🔔 Activity logged (update):', formData.kode);
         toast.success("Satuan berhasil diupdate");
       } else {
         await createUnit(formData);
@@ -165,6 +166,7 @@ export default function UnitsPage() {
           nama: formData.nama, 
           tipe: formData.tipe 
         });
+        console.log('🔔 Activity logged (create):', formData.kode);
         toast.success("Satuan berhasil ditambahkan");
       }
       setIsDialogOpen(false);
