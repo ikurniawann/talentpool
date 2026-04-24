@@ -7,13 +7,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowLeft, Save, Plus, Trash2, Package, Calculator } from "lucide-react";
 import { toast } from "sonner";
@@ -79,53 +72,34 @@ export default function NewProductPage() {
     ]);
   };
 
-  const removeBOMItem = (index: number) => {
-    setBomItems(bomItems.filter((_, i) => i !== index));
+  const removeBOMItem = (id: string) => {
+    setBomItems(bomItems.filter((item) => item.id !== id));
   };
 
-  const updateBOMItem = (index: number, field: keyof BOMFormItem, value: any) => {
-    const newItems = [...bomItems];
-    newItems[index] = { ...newItems[index], [field]: value };
-
-    // Update material info
-    if (field === "raw_material_id") {
-      const material = materials.find((m) => m.id === value);
-      newItems[index].raw_material_name = material?.nama;
-      newItems[index].raw_material_unit = material?.satuan_kecil_nama || material?.satuan_besar_nama;
-      newItems[index].satuan_id = material?.satuan_kecil_id || material?.satuan_besar_id;
-      // Recalculate with new material price
-      const qty = newItems[index].qty_needed || 0;
-      const waste = newItems[index].waste_persen || 0;
-      const effectiveQty = qty * (1 + waste / 100);
-      newItems[index].subtotal = effectiveQty * (material?.avg_cost || 0);
-    }
-
-    // Recalculate subtotal when qty or waste changes
-    if (field === "qty_needed" || field === "waste_persen") {
-      const qty = field === "qty_needed" ? value : newItems[index].qty_needed;
-      const waste = field === "waste_persen" ? value : newItems[index].waste_persen;
-      const material = materials.find((m) => m.id === newItems[index].raw_material_id);
-      if (material) {
-        const effectiveQty = qty * (1 + (waste || 0) / 100);
-        newItems[index].subtotal = effectiveQty * (material.avg_cost || 0);
-      }
-    }
-
-    setBomItems(newItems);
+  const updateBOMItem = (id: string, updates: Partial<BOMFormItem>) => {
+    setBomItems(
+      bomItems.map((item) => {
+        if (item.id === id) {
+          const updated = { ...item, ...updates };
+          const material = materials.find((m) => m.id === updated.raw_material_id);
+          const qty = updated.qty_needed || 0;
+          const waste = updated.waste_persen || 0;
+          const price = material?.harga_avg || 0;
+          updated.subtotal = price * qty * (1 + waste / 100);
+          return updated;
+        }
+        return item;
+      })
+    );
   };
 
-  const calculateHPP = () => {
+  const calculateTotalCost = () => {
     return bomItems.reduce((sum, item) => sum + (item.subtotal || 0), 0);
-  };
-
-  const calculateSuggestedPrice = () => {
-    const hpp = calculateHPP();
-    if (!hpp || !formData.markup_persen) return 0;
-    return hpp * (1 + (formData.markup_persen || 0) / 100);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
     if (!formData.nama) {
       toast.error("Nama produk wajib diisi");
       return;
@@ -133,331 +107,260 @@ export default function NewProductPage() {
 
     setIsSubmitting(true);
     try {
-      console.log("Creating product with data:", formData);
-      
-      // Create product
-      const product = await createProduct(formData);
-      console.log("Product created:", product);
+      const productData = {
+        ...formData,
+        harga_modal: calculateTotalCost(),
+      };
+      const product = await createProduct(productData);
 
-      // Create BOM items
       for (const item of bomItems) {
-        if (item.raw_material_id && item.qty_needed) {
-          const payload = {
+        if (item.raw_material_id) {
+          await createBOMItem(product.id, {
             raw_material_id: item.raw_material_id,
-            qty_required: item.qty_needed,
-            satuan_id: item.satuan_id || undefined,
-            waste_factor: (item.waste_persen || 0) / 100,
-          };
-          
-          console.log("Creating BOM item:", payload);
-          
-          try {
-            await createBOMItem(product.id, payload);
-          } catch (error: any) {
-            console.error("Failed to create BOM item:", error);
-            throw error; // Re-throw to stop the process
-          }
+            qty_needed: item.qty_needed || 0,
+            waste_persen: item.waste_persen || 0,
+          });
         }
       }
 
-      toast.success("Produk berhasil dibuat");
-      router.push(`/dashboard/purchasing/products/${product.id}`);
+      toast.success("Produk berhasil ditambahkan");
+      router.push("/dashboard/purchasing/products");
     } catch (error: any) {
       console.error("Error creating product:", error);
-      toast.error(error.message || "Gagal membuat produk");
+      toast.error(error.message || "Gagal menambahkan produk");
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const formatCurrency = (num: number | undefined | null) => {
-    if (num === undefined || num === null) return "Rp 0";
-    return `Rp ${num.toLocaleString("id-ID")}`;
-  };
-
-  const hpp = calculateHPP();
-  const suggestedPrice = calculateSuggestedPrice();
-  const margin = (formData.harga_jual || 0) - hpp;
-  const marginPercent = hpp > 0 ? ((margin / hpp) * 100) : 0;
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-16">
+        <div className="text-center text-gray-500">Memuat data...</div>
+      </div>
+    );
+  }
 
   return (
-    <div className="container mx-auto py-6 space-y-6">
+    <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center gap-4">
         <Link href="/dashboard/purchasing/products">
-          <Button variant="ghost" size="icon">
-            <ArrowLeft className="w-5 h-5" />
+          <Button variant="ghost" size="icon" className="h-9 w-9">
+            <ArrowLeft className="h-5 w-5" />
           </Button>
         </Link>
         <div>
-          <h1 className="text-2xl font-bold">Tambah Produk Baru</h1>
-          <p className="text-muted-foreground">
-            Buat produk jadi dengan BOM komposisi
-          </p>
+          <h1 className="text-2xl font-bold text-gray-900">Tambah Produk Baru</h1>
+          <p className="text-sm text-gray-500">Isi detail produk dan BOM</p>
         </div>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-6">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Product Info */}
-          <Card className="lg:col-span-2">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Package className="w-5 h-5" />
+      <form onSubmit={handleSubmit}>
+        {/* Full Column Layout */}
+        <div className="space-y-6">
+          
+          {/* Card 1: Informasi Produk */}
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2">
+                <Package className="w-4 h-4" />
                 Informasi Produk
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>
-                    Nama Produk <span className="text-red-500">*</span>
-                  </Label>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <Label htmlFor="nama" className="text-xs">Nama Produk <span className="text-red-500">*</span></Label>
                   <Input
+                    id="nama"
                     value={formData.nama}
-                    onChange={(e) =>
-                      setFormData({ ...formData, nama: e.target.value })
-                    }
-                    placeholder="Contoh: Kue Kering Coklat"
+                    onChange={(e) => setFormData({ ...formData, nama: e.target.value })}
+                    placeholder="Contoh: Roti Coklat Lumer"
+                    required
+                    className="h-9 text-sm"
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label>Kategori</Label>
-                  <Input
+                <div className="space-y-1.5">
+                  <Label htmlFor="kategori" className="text-xs">Kategori <span className="text-red-500">*</span></Label>
+                  <Combobox
+                    options={[
+                      { value: "MAKANAN", label: "Makanan" },
+                      { value: "MINUMAN", label: "Minuman" },
+                      { value: "BAHAN_BAKU", label: "Bahan Baku" },
+                      { value: "LAINNYA", label: "Lainnya" },
+                    ]}
                     value={formData.kategori}
-                    onChange={(e) =>
-                      setFormData({ ...formData, kategori: e.target.value })
-                    }
-                    placeholder="Contoh: Kue, Roti, Snack"
+                    onChange={(v) => setFormData({ ...formData, kategori: v })}
+                    placeholder="Pilih kategori..."
+                    searchPlaceholder="Cari..."
+                    emptyMessage="Tidak ditemukan"
+                    allowClear
+                    className="h-9 text-sm"
                   />
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <Label>Deskripsi</Label>
+              <div className="space-y-1.5">
+                <Label htmlFor="deskripsi" className="text-xs">Deskripsi</Label>
                 <Textarea
+                  id="deskripsi"
                   value={formData.deskripsi}
-                  onChange={(e) =>
-                    setFormData({ ...formData, deskripsi: e.target.value })
-                  }
+                  onChange={(e) => setFormData({ ...formData, deskripsi: e.target.value })}
                   placeholder="Deskripsi produk..."
-                  rows={3}
+                  rows={2}
+                  className="text-sm resize-none"
                 />
-              </div>
-
-              <div className="grid grid-cols-3 gap-4">
-                <div className="space-y-2">
-                  <Label>Harga Jual</Label>
-                  <Input
-                    type="number"
-                    min="0"
-                    value={formData.harga_jual}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        harga_jual: parseFloat(e.target.value) || 0,
-                      })
-                    }
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Markup (%)</Label>
-                  <Input
-                    type="number"
-                    min="0"
-                    max="100"
-                    value={formData.markup_persen}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        markup_persen: parseFloat(e.target.value) || 0,
-                      })
-                    }
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Status</Label>
-                  <Select
-                    value={formData.is_active ? "active" : "inactive"}
-                    onValueChange={(v) =>
-                      setFormData({ ...formData, is_active: v === "active" })
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="active">Aktif</SelectItem>
-                      <SelectItem value="inactive">Nonaktif</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
               </div>
             </CardContent>
           </Card>
 
-          {/* Pricing Summary */}
+          {/* Card 2: Pricing */}
           <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Calculator className="w-5 h-5" />
-                Perhitungan Harga
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2">
+                <Calculator className="w-4 h-4" />
+                Pricing & HPP
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">HPP (dari BOM)</span>
-                <span className="font-medium">{formatCurrency(hpp)}</span>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="space-y-1.5">
+                  <Label htmlFor="harga_modal" className="text-xs">Harga Modal (HPP)</Label>
+                  <Input
+                    id="harga_modal"
+                    type="number"
+                    value={calculateTotalCost()}
+                    disabled
+                    className="h-9 text-sm bg-gray-50 font-mono"
+                  />
+                  <p className="text-xs text-gray-500">Dari BOM</p>
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="markup" className="text-xs">Markup (%)</Label>
+                  <Input
+                    id="markup"
+                    type="number"
+                    min="0"
+                    max="1000"
+                    value={formData.markup_persen}
+                    onChange={(e) => setFormData({ ...formData, markup_persen: parseFloat(e.target.value) || 0 })}
+                    className="h-9 text-sm"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="harga_jual" className="text-xs">Harga Jual</Label>
+                  <Input
+                    id="harga_jual"
+                    type="number"
+                    value={formData.harga_jual}
+                    onChange={(e) => setFormData({ ...formData, harga_jual: parseFloat(e.target.value) || 0 })}
+                    placeholder="Harga jual ke customer"
+                    className="h-9 text-sm font-mono"
+                  />
+                </div>
               </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Harga Jual</span>
-                <span className="font-medium">{formatCurrency(formData.harga_jual)}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Margin</span>
-                <span
-                  className={`font-medium ${
-                    formData.harga_jual > hpp ? "text-green-600" : "text-red-600"
-                  }`}
-                >
-                  {formatCurrency(formData.harga_jual - hpp)} (
-                  {hpp ? (((formData.harga_jual - hpp) / hpp) * 100).toFixed(1) : 0}%)
-                </span>
-              </div>
-              {suggestedPrice > 0 && (
-                <div className="border-t pt-2">
-                  <div className="text-xs text-muted-foreground mb-1">
-                    Harga Jual yang Disarankan ({formData.markup_persen}% markup)
-                  </div>
-                  <div className="text-lg font-semibold text-blue-600">
-                    {formatCurrency(suggestedPrice)}
+            </CardContent>
+          </Card>
+
+          {/* Card 3: Bill of Materials (BOM) */}
+          <Card>
+            <CardHeader className="pb-3 flex items-center justify-between">
+              <CardTitle className="text-base flex items-center gap-2">
+                <Package className="w-4 h-4" />
+                Bill of Materials (BOM)
+              </CardTitle>
+              <Button type="button" size="sm" variant="outline" onClick={addBOMItem} className="h-8 text-xs">
+                <Plus className="w-3 h-3 mr-1" />
+                Tambah Bahan
+              </Button>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {bomItems.length === 0 ? (
+                <div className="text-center py-8 text-gray-500 text-sm">
+                  Belum ada bahan baku. Klik "Tambah Bahan" untuk menambahkan.
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {bomItems.map((item, index) => (
+                    <div key={item.id} className="grid grid-cols-12 gap-3 items-end p-3 border rounded-md bg-gray-50">
+                      <div className="col-span-4 space-y-1.5">
+                        <Label className="text-xs">Bahan Baku</Label>
+                        <Combobox
+                          options={materials.map((m) => ({ value: m.id, label: m.nama, description: m.kode }))}
+                          value={item.raw_material_id}
+                          onChange={(v) => updateBOMItem(item.id, { raw_material_id: v })}
+                          placeholder="Pilih bahan..."
+                          searchPlaceholder="Cari..."
+                          emptyMessage="Tidak ada bahan"
+                          allowClear
+                          className="h-9 text-sm"
+                        />
+                      </div>
+                      <div className="col-span-2 space-y-1.5">
+                        <Label className="text-xs">Qty</Label>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          value={item.qty_needed}
+                          onChange={(e) => updateBOMItem(item.id, { qty_needed: parseFloat(e.target.value) || 0 })}
+                          className="h-9 text-sm"
+                        />
+                      </div>
+                      <div className="col-span-2 space-y-1.5">
+                        <Label className="text-xs">Waste (%)</Label>
+                        <Input
+                          type="number"
+                          min="0"
+                          max="100"
+                          value={item.waste_persen}
+                          onChange={(e) => updateBOMItem(item.id, { waste_persen: parseFloat(e.target.value) || 0 })}
+                          className="h-9 text-sm"
+                        />
+                      </div>
+                      <div className="col-span-3 space-y-1.5">
+                        <Label className="text-xs">Subtotal</Label>
+                        <Input
+                          type="number"
+                          value={item.subtotal}
+                          disabled
+                          className="h-9 text-sm bg-gray-100 font-mono"
+                        />
+                      </div>
+                      <div className="col-span-1 space-y-1.5">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => removeBOMItem(item.id)}
+                          className="h-9 w-9 text-red-500 hover:text-red-700"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                  
+                  <div className="flex justify-end pt-3 border-t">
+                    <div className="text-right">
+                      <p className="text-xs text-gray-500">Total HPP</p>
+                      <p className="text-lg font-bold text-gray-900">Rp {calculateTotalCost().toLocaleString('id-ID')}</p>
+                    </div>
                   </div>
                 </div>
               )}
             </CardContent>
           </Card>
+
         </div>
 
-        {/* BOM Items */}
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle>Bill of Materials (BOM)</CardTitle>
-            <Button type="button" onClick={addBOMItem} variant="outline" size="sm">
-              <Plus className="w-4 h-4 mr-2" />
-              Tambah Bahan
-            </Button>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {bomItems.map((item, index) => (
-                <div
-                  key={item.id}
-                  className="grid grid-cols-12 gap-4 items-start p-4 border rounded-lg"
-                >
-                  <div className="col-span-4 space-y-1">
-                    <Label className="text-xs">Bahan Baku *</Label>
-                    <Select
-                      value={item.raw_material_id || ""}
-                      onValueChange={(v) => {
-                        updateBOMItem(index, "raw_material_id", v);
-                      }}
-                      disabled={loading}
-                    >
-                      <SelectTrigger className="w-full">
-                        <SelectValue>
-                          {item.raw_material_id ? (
-                            materials.find((m) => m.id === item.raw_material_id) ? (
-                              `${materials.find((m) => m.id === item.raw_material_id)?.nama} - ${materials.find((m) => m.id === item.raw_material_id)?.kode}`
-                            ) : (
-                              "Memuat..."
-                            )
-                          ) : (
-                            "Pilih bahan baku"
-                          )}
-                        </SelectValue>
-                      </SelectTrigger>
-                      <SelectContent>
-                        {materials.map((m) => (
-                          <SelectItem key={m.id} value={m.id}>
-                            {m.nama} - {m.kode}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="col-span-2 space-y-1">
-                    <Label className="text-xs">Jumlah *</Label>
-                    <Input
-                      type="number"
-                      step="0.0001"
-                      min="0"
-                      value={item.qty_needed}
-                      onChange={(e) =>
-                        updateBOMItem(index, "qty_needed", parseFloat(e.target.value) || 0)
-                      }
-                    />
-                  </div>
-
-                  <div className="col-span-2 space-y-1">
-                    <Label className="text-xs">Satuan</Label>
-                    <Input
-                      value={item.raw_material_unit || "-"}
-                      disabled
-                      className="bg-gray-50"
-                    />
-                  </div>
-
-                  <div className="col-span-2 space-y-1">
-                    <Label className="text-xs">Waste (%)</Label>
-                    <Input
-                      type="number"
-                      min="0"
-                      max="100"
-                      value={item.waste_persen}
-                      onChange={(e) =>
-                        updateBOMItem(index, "waste_persen", parseFloat(e.target.value) || 0)
-                      }
-                    />
-                  </div>
-
-                  <div className="col-span-1 space-y-1">
-                    <Label className="text-xs">Subtotal</Label>
-                    <div className="text-sm font-medium py-2">
-                      {formatCurrency(item.subtotal)}
-                    </div>
-                  </div>
-
-                  <div className="col-span-1 flex justify-end">
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => removeBOMItem(index)}
-                    >
-                      <Trash2 className="w-4 h-4 text-red-500" />
-                    </Button>
-                  </div>
-                </div>
-              ))}
-
-              {bomItems.length === 0 && (
-                <div className="text-center py-8 text-muted-foreground border rounded-lg">
-                  Belum ada bahan baku. Klik "Tambah Bahan" untuk memulai.
-                </div>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Actions */}
-        <div className="flex justify-end gap-4">
-          <Link href="/dashboard/purchasing/products">
-            <Button variant="outline" disabled={isSubmitting}>
-              Batal
-            </Button>
-          </Link>
-          <Button type="submit" disabled={isSubmitting}>
+        {/* Action Buttons */}
+        <div className="flex items-center justify-end gap-3 mt-6 pt-4 border-t">
+          <Button type="button" variant="outline" onClick={() => router.back()} className="px-6">
+            Batal
+          </Button>
+          <Button type="submit" disabled={isSubmitting} className="px-6">
             <Save className="w-4 h-4 mr-2" />
             {isSubmitting ? "Menyimpan..." : "Simpan Produk"}
           </Button>
