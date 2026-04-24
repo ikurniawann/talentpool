@@ -835,3 +835,262 @@ See this log for the ancestor stack trace.
 [browser] React does not recognize the `collisionPadding` prop on a DOM element. If you intentionally want it to appear in the DOM as a custom attribute, spell it as lowercase `collisionpadding` instead. If you accidentally passed it from a parent component, remove it from the DOM element. 
 ✓ Compiled in 62ms
  GET /api/purchasing/units?page=1&limit=20 200 in 737ms (next.js: 1028µs, application-code: 736ms)
+⚠ ./src/app/blue-theme.css:6:7
+Parsing CSS source code failed
+  [90m4 |[0m aside[[36mclass[0m*=[32m"sidebar"[0m],
+  [90m5 |[0m [data-slot=[32m"sidebar"[0m],
+[31m[1m>[0m [90m6 |[0m .lg\\:translate-x-[35m0[0m {
+  [90m  |[0m       [31m[1m^[0m
+  [90m7 |[0m   background: linear-gradient([35m180[0mdeg, #[35m1e3[0ma8a [35m0[0m%, #[35m3[0mb5998 [35m50[0m%, #[35m4[0ma6fa5 [35m100[0m%) !important;
+  [90m8 |[0m }
+  [90m9 |[0m
+
+'translate-x-0' is not recognized as a valid pseudo-class. Did you mean '::translate-x-0' (pseudo-element) or is this a typo?
+
+Generated code of PostCSS transform of file content of src/app/blue-theme.css:
+./src/app/blue-theme.css:6:7
+  [90m4 |[0m aside[[36mclass[0m*=[32m"sidebar"[0m],
+  [90m5 |[0m [data-slot=[32m"sidebar"[0m],
+[31m[1m>[0m [90m6 |[0m .lg\\:translate-x-[35m0[0m {
+  [90m  |[0m       [31m[1m^[0m
+  [90m7 |[0m   background: linear-gradient([35m180[0mdeg, #[35m1e3[0ma8a [35m0[0m%, #[35m3[0mb5998 [35m50[0m%, #[35m4[0ma6fa5 [35m100[0m%) !important;
+  [90m8 |[0m }
+  [90m9 |[0m
+
+Import trace:
+  Client Component Browser:
+    ./src/app/blue-theme.css [Client Component Browser]
+    ./src/app/layout.tsx [Server Component]
+
+
+⚠ ./src/app/blue-theme.css:6:7
+Parsing CSS source code failed
+  [90m4 |[0m aside[[36mclass[0m*=[32m"sidebar"[0m],
+  [90m5 |[0m [data-slot=[32m"sidebar"[0m],
+[31m[1m>[0m [90m6 |[0m .lg\\:translate-x-[35m0[0m {
+  [90m  |[0m       [31m[1m^[0m
+  [90m7 |[0m   background: linear-gradient([35m180[0mdeg, #[35m1e3[0ma8a [35m0[0m%, #[35m3[0mb5998 [35m50[0m%, #[35m4[0ma6fa5 [35m100[0m%) !important;
+  [90m8 |[0m }
+  [90m9 |[0m
+
+'translate-x-0' is not recognized as a valid pseudo-class. Did you mean '::translate-x-0' (pseudo-element) or is this a typo?
+
+Generated code of PostCSS transform of file content of src/app/blue-theme.css:
+./src/app/blue-theme.css:6:7
+  [90m4 |[0m aside[[36mclass[0m*=[32m"sidebar"[0m],
+  [90m5 |[0m [data-slot=[32m"sidebar"[0m],
+[31m[1m>[0m [90m6 |[0m .lg\\:translate-x-[35m0[0m {
+  [90m  |[0m       [31m[1m^[0m
+  [90m7 |[0m   background: linear-gradient([35m180[0mdeg, #[35m1e3[0ma8a [35m0[0m%, #[35m3[0mb5998 [35m50[0m%, #[35m4[0ma6fa5 [35m100[0m%) !important;
+  [90m8 |[0m }
+  [90m9 |[0m
+
+Import trace:
+  Client Component Browser:
+    ./src/app/blue-theme.css [Client Component Browser]
+    ./src/app/layout.tsx [Server Component]
+
+
+✓ Compiled in 0ms
+⚠ ./src/app/blue-theme.css:6:7
+Parsing CSS source code failed
+  [90m4 |[0m aside[[36mclass[0m*=[32m"sidebar"[0m],
+  [90m5 |[0m [data-slot=[32m"sidebar"[0m],
+[31m[1m>[0m [90m6 |[0m .lg\\:translate-x-[35m0[0m {
+  [90m  |[0m       [31m[1m^[0m
+  [90m7 |[0m   background: linear-gradient([35m180[0mdeg, #[35m1e3[0ma8a [35m0[0m%, #[35m3[0mb5998 [35m50[0m%, #[35m4[0ma6fa5 [35m100[0m%) !important;
+  [90m8 |[0m }
+  [90m9 |[0m
+
+'translate-x-0' is not recognized as a valid pseudo-class. Did you mean '::translate-x-0' (pseudo-element) or is this a typo?
+
+Generated code of PostCSS transform of file content of src/app/blue-theme.css:
+./src/app/blue-theme.css:6:7
+  [90m4 |[0m aside[[36mclass[0m*=[32m"sidebar"[0m],
+  [90m5 |[0m [data-slot=[32m"sidebar"[0m],
+[31m[1m>[0m [90m6 |[0m .lg\\:translate-x-[35m0[0m {
+  [90m  |[0m       [31m[1m^[0m
+  [90m7 |[0m   background: linear-gradient([35m180[0mdeg, #[35m1e3[0ma8a [35m0[0m%, #[35m3[0mb5998 [35m50[0m%, #[35m4[0ma6fa5 [35m100[0m%) !important;
+  [90m8 |[0m }
+  [90m9 |[0m
+
+Import trace:
+  Client Component Browser:
+    ./src/app/blue-theme.css [Client Component Browser]
+    ./src/app/layout.tsx [Server Component]
+
+
+⚠ ./src/app/blue-theme.css:6:7
+Parsing CSS source code failed
+  [90m4 |[0m aside[[36mclass[0m*=[32m"sidebar"[0m],
+  [90m5 |[0m [data-slot=[32m"sidebar"[0m],
+[31m[1m>[0m [90m6 |[0m .lg\\:translate-x-[35m0[0m {
+  [90m  |[0m       [31m[1m^[0m
+  [90m7 |[0m   background: linear-gradient([35m180[0mdeg, #[35m1e3[0ma8a [35m0[0m%, #[35m3[0mb5998 [35m50[0m%, #[35m4[0ma6fa5 [35m100[0m%) !important;
+  [90m8 |[0m }
+  [90m9 |[0m
+
+'translate-x-0' is not recognized as a valid pseudo-class. Did you mean '::translate-x-0' (pseudo-element) or is this a typo?
+
+Generated code of PostCSS transform of file content of src/app/blue-theme.css:
+./src/app/blue-theme.css:6:7
+  [90m4 |[0m aside[[36mclass[0m*=[32m"sidebar"[0m],
+  [90m5 |[0m [data-slot=[32m"sidebar"[0m],
+[31m[1m>[0m [90m6 |[0m .lg\\:translate-x-[35m0[0m {
+  [90m  |[0m       [31m[1m^[0m
+  [90m7 |[0m   background: linear-gradient([35m180[0mdeg, #[35m1e3[0ma8a [35m0[0m%, #[35m3[0mb5998 [35m50[0m%, #[35m4[0ma6fa5 [35m100[0m%) !important;
+  [90m8 |[0m }
+  [90m9 |[0m
+
+Import trace:
+  Client Component Browser:
+    ./src/app/blue-theme.css [Client Component Browser]
+    ./src/app/layout.tsx [Server Component]
+
+
+ GET /dashboard/purchasing/units 200 in 184ms (next.js: 37ms, application-code: 147ms)
+⚠ ./src/app/blue-theme.css:6:7
+Parsing CSS source code failed
+  [90m4 |[0m aside[[36mclass[0m*=[32m"sidebar"[0m],
+  [90m5 |[0m [data-slot=[32m"sidebar"[0m],
+[31m[1m>[0m [90m6 |[0m .lg\\:translate-x-[35m0[0m {
+  [90m  |[0m       [31m[1m^[0m
+  [90m7 |[0m   background: linear-gradient([35m180[0mdeg, #[35m1e3[0ma8a [35m0[0m%, #[35m3[0mb5998 [35m50[0m%, #[35m4[0ma6fa5 [35m100[0m%) !important;
+  [90m8 |[0m }
+  [90m9 |[0m
+
+'translate-x-0' is not recognized as a valid pseudo-class. Did you mean '::translate-x-0' (pseudo-element) or is this a typo?
+
+Generated code of PostCSS transform of file content of src/app/blue-theme.css:
+./src/app/blue-theme.css:6:7
+  [90m4 |[0m aside[[36mclass[0m*=[32m"sidebar"[0m],
+  [90m5 |[0m [data-slot=[32m"sidebar"[0m],
+[31m[1m>[0m [90m6 |[0m .lg\\:translate-x-[35m0[0m {
+  [90m  |[0m       [31m[1m^[0m
+  [90m7 |[0m   background: linear-gradient([35m180[0mdeg, #[35m1e3[0ma8a [35m0[0m%, #[35m3[0mb5998 [35m50[0m%, #[35m4[0ma6fa5 [35m100[0m%) !important;
+  [90m8 |[0m }
+  [90m9 |[0m
+
+Import trace:
+  Client Component Browser:
+    ./src/app/blue-theme.css [Client Component Browser]
+    ./src/app/layout.tsx [Server Component]
+
+
+ GET /dashboard/purchasing/units 200 in 127ms (next.js: 100ms, application-code: 28ms)
+ GET /dashboard/purchasing/units 200 in 13ms (next.js: 1437µs, application-code: 12ms)
+ GET /dashboard/purchasing/units 200 in 1171ms (next.js: 76ms, application-code: 1095ms)
+ GET /dashboard/purchasing/units 200 in 1320ms (next.js: 1068µs, application-code: 1319ms)
+⚠ ./src/app/blue-theme.css:6:7
+Parsing CSS source code failed
+  [90m4 |[0m aside[[36mclass[0m*=[32m"sidebar"[0m],
+  [90m5 |[0m [data-slot=[32m"sidebar"[0m],
+[31m[1m>[0m [90m6 |[0m .lg\\:translate-x-[35m0[0m {
+  [90m  |[0m       [31m[1m^[0m
+  [90m7 |[0m   background: linear-gradient([35m180[0mdeg, #[35m1e3[0ma8a [35m0[0m%, #[35m3[0mb5998 [35m50[0m%, #[35m4[0ma6fa5 [35m100[0m%) !important;
+  [90m8 |[0m }
+  [90m9 |[0m
+
+'translate-x-0' is not recognized as a valid pseudo-class. Did you mean '::translate-x-0' (pseudo-element) or is this a typo?
+
+Generated code of PostCSS transform of file content of src/app/blue-theme.css:
+./src/app/blue-theme.css:6:7
+  [90m4 |[0m aside[[36mclass[0m*=[32m"sidebar"[0m],
+  [90m5 |[0m [data-slot=[32m"sidebar"[0m],
+[31m[1m>[0m [90m6 |[0m .lg\\:translate-x-[35m0[0m {
+  [90m  |[0m       [31m[1m^[0m
+  [90m7 |[0m   background: linear-gradient([35m180[0mdeg, #[35m1e3[0ma8a [35m0[0m%, #[35m3[0mb5998 [35m50[0m%, #[35m4[0ma6fa5 [35m100[0m%) !important;
+  [90m8 |[0m }
+  [90m9 |[0m
+
+Import trace:
+  Client Component Browser:
+    ./src/app/blue-theme.css [Client Component Browser]
+    ./src/app/layout.tsx [Server Component]
+
+
+⚠ ./src/app/blue-theme.css:6:7
+Parsing CSS source code failed
+  [90m4 |[0m aside[[36mclass[0m*=[32m"sidebar"[0m],
+  [90m5 |[0m [data-slot=[32m"sidebar"[0m],
+[31m[1m>[0m [90m6 |[0m .lg\\:translate-x-[35m0[0m {
+  [90m  |[0m       [31m[1m^[0m
+  [90m7 |[0m   background: linear-gradient([35m180[0mdeg, #[35m1e3[0ma8a [35m0[0m%, #[35m3[0mb5998 [35m50[0m%, #[35m4[0ma6fa5 [35m100[0m%) !important;
+  [90m8 |[0m }
+  [90m9 |[0m
+
+'translate-x-0' is not recognized as a valid pseudo-class. Did you mean '::translate-x-0' (pseudo-element) or is this a typo?
+
+Generated code of PostCSS transform of file content of src/app/blue-theme.css:
+./src/app/blue-theme.css:6:7
+  [90m4 |[0m aside[[36mclass[0m*=[32m"sidebar"[0m],
+  [90m5 |[0m [data-slot=[32m"sidebar"[0m],
+[31m[1m>[0m [90m6 |[0m .lg\\:translate-x-[35m0[0m {
+  [90m  |[0m       [31m[1m^[0m
+  [90m7 |[0m   background: linear-gradient([35m180[0mdeg, #[35m1e3[0ma8a [35m0[0m%, #[35m3[0mb5998 [35m50[0m%, #[35m4[0ma6fa5 [35m100[0m%) !important;
+  [90m8 |[0m }
+  [90m9 |[0m
+
+Import trace:
+  Client Component Browser:
+    ./src/app/blue-theme.css [Client Component Browser]
+    ./src/app/layout.tsx [Server Component]
+
+
+⚠ ./src/app/blue-theme.css:6:7
+Parsing CSS source code failed
+  [90m4 |[0m aside[[36mclass[0m*=[32m"sidebar"[0m],
+  [90m5 |[0m [data-slot=[32m"sidebar"[0m],
+[31m[1m>[0m [90m6 |[0m .lg\\:translate-x-[35m0[0m {
+  [90m  |[0m       [31m[1m^[0m
+  [90m7 |[0m   background: linear-gradient([35m180[0mdeg, #[35m1e3[0ma8a [35m0[0m%, #[35m3[0mb5998 [35m50[0m%, #[35m4[0ma6fa5 [35m100[0m%) !important;
+  [90m8 |[0m }
+  [90m9 |[0m
+
+'translate-x-0' is not recognized as a valid pseudo-class. Did you mean '::translate-x-0' (pseudo-element) or is this a typo?
+
+Generated code of PostCSS transform of file content of src/app/blue-theme.css:
+./src/app/blue-theme.css:6:7
+  [90m4 |[0m aside[[36mclass[0m*=[32m"sidebar"[0m],
+  [90m5 |[0m [data-slot=[32m"sidebar"[0m],
+[31m[1m>[0m [90m6 |[0m .lg\\:translate-x-[35m0[0m {
+  [90m  |[0m       [31m[1m^[0m
+  [90m7 |[0m   background: linear-gradient([35m180[0mdeg, #[35m1e3[0ma8a [35m0[0m%, #[35m3[0mb5998 [35m50[0m%, #[35m4[0ma6fa5 [35m100[0m%) !important;
+  [90m8 |[0m }
+  [90m9 |[0m
+
+Import trace:
+  Client Component Browser:
+    ./src/app/blue-theme.css [Client Component Browser]
+    ./src/app/layout.tsx [Server Component]
+
+
+⚠ ./src/app/blue-theme.css:6:7
+Parsing CSS source code failed
+  [90m4 |[0m aside[[36mclass[0m*=[32m"sidebar"[0m],
+  [90m5 |[0m [data-slot=[32m"sidebar"[0m],
+[31m[1m>[0m [90m6 |[0m .lg\\:translate-x-[35m0[0m {
+  [90m  |[0m       [31m[1m^[0m
+  [90m7 |[0m   background: linear-gradient([35m180[0mdeg, #[35m1e3[0ma8a [35m0[0m%, #[35m3[0mb5998 [35m50[0m%, #[35m4[0ma6fa5 [35m100[0m%) !important;
+  [90m8 |[0m }
+  [90m9 |[0m
+
+'translate-x-0' is not recognized as a valid pseudo-class. Did you mean '::translate-x-0' (pseudo-element) or is this a typo?
+
+Generated code of PostCSS transform of file content of src/app/blue-theme.css:
+./src/app/blue-theme.css:6:7
+  [90m4 |[0m aside[[36mclass[0m*=[32m"sidebar"[0m],
+  [90m5 |[0m [data-slot=[32m"sidebar"[0m],
+[31m[1m>[0m [90m6 |[0m .lg\\:translate-x-[35m0[0m {
+  [90m  |[0m       [31m[1m^[0m
+  [90m7 |[0m   background: linear-gradient([35m180[0mdeg, #[35m1e3[0ma8a [35m0[0m%, #[35m3[0mb5998 [35m50[0m%, #[35m4[0ma6fa5 [35m100[0m%) !important;
+  [90m8 |[0m }
+  [90m9 |[0m
+
+Import trace:
+  Client Component Browser:
+    ./src/app/blue-theme.css [Client Component Browser]
+    ./src/app/layout.tsx [Server Component]
+
+
+ GET /api/purchasing/units?page=1&limit=20 200 in 278ms (next.js: 51ms, application-code: 227ms)
