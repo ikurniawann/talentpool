@@ -133,78 +133,69 @@ export default function NewPriceListPage() {
                 <Label>
                   Supplier <span className="text-red-500">*</span>
                 </Label>
-                <Select
+                <Combobox
+                  options={suppliers.map((supplier) => ({
+                    value: supplier.id,
+                    label: supplier.nama_supplier,
+                    description: supplier.kode,
+                  }))}
                   value={formData.supplier_id}
-                  onValueChange={(v) => setFormData({ ...formData, supplier_id: v })}
+                  onChange={(v) => setFormData({ ...formData, supplier_id: v })}
+                  placeholder="Pilih supplier..."
+                  searchPlaceholder="Cari supplier (nama/kode)..."
+                  emptyMessage="Supplier tidak ditemukan"
+                  allowClear
                   disabled={loading}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Pilih supplier">
-                      {formData.supplier_id && suppliers.find(s => s.id === formData.supplier_id) ? (
-                        <span>{suppliers.find(s => s.id === formData.supplier_id)?.nama_supplier} ({suppliers.find(s => s.id === formData.supplier_id)?.kode})</span>
-                      ) : null}
-                    </SelectValue>
-                  </SelectTrigger>
-                  <SelectContent>
-                    {suppliers.map((supplier) => (
-                      <SelectItem key={supplier.id} value={supplier.id}>
-                        {supplier.nama_supplier} ({supplier.kode})
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                />
+                <p className="text-xs text-muted-foreground">
+                  Contoh: PT Sari Laut, UD Sumber Jaya
+                </p>
               </div>
 
               <div className="space-y-2">
                 <Label>
                   Bahan Baku <span className="text-red-500">*</span>
                 </Label>
-                <Select
+                <Combobox
+                  options={materials.map((material) => ({
+                    value: material.id,
+                    label: material.nama,
+                    description: material.kode,
+                  }))}
                   value={formData.bahan_baku_id}
-                  onValueChange={(v) => setFormData({ ...formData, bahan_baku_id: v })}
+                  onChange={(v) => setFormData({ ...formData, bahan_baku_id: v })}
+                  placeholder="Pilih bahan baku..."
+                  searchPlaceholder="Cari bahan baku (nama/kode)..."
+                  emptyMessage="Bahan baku tidak ditemukan"
+                  allowClear
                   disabled={loading}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Pilih bahan baku">
-                      {formData.bahan_baku_id && materials.find(m => m.id === formData.bahan_baku_id) ? (
-                        <span>{materials.find(m => m.id === formData.bahan_baku_id)?.nama} - {materials.find(m => m.id === formData.bahan_baku_id)?.kode}</span>
-                      ) : null}
-                    </SelectValue>
-                  </SelectTrigger>
-                  <SelectContent>
-                    {materials.map((material) => (
-                      <SelectItem key={material.id} value={material.id}>
-                        {material.nama} - {material.kode}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                />
+                <p className="text-xs text-muted-foreground">
+                  Contoh: Tepung Terigu, Gula Pasir
+                </p>
               </div>
 
               <div className="space-y-2">
                 <Label>
                   Satuan <span className="text-red-500">*</span>
                 </Label>
-                <Select
+                <Combobox
+                  options={units.map((unit) => ({
+                    value: unit.id,
+                    label: unit.nama,
+                    description: unit.kode,
+                  }))}
                   value={formData.satuan_id}
-                  onValueChange={(v) => setFormData({ ...formData, satuan_id: v })}
+                  onChange={(v) => setFormData({ ...formData, satuan_id: v })}
+                  placeholder="Pilih satuan..."
+                  searchPlaceholder="Cari satuan (nama/kode)..."
+                  emptyMessage="Satuan tidak ditemukan"
+                  allowClear
                   disabled={loading}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Pilih satuan">
-                      {formData.satuan_id && units.find(u => u.id === formData.satuan_id) ? (
-                        <span>{units.find(u => u.id === formData.satuan_id)?.nama} ({units.find(u => u.id === formData.satuan_id)?.kode})</span>
-                      ) : null}
-                    </SelectValue>
-                  </SelectTrigger>
-                  <SelectContent>
-                    {units.map((unit) => (
-                      <SelectItem key={unit.id} value={unit.id}>
-                        {unit.nama} ({unit.kode})
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                />
+                <p className="text-xs text-muted-foreground">
+                  Contoh: Kilogram (KG), Liter (LT)
+                </p>
               </div>
             </CardContent>
           </Card>
