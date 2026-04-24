@@ -54,8 +54,8 @@ export function ActivityLogBell() {
 
   return (
     <DropdownMenu open={open} onOpenChange={setOpen}>
-      <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="icon" className="relative h-9 w-9">
+      <DropdownMenuTrigger asChild disabled={false}>
+        <button className="relative h-9 w-9 rounded-md hover:bg-accent hover:text-accent-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2">
           <Bell className="h-5 w-5" />
           {unreadCount > 0 && (
             <Badge
@@ -65,7 +65,7 @@ export function ActivityLogBell() {
               {unreadCount > 99 ? "99+" : unreadCount}
             </Badge>
           )}
-        </Button>
+        </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent 
         align="end" 
