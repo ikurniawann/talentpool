@@ -24,6 +24,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowLeft, Save, Plus, Trash2, Package, Search, User } from "lucide-react";
 import { toast } from "sonner";
+import { Combobox } from "@/components/ui/combobox";
 import { Supplier, RawMaterialWithStock, PurchaseOrderFormData, PurchaseOrderItemFormData, Unit } from "@/types/purchasing";
 import { listSuppliers, listRawMaterials, listUnits, createPurchaseOrder, createPOItem } from "@/lib/purchasing";
 
@@ -132,9 +133,9 @@ export default function NewPOPage() {
       // Load units
       console.log("Loading units...");
       try {
-        const unitsRes = await listUnits(true);
-        console.log("Units loaded:", unitsRes?.length || 0);
-        setUnits(unitsRes || []);
+        const unitsRes = await listUnits();
+        console.log("Units loaded:", unitsRes?.data?.length || 0);
+        setUnits(unitsRes?.data || []);
       } catch (err: any) {
         console.error("Failed to load units:", err.message);
         // Units are optional, continue
@@ -443,26 +444,22 @@ export default function NewPOPage() {
                 >
                   <div className="col-span-4 space-y-1">
                     <Label className="text-xs">Bahan Baku *</Label>
-                    <Select
+                    <Combobox
+                      options={materials.map((m) => ({
+                        value: m.id,
+                        label: m.nama,
+                        description: m.kode,
+                      }))}
                       value={item.raw_material_id}
-                      onValueChange={(v) =>
+                      onChange={(v) =>
                         updateItem(index, "raw_material_id", v)
                       }
+                      placeholder="Pilih bahan baku..."
+                      searchPlaceholder="Cari bahan (nama/kode)..."
+                      emptyMessage="Bahan baku tidak ditemukan"
+                      allowClear
                       disabled={loading}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Pilih bahan">
-                          {item.raw_material_id && materials.find(m => m.id === item.raw_material_id)?.nama}
-                        </SelectValue>
-                      </SelectTrigger>
-                      <SelectContent>
-                        {materials.map((m) => (
-                          <SelectItem key={m.id} value={m.id}>
-                            {m.nama} ({m.kode})
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    />
                   </div>
 
                   <div className="col-span-2 space-y-1">
@@ -484,25 +481,21 @@ export default function NewPOPage() {
 
                   <div className="col-span-2 space-y-1">
                     <Label className="text-xs">Satuan</Label>
-                    <Select
+                    <Combobox
+                      options={(units || []).map((u) => ({
+                        value: u.id,
+                        label: u.nama,
+                        description: u.kode,
+                      }))}
                       value={item.satuan_id || ""}
-                      onValueChange={(v) =>
+                      onChange={(v) =>
                         updateItem(index, "satuan_id", v)
                       }
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Satuan">
-                          {item.satuan_id && units.find(u => u.id === item.satuan_id)?.nama}
-                        </SelectValue>
-                      </SelectTrigger>
-                      <SelectContent>
-                        {units.map((u) => (
-                          <SelectItem key={u.id} value={u.id}>
-                            {u.nama}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                      placeholder="Pilih satuan..."
+                      searchPlaceholder="Cari satuan..."
+                      emptyMessage="Satuan tidak ditemukan"
+                      allowClear
+                    />
                   </div>
 
                   <div className="col-span-2 space-y-1">

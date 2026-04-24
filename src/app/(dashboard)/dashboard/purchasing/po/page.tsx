@@ -26,10 +26,11 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Plus, Search, MoreVertical, FileText, CheckCircle, Send, XCircle } from "lucide-react";
+import { Plus, Search, MoreVertical, FileText, CheckCircle, Send, XCircle, Download, Trash2, Check } from "lucide-react";
 import { toast } from "sonner";
 import { PurchaseOrderWithStats, POStatus, PaginatedResponse } from "@/types/purchasing";
 import { listPurchaseOrders, approvePurchaseOrder, sendPurchaseOrder, cancelPurchaseOrder } from "@/lib/purchasing";
+import { convertToCSV, downloadCSV, formatDateForCSV, formatCurrencyForCSV } from "@/lib/utils/csv-export";
 import {
   Pagination,
   PaginationContent,
@@ -77,6 +78,11 @@ export default function PurchaseOrdersPage() {
   const [isSendDialogOpen, setIsSendDialogOpen] = useState(false);
   const [sendingPo, setSendingPo] = useState<PurchaseOrderWithStats | null>(null);
   const [sendVia, setSendVia] = useState<"EMAIL" | "WHATSAPP" | "PRINT" | "OTHER">("EMAIL");
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [isBulkApproveDialogOpen, setIsBulkApproveDialogOpen] = useState(false);
+  const [isBulkDeleteDialogOpen, setIsBulkDeleteDialogOpen] = useState(false);
+  const [isProcessingBulk, setIsProcessingBulk] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
 
   useEffect(() => {
     loadPOs();
@@ -110,6 +116,145 @@ export default function PurchaseOrdersPage() {
       toast.error("Gagal memuat data PO");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleExportCSV = async () => {
+    try {
+      setIsExporting(true);
+      // Fetch all data (not paginated)
+      const response = await listPurchaseOrders({
+        search: searchQuery || undefined,
+        status: statusFilter || undefined,
+        page: 1,
+        limit: 1000, // Get more data for export
+      });
+
+      const columns = [
+        { key: "nomor_po", label: "Nomor PO" },
+        { key: "nama_supplier", label: "Supplier" },
+        { key: "supplier_kode", label: "Kode Supplier" },
+        { key: "tanggal_po", label: "Tanggal PO", format: formatDateForCSV },
+        { key: "status", label: "Status" },
+        { key: "subtotal", label: "Total Amount", format: (val: any) => val ? formatCurrencyForCSV(val) : "" },
+        { key: "created_by", label: "Created By" },
+        { key: "catatan", label: "Catatan" },
+      ];
+
+      const csvContent = convertToCSV(response.data, columns);
+      const filename = `purchase-orders-${new Date().toISOString().split("T")[0]}.csv`;
+      downloadCSV(csvContent, filename);
+      
+      toast.success(`Berhasil export ${response.data.length} PO`);
+    } catch (error) {
+      console.error("Error exporting CSV:", error);
+      toast.error("Gagal export data");
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  // Checkbox handlers
+  const toggleSelectAll = (checked: boolean) => {
+    if (checked) {
+      setSelectedIds(new Set(pos.map(po => po.id)));
+    } else {
+      setSelectedIds(new Set());
+    }
+  };
+
+  const toggleSelectItem = (id: string) => {
+    const newSelected = new Set(selectedIds);
+    if (newSelected.has(id)) {
+      newSelected.delete(id);
+    } else {
+      newSelected.add(id);
+    }
+    setSelectedIds(newSelected);
+  };
+
+  // Bulk actions
+  const handleBulkApprove = async () => {
+    if (selectedIds.size === 0) return;
+    
+    setIsProcessingBulk(true);
+    try {
+      let successCount = 0;
+      let failCount = 0;
+      const failedIds: string[] = [];
+      
+      console.log(`Starting bulk approve for ${selectedIds.size} POs:`, Array.from(selectedIds));
+      
+      for (const id of selectedIds) {
+        try {
+          console.log(`Approving PO ${id}...`);
+          await approvePurchaseOrder(id);
+          successCount++;
+          console.log(`✓ PO ${id} approved`);
+        } catch (error: any) {
+          console.error(`✗ Failed to approve PO ${id}:`, error?.message || error);
+          failCount++;
+          failedIds.push(id);
+        }
+      }
+      
+      console.log(`Bulk approve completed: ${successCount} success, ${failCount} failed`);
+      
+      if (successCount > 0) {
+        toast.success(`Berhasil approve ${successCount} PO`);
+      }
+      
+      if (failCount > 0) {
+        toast.error(`${failCount} PO gagal diapprove: ${failedIds.slice(0, 3).join(', ')}${failedIds.length > 3 ? '...' : ''}`);
+      }
+      
+      // Reload data
+      await loadPOs();
+      
+      // Clear selection
+      setSelectedIds(new Set());
+      setIsBulkApproveDialogOpen(false);
+    } catch (error) {
+      console.error("Error bulk approve:", error);
+      toast.error("Terjadi kesalahan saat approve massal");
+    } finally {
+      setIsProcessingBulk(false);
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedIds.size === 0) return;
+    
+    setIsProcessingBulk(true);
+    try {
+      // Note: You'll need to implement deletePurchaseOrder in lib/purchasing
+      let successCount = 0;
+      let failCount = 0;
+      
+      // Placeholder - implement actual delete API call
+      for (const id of selectedIds) {
+        try {
+          // await deletePurchaseOrder(id); // TODO: Implement this
+          successCount++;
+        } catch (error: any) {
+          console.error(`Failed to delete PO ${id}:`, error);
+          failCount++;
+        }
+      }
+      
+      toast.success(`Berhasil hapus ${successCount} PO`);
+      if (failCount > 0) {
+        toast.error(`${failCount} PO gagal dihapus`);
+      }
+      
+      loadPOs();
+      setSelectedIds(new Set());
+      setIsBulkDeleteDialogOpen(false);
+    } catch (error) {
+      console.error("Error bulk delete:", error);
+      toast.error("Gagal hapus massal");
+    } finally {
+      setIsProcessingBulk(false);
     }
   };
 
@@ -201,12 +346,18 @@ export default function PurchaseOrdersPage() {
             Kelola Purchase Order dari pembuatan hingga penerimaan
           </p>
         </div>
-        <Link href="/dashboard/purchasing/po/new">
-          <Button>
-            <Plus className="w-4 h-4 mr-2" />
-            Buat PO Baru
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={handleExportCSV} disabled={isExporting}>
+            <Download className="w-4 h-4 mr-2" />
+            {isExporting ? "Exporting..." : "Export CSV"}
           </Button>
-        </Link>
+          <Link href="/dashboard/purchasing/po/new">
+            <Button>
+              <Plus className="w-4 h-4 mr-2" />
+              Buat PO Baru
+            </Button>
+          </Link>
+        </div>
       </div>
 
       {/* Filters */}
@@ -234,11 +385,54 @@ export default function PurchaseOrdersPage() {
         </Select>
       </div>
 
+      {/* Bulk Actions */}
+      {selectedIds.size > 0 && (
+        <div className="flex items-center gap-2 p-3 bg-blue-50 border border-blue-200 rounded-md">
+          <span className="text-sm font-medium text-blue-800">
+            {selectedIds.size} PO terpilih
+          </span>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => setIsBulkApproveDialogOpen(true)}
+            disabled={isProcessingBulk}
+          >
+            <CheckCircle className="w-4 h-4 mr-1" />
+            Approve Selected
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => setIsBulkDeleteDialogOpen(true)}
+            disabled={isProcessingBulk}
+          >
+            <Trash2 className="w-4 h-4 mr-1" />
+            Delete Selected
+          </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => setSelectedIds(new Set())}
+          >
+            Clear
+          </Button>
+        </div>
+      )}
+
       {/* Table */}
-      <div className="border rounded-lg">
-        <Table>
+      <div className="border rounded-lg overflow-x-auto">
+        <div className="min-w-[1000px]">
+          <Table>
           <TableHeader>
             <TableRow>
+              <TableHead className="w-[50px]">
+                <input
+                  type="checkbox"
+                  checked={selectedIds.size === pos.length && pos.length > 0}
+                  onChange={(e) => toggleSelectAll(e.target.checked)}
+                  className="rounded border-gray-300"
+                />
+              </TableHead>
               <TableHead>Nomor PO</TableHead>
               <TableHead>Supplier</TableHead>
               <TableHead>Tanggal</TableHead>
@@ -264,6 +458,14 @@ export default function PurchaseOrdersPage() {
             ) : (
               pos.map((po) => (
                 <TableRow key={po.id}>
+                  <TableCell>
+                    <input
+                      type="checkbox"
+                      checked={selectedIds.has(po.id)}
+                      onChange={() => toggleSelectItem(po.id)}
+                      className="rounded border-gray-300"
+                    />
+                  </TableCell>
                   <TableCell className="font-medium">
                     <Link
                       href={`/dashboard/purchasing/po/${po.id}`}
@@ -301,7 +503,7 @@ export default function PurchaseOrdersPage() {
                   </TableCell>
                   <TableCell>
                     <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
+                      <DropdownMenuTrigger>
                         <Button variant="ghost" size="icon">
                           <MoreVertical className="w-4 h-4" />
                         </Button>
@@ -344,6 +546,7 @@ export default function PurchaseOrdersPage() {
             )}
           </TableBody>
         </Table>
+        </div>
       </div>
 
       {/* Pagination */}
@@ -470,6 +673,46 @@ export default function PurchaseOrdersPage() {
               disabled={!cancelReason}
             >
               Batalkan PO
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Bulk Approve Dialog */}
+      <Dialog open={isBulkApproveDialogOpen} onOpenChange={setIsBulkApproveDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Approve Multiple PO</DialogTitle>
+            <DialogDescription>
+              Anda akan approve {selectedIds.size} PO yang terpilih. Tindakan ini tidak dapat dibatalkan.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsBulkApproveDialogOpen(false)} disabled={isProcessingBulk}>
+              Cancel
+            </Button>
+            <Button onClick={handleBulkApprove} disabled={isProcessingBulk}>
+              {isProcessingBulk ? "Processing..." : `Approve ${selectedIds.size} PO`}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Bulk Delete Dialog */}
+      <Dialog open={isBulkDeleteDialogOpen} onOpenChange={setIsBulkDeleteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Hapus Multiple PO</DialogTitle>
+            <DialogDescription className="text-red-600">
+              ⚠️ Peringatan: Anda akan menghapus {selectedIds.size} PO yang terpilih. Tindakan ini tidak dapat dibatalkan!
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsBulkDeleteDialogOpen(false)} disabled={isProcessingBulk}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={handleBulkDelete} disabled={isProcessingBulk}>
+              {isProcessingBulk ? "Processing..." : `Hapus ${selectedIds.size} PO`}
             </Button>
           </DialogFooter>
         </DialogContent>

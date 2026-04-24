@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -29,7 +29,7 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
-import { Plus, Pencil, Trash2, Search } from "lucide-react";
+import { Plus, Pencil, Trash2, Search, X } from "lucide-react";
 import { toast } from "sonner";
 import { Unit, UnitFormData } from "@/types/purchasing";
 import {
@@ -38,6 +38,10 @@ import {
   updateUnit,
   deleteUnit,
 } from "@/lib/purchasing";
+import {
+  Pagination,
+  PaginationProps,
+} from "@/components/ui/pagination";
 
 const TIPE_OPTIONS = [
   { value: "BESAR", label: "Satuan Besar" },
@@ -47,9 +51,22 @@ const TIPE_OPTIONS = [
 
 export default function UnitsPage() {
   const router = useRouter();
+  
+  // State
   const [units, setUnits] = useState<Unit[]>([]);
   const [loading, setLoading] = useState(true);
+  const [total, setTotal] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
+  
+  // Filters
   const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  
+  // Pagination
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(20);
+  
+  // Dialog states
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [editingUnit, setEditingUnit] = useState<Unit | null>(null);
@@ -62,22 +79,47 @@ export default function UnitsPage() {
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  useEffect(() => {
-    loadUnits();
-  }, []);
+  // Debounce ref
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const loadUnits = async () => {
+  // ── Fetch ───────────────────────────────────────────────────
+
+  const fetchUnits = useCallback(async () => {
+    setLoading(true);
     try {
-      setLoading(true);
-      const data = await listUnits();
-      setUnits(data);
-    } catch (error) {
+      const response = await listUnits({
+        search: debouncedSearch || undefined,
+        page,
+        limit,
+      });
+      setUnits(response.data);
+      setTotal(response.pagination.total);
+      setTotalPages(response.pagination.total_pages);
+    } catch (error: any) {
       console.error("Error loading units:", error);
       toast.error("Gagal memuat data satuan");
     } finally {
       setLoading(false);
     }
-  };
+  }, [debouncedSearch, page, limit, toast]);
+
+  useEffect(() => {
+    fetchUnits();
+  }, [fetchUnits]);
+
+  // Debounce search
+  useEffect(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      setDebouncedSearch(searchQuery);
+      setPage(1); // Reset to first page on search
+    }, 300);
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+  }, [searchQuery]);
+
+  // ── Actions ──────────────────────────────────────────────────
 
   const handleOpenAdd = () => {
     setEditingUnit(null);
@@ -119,7 +161,7 @@ export default function UnitsPage() {
         toast.success("Satuan berhasil ditambahkan");
       }
       setIsDialogOpen(false);
-      loadUnits();
+      fetchUnits();
     } catch (error: any) {
       console.error("Error saving unit:", error);
       toast.error(error.message || "Gagal menyimpan satuan");
@@ -135,18 +177,19 @@ export default function UnitsPage() {
       await deleteUnit(deletingUnit.id);
       toast.success("Satuan berhasil dinonaktifkan");
       setIsDeleteDialogOpen(false);
-      loadUnits();
+      fetchUnits();
     } catch (error: any) {
       console.error("Error deleting unit:", error);
       toast.error(error.message || "Gagal menghapus satuan");
     }
   };
 
-  const filteredUnits = units.filter(
-    (unit) =>
-      unit.nama.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      unit.kode.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const handleResetFilters = () => {
+    setSearchQuery("");
+    setPage(1);
+  };
+
+  // ── Helpers ──────────────────────────────────────────────────
 
   const getTipeBadge = (tipe: string) => {
     switch (tipe) {
@@ -161,6 +204,17 @@ export default function UnitsPage() {
     }
   };
 
+  // ── Pagination ───────────────────────────────────────────────
+
+  const paginationProps: PaginationProps = {
+    currentPage: page,
+    totalPages,
+    totalItems: total,
+    onPageChange: setPage,
+  };
+
+  // ── Render ──────────────────────────────────────────────────
+
   return (
     <div className="container mx-auto py-6 space-y-6">
       {/* Header */}
@@ -168,7 +222,7 @@ export default function UnitsPage() {
         <div>
           <h1 className="text-2xl font-bold">Master Satuan</h1>
           <p className="text-muted-foreground">
-            Kelola satuan ukuran untuk bahan baku dan produk
+            Kelola satuan ukuran untuk bahan baku dan produk — {total} total
           </p>
         </div>
         <Button onClick={handleOpenAdd}>
@@ -177,24 +231,38 @@ export default function UnitsPage() {
         </Button>
       </div>
 
-      {/* Search */}
+      {/* Filter Bar */}
       <div className="flex items-center gap-4">
         <div className="relative flex-1 max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
-            placeholder="Cari satuan..."
+            placeholder="Cari kode atau nama satuan..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="pl-10"
           />
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery("")}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          )}
         </div>
+        
+        {(searchQuery || page > 1) && (
+          <Button variant="ghost" onClick={handleResetFilters}>
+            Reset
+          </Button>
+        )}
       </div>
 
       {/* Table */}
       <div className="border rounded-lg">
         <Table>
           <TableHeader>
-            <TableRow>
+            <TableRow className="hover:bg-transparent">
               <TableHead>Kode</TableHead>
               <TableHead>Nama</TableHead>
               <TableHead>Tipe</TableHead>
@@ -207,17 +275,31 @@ export default function UnitsPage() {
             {loading ? (
               <TableRow>
                 <TableCell colSpan={6} className="text-center py-8">
-                  Memuat data...
+                  <div className="flex justify-center items-center gap-2 text-muted-foreground">
+                    <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                    </svg>
+                    Memuat...
+                  </div>
                 </TableCell>
               </TableRow>
-            ) : filteredUnits.length === 0 ? (
+            ) : units.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={6} className="text-center py-8">
-                  Tidak ada data satuan
+                  <Search className="w-12 h-12 mx-auto mb-3 text-muted-foreground opacity-50" />
+                  <p className="text-muted-foreground">
+                    {searchQuery ? "Tidak ada satuan yang cocok dengan pencarian" : "Belum ada data satuan"}
+                  </p>
+                  {!searchQuery && (
+                    <Button variant="link" onClick={handleOpenAdd} className="mt-2">
+                      + Tambah Satuan
+                    </Button>
+                  )}
                 </TableCell>
               </TableRow>
             ) : (
-              filteredUnits.map((unit) => (
+              units.map((unit) => (
                 <TableRow key={unit.id}>
                   <TableCell className="font-medium">{unit.kode}</TableCell>
                   <TableCell>{unit.nama}</TableCell>
@@ -255,6 +337,30 @@ export default function UnitsPage() {
             )}
           </TableBody>
         </Table>
+
+        {/* Pagination */}
+        {!loading && units.length > 0 && (
+          <div className="flex items-center justify-between px-4 py-3 border-t">
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <span>Menampilkan</span>
+              <Select
+                value={String(limit)}
+                onValueChange={(v) => { setLimit(Number(v)); setPage(1); }}
+              >
+                <SelectTrigger className="w-[70px] h-8">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {[10, 20, 50, 100].map((n) => (
+                    <SelectItem key={n} value={String(n)}>{n}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <span>dari {total} data</span>
+            </div>
+            <Pagination {...paginationProps} />
+          </div>
+        )}
       </div>
 
       {/* Add/Edit Dialog */}

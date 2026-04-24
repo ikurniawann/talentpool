@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter, useParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -8,30 +8,8 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-} from "@/components/ui/dialog";
-import { BreadcrumbNav } from "@/modules/purchasing/components/breadcrumb/BreadcrumbNav";
-import PurchasingGuard from "@/modules/purchasing/components/auth/PurchasingGuard";
-import {
-  ChevronLeft,
-  Save,
-  RotateCcw,
-  CheckCircleIcon,
-  XCircleIcon,
-} from "lucide-react";
+import { Combobox } from "@/components/ui/combobox";
+import { ArrowLeft, Save, Building2, User, FileText, Phone } from "lucide-react";
 import {
   SupplierFormData,
   PaymentTerms,
@@ -40,414 +18,321 @@ import {
   CURRENCY_OPTIONS,
   KOTA_OPTIONS,
   formatNPWP,
-  validateNPWP,
 } from "@/types/supplier";
-import { createSupplier, updateSupplier } from "@/lib/purchasing/supplier";
-import { useToast } from "@/components/ui/toast";
-import { cn } from "@/lib/utils";
-
-// ─── Field hook ─────────────────────────────────────────────────
-
-interface FieldState {
-  value: string;
-  error: string;
-  touched: boolean;
-}
-
-function useField(initial = "") {
-  const [value, setValue] = useState(initial);
-  const [error, setError] = useState("");
-  const [touched, setTouched] = useState(false);
-
-  return {
-    value,
-    setValue: (v: string) => { setValue(v); if (touched) validate(v); },
-    setTouched: () => setTouched(true),
-    error,
-    setError,
-    reset: () => { setValue(initial); setError(""); setTouched(false); },
-    validate: (v?: string) => {
-      const val = v ?? value;
-      if (!val.trim()) { setError("Wajib diisi"); return false; }
-      setError("");
-      return true;
-    },
-  };
-}
-
-// ─── NPWP input ─────────────────────────────────────────────────
-
-function NPWPInput({ value, onChange, onBlur, error, touched }: {
-  value: string; onChange: (v: string) => void; onBlur: () => void;
-  error: string; touched: boolean;
-}) {
-  function handleChange(raw: string) {
-    onChange(formatNPWP(raw));
-  }
-  return (
-    <div>
-      <Input
-        value={value}
-        onChange={(e) => handleChange(e.target.value)}
-        onBlur={onBlur}
-        placeholder="XX.XXX.XXX.X-XXX.XXX"
-        maxLength={20}
-        className={cn(
-          touched && error ? "border-red-500" : "",
-          touched && !error && value ? "border-green-500" : ""
-        )}
-      />
-      {touched && error && <p className="text-xs text-red-500 mt-1 flex items-center gap-1">
-        <XCircleIcon className="w-3 h-3" />{error}
-      </p>}
-      {touched && !error && value && (
-        <p className="text-xs text-green-600 mt-1 flex items-center gap-1">
-          <CheckCircleIcon className="w-3 h-3" />Format valid
-        </p>
-      )}
-    </div>
-  );
-}
-
-// ─── Form validation ─────────────────────────────────────────────
-
-function validateForm(data: SupplierFormData): Record<string, string> {
-  const errors: Record<string, string> = {};
-  if (!data.nama_supplier?.trim()) errors.nama_supplier = "Nama supplier wajib diisi";
-  if (!data.pic_name?.trim()) errors.pic_name = "Nama PIC wajib diisi";
-  if (!data.pic_phone?.trim()) errors.pic_phone = "Telepon PIC wajib diisi";
-  if (!data.kota?.trim()) errors.kota = "Kota wajib diisi";
-  if (data.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email)) {
-    errors.email = "Email tidak valid";
-  }
-  if (data.npwp && !validateNPWP(data.npwp)) {
-    errors.npwp = "Format NPWP tidak valid";
-  }
-  return errors;
-}
-
-// ─── Edit Page ─────────────────────────────────────────────────
+import { getSupplier, updateSupplier } from "@/lib/purchasing/supplier";
+import { toast } from "sonner";
 
 export default function EditSupplierPage() {
-  return (
-    <PurchasingGuard minRole="purchasing_admin">
-      <EditSupplierInner />
-    </PurchasingGuard>
-  );
-}
-
-function EditSupplierInner() {
-  const params = useParams();
   const router = useRouter();
-  const { toast } = useToast();
+  const params = useParams();
   const supplierId = params.id as string;
 
-  const [initialLoading, setInitialLoading] = useState(true);
-  const [submitting, setSubmitting] = useState(false);
-  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
-  const [isDirty, setIsDirty] = useState(false);
-  const [confirmDialog, setConfirmDialog] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Form fields
-  const nama = useField();
-  const picName = useField();
-  const picPhone = useField();
-  const email = useField();
-  const alamat = useField();
-  const kota = useField();
-  const npwp = useField();
-  const [paymentTerms, setPaymentTerms] = useState<PaymentTerms>("NET30");
-  const [currency, setCurrency] = useState<Currency>("IDR");
-  const [bankNama, setBankNama] = useState("");
-  const [bankRekening, setBankRekening] = useState("");
-  const [bankAtasNama, setBankAtasNama] = useState("");
+  const [formData, setFormData] = useState<SupplierFormData>({
+    nama_supplier: "",
+    kode_supplier: "",
+    kota: "",
+    alamat: "",
+    telepon: "",
+    email: "",
+    pic_name: "",
+    pic_phone: "",
+    pic_email: "",
+    payment_terms: "NET 30",
+    currency: "IDR",
+    npwp: "",
+    catatan: "",
+  });
 
-  // Load existing data
   useEffect(() => {
-    async function load() {
-      try {
-        const { getSupplier } = await import("@/lib/purchasing/supplier");
-        const supplier = await getSupplier(supplierId);
-        nama.setValue(supplier.nama_supplier ?? "");
-        picName.setValue(supplier.pic_name ?? "");
-        picPhone.setValue(supplier.pic_phone ?? "");
-        email.setValue(supplier.email ?? "");
-        alamat.setValue(supplier.alamat ?? "");
-        kota.setValue(supplier.kota ?? "");
-        npwp.setValue(supplier.npwp ?? "");
-        setPaymentTerms(supplier.payment_terms);
-        setCurrency(supplier.currency);
-        setBankNama(supplier.bank_nama ?? "");
-        setBankRekening(supplier.bank_rekening ?? "");
-        setBankAtasNama(supplier.bank_atas_nama ?? "");
-      } catch (err: any) {
-        toast({ title: "Gagal memuat data", description: err.message, variant: "destructive" });
-        router.push("/dashboard/purchasing/suppliers");
-      } finally {
-        setInitialLoading(false);
-      }
-    }
-    load();
+    loadSupplier();
   }, [supplierId]);
 
-  // Track dirty
-  useEffect(() => { setIsDirty(true); }, [nama.value, picName.value, picPhone.value, email.value, alamat.value, kota.value, npwp.value]);
-
-  function buildFormData(): SupplierFormData {
-    return {
-      kode_supplier: "", // not editable
-      nama_supplier: nama.value,
-      pic_name: picName.value || undefined,
-      pic_phone: picPhone.value || undefined,
-      email: email.value || undefined,
-      alamat: alamat.value || undefined,
-      kota: kota.value || undefined,
-      npwp: npwp.value || undefined,
-      payment_terms: paymentTerms,
-      currency,
-      bank_nama: bankNama || undefined,
-      bank_rekening: bankRekening || undefined,
-      bank_atas_nama: bankAtasNama || undefined,
-    };
-  }
-
-  function handleSubmit(force = false) {
-    const data = buildFormData();
-    const errors = validateForm(data);
-    if (!nama.validate()) errors.nama_supplier = nama.error;
-    if (!picName.validate()) errors.pic_name = picName.error;
-    if (!picPhone.validate()) errors.pic_phone = picPhone.error;
-    if (!kota.validate()) errors.kota = kota.error;
-    if (email.value && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.value)) {
-      errors.email = "Email tidak valid"; email.setError(errors.email);
-    }
-    if (npwp.value && !validateNPWP(npwp.value)) {
-      errors.npwp = "Format NPWP tidak valid"; npwp.setError(errors.npwp);
-    }
-
-    setFormErrors(errors);
-    if (Object.keys(errors).length > 0) {
-      toast({ title: "Validasi gagal", description: "Mohon perbaiki field yang wajib diisi.", variant: "destructive" });
-      return;
-    }
-
-    if (isDirty && !force) {
-      setConfirmDialog(true);
-      return;
-    }
-
-    doSubmit(data);
-  }
-
-  async function doSubmit(data: SupplierFormData) {
-    setConfirmDialog(false);
-    setSubmitting(true);
+  const loadSupplier = async () => {
     try {
-      await updateSupplier(supplierId, data);
-      toast({ title: "Berhasil", description: "Supplier berhasil diperbarui." });
-      router.push("/dashboard/purchasing/suppliers");
-    } catch (err: any) {
-      toast({ title: "Gagal", description: err.message, variant: "destructive" });
+      const data = await getSupplier(supplierId);
+      setFormData({
+        nama_supplier: data.nama_supplier || "",
+        kode_supplier: data.kode_supplier || "",
+        kota: data.kota || "",
+        alamat: data.alamat || "",
+        telepon: data.telepon || "",
+        email: data.email || "",
+        pic_name: data.pic_name || "",
+        pic_phone: data.pic_phone || "",
+        pic_email: data.pic_email || "",
+        payment_terms: (data.payment_terms as PaymentTerms) || "NET 30",
+        currency: (data.currency as Currency) || "IDR",
+        npwp: data.npwp || "",
+        catatan: data.catatan || "",
+      });
+    } catch (error) {
+      console.error("Error loading supplier:", error);
+      toast.error("Gagal memuat data supplier");
     } finally {
-      setSubmitting(false);
+      setLoading(false);
     }
-  }
+  };
 
-  function handleReset() {
-    nama.reset(); picName.reset(); picPhone.reset(); email.reset();
-    alamat.reset(); kota.reset(); npwp.reset();
-    setBankNama(""); setBankRekening(""); setBankAtasNama("");
-    setIsDirty(false); setFormErrors({});
-  }
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!formData.nama_supplier || !formData.kota) {
+      toast.error("Nama supplier dan kota wajib diisi");
+      return;
+    }
 
-  function inputClass(hasError: boolean, touched: boolean) {
-    return cn(hasError ? "border-red-500" : touched && !hasError ? "border-green-500" : "");
-  }
+    setIsSubmitting(true);
+    try {
+      await updateSupplier(supplierId, formData);
+      toast.success("Supplier berhasil diupdate");
+      router.push("/dashboard/purchasing/suppliers");
+    } catch (error: any) {
+      console.error("Error updating supplier:", error);
+      toast.error(error.message || "Gagal mengupdate supplier");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
-  if (initialLoading) {
+  if (loading) {
     return (
-      <div className="flex items-center justify-center py-24">
-        <div className="flex items-center gap-2 text-gray-400">
-          <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
-            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-          </svg>
-          Memuat data supplier...
-        </div>
+      <div className="flex items-center justify-center py-16">
+        <div className="text-center text-gray-500">Memuat data...</div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6 max-w-4xl">
-      <BreadcrumbNav items={[
-        { label: "Dashboard", href: "/dashboard" },
-        { label: "Purchasing", href: "/dashboard/purchasing" },
-        { label: "Supplier", href: "/dashboard/purchasing/suppliers" },
-        { label: supplierId, href: `/dashboard/purchasing/suppliers/${supplierId}` },
-        { label: "Edit" },
-      ]} />
-
-      <div className="flex items-center justify-between">
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-center gap-4">
+        <Link href="/dashboard/purchasing/suppliers">
+          <Button variant="ghost" size="icon" className="h-9 w-9">
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
+        </Link>
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Edit Supplier</h1>
-          <p className="text-sm text-gray-500">Form edit data supplier</p>
+          <p className="text-sm text-gray-500">Update detail supplier</p>
         </div>
-        <Link href={`/dashboard/purchasing/suppliers/${supplierId}`}>
-          <Button variant="outline"><ChevronLeft className="w-4 h-4 mr-2" />Kembali</Button>
-        </Link>
       </div>
 
-      {/* Basic Info */}
-      <Card>
-        <CardHeader><CardTitle>Informasi Supplier</CardTitle></CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="nama">Nama Supplier *</Label>
-              <Input id="nama" value={nama.value}
-                onChange={(e) => nama.setValue(e.target.value)}
-                onBlur={() => { nama.setTouched(); nama.validate(); }}
-                className={inputClass(!!formErrors.nama_supplier, nama.touched)} />
-              {nama.touched && nama.error && (
-                <p className="text-xs text-red-500 mt-1 flex items-center gap-1"><XCircleIcon className="w-3 h-3" />{nama.error}</p>
-              )}
-            </div>
+      <form onSubmit={handleSubmit}>
+        {/* Full Column Layout */}
+        <div className="space-y-6">
+          
+          {/* Card 1: Informasi Supplier */}
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2">
+                <Building2 className="w-4 h-4" />
+                Informasi Supplier
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <Label htmlFor="kode" className="text-xs">Kode Supplier</Label>
+                  <Input
+                    id="kode"
+                    value={formData.kode_supplier}
+                    disabled
+                    className="h-9 text-sm bg-gray-50"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="kota" className="text-xs">Kota <span className="text-red-500">*</span></Label>
+                  <Combobox
+                    options={KOTA_OPTIONS.map((k) => ({ value: k, label: k }))}
+                    value={formData.kota}
+                    onChange={(v) => setFormData({ ...formData, kota: v })}
+                    placeholder="Pilih kota..."
+                    searchPlaceholder="Cari..."
+                    emptyMessage="Kota tidak ditemukan"
+                    allowClear
+                    className="h-9 text-sm"
+                  />
+                </div>
+              </div>
 
-            <div className="space-y-2">
-              <Label>Kota *</Label>
-              <Select value={kota.value} onValueChange={(v) => { kota.setValue(v); kota.setTouched(); }}>
-                <SelectTrigger className={inputClass(!!formErrors.kota, kota.touched)}>
-                  <SelectValue placeholder="— Pilih Kota —" />
-                </SelectTrigger>
-                <SelectContent>
-                  {KOTA_OPTIONS.map((k) => <SelectItem key={k} value={k}>{k}</SelectItem>)}
-                </SelectContent>
-              </Select>
-              {kota.touched && kota.error && (
-                <p className="text-xs text-red-500 mt-1 flex items-center gap-1"><XCircleIcon className="w-3 h-3" />{kota.error}</p>
-              )}
-            </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="nama" className="text-xs">Nama Supplier <span className="text-red-500">*</span></Label>
+                <Input
+                  id="nama"
+                  value={formData.nama_supplier}
+                  onChange={(e) => setFormData({ ...formData, nama_supplier: e.target.value })}
+                  required
+                  className="h-9 text-sm"
+                />
+              </div>
 
-            <div className="space-y-2">
-              <Label>Payment Terms *</Label>
-              <Select value={paymentTerms} onValueChange={(v) => setPaymentTerms(v as PaymentTerms)}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {PAYMENT_TERMS_OPTIONS.map((pt) => <SelectItem key={pt} value={pt}>{pt}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="alamat" className="text-xs">Alamat Lengkap</Label>
+                <Textarea
+                  id="alamat"
+                  value={formData.alamat}
+                  onChange={(e) => setFormData({ ...formData, alamat: e.target.value })}
+                  rows={2}
+                  className="text-sm resize-none"
+                />
+              </div>
+            </CardContent>
+          </Card>
 
-            <div className="space-y-2">
-              <Label>Mata Uang *</Label>
-              <Select value={currency} onValueChange={(v) => setCurrency(v as Currency)}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {CURRENCY_OPTIONS.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
+          {/* Card 2: Kontak Supplier */}
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2">
+                <Phone className="w-4 h-4" />
+                Kontak Supplier
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <Label htmlFor="telepon" className="text-xs">Telepon</Label>
+                  <Input
+                    id="telepon"
+                    value={formData.telepon}
+                    onChange={(e) => setFormData({ ...formData, telepon: e.target.value })}
+                    className="h-9 text-sm"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="email" className="text-xs">Email</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    value={formData.email}
+                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                    className="h-9 text-sm"
+                  />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
 
-            <div className="space-y-2">
-              <Label htmlFor="npwp">NPWP</Label>
-              <NPWPInput value={npwp.value} onChange={(v) => npwp.setValue(v)}
-                onBlur={() => npwp.setTouched()} error={npwp.error} touched={npwp.touched} />
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+          {/* Card 3: Kontak PIC */}
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2">
+                <User className="w-4 h-4" />
+                Kontak PIC (Person In Charge)
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="space-y-1.5">
+                  <Label htmlFor="pic_name" className="text-xs">Nama PIC</Label>
+                  <Input
+                    id="pic_name"
+                    value={formData.pic_name}
+                    onChange={(e) => setFormData({ ...formData, pic_name: e.target.value })}
+                    className="h-9 text-sm"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="pic_phone" className="text-xs">Telepon PIC</Label>
+                  <Input
+                    id="pic_phone"
+                    value={formData.pic_phone}
+                    onChange={(e) => setFormData({ ...formData, pic_phone: e.target.value })}
+                    className="h-9 text-sm"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="pic_email" className="text-xs">Email PIC</Label>
+                  <Input
+                    id="pic_email"
+                    type="email"
+                    value={formData.pic_email}
+                    onChange={(e) => setFormData({ ...formData, pic_email: e.target.value })}
+                    className="h-9 text-sm"
+                  />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
 
-      {/* PIC */}
-      <Card>
-        <CardHeader><CardTitle>Informasi PIC</CardTitle></CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="picName">Nama PIC *</Label>
-              <Input id="picName" value={picName.value}
-                onChange={(e) => picName.setValue(e.target.value)}
-                onBlur={() => { picName.setTouched(); picName.validate(); }}
-                className={inputClass(!!formErrors.pic_name, picName.touched)} />
-              {picName.touched && picName.error && (
-                <p className="text-xs text-red-500 mt-1 flex items-center gap-1"><XCircleIcon className="w-3 h-3" />{picName.error}</p>
-              )}
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="picPhone">Telepon PIC *</Label>
-              <Input id="picPhone" value={picPhone.value}
-                onChange={(e) => picPhone.setValue(e.target.value)}
-                onBlur={() => { picPhone.setTouched(); picPhone.validate(); }}
-                className={inputClass(!!formErrors.pic_phone, picPhone.touched)} />
-              {picPhone.touched && picPhone.error && (
-                <p className="text-xs text-red-500 mt-1 flex items-center gap-1"><XCircleIcon className="w-3 h-3" />{picPhone.error}</p>
-              )}
-            </div>
-            <div className="space-y-2 md:col-span-2">
-              <Label htmlFor="email">Email PIC</Label>
-              <Input id="email" type="email" value={email.value}
-                onChange={(e) => email.setValue(e.target.value)}
-                onBlur={() => email.setTouched()}
-                className={inputClass(!!formErrors.email, email.touched)} />
-              {email.touched && email.error && (
-                <p className="text-xs text-red-500 mt-1 flex items-center gap-1"><XCircleIcon className="w-3 h-3" />{email.error}</p>
-              )}
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+          {/* Card 4: Terms & Administrasi */}
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2">
+                <FileText className="w-4 h-4" />
+                Payment Terms & Administrasi
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <Label htmlFor="payment_terms" className="text-xs">Payment Terms <span className="text-red-500">*</span></Label>
+                  <Combobox
+                    options={PAYMENT_TERMS_OPTIONS.map((pt) => ({ value: pt, label: pt }))}
+                    value={formData.payment_terms}
+                    onChange={(v) => setFormData({ ...formData, payment_terms: v as PaymentTerms })}
+                    placeholder="Pilih terms..."
+                    searchPlaceholder="Cari..."
+                    emptyMessage="Tidak ditemukan"
+                    allowClear
+                    className="h-9 text-sm"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="currency" className="text-xs">Mata Uang <span className="text-red-500">*</span></Label>
+                  <Combobox
+                    options={CURRENCY_OPTIONS.map((c) => ({ value: c, label: c }))}
+                    value={formData.currency}
+                    onChange={(v) => setFormData({ ...formData, currency: v as Currency })}
+                    placeholder="Pilih currency..."
+                    searchPlaceholder="Cari..."
+                    emptyMessage="Tidak ditemukan"
+                    allowClear
+                    className="h-9 text-sm"
+                  />
+                </div>
+              </div>
 
-      {/* Address & Bank */}
-      <Card>
-        <CardHeader><CardTitle>Alamat & Bank</CardTitle></CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="alamat">Alamat</Label>
-            <Textarea id="alamat" value={alamat.value}
-              onChange={(e) => alamat.setValue(e.target.value)}
-              rows={3} />
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="bankNama">Nama Bank</Label>
-              <Input id="bankNama" value={bankNama} onChange={(e) => setBankNama(e.target.value)} placeholder="BCA" />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="bankRekening">No. Rekening</Label>
-              <Input id="bankRekening" value={bankRekening} onChange={(e) => setBankRekening(e.target.value)} placeholder="123-456-7890" />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="bankAtasNama">Atas Nama</Label>
-              <Input id="bankAtasNama" value={bankAtasNama} onChange={(e) => setBankAtasNama(e.target.value)} placeholder="PT Maju Bersama" />
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+              <div className="space-y-1.5">
+                <Label htmlFor="npwp" className="text-xs">NPWP</Label>
+                <Input
+                  id="npwp"
+                  value={formData.npwp}
+                  onChange={(e) => setFormData({ ...formData, npwp: formatNPWP(e.target.value) })}
+                  placeholder="XX.XXX.XXX.X-XXX.XXX"
+                  maxLength={20}
+                  className="h-9 text-sm font-mono"
+                />
+              </div>
 
-      {/* Actions */}
-      <div className="flex justify-end gap-3">
-        <Button variant="outline" onClick={handleReset}><RotateCcw className="w-4 h-4 mr-2" />Reset</Button>
-        <Link href="/dashboard/purchasing/suppliers"><Button variant="outline">Batal</Button></Link>
-        <Button onClick={() => handleSubmit(false)} disabled={submitting}>
-          <Save className="w-4 h-4 mr-2" />{submitting ? "Menyimpan..." : "Simpan"}
-        </Button>
-      </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="catatan" className="text-xs">Catatan Tambahan</Label>
+                <Textarea
+                  id="catatan"
+                  value={formData.catatan}
+                  onChange={(e) => setFormData({ ...formData, catatan: e.target.value })}
+                  rows={3}
+                  className="text-sm resize-none"
+                />
+              </div>
+            </CardContent>
+          </Card>
 
-      {/* Confirm Dialog */}
-      <Dialog open={confirmDialog} onOpenChange={setConfirmDialog}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Konfirmasi Penyimpanan</DialogTitle>
-            <DialogDescription>
-              Apakah Anda yakin ingin menyimpan perubahan?
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter className="gap-2 sm:gap-0">
-            <Button variant="outline" onClick={() => setConfirmDialog(false)}>Batal</Button>
-            <Button onClick={() => doSubmit(buildFormData())} disabled={submitting}>Ya, Simpan</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+        </div>
+
+        {/* Action Buttons */}
+        <div className="flex items-center justify-end gap-3 mt-6 pt-4 border-t">
+          <Button type="button" variant="outline" onClick={() => router.back()} className="px-6">
+            Batal
+          </Button>
+          <Button type="submit" disabled={isSubmitting} className="px-6">
+            <Save className="w-4 h-4 mr-2" />
+            {isSubmitting ? "Menyimpan..." : "Simpan Perubahan"}
+          </Button>
+        </div>
+      </form>
     </div>
   );
 }

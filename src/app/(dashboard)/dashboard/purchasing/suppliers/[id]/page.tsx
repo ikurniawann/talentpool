@@ -25,6 +25,7 @@ import {
 } from "@/components/ui/dialog";
 import { BreadcrumbNav } from "@/modules/purchasing/components/breadcrumb/BreadcrumbNav";
 import PurchasingGuard from "@/modules/purchasing/components/auth/PurchasingGuard";
+import { SupplierPriceHistoryPanel } from "@/modules/purchasing/components/supplier-price-history/SupplierPriceHistoryPanel";
 import {
   BuildingOfficeIcon,
   PencilSquareIcon,
@@ -70,11 +71,17 @@ function formatCurrency(amount: number, currency: string = "IDR"): string {
 }
 
 function formatDate(dateStr: string): string {
-  return new Intl.DateTimeFormat("id-ID", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  }).format(new Date(dateStr));
+  if (!dateStr) return "-";
+  try {
+    return new Intl.DateTimeFormat("id-ID", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    }).format(new Date(dateStr));
+  } catch (e) {
+    console.error("Invalid date:", dateStr, e);
+    return "-";
+  }
 }
 
 // ─── PO Status Badge ───────────────────────────────────────────
@@ -285,10 +292,11 @@ function SupplierDetailInner() {
 
       {/* Tabs */}
       <Tabs defaultValue="info" className="space-y-4">
-        <TabsList>
+        <TabsList className="grid grid-cols-4 w-full">
           <TabsTrigger value="info">Informasi</TabsTrigger>
           <TabsTrigger value="materials">Bahan Sering Dibeli</TabsTrigger>
           <TabsTrigger value="po">Riwayat PO</TabsTrigger>
+          <TabsTrigger value="prices">📊 Price History</TabsTrigger>
         </TabsList>
 
         {/* Info Tab */}
@@ -408,6 +416,13 @@ function SupplierDetailInner() {
             </CardContent>
           </Card>
         </TabsContent>
+        <TabsContent value="prices" className="mt-6">
+          <SupplierPriceHistoryPanel 
+            supplierId={supplier.id} 
+            supplierName={supplier.nama_supplier}
+          />
+        </TabsContent>
+
       </Tabs>
 
       {/* Deactivate Dialog */}
