@@ -1371,3 +1371,4 @@ Import trace:
  GET /api/purchasing/dashboard? 200 in 2.8s (next.js: 97ms, application-code: 2.7s)
 [browser] Encountered two children with the same key, `/dashboard/purchasing`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. 
 ✓ Compiled in 43ms
+✓ Compiled in 56ms

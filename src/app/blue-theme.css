@@ -1,20 +1,28 @@
-/* Jet Black Theme - Deep, Elegant Black */
+/* Pure Black Theme with Pink Accent */
 
-/* Sidebar Background - JET BLACK (not pure black) */
+/* Sidebar Background - PURE BLACK */
 aside[class*="sidebar"],
 [data-slot="sidebar"],
 .lg\:translate-x-0 {
-  background: #0f172a !important; /* Jet black with blue undertone */
+  background: #000000 !important; /* Pure black, no compromise */
 }
 
-/* Subtle gradient for depth */
+/* Minimal overlay for subtle depth */
 aside[class*="sidebar"]::before {
   content: '';
   position: absolute;
   inset: 0;
-  background: linear-gradient(180deg, rgba(15, 23, 42, 0.95) 0%, rgba(30, 41, 59, 0.98) 100%);
-  backdrop-filter: blur(5px);
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(3px);
   pointer-events: none;
+}
+
+/* Logo/Brand Text - HOT PINK! */
+aside[class*="sidebar"] h1,
+aside[class*="sidebar"] h2,
+aside[class*="sidebar"] span[class*="text-lg"],
+aside[class*="sidebar"] span[class*="font-bold"] {
+  color: #ff00aa !important; /* Bright hot pink for brand */
 }
 
 /* Nav items - semi-transparent white */
@@ -37,13 +45,13 @@ aside[class*="sidebar"] button[class*="flex items-center"][class*="bg-blue"] {
   background: rgba(255, 255, 255, 0.2) !important;
 }
 
-/* Text colors */
+/* Text colors - White */
 aside[class*="sidebar"] {
   color: white !important;
 }
 
 aside[class*="sidebar"] svg,
-aside[class*="sidebar"] span {
+aside[class*="sidebar"] span:not([class*="text-lg"]) {
   color: white !important;
 }
 
