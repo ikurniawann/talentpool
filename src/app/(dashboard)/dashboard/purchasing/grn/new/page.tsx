@@ -6,12 +6,16 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { DatePicker } from "@/components/ui/datepicker";
 import { useToast } from "@/components/ui/toast";
 import { BreadcrumbNav } from "@/modules/purchasing/components/breadcrumb/BreadcrumbNav";
+import {
+  Combobox,
+  ComboboxItem,
+  ComboboxPopover,
+  ComboboxProvider,
+} from "@/components/ui/combobox";
 import {
   ClipboardDocumentCheckIcon,
   PlusIcon,
@@ -31,6 +35,8 @@ interface Delivery {
   supplier_id: string;
   tanggal_kirim: string;
   tanggal_estimasi_tiba: string;
+  supplier_name?: string;
+  po_number?: string;
 }
 
 interface POItem {
@@ -67,6 +73,7 @@ export default function CreateGrnPage() {
     tanggal_penerimaan: new Date().toISOString().split("T")[0],
     catatan: "",
   });
+  const [searchQuery, setSearchQuery] = useState("");
 
   // Fetch deliveries that can be received
   useEffect(() => {
@@ -79,7 +86,14 @@ export default function CreateGrnPage() {
       const res = await fetch("/api/purchasing/delivery?limit=100");
       const data = await res.json();
       if (data.data) {
-        setDeliveries(data.data);
+        // Enhance delivery data with searchable text
+        const enhanced = data.data.map((d: Delivery) => ({
+          ...d,
+          supplier_name: d.kurir || d.no_surat_jalan || d.no_resi,
+          po_number: d.nomor_resi || d.no_resi,
+          search_text: `${d.no_resi} ${d.nomor_resi} ${d.no_surat_jalan} ${d.kurir}`.toLowerCase(),
+        }));
+        setDeliveries(enhanced);
       }
     } catch (e) {
       console.error(e);
@@ -98,26 +112,21 @@ export default function CreateGrnPage() {
     const poId = selectedDelivery?.purchase_order_id || selectedDelivery?.po_id;
     if (poId) {
       fetchPOItems(poId);
+    } else {
+      setPoItems([]);
+      setGrnItems([]);
     }
   }, [selectedDelivery]);
 
   async function fetchPOItems(poId: string) {
     try {
-      const res = await fetch(`/api/purchasing/po/${poId}`);
+      const res = await fetch(`/api/purchasing/po/${poId}/items`);
       const data = await res.json();
-      if (data.data?.items) {
-        const items = data.data.items.map((item: any) => ({
-          id: item.id,
-          raw_material_id: item.raw_material_id,
-          nama_bahan: item.raw_material?.nama || item.raw_material?.nama_bahan || "Unknown",
-          qty_ordered: item.qty_ordered || 0,
-          qty_received: item.qty_received || 0,
-          satuan: item.satuan?.nama || item.satuan?.nama_satuan || "pcs",
-        }));
-        setPoItems(items);
-        // Initialize GRN items
-        setGrnItems(items.map((item: POItem) => ({
-          id: item.id,
+      if (data.data) {
+        setPoItems(data.data);
+        // Initialize GRN items from PO items
+        const initialGrnItems: GrnItem[] = data.data.map((item: POItem) => ({
+          id: crypto.randomUUID(),
           purchase_order_item_id: item.id,
           raw_material_id: item.raw_material_id,
           nama_bahan: item.nama_bahan,
@@ -125,291 +134,350 @@ export default function CreateGrnPage() {
           qty_ditolak: 0,
           kondisi: "baik",
           catatan: "",
-        })));
+        }));
+        setGrnItems(initialGrnItems);
       }
     } catch (e) {
       console.error(e);
+      toast({ 
+        title: "Error", 
+        description: "Gagal memuat item PO", 
+        variant: "destructive" 
+      });
     }
   }
 
-  function handleDeliverySelect(deliveryId: string) {
-    const delivery = deliveries.find((d) => d.id === deliveryId);
-    setSelectedDelivery(delivery || null);
-    setFormData((prev) => ({ ...prev, delivery_id: deliveryId }));
-  }
+  const handleAddItem = () => {
+    setGrnItems([
+      ...grnItems,
+      {
+        id: crypto.randomUUID(),
+        raw_material_id: "",
+        nama_bahan: "",
+        qty_diterima: 0,
+        qty_ditolak: 0,
+        kondisi: "baik",
+        catatan: "",
+      },
+    ]);
+  };
 
-  function updateGrnItem(index: number, field: keyof GrnItem, value: any) {
-    setGrnItems((prev) => {
-      const updated = [...prev];
-      updated[index] = { ...updated[index], [field]: value };
-      return updated;
-    });
-  }
+  const handleRemoveItem = (id: string) => {
+    setGrnItems(grnItems.filter((item) => item.id !== id));
+  };
 
-  async function handleSubmit(e: React.FormEvent) {
+  const handleUpdateItem = (id: string, field: keyof GrnItem, value: any) => {
+    setGrnItems(
+      grnItems.map((item) => (item.id === id ? { ...item, [field]: value } : item))
+    );
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!formData.delivery_id) {
+      toast({
+        title: "Error",
+        description: "Pilih pengiriman terlebih dahulu",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (grnItems.length === 0) {
+      toast({
+        title: "Error",
+        description: "Tambahkan minimal 1 item",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setLoading(true);
-
     try {
-      // Validate
-      const validItems = grnItems.filter((item) => item.qty_diterima > 0 || item.qty_ditolak > 0);
-      if (validItems.length === 0) {
-        toast({ 
-          title: "Error", 
-          description: "Minimal 1 item harus diisi", 
-          variant: "destructive" 
-        });
-        setLoading(false);
-        return;
-      }
-
-      const payload = {
-        ...formData,
-        items: validItems.map((item) => ({
-          purchase_order_item_id: item.purchase_order_item_id,
-          raw_material_id: item.raw_material_id,
-          qty_diterima: item.qty_diterima,
-          qty_ditolak: item.qty_ditolak,
-          kondisi: item.kondisi,
-          catatan: item.catatan || null,
-        })),
-      };
-
-      console.log("=== SUBMIT GRN ===");
-      console.log("Payload:", payload);
-
-      const res = await fetch("/api/purchasing/grn", {
+      const response = await fetch("/api/purchasing/grn", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
+        body: JSON.stringify({
+          ...formData,
+          items: grnItems,
+        }),
       });
 
-      const data = await res.json();
-      console.log("API Response:", res.status, data);
-
-      if (res.ok) {
-        toast({
-          title: "✅ Berhasil",
-          description: `GRN ${data.data?.nomor_grn || ""} berhasil dibuat`,
-        });
-        router.push("/dashboard/purchasing/grn");
-        router.refresh();
-      } else {
-        throw new Error(data.error?.message || data.message || data.error || "Gagal membuat GRN");
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || "Gagal membuat GRN");
       }
-    } catch (error: any) {
-      console.error("Submit error:", error);
+
       toast({
-        title: "❌ Error",
-        description: error.message || "Gagal membuat GRN",
+        title: "Berhasil",
+        description: "GRN berhasil dibuat",
+      });
+      router.push("/dashboard/purchasing/grn");
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message,
         variant: "destructive",
       });
     } finally {
       setLoading(false);
     }
-  }
+  };
+
+  const filteredDeliveries = deliveries.filter((d: any) =>
+    d.search_text.includes(searchQuery.toLowerCase())
+  );
 
   return (
-    <div className="space-y-6">
-      <BreadcrumbNav
-        items={[
-          { label: "Dashboard", href: "/dashboard" },
-          { label: "Purchasing", href: "/dashboard/purchasing" },
-          { label: "Penerimaan", href: "/dashboard/purchasing/grn" },
-          { label: "Input Penerimaan" },
-        ]}
-      />
-
-      <div className="flex items-center gap-4">
-        <Link href="/dashboard/purchasing/grn">
-          <Button variant="ghost" size="icon">
-            <ArrowLeftIcon className="w-5 h-5" />
-          </Button>
-        </Link>
+    <div className="space-y-4">
+      {/* Header */}
+      <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Input Penerimaan Barang</h1>
-          <p className="text-sm text-gray-500">Catat penerimaan barang dari pengiriman</p>
+          <BreadcrumbNav
+            items={[
+              { href: "/dashboard/purchasing", label: "Purchasing" },
+              { href: "/dashboard/purchasing/grn", label: "Penerimaan Barang" },
+              { label: "Buat GRN Baru" },
+            ]}
+          />
+          <h1 className="text-2xl font-bold text-gray-900 mt-2">Buat GRN Baru</h1>
+          <p className="text-sm text-gray-500">Goods Receipt Note - Penerimaan Barang</p>
         </div>
+        <Button variant="outline" onClick={() => router.back()}>
+          <ArrowLeftIcon className="w-4 h-4 mr-2" />
+          Kembali
+        </Button>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-6">
-        {/* Delivery Selection */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg flex items-center gap-2">
-              <TruckIcon className="w-5 h-5" />
-              Pilih Pengiriman
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {fetchingDeliveries ? (
-              <p className="text-gray-500">Memuat data pengiriman...</p>
-            ) : deliveries.length === 0 ? (
-              <div className="text-center py-8 text-gray-500">
-                <TruckIcon className="w-12 h-12 mx-auto mb-3 opacity-30" />
-                <p>Tidak ada pengiriman yang menunggu penerimaan</p>
-                <Link href="/dashboard/purchasing/delivery/new">
-                  <Button variant="link" className="mt-2">Buat Pengiriman Baru</Button>
-                </Link>
-              </div>
-            ) : (
-              <div className="grid gap-3">
-                {deliveries.map((d) => (
-                  <div
-                    key={d.id}
-                    onClick={() => handleDeliverySelect(d.id)}
-                    className={`p-4 border rounded-lg cursor-pointer transition-colors ${
-                      selectedDelivery?.id === d.id
-                        ? "border-blue-500 bg-blue-50"
-                        : "border-gray-200 hover:border-gray-300"
-                    }`}
-                  >
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="font-medium">{d.no_surat_jalan || "Tanpa Surat Jalan"}</p>
-                        <p className="text-sm text-gray-500">
-                          {d.kurir} • {d.no_resi || d.nomor_resi}
-                        </p>
-                      </div>
-                      <Badge variant={d.status === "pending" ? "secondary" : "default"}>
-                        {d.status}
-                      </Badge>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {selectedDelivery && (
-          <>
-            {/* GRN Info */}
+      {/* Form */}
+      <form onSubmit={handleSubmit}>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 h-[calc(100vh-200px)]">
+          {/* Left Panel - Delivery Selection & Info */}
+          <div className="lg:col-span-1 space-y-4 overflow-y-auto pr-2">
             <Card>
-              <CardHeader>
-                <CardTitle className="text-lg flex items-center gap-2">
-                  <ClipboardDocumentCheckIcon className="w-5 h-5" />
-                  Informasi Penerimaan
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <TruckIcon className="w-5 h-5 text-pink-600" />
+                  Pilih Pengiriman
                 </CardTitle>
               </CardHeader>
-              <CardContent className="grid md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Tanggal Penerimaan *</Label>
-                  <Input
-                    type="date"
-                    value={formData.tanggal_penerimaan}
-                    onChange={(e) =>
-                      setFormData((prev) => ({ ...prev, tanggal_penerimaan: e.target.value }))
+              <CardContent className="space-y-3">
+                <ComboboxProvider
+                  value={selectedDelivery ? `${selectedDelivery.no_resi} - ${selectedDelivery.kurir}` : ""}
+                  onChange={(value) => {
+                    const delivery = deliveries.find((d: any) => 
+                      `${d.no_resi} - ${d.kurir}` === value
+                    );
+                    if (delivery) {
+                      setSelectedDelivery(delivery);
+                      setFormData({ ...formData, delivery_id: delivery.id });
                     }
-                    required
+                  }}
+                >
+                  <Label>Pengiriman</Label>
+                  <Combobox placeholder="Cari nomor resi / surat jalan...">
+                    <Input
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      placeholder="Cari pengiriman..."
+                    />
+                    <ComboboxPopover className="z-50 w-[--input-width] max-h-60 overflow-y-auto">
+                      {fetchingDeliveries ? (
+                        <div className="p-4 text-center text-sm text-gray-500">Loading...</div>
+                      ) : filteredDeliveries.length === 0 ? (
+                        <div className="p-4 text-center text-sm text-gray-500">Tidak ada pengiriman</div>
+                      ) : (
+                        filteredDeliveries.map((d: any) => (
+                          <ComboboxItem
+                            key={d.id}
+                            value={`${d.no_resi} - ${d.kurir}`}
+                            className="cursor-pointer hover:bg-pink-50"
+                          >
+                            <div className="flex flex-col gap-1">
+                              <span className="font-medium text-sm">{d.no_resi}</span>
+                              <span className="text-xs text-gray-500">
+                                {d.supplier_name || d.kurir} • {d.po_number || d.nomor_resi}
+                              </span>
+                            </div>
+                          </ComboboxItem>
+                        ))
+                      )}
+                    </ComboboxPopover>
+                  </Combobox>
+                </ComboboxProvider>
+
+                {selectedDelivery && (
+                  <div className="space-y-2 pt-2 border-t">
+                    <div className="text-sm">
+                      <span className="text-gray-500">No. Resi:</span>
+                      <p className="font-medium">{selectedDelivery.no_resi}</p>
+                    </div>
+                    <div className="text-sm">
+                      <span className="text-gray-500">Surat Jalan:</span>
+                      <p className="font-medium">{selectedDelivery.no_surat_jalan || "-"}</p>
+                    </div>
+                    <div className="text-sm">
+                      <span className="text-gray-500">Kurir/Ekspedisi:</span>
+                      <p className="font-medium">{selectedDelivery.kurir || "-"}</p>
+                    </div>
+                    <div className="text-sm">
+                      <span className="text-gray-500">Status:</span>
+                      <Badge>{selectedDelivery.status}</Badge>
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base">Informasi Penerimaan</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div>
+                  <Label htmlFor="tanggal">Tanggal Penerimaan</Label>
+                  <DatePicker
+                    id="tanggal"
+                    date={formData.tanggal_penerimaan ? new Date(formData.tanggal_penerimaan) : undefined}
+                    onChange={(date) =>
+                      setFormData({ ...formData, tanggal_penerimaan: date?.toISOString().split("T")[0] || "" })
+                    }
                   />
                 </div>
-                <div className="space-y-2 md:col-span-2">
-                  <Label>Catatan</Label>
+                <div>
+                  <Label htmlFor="catatan">Catatan</Label>
                   <Textarea
+                    id="catatan"
                     value={formData.catatan}
-                    onChange={(e) => setFormData((prev) => ({ ...prev, catatan: e.target.value }))}
-                    placeholder="Catatan penerimaan..."
+                    onChange={(e) => setFormData({ ...formData, catatan: e.target.value })}
+                    placeholder="Catatan tambahan (opsional)"
                     rows={3}
                   />
                 </div>
               </CardContent>
             </Card>
+          </div>
 
-            {/* Items */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">Detail Item Diterima</CardTitle>
+          {/* Right Panel - Items Table */}
+          <div className="lg:col-span-2 flex flex-col h-full overflow-hidden">
+            <Card className="flex-1 flex flex-col overflow-hidden">
+              <CardHeader className="pb-3 flex-shrink-0">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <ClipboardDocumentCheckIcon className="w-5 h-5 text-pink-600" />
+                    Item Penerimaan
+                  </CardTitle>
+                  <Button type="button" variant="outline" size="sm" onClick={handleAddItem}>
+                    <PlusIcon className="w-4 h-4 mr-2" />
+                    Tambah Item
+                  </Button>
+                </div>
               </CardHeader>
-              <CardContent>
-                <div className="overflow-x-auto">
+              <CardContent className="flex-1 overflow-y-auto p-0">
+                {grnItems.length === 0 ? (
+                  <div className="flex items-center justify-center h-full text-gray-400 text-sm">
+                    Pilih pengiriman untuk melihat item PO
+                  </div>
+                ) : (
                   <table className="w-full">
-                    <thead className="bg-gray-50 border-b">
+                    <thead className="bg-gray-50 sticky top-0">
                       <tr>
-                        <th className="text-left py-3 px-4 text-sm font-medium text-gray-700">Bahan Baku</th>
-                        <th className="text-center py-3 px-4 text-sm font-medium text-gray-700">Qty Order</th>
-                        <th className="text-center py-3 px-4 text-sm font-medium text-gray-700">Sudah Terima</th>
-                        <th className="text-center py-3 px-4 text-sm font-medium text-gray-700">Qty Diterima *</th>
-                        <th className="text-center py-3 px-4 text-sm font-medium text-gray-700">Qty Ditolak</th>
-                        <th className="text-center py-3 px-4 text-sm font-medium text-gray-700">Kondisi</th>
-                        <th className="text-left py-3 px-4 text-sm font-medium text-gray-700">Catatan</th>
+                        <th className="text-left text-xs font-medium text-gray-500 uppercase px-4 py-2">Bahan Baku</th>
+                        <th className="text-center text-xs font-medium text-gray-500 uppercase px-4 py-2 w-24">Ordered</th>
+                        <th className="text-center text-xs font-medium text-gray-500 uppercase px-4 py-2 w-24">Received</th>
+                        <th className="text-center text-xs font-medium text-gray-500 uppercase px-4 py-2 w-24">Diterima</th>
+                        <th className="text-center text-xs font-medium text-gray-500 uppercase px-4 py-2 w-24">Ditolak</th>
+                        <th className="text-center text-xs font-medium text-gray-500 uppercase px-4 py-2 w-24">Kondisi</th>
+                        <th className="text-right text-xs font-medium text-gray-500 uppercase px-4 py-2 w-16">Aksi</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y">
-                      {grnItems.map((item, index) => {
-                        const poItem = poItems.find((p) => p.id === item.id);
-                        const remaining = (poItem?.qty_ordered || 0) - (poItem?.qty_received || 0);
+                      {grnItems.map((item, idx) => {
+                        const poItem = poItems.find((p) => p.id === item.purchase_order_item_id);
                         return (
-                          <tr key={item.id}>
-                            <td className="py-3 px-4">
-                              <p className="font-medium">{item.nama_bahan}</p>
-                              <p className="text-xs text-gray-500">Sisa: {remaining} {poItem?.satuan}</p>
+                          <tr key={item.id} className="hover:bg-gray-50">
+                            <td className="px-4 py-3">
+                              <div className="text-sm font-medium">{item.nama_bahan || "Item manual"}</div>
+                              {poItem && (
+                                <div className="text-xs text-gray-500">
+                                  PO: {poItem.qty_ordered} {poItem.satuan || "pcs"}
+                                </div>
+                              )}
                             </td>
-                            <td className="py-3 px-4 text-center">{poItem?.qty_ordered || 0}</td>
-                            <td className="py-3 px-4 text-center">{poItem?.qty_received || 0}</td>
-                            <td className="py-3 px-4">
+                            <td className="px-4 py-3 text-center text-sm text-gray-500">
+                              {poItem?.qty_ordered || 0}
+                            </td>
+                            <td className="px-4 py-3 text-center text-sm text-gray-500">
+                              {poItem?.qty_received || 0}
+                            </td>
+                            <td className="px-4 py-3">
                               <Input
                                 type="number"
                                 min="0"
-                                max={remaining}
                                 value={item.qty_diterima}
                                 onChange={(e) =>
-                                  updateGrnItem(index, "qty_diterima", parseFloat(e.target.value) || 0)
+                                  handleUpdateItem(item.id, "qty_diterima", parseFloat(e.target.value) || 0)
                                 }
-                                className="w-24 mx-auto text-center"
+                                className="w-20 text-center"
                               />
                             </td>
-                            <td className="py-3 px-4">
+                            <td className="px-4 py-3">
                               <Input
                                 type="number"
                                 min="0"
                                 value={item.qty_ditolak}
                                 onChange={(e) =>
-                                  updateGrnItem(index, "qty_ditolak", parseFloat(e.target.value) || 0)
+                                  handleUpdateItem(item.id, "qty_ditolak", parseFloat(e.target.value) || 0)
                                 }
-                                className="w-24 mx-auto text-center"
+                                className="w-20 text-center"
                               />
                             </td>
-                            <td className="py-3 px-4">
+                            <td className="px-4 py-3">
                               <select
                                 value={item.kondisi}
                                 onChange={(e) =>
-                                  updateGrnItem(index, "kondisi", e.target.value)
+                                  handleUpdateItem(item.id, "kondisi", e.target.value as "baik" | "rusak" | "cacat")
                                 }
-                                className="w-full p-2 border rounded text-sm"
+                                className="w-full text-sm border rounded px-2 py-1 text-center"
                               >
                                 <option value="baik">Baik</option>
                                 <option value="rusak">Rusak</option>
                                 <option value="cacat">Cacat</option>
                               </select>
                             </td>
-                            <td className="py-3 px-4">
-                              <Input
-                                value={item.catatan}
-                                onChange={(e) => updateGrnItem(index, "catatan", e.target.value)}
-                                placeholder="Catatan..."
-                                className="text-sm"
-                              />
+                            <td className="px-4 py-3 text-right">
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => handleRemoveItem(item.id)}
+                                className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                              >
+                                <TrashIcon className="w-4 h-4" />
+                              </Button>
                             </td>
                           </tr>
                         );
                       })}
                     </tbody>
                   </table>
-                </div>
+                )}
               </CardContent>
             </Card>
 
-            <div className="flex justify-end gap-3">
-              <Link href="/dashboard/purchasing/grn">
-                <Button type="button" variant="outline">Batal</Button>
-              </Link>
-              <Button type="submit" disabled={loading} className="bg-blue-600 hover:bg-blue-700">
-                {loading ? "Menyimpan..." : "Simpan Penerimaan"}
+            {/* Submit Button */}
+            <div className="mt-4 flex justify-end gap-3">
+              <Button type="button" variant="outline" onClick={() => router.back()}>
+                Batal
+              </Button>
+              <Button type="submit" disabled={loading || grnItems.length === 0}>
+                <ClipboardDocumentCheckIcon className="w-4 h-4 mr-2" />
+                {loading ? "Menyimpan..." : "Simpan GRN"}
               </Button>
             </div>
-          </>
-        )}
+          </div>
+        </div>
       </form>
     </div>
   );
