@@ -74,7 +74,7 @@ export default function SidebarNav({ navItems, userName, userRole }: SidebarNavP
 
   return (
     <aside className="w-64 bg-gradient-to-br from-[#303b64] to-[#425aad] flex flex-col shadow-xl">
-      <div className="p-6 border-b border-white/10">
+      <div className="p-6 border-b border-white/10 flex flex-col items-center">
         <img src="/logos/logo.png" alt="Prologue in Wounderland" className="w-32 h-auto object-contain mb-4" />
         <div className="mt-3 p-2 bg-white/10 backdrop-blur-sm rounded-lg">
           <p className="text-xs font-medium text-white">{userName}</p>
