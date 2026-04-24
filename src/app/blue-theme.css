@@ -1,18 +1,18 @@
-/* Bright Hot Pink Theme - Super Vibrant! */
+/* Jet Black Theme - Deep, Elegant Black */
 
-/* Sidebar Background - SOLID BRIGHT PINK */
+/* Sidebar Background - JET BLACK (not pure black) */
 aside[class*="sidebar"],
 [data-slot="sidebar"],
 .lg\:translate-x-0 {
-  background: #ff00aa !important; /* Super bright hot pink */
+  background: #0f172a !important; /* Jet black with blue undertone */
 }
 
-/* Subtle overlay for depth */
+/* Subtle gradient for depth */
 aside[class*="sidebar"]::before {
   content: '';
   position: absolute;
   inset: 0;
-  background: rgba(255, 255, 255, 0.08);
+  background: linear-gradient(180deg, rgba(15, 23, 42, 0.95) 0%, rgba(30, 41, 59, 0.98) 100%);
   backdrop-filter: blur(5px);
   pointer-events: none;
 }
@@ -20,7 +20,7 @@ aside[class*="sidebar"]::before {
 /* Nav items - semi-transparent white */
 aside[class*="sidebar"] a[class*="flex items-center"],
 aside[class*="sidebar"] button[class*="flex items-center"] {
-  background: rgba(255, 255, 255, 0.15) !important;
+  background: rgba(255, 255, 255, 0.08) !important;
   backdrop-filter: blur(5px);
   border-radius: 0.5rem;
   margin-bottom: 0.5rem;
@@ -29,12 +29,12 @@ aside[class*="sidebar"] button[class*="flex items-center"] {
 
 aside[class*="sidebar"] a[class*="flex items-center"]:hover,
 aside[class*="sidebar"] button[class*="flex items-center"]:hover {
-  background: rgba(255, 255, 255, 0.25) !important;
+  background: rgba(255, 255, 255, 0.15) !important;
 }
 
 aside[class*="sidebar"] a[class*="flex items-center"][class*="bg-blue"],
 aside[class*="sidebar"] button[class*="flex items-center"][class*="bg-blue"] {
-  background: rgba(255, 255, 255, 0.3) !important;
+  background: rgba(255, 255, 255, 0.2) !important;
 }
 
 /* Text colors */
@@ -49,11 +49,11 @@ aside[class*="sidebar"] span {
 
 /* Mobile toggle button */
 button[class*="lg:hidden"][class*="top-4"] {
-  background: rgba(255, 255, 255, 0.2) !important;
+  background: rgba(255, 255, 255, 0.15) !important;
   backdrop-filter: blur(10px);
   color: white !important;
 }
 
 button[class*="lg:hidden"][class*="top-4"]:hover {
-  background: rgba(255, 255, 255, 0.3) !important;
+  background: rgba(255, 255, 255, 0.25) !important;
 }
