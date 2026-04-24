@@ -303,3 +303,23 @@ Raw materials fetched: 10 items
  GET /api/purchasing/raw-materials?limit=100 200 in 168ms (next.js: 3ms, application-code: 165ms)
  GET /api/purchasing/units? 200 in 152ms (next.js: 4ms, application-code: 149ms)
 ✓ Compiled in 108ms
+ GET /dashboard/purchasing/po/new 200 in 1758ms (next.js: 13ms, application-code: 1745ms)
+[browser] Encountered two children with the same key, `/dashboard/purchasing`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. 
+ GET /api/purchasing/suppliers? 200 in 518ms (next.js: 1553µs, application-code: 517ms)
+Raw materials fetched: 10 items
+ GET /api/purchasing/raw-materials?limit=100 200 in 177ms (next.js: 6ms, application-code: 171ms)
+ GET /api/purchasing/units? 200 in 177ms (next.js: 3ms, application-code: 174ms)
+ GET /dashboard/purchasing/po/new 200 in 718ms (next.js: 4ms, application-code: 713ms)
+[browser] Encountered two children with the same key, `/dashboard/purchasing`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. 
+ GET /api/purchasing/suppliers? 200 in 504ms (next.js: 1116µs, application-code: 502ms)
+Raw materials fetched: 10 items
+ GET /api/purchasing/raw-materials?limit=100 200 in 156ms (next.js: 3ms, application-code: 153ms)
+ GET /api/purchasing/units? 200 in 152ms (next.js: 3ms, application-code: 149ms)
+✓ Compiled in 82ms
+✓ Compiled in 110ms
+ GET /dashboard/purchasing/po/new 200 in 459ms (next.js: 10ms, application-code: 449ms)
+[browser] Encountered two children with the same key, `/dashboard/purchasing`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. 
+ GET /api/purchasing/suppliers? 200 in 512ms (next.js: 1387µs, application-code: 511ms)
+Raw materials fetched: 10 items
+ GET /api/purchasing/raw-materials?limit=100 200 in 168ms (next.js: 3ms, application-code: 165ms)
+ GET /api/purchasing/units? 200 in 164ms (next.js: 7ms, application-code: 157ms)
