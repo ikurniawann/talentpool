@@ -46,6 +46,7 @@ import {
 import { createSupplier, updateSupplier } from "@/lib/purchasing/supplier";
 import { useToast } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
+import { Combobox } from "@/components/ui/combobox";
 
 // ─── Field state ─────────────────────────────────────────────────
 
