@@ -152,7 +152,7 @@ export default function SidebarClient({ user, navItems, children }: SidebarClien
             const itemActive = isActive(item.href);
 
             return (
-              <div key={item.href}>
+              <div key={`${item.href}-${item.label}`}>
                 {hasChildren ? (
                   <>
                     <button

@@ -132,22 +132,12 @@ export default function ContinueGrnPage() {
         console.log("GRN po_id:", grn.po_id);
         console.log("GRN purchase_order_id:", grn.purchase_order_id);
         
-        const poIdToFetch = grn.po_id || grn.purchase_order_id;
         if (poIdToFetch) {
           console.log("Fetching PO items for PO ID:", poIdToFetch);
           await fetchPOItems(poIdToFetch);
         } else {
           console.error("❌ No PO ID found in GRN data!");
           console.error("GRN data:", grn);
-          
-          // DEBUG: Hardcode PO items for testing
-          console.warn("⚠️ DEBUG MODE: Using hardcoded PO items for testing");
-          const debugPoItems: POItem[] = [
-            { id: "1", raw_material_id: grn.items[0]?.raw_material_id, nama_bahan: "Mie Instant", qty_ordered: 100, qty_received: 50, satuan: "pcs" },
-            { id: "2", raw_material_id: grn.items[1]?.raw_material_id, nama_bahan: "Tepung Terigu", qty_ordered: 200, qty_received: 100, satuan: "pcs" },
-            { id: "3", raw_material_id: grn.items[2]?.raw_material_id, nama_bahan: "Gula Merah", qty_ordered: 50, qty_received: 25, satuan: "pcs" },
-          ];
-          setPoItems(debugPoItems);
         }
       }
     } catch (error: any) {

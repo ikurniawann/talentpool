@@ -4,7 +4,25 @@ import { ChevronLeft, ChevronRight, MoreHorizontal } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { ButtonProps, buttonVariants } from "@/components/ui/button"
 
-const Pagination = ({ className, ...props }: React.ComponentProps<"nav">) => (
+type PaginationLinkProps = {
+  isActive?: boolean
+} & Pick<ButtonProps, "size"> &
+  React.ComponentProps<"a">
+export interface PaginationProps {
+  currentPage: number;
+  totalPages: number;
+  totalItems?: number;
+  onPageChange?: (page: number) => void;
+}
+
+const Pagination = ({
+  className,
+  currentPage: _currentPage,
+  totalPages: _totalPages,
+  totalItems: _totalItems,
+  onPageChange: _onPageChange,
+  ...props
+}: PaginationProps & React.ComponentProps<"nav">) => (
   <nav
     role="navigation"
     aria-label="pagination"
@@ -105,6 +123,13 @@ const PaginationEllipsis = ({
   </span>
 )
 PaginationEllipsis.displayName = "PaginationEllipsis"
+
+export interface PaginationProps {
+  currentPage: number;
+  totalPages: number;
+  totalItems: number;
+  onPageChange: (page: number) => void;
+}
 
 export {
   Pagination,
