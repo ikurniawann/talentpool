@@ -496,7 +496,7 @@ export default function NewPOPage() {
                         </SelectValue>
                       </SelectTrigger>
                       <SelectContent>
-                        {units.map((u) => (
+                        {(units || []).map((u) => (
                           <SelectItem key={u.id} value={u.id}>
                             {u.nama}
                           </SelectItem>
