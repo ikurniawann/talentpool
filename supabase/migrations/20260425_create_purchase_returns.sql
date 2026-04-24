@@ -126,7 +126,7 @@ WHERE g.status IN ('received', 'partially_received')
   AND gi.qty_diterima > COALESCE(gi.qty_returned, 0)
   AND gi.qc_status IN ('rejected', 'partially_rejected');
 
--- Function to auto-generate return number
+-- Function to auto-generate return number (simplified version)
 CREATE OR REPLACE FUNCTION generate_return_number()
 RETURNS TRIGGER AS $$
 DECLARE
@@ -134,12 +134,10 @@ DECLARE
   seq_num INTEGER;
   return_num TEXT;
 BEGIN
-  year_part := EXTRACT(YEAR FROM NEW.return_date)::TEXT;
+  year_part := TO_CHAR(NEW.return_date, 'YYYY');
   
-  -- Get next sequence number for this year
-  SELECT COALESCE(MAX(
-    CAST(SUBSTRING(return_number FROM 'RET-' || year_part || '-(\d+)$' AS INTEGER)
-  ), 0) + 1 INTO seq_num
+  -- Count existing returns this year and add 1
+  SELECT COUNT(*) + 1 INTO seq_num
   FROM purchase_returns
   WHERE return_number LIKE 'RET-' || year_part || '-%';
   
