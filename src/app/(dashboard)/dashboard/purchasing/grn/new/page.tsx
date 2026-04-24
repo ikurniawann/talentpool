@@ -290,27 +290,27 @@ export default function CreateGrnPage() {
                         variant="outline"
                         role="combobox"
                         aria-expanded={openDelivery}
-                        className="w-full justify-between h-10 px-3"
+                        className="w-full justify-between h-10 px-3 bg-white hover:bg-gray-50"
                       >
-                        <span className="truncate text-left">
+                        <span className="truncate text-left font-medium">
                           {selectedDelivery
-                            ? `${selectedDelivery.no_resi} - ${selectedDelivery.kurir}`
-                            : "Cari nomor resi / surat jalan..."}
+                            ? `${selectedDelivery.no_resi}${selectedDelivery.kurir ? ` - ${selectedDelivery.kurir}` : ''}`
+                            : "Pilih pengiriman..."}
                         </span>
                         <ChevronsUpDown className="h-4 w-4 shrink-0 opacity-50" />
                       </Button>
                     </PopoverTrigger>
-                    <PopoverContent className="w-[--radix-popover-trigger-width] p-0 shadow-lg z-50">
-                      <Command shouldFilter={false}>
+                    <PopoverContent className="w-[--radix-popover-trigger-width] p-0 shadow-2xl z-[100] border-gray-200 bg-white" align="start" sideOffset={8} avoidCollisions collisionPadding={16}>
+                      <Command shouldFilter={false} className="bg-white">
                         <CommandInput
-                          placeholder="Cari pengiriman..."
+                          placeholder="Cari nomor resi / surat jalan..."
                           value={searchQuery}
                           onValueChange={setSearchQuery}
-                          className="h-9 border-b"
+                          className="h-10 border-b border-gray-200 bg-white px-3 text-sm focus:border-pink-500"
                         />
-                        <CommandList className="max-h-60 overflow-y-auto">
-                          <CommandEmpty>Tidak ada pengiriman ditemukan.</CommandEmpty>
-                          <CommandGroup>
+                        <CommandList className="max-h-64 overflow-y-auto bg-white">
+                          <CommandEmpty className="py-6 text-center text-sm text-gray-500">Tidak ada pengiriman ditemukan.</CommandEmpty>
+                          <CommandGroup className="p-1">
                             {filteredDeliveries.map((d: any) => (
                               <CommandItem
                                 key={d.id}
@@ -334,21 +334,29 @@ export default function CreateGrnPage() {
                                   setOpenDelivery(false);
                                   setSearchQuery("");
                                 }}
-                                className="cursor-pointer hover:bg-pink-50"
+                                className="cursor-pointer hover:bg-pink-50 data-[selected=true]:bg-pink-100 rounded-md py-2.5 px-3 transition-colors"
                               >
-                                <div className="flex flex-col gap-1 flex-1">
+                                <div className="flex flex-col gap-1.5 flex-1">
                                   <div className="flex items-center justify-between">
-                                    <span className="font-medium text-sm">{d.no_resi}</span>
+                                    <span className="font-semibold text-sm text-gray-900">{d.no_resi}</span>
                                     <Check
                                       className={cn(
-                                        "h-4 w-4",
+                                        "h-4 w-4 text-pink-600",
                                         selectedDelivery?.id === d.id ? "opacity-100" : "opacity-0"
                                       )}
                                     />
                                   </div>
-                                  <span className="text-xs text-gray-500">
-                                    {d.supplier_name || d.kurir} • {d.po_number || d.nomor_resi}
-                                  </span>
+                                  <div className="flex items-center gap-1.5 text-xs text-gray-500">
+                                    {d.supplier_name || d.kurir ? (
+                                      <span className="font-medium">{d.supplier_name || d.kurir}</span>
+                                    ) : null}
+                                    {(d.supplier_name || d.kurir) && (d.po_number || d.nomor_resi) && (
+                                      <span className="text-gray-300">•</span>
+                                    )}
+                                    {d.po_number || d.nomor_resi ? (
+                                      <span>{d.po_number || d.nomor_resi}</span>
+                                    ) : null}
+                                  </div>
                                 </div>
                               </CommandItem>
                             ))}
