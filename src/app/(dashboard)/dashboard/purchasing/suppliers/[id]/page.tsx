@@ -222,7 +222,7 @@ function SupplierDetailInner() {
       <div className="flex items-start justify-between gap-4">
         <div className="flex items-start gap-4">
           <div className="w-14 h-14 rounded-xl bg-blue-50 flex items-center justify-center shrink-0">
-            <BuildingOfficeIcon className="w-7 h-7 text-pink-500" />
+            <BuildingOfficeIcon className="w-7 h-7 text-gray-900" />
           </div>
           <div>
             <div className="flex items-center gap-3 flex-wrap">
@@ -265,28 +265,28 @@ function SupplierDetailInner() {
           value={String(a.po_aktif_count)}
           sub={a.po_aktif_nilai > 0 ? formatCurrency(a.po_aktif_nilai, supplier.currency) : "—"}
           icon={ReceiptPercentIcon}
-          color="bg-pink-50 text-pink-600"
+          color="bg-gray-50 text-gray-700"
         />
         <KPICard
           label="Transaksi 12 Bulan"
           value={a.jumlah_po_12_bulan > 0 ? String(a.jumlah_po_12_bulan) + " PO" : "—"}
           sub={a.total_transaksi_12_bulan > 0 ? formatCurrency(a.total_transaksi_12_bulan, supplier.currency) : "Tidak ada data"}
           icon={ChartBarIcon}
-          color="bg-green-50 text-green-600"
+          color="bg-gray-50 text-gray-700"
         />
         <KPICard
           label="On-Time Delivery"
           value={a.on_time_delivery_rate > 0 ? a.on_time_delivery_rate + "%" : "—"}
           sub={a.on_time_delivery_rate > 0 ? "12 bulan terakhir" : "Tidak ada data"}
           icon={TruckIcon}
-          color="bg-purple-50 text-purple-600"
+          color="bg-gray-50 text-gray-700"
         />
         <KPICard
           label="Payment Terms"
           value={supplier.payment_terms}
           sub={supplier.currency}
           icon={BanknotesIcon}
-          color="bg-amber-50 text-amber-600"
+          color="bg-gray-50 text-gray-700"
         />
       </div>
 
