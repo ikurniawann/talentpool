@@ -160,3 +160,5 @@ Complete refactor to use server-side search:
 2. Add supplier performance metrics (on-time rate, QC pass rate) from delivery data
 3. Add export to CSV functionality for dashboard data
 4. Implement real-time updates using Supabase subscriptions
+5. Add quick select buttons for common date ranges (Today, This Week, This Month)
+6. Add YoY (Year-over-Year) comparison option
