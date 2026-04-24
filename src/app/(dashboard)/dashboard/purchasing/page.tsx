@@ -13,6 +13,7 @@ import {
 } from "@/modules/purchasing/components/dashboard";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { DatePicker } from "@/components/ui/datepicker";
 import { RefreshCw, Building2, Package, ShoppingCart, Truck, Archive, ArrowUturnLeft, Calendar } from "lucide-react";
 
 function DashboardSkeleton() {
@@ -93,33 +94,25 @@ export default function PurchasingDashboardPage() {
         <Card className="border-0 shadow-sm">
           <CardContent className="p-4">
             <div className="flex flex-wrap items-end gap-3">
-              <div className="flex-1 min-w-[200px]">
-                <label className="block text-xs font-medium text-gray-600 mb-1">
+              <div className="flex-1 min-w-[200px] space-y-1.5">
+                <label className="block text-xs font-medium text-gray-600">
                   Tanggal Mulai
                 </label>
-                <div className="relative">
-                  <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                  <input
-                    type="date"
-                    value={dateRange.start}
-                    onChange={(e) => setDateRange({ ...dateRange, start: e.target.value })}
-                    className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
-                </div>
+                <DatePicker
+                  value={dateRange.start}
+                  onChange={(v) => setDateRange({ ...dateRange, start: v })}
+                  placeholder="Dari..."
+                />
               </div>
-              <div className="flex-1 min-w-[200px]">
-                <label className="block text-xs font-medium text-gray-600 mb-1">
+              <div className="flex-1 min-w-[200px] space-y-1.5">
+                <label className="block text-xs font-medium text-gray-600">
                   Tanggal Akhir
                 </label>
-                <div className="relative">
-                  <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                  <input
-                    type="date"
-                    value={dateRange.end}
-                    onChange={(e) => setDateRange({ ...dateRange, end: e.target.value })}
-                    className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
-                </div>
+                <DatePicker
+                  value={dateRange.end}
+                  onChange={(v) => setDateRange({ ...dateRange, end: v })}
+                  placeholder="Sampai..."
+                />
               </div>
               <div className="flex gap-2">
                 <Button

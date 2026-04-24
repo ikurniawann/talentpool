@@ -11,6 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowLeft, Save, DollarSign, Calendar, Package } from "lucide-react";
 import { toast } from "sonner";
 import { Combobox } from "@/components/ui/combobox";
+import { DatePicker } from "@/components/ui/datepicker";
 import { Supplier, RawMaterialWithStock, Unit, SupplierPriceListFormData } from "@/types/purchasing";
 import { listSuppliers, listRawMaterials, listUnits, getPriceList, updatePriceList } from "@/lib/purchasing";
 
@@ -244,22 +245,18 @@ export default function EditPriceListPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-1.5">
                   <Label htmlFor="berlaku_dari" className="text-xs">Berlaku Dari</Label>
-                  <Input
-                    id="berlaku_dari"
-                    type="date"
+                  <DatePicker
                     value={formData.berlaku_dari}
-                    onChange={(e) => setFormData({ ...formData, berlaku_dari: e.target.value })}
-                    className="h-9 text-sm"
+                    onChange={(v) => setFormData({ ...formData, berlaku_dari: v })}
+                    placeholder="Dari..."
                   />
                 </div>
                 <div className="space-y-1.5">
                   <Label htmlFor="berlaku_sampai" className="text-xs">Berlaku Sampai</Label>
-                  <Input
-                    id="berlaku_sampai"
-                    type="date"
+                  <DatePicker
                     value={formData.berlaku_sampai}
-                    onChange={(e) => setFormData({ ...formData, berlaku_sampai: e.target.value })}
-                    className="h-9 text-sm"
+                    onChange={(v) => setFormData({ ...formData, berlaku_sampai: v })}
+                    placeholder="Sampai..."
                   />
                 </div>
               </div>
