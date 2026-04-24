@@ -11,11 +11,16 @@ import { DatePicker } from "@/components/ui/datepicker";
 import { useToast } from "@/components/ui/toast";
 import { BreadcrumbNav } from "@/modules/purchasing/components/breadcrumb/BreadcrumbNav";
 import {
-  Combobox,
-  ComboboxItem,
-  ComboboxPopover,
-  ComboboxProvider,
-} from "@/components/ui/combobox";
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Check, ChevronsUpDown } from "lucide-react";
+import { cn } from "@/lib/utils";
 import {
   ClipboardDocumentCheckIcon,
   PlusIcon,
@@ -74,6 +79,7 @@ export default function CreateGrnPage() {
     catatan: "",
   });
   const [searchQuery, setSearchQuery] = useState("");
+  const [openDelivery, setOpenDelivery] = useState(false);
 
   // Fetch deliveries that can be received
   useEffect(() => {
@@ -263,49 +269,69 @@ export default function CreateGrnPage() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
-                <ComboboxProvider
-                  value={selectedDelivery ? `${selectedDelivery.no_resi} - ${selectedDelivery.kurir}` : ""}
-                  onChange={(value) => {
-                    const delivery = deliveries.find((d: any) => 
-                      `${d.no_resi} - ${d.kurir}` === value
-                    );
-                    if (delivery) {
-                      setSelectedDelivery(delivery);
-                      setFormData({ ...formData, delivery_id: delivery.id });
-                    }
-                  }}
-                >
+                <div className="space-y-2">
                   <Label>Pengiriman</Label>
-                  <Combobox placeholder="Cari nomor resi / surat jalan...">
-                    <Input
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      placeholder="Cari pengiriman..."
-                    />
-                    <ComboboxPopover className="z-50 w-[--input-width] max-h-60 overflow-y-auto">
-                      {fetchingDeliveries ? (
-                        <div className="p-4 text-center text-sm text-gray-500">Loading...</div>
-                      ) : filteredDeliveries.length === 0 ? (
-                        <div className="p-4 text-center text-sm text-gray-500">Tidak ada pengiriman</div>
-                      ) : (
-                        filteredDeliveries.map((d: any) => (
-                          <ComboboxItem
-                            key={d.id}
-                            value={`${d.no_resi} - ${d.kurir}`}
-                            className="cursor-pointer hover:bg-pink-50"
-                          >
-                            <div className="flex flex-col gap-1">
-                              <span className="font-medium text-sm">{d.no_resi}</span>
-                              <span className="text-xs text-gray-500">
-                                {d.supplier_name || d.kurir} • {d.po_number || d.nomor_resi}
-                              </span>
-                            </div>
-                          </ComboboxItem>
-                        ))
-                      )}
-                    </ComboboxPopover>
-                  </Combobox>
-                </ComboboxProvider>
+                  <Popover open={openDelivery} onOpenChange={setOpenDelivery}>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        role="combobox"
+                        aria-expanded={openDelivery}
+                        className="w-full justify-between h-10 px-3"
+                      >
+                        <span className="truncate text-left">
+                          {selectedDelivery
+                            ? `${selectedDelivery.no_resi} - ${selectedDelivery.kurir}`
+                            : "Cari nomor resi / surat jalan..."}
+                        </span>
+                        <ChevronsUpDown className="h-4 w-4 shrink-0 opacity-50" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-[--radix-popover-trigger-width] p-0 shadow-lg z-50">
+                      <Command shouldFilter={false}>
+                        <CommandInput
+                          placeholder="Cari pengiriman..."
+                          value={searchQuery}
+                          onValueChange={setSearchQuery}
+                          className="h-9 border-b"
+                        />
+                        <CommandList className="max-h-60 overflow-y-auto">
+                          <CommandEmpty>Tidak ada pengiriman ditemukan.</CommandEmpty>
+                          <CommandGroup>
+                            {filteredDeliveries.map((d: any) => (
+                              <CommandItem
+                                key={d.id}
+                                value={`${d.no_resi} - ${d.kurir}`}
+                                onSelect={() => {
+                                  setSelectedDelivery(d);
+                                  setFormData({ ...formData, delivery_id: d.id });
+                                  setOpenDelivery(false);
+                                  setSearchQuery("");
+                                }}
+                                className="cursor-pointer hover:bg-pink-50"
+                              >
+                                <div className="flex flex-col gap-1 flex-1">
+                                  <div className="flex items-center justify-between">
+                                    <span className="font-medium text-sm">{d.no_resi}</span>
+                                    <Check
+                                      className={cn(
+                                        "h-4 w-4",
+                                        selectedDelivery?.id === d.id ? "opacity-100" : "opacity-0"
+                                      )}
+                                    />
+                                  </div>
+                                  <span className="text-xs text-gray-500">
+                                    {d.supplier_name || d.kurir} • {d.po_number || d.nomor_resi}
+                                  </span>
+                                </div>
+                              </CommandItem>
+                            ))}
+                          </CommandGroup>
+                        </CommandList>
+                      </Command>
+                    </PopoverContent>
+                  </Popover>
+                </div>
 
                 {selectedDelivery && (
                   <div className="space-y-2 pt-2 border-t">
