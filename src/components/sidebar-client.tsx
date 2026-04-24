@@ -128,15 +128,7 @@ export default function SidebarClient({ user, navItems, children }: SidebarClien
       >
         {/* Logo / Brand */}
         <div className="p-4 border-b border-white/10 flex flex-col items-center">
-          <div className="flex items-center justify-between w-full mb-3">
-            <img src="/logos/logo.png" alt="Prologue in Wounderland" className="w-32 h-auto object-contain mx-auto" />
-            <button
-              onClick={closeMobile}
-              className="p-1.5 rounded-lg hover:bg-white/10 lg:hidden"
-            >
-              <XMarkIcon className="w-5 h-5 text-white/70" />
-            </button>
-          </div>
+          <img src="/logos/logo.png" alt="Prologue in Wounderland" className="w-32 h-auto object-contain mb-3" />
           <div className="px-4 pb-3 w-full">
             <p className="text-xs text-white/60 px-2 mb-2 text-center">Backoffice</p>
             <div className="mt-3 p-2.5 bg-white/10 backdrop-blur-sm rounded-lg text-center">
@@ -238,14 +230,14 @@ export default function SidebarClient({ user, navItems, children }: SidebarClien
       {/* Main content area */}
       <div className="flex-1 flex flex-col min-w-0">
         {/* Mobile top bar */}
-        <div className="lg:hidden flex items-center gap-3 p-4 bg-[#1e1e1e] border-b border-[#303b64] sticky top-0 z-20">
+        <div className="lg:hidden flex items-center justify-center p-4 bg-[#1e1e1e] border-b border-[#303b64] sticky top-0 z-20">
           <button
             onClick={() => setMobileOpen(true)}
-            className="p-2 rounded-lg hover:bg-white/10"
+            className="p-2 rounded-lg hover:bg-white/10 absolute left-4"
           >
             <Bars3Icon className="w-5 h-5 text-white" />
           </button>
-          <img src="/logos/logo.png" alt="Prologue in Wounderland" className="h-8 w-auto object-contain" />
+          <img src="/logos/logo.png" alt="Prologue in Wounderland" className="h-10 w-auto object-contain" />
         </div>
 
         {/* Page content */}
