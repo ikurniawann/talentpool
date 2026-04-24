@@ -427,7 +427,6 @@ function SupplierFormInner({ isEdit, supplierId, initialData }: SupplierFormProp
               <p className="text-xs text-muted-foreground">
                 Contoh: Jakarta, Surabaya, Bandung
               </p>
-            </div>
               {kota.touched && kota.error && (
                 <p className="text-xs text-red-500 mt-1 flex items-center gap-1">
                   <XCircleIcon className="w-3 h-3" />{kota.error}
