@@ -260,9 +260,9 @@ export default function CreateGrnPage() {
 
       {/* Form */}
       <form onSubmit={handleSubmit}>
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 h-[calc(100vh-200px)]">
-          {/* Left Panel - Delivery Selection & Info */}
-          <div className="lg:col-span-1 space-y-4 overflow-y-auto pr-2">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+          {/* Left Panel - Delivery Selection & Info (4 cols) */}
+          <div className="lg:col-span-4 space-y-4">
             <Card>
               <CardHeader className="pb-3">
                 <CardTitle className="text-base flex items-center gap-2">
@@ -355,42 +355,38 @@ export default function CreateGrnPage() {
                     </div>
                   </div>
                 )}
-              </CardContent>
-            </Card>
 
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base">Informasi Penerimaan</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <div>
-                  <Label htmlFor="tanggal">Tanggal Penerimaan</Label>
-                  <DatePicker
-                    id="tanggal"
-                    date={formData.tanggal_penerimaan ? new Date(formData.tanggal_penerimaan) : undefined}
-                    onChange={(date) =>
-                      setFormData({ ...formData, tanggal_penerimaan: date?.toISOString().split("T")[0] || "" })
-                    }
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="catatan">Catatan</Label>
-                  <Textarea
-                    id="catatan"
-                    value={formData.catatan}
-                    onChange={(e) => setFormData({ ...formData, catatan: e.target.value })}
-                    placeholder="Catatan tambahan (opsional)"
-                    rows={3}
-                  />
+                {/* Informasi Penerimaan */}
+                <div className="pt-3 border-t mt-3 space-y-3">
+                  <div>
+                    <Label htmlFor="tanggal">Tanggal Penerimaan</Label>
+                    <DatePicker
+                      id="tanggal"
+                      date={formData.tanggal_penerimaan ? new Date(formData.tanggal_penerimaan) : undefined}
+                      onChange={(date) =>
+                        setFormData({ ...formData, tanggal_penerimaan: date?.toISOString().split("T")[0] || "" })
+                      }
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="catatan">Catatan</Label>
+                    <Textarea
+                      id="catatan"
+                      value={formData.catatan}
+                      onChange={(e) => setFormData({ ...formData, catatan: e.target.value })}
+                      placeholder="Catatan tambahan (opsional)"
+                      rows={2}
+                    />
+                  </div>
                 </div>
               </CardContent>
             </Card>
           </div>
 
-          {/* Right Panel - Items Table */}
-          <div className="lg:col-span-2 flex flex-col h-full overflow-hidden">
-            <Card className="flex-1 flex flex-col overflow-hidden">
-              <CardHeader className="pb-3 flex-shrink-0">
+          {/* Right Panel - Items Table (8 cols) */}
+          <div className="lg:col-span-8">
+            <Card className="h-full">
+              <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
                   <CardTitle className="text-base flex items-center gap-2">
                     <ClipboardDocumentCheckIcon className="w-5 h-5 text-pink-600" />
@@ -402,7 +398,7 @@ export default function CreateGrnPage() {
                   </Button>
                 </div>
               </CardHeader>
-              <CardContent className="flex-1 overflow-y-auto p-0">
+              <CardContent className="p-0">
                 {grnItems.length === 0 ? (
                   <div className="flex items-center justify-center h-full text-gray-400 text-sm">
                     Pilih pengiriman untuk melihat item PO
@@ -492,18 +488,16 @@ export default function CreateGrnPage() {
                   </table>
                 )}
               </CardContent>
+              <div className="border-t p-4 flex justify-end gap-3">
+                <Button type="button" variant="outline" onClick={() => router.back()}>
+                  Batal
+                </Button>
+                <Button type="submit" disabled={loading || grnItems.length === 0}>
+                  <ClipboardDocumentCheckIcon className="w-4 h-4 mr-2" />
+                  {loading ? "Menyimpan..." : "Simpan GRN"}
+                </Button>
+              </div>
             </Card>
-
-            {/* Submit Button */}
-            <div className="mt-4 flex justify-end gap-3">
-              <Button type="button" variant="outline" onClick={() => router.back()}>
-                Batal
-              </Button>
-              <Button type="submit" disabled={loading || grnItems.length === 0}>
-                <ClipboardDocumentCheckIcon className="w-4 h-4 mr-2" />
-                {loading ? "Menyimpan..." : "Simpan GRN"}
-              </Button>
-            </div>
           </div>
         </div>
       </form>
