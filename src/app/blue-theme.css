@@ -1,10 +1,10 @@
-/* Blue Gradient Theme - Wounderland Style */
+/* Pink Gradient Theme - Vibrant Hot Pink! */
 
-/* Sidebar Background */
+/* Sidebar Background - Hot Pink Gradient */
 aside[class*="sidebar"],
 [data-slot="sidebar"],
-.lg\\:translate-x-0 {
-  background: linear-gradient(180deg, #1e3a8a 0%, #3b5998 50%, #4a6fa5 100%) !important;
+.lg\:translate-x-0 {
+  background: linear-gradient(180deg, #ec4899 0%, #db2777 50%, #be185d 100%) !important;
 }
 
 /* Glassmorphism effect */
@@ -12,7 +12,7 @@ aside[class*="sidebar"]::before {
   content: '';
   position: absolute;
   inset: 0;
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(255, 255, 255, 0.1);
   backdrop-filter: blur(10px);
   pointer-events: none;
 }
@@ -20,7 +20,7 @@ aside[class*="sidebar"]::before {
 /* Nav items - semi-transparent white */
 aside[class*="sidebar"] a[class*="flex items-center"],
 aside[class*="sidebar"] button[class*="flex items-center"] {
-  background: rgba(255, 255, 255, 0.1) !important;
+  background: rgba(255, 255, 255, 0.15) !important;
   backdrop-filter: blur(5px);
   border-radius: 0.5rem;
   margin-bottom: 0.5rem;
@@ -29,12 +29,12 @@ aside[class*="sidebar"] button[class*="flex items-center"] {
 
 aside[class*="sidebar"] a[class*="flex items-center"]:hover,
 aside[class*="sidebar"] button[class*="flex items-center"]:hover {
-  background: rgba(255, 255, 255, 0.15) !important;
+  background: rgba(255, 255, 255, 0.25) !important;
 }
 
 aside[class*="sidebar"] a[class*="flex items-center"][class*="bg-blue"],
 aside[class*="sidebar"] button[class*="flex items-center"][class*="bg-blue"] {
-  background: rgba(255, 255, 255, 0.2) !important;
+  background: rgba(255, 255, 255, 0.3) !important;
 }
 
 /* Text colors */
@@ -49,11 +49,11 @@ aside[class*="sidebar"] span {
 
 /* Mobile toggle button */
 button[class*="lg:hidden"][class*="top-4"] {
-  background: rgba(30, 58, 138, 0.2) !important;
+  background: rgba(236, 72, 153, 0.3) !important;
   backdrop-filter: blur(10px);
   color: white !important;
 }
 
 button[class*="lg:hidden"][class*="top-4"]:hover {
-  background: rgba(30, 58, 138, 0.3) !important;
+  background: rgba(236, 72, 153, 0.4) !important;
 }
