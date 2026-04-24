@@ -61,8 +61,8 @@ export default function NewRawMaterialPage() {
 
   const loadUnits = async () => {
     try {
-      const data = await listUnits(true);
-      setUnits(data);
+      const data = await listUnits();
+      setUnits(data.data || []);
     } catch (error) {
       console.error("Error loading units:", error);
       toast.error("Gagal memuat data satuan");

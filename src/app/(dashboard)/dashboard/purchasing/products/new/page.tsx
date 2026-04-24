@@ -53,10 +53,10 @@ export default function NewProductPage() {
     try {
       const [materialsData, unitsData] = await Promise.all([
         listRawMaterials({ limit: 100 }),
-        listUnits(true),
+        listUnits(),
       ]);
       setMaterials(materialsData.data);
-      setUnits(unitsData);
+      setUnits(unitsData.data || []);
     } catch (error) {
       console.error("Error loading data:", error);
       toast.error("Gagal memuat data");

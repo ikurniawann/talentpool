@@ -105,7 +105,7 @@ export default function EditProductPage() {
         getProduct(productId),
         listBOMItems(productId),
         listRawMaterials({ limit: 100 }),
-        listUnits(true),
+        listUnits(),
       ]);
       
       console.log("BOM Data:", bomData);
@@ -125,7 +125,7 @@ export default function EditProductPage() {
         }))
       );
       setMaterials(materialsData.data);
-      setUnits(unitsData);
+      setUnits(unitsData.data || []);
 
       // Populate form data
       setFormData({

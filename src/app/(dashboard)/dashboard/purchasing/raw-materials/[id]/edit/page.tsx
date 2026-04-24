@@ -69,13 +69,13 @@ export default function EditRawMaterialPage() {
       setLoading(true);
       const [materialData, unitsData] = await Promise.all([
         getRawMaterial(materialId),
-        listUnits(true),
+        listUnits(),
       ]);
       
       console.log("Loaded material:", materialData);
       
       setMaterial(materialData);
-      setUnits(unitsData);
+      setUnits(unitsData.data || []);
 
       // Populate form data
       setFormData({

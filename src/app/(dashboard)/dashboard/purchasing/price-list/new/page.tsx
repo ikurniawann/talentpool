@@ -50,11 +50,11 @@ export default function NewPriceListPage() {
       const [suppliersData, materialsData, unitsData] = await Promise.all([
         listSuppliers({ is_active: true }),
         listRawMaterials({ limit: 100, is_active: true }),
-        listUnits(true),
+        listUnits(),
       ]);
       setSuppliers(suppliersData);
       setMaterials(materialsData.data);
-      setUnits(unitsData);
+      setUnits(unitsData.data || []);
     } catch (error) {
       console.error("Error loading data:", error);
       toast.error("Gagal memuat data");

@@ -53,12 +53,12 @@ export default function EditPriceListPage() {
       const [suppliersData, materialsData, unitsData, priceList] = await Promise.all([
         listSuppliers({ is_active: true }),
         listRawMaterials({ limit: 100, is_active: true }),
-        listUnits(true),
+        listUnits(),
         getPriceList(priceListId),
       ]);
       setSuppliers(suppliersData);
       setMaterials(materialsData.data);
-      setUnits(unitsData);
+      setUnits(unitsData.data || []);
 
       if (priceList) {
         setFormData({
