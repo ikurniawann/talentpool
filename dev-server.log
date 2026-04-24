@@ -194,3 +194,18 @@ Raw materials fetched: 10 items
  GET /api/purchasing/units? 200 in 141ms (next.js: 1547µs, application-code: 139ms)
 ✓ Compiled in 93ms
 [browser] Encountered two children with the same key, `/dashboard/purchasing`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. 
+ GET /dashboard/reports/inventory-valuation 404 in 209ms (next.js: 202ms, application-code: 7ms)
+ GET /dashboard/reports/inventory-valuation 404 in 20ms (next.js: 3ms, application-code: 17ms)
+ GET /dashboard/purchasing/po/new 200 in 520ms (next.js: 14ms, application-code: 506ms)
+[browser] Encountered two children with the same key, `/dashboard/purchasing`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. 
+ GET /api/purchasing/suppliers? 200 in 507ms (next.js: 1626µs, application-code: 506ms)
+Raw materials fetched: 10 items
+ GET /api/purchasing/raw-materials?limit=100 200 in 170ms (next.js: 3ms, application-code: 167ms)
+ GET /api/purchasing/units? 200 in 175ms (next.js: 6ms, application-code: 169ms)
+ GET /dashboard/purchasing/po/new 200 in 460ms (next.js: 4ms, application-code: 455ms)
+[browser] Encountered two children with the same key, `/dashboard/purchasing`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. 
+ GET /api/purchasing/suppliers? 200 in 458ms (next.js: 1011µs, application-code: 457ms)
+Raw materials fetched: 10 items
+ GET /api/purchasing/raw-materials?limit=100 200 in 151ms (next.js: 3ms, application-code: 148ms)
+ GET /api/purchasing/units? 200 in 162ms (next.js: 21ms, application-code: 141ms)
+✓ Compiled in 113ms

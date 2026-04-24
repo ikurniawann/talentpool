@@ -44,13 +44,10 @@ export function DatePicker({
         disableMobile: true,
         minDate: minDate,
         maxDate: maxDate,
-        defaultDate: value || undefined,
+        defaultDate: value || new Date(), // Default to today if no value
         onChange: (selectedDates, dateStr) => {
           setDisplayDate(dateStr);
           onChange?.(dateStr);
-        },
-        onClose: () => {
-          // Ensure the input stays closed
         },
       });
     }
