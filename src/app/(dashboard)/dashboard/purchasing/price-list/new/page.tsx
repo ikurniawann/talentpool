@@ -8,14 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { ArrowLeft, Save, DollarSign } from "lucide-react";
+import { ArrowLeft, Save, DollarSign, Calendar, Package } from "lucide-react";
 import { toast } from "sonner";
 import { Combobox } from "@/components/ui/combobox";
 import { Supplier, RawMaterialWithStock, Unit, SupplierPriceListFormData } from "@/types/purchasing";
@@ -79,252 +72,204 @@ export default function NewPriceListPage() {
       toast.error("Satuan wajib dipilih");
       return;
     }
-    if (!formData.harga || formData.harga <= 0) {
-      toast.error("Harga wajib diisi dan harus lebih dari 0");
-      return;
-    }
 
     setIsSubmitting(true);
     try {
       await createPriceList(formData);
-      toast.success("Price list berhasil dibuat");
+      toast.success("Price list berhasil ditambahkan");
       router.push("/dashboard/purchasing/price-list");
     } catch (error: any) {
       console.error("Error creating price list:", error);
-      toast.error(error.message || "Gagal membuat price list");
+      toast.error(error.message || "Gagal menambahkan price list");
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const formatCurrency = (num: number) => {
-    return `Rp ${num.toLocaleString("id-ID")}`;
-  };
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-16">
+        <div className="text-center text-gray-500">Memuat data...</div>
+      </div>
+    );
+  }
 
   return (
-    <div className="container mx-auto py-6 space-y-6">
+    <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center gap-4">
         <Link href="/dashboard/purchasing/price-list">
-          <Button variant="ghost" size="icon">
-            <ArrowLeft className="w-5 h-5" />
+          <Button variant="ghost" size="icon" className="h-9 w-9">
+            <ArrowLeft className="h-5 w-5" />
           </Button>
         </Link>
         <div>
-          <h1 className="text-2xl font-bold">Tambah Price List</h1>
-          <p className="text-muted-foreground">
-            Tambah harga supplier untuk bahan baku
-          </p>
+          <h1 className="text-2xl font-bold text-gray-900">Tambah Price List Baru</h1>
+          <p className="text-sm text-gray-500">Isi detail harga supplier</p>
         </div>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-6">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Supplier & Material */}
+      <form onSubmit={handleSubmit}>
+        {/* Full Column Layout */}
+        <div className="space-y-6">
+          
+          {/* Card 1: Supplier & Bahan Baku */}
           <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <DollarSign className="w-5 h-5" />
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2">
+                <Package className="w-4 h-4" />
                 Supplier & Bahan Baku
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label>
-                  Supplier <span className="text-red-500">*</span>
-                </Label>
-                <Combobox
-                  options={suppliers.map((supplier) => ({
-                    value: supplier.id,
-                    label: supplier.nama_supplier,
-                    description: supplier.kode,
-                  }))}
-                  value={formData.supplier_id}
-                  onChange={(v) => setFormData({ ...formData, supplier_id: v })}
-                  placeholder="Pilih supplier..."
-                  searchPlaceholder="Cari supplier (nama/kode)..."
-                  emptyMessage="Supplier tidak ditemukan"
-                  allowClear
-                  disabled={loading}
-                />
-                <p className="text-xs text-muted-foreground">
-                  Contoh: PT Sari Laut, UD Sumber Jaya
-                </p>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <Label htmlFor="supplier" className="text-xs">Supplier <span className="text-red-500">*</span></Label>
+                  <Combobox
+                    options={suppliers.map((s) => ({ value: s.id, label: s.nama_supplier, description: s.kota }))}
+                    value={formData.supplier_id}
+                    onChange={(v) => setFormData({ ...formData, supplier_id: v })}
+                    placeholder="Pilih supplier..."
+                    searchPlaceholder="Cari..."
+                    emptyMessage="Supplier tidak ditemukan"
+                    allowClear
+                    className="h-9 text-sm"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="bahan_baku" className="text-xs">Bahan Baku <span className="text-red-500">*</span></Label>
+                  <Combobox
+                    options={materials.map((m) => ({ value: m.id, label: m.nama, description: m.kode }))}
+                    value={formData.bahan_baku_id}
+                    onChange={(v) => setFormData({ ...formData, bahan_baku_id: v })}
+                    placeholder="Pilih bahan baku..."
+                    searchPlaceholder="Cari..."
+                    emptyMessage="Bahan baku tidak ditemukan"
+                    allowClear
+                    className="h-9 text-sm"
+                  />
+                </div>
               </div>
 
-              <div className="space-y-2">
-                <Label>
-                  Bahan Baku <span className="text-red-500">*</span>
-                </Label>
+              <div className="space-y-1.5">
+                <Label htmlFor="satuan" className="text-xs">Satuan <span className="text-red-500">*</span></Label>
                 <Combobox
-                  options={materials.map((material) => ({
-                    value: material.id,
-                    label: material.nama,
-                    description: material.kode,
-                  }))}
-                  value={formData.bahan_baku_id}
-                  onChange={(v) => setFormData({ ...formData, bahan_baku_id: v })}
-                  placeholder="Pilih bahan baku..."
-                  searchPlaceholder="Cari bahan baku (nama/kode)..."
-                  emptyMessage="Bahan baku tidak ditemukan"
-                  allowClear
-                  disabled={loading}
-                />
-                <p className="text-xs text-muted-foreground">
-                  Contoh: Tepung Terigu, Gula Pasir
-                </p>
-              </div>
-
-              <div className="space-y-2">
-                <Label>
-                  Satuan <span className="text-red-500">*</span>
-                </Label>
-                <Combobox
-                  options={units.map((unit) => ({
-                    value: unit.id,
-                    label: unit.nama,
-                    description: unit.kode,
-                  }))}
+                  options={units.map((u) => ({ value: u.id, label: u.nama, description: u.kode }))}
                   value={formData.satuan_id}
                   onChange={(v) => setFormData({ ...formData, satuan_id: v })}
                   placeholder="Pilih satuan..."
-                  searchPlaceholder="Cari satuan (nama/kode)..."
+                  searchPlaceholder="Cari..."
                   emptyMessage="Satuan tidak ditemukan"
                   allowClear
-                  disabled={loading}
+                  className="h-9 text-sm"
                 />
-                <p className="text-xs text-muted-foreground">
-                  Contoh: Kilogram (KG), Liter (LT)
-                </p>
               </div>
             </CardContent>
           </Card>
 
-          {/* Pricing */}
+          {/* Card 2: Pricing & Terms */}
           <Card>
-            <CardHeader>
-              <CardTitle>Pricing & Terms</CardTitle>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2">
+                <DollarSign className="w-4 h-4" />
+                Harga & Terms
+              </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label>
-                  Harga per Unit <span className="text-red-500">*</span>
-                </Label>
-                <Input
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={formData.harga}
-                  onChange={(e) =>
-                    setFormData({ ...formData, harga: parseFloat(e.target.value) || 0 })
-                  }
-                  placeholder="0"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label>
-                  Minimum Order Quantity (MOQ) <span className="text-red-500">*</span>
-                </Label>
-                <Input
-                  type="number"
-                  min="1"
-                  step="0.0001"
-                  value={formData.minimum_qty}
-                  onChange={(e) =>
-                    setFormData({ ...formData, minimum_qty: parseFloat(e.target.value) || 1 })
-                  }
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label>Lead Time (hari)</Label>
-                <Input
-                  type="number"
-                  min="0"
-                  value={formData.lead_time_days}
-                  onChange={(e) =>
-                    setFormData({ ...formData, lead_time_days: parseInt(e.target.value) || 0 })
-                  }
-                  placeholder="0"
-                />
-                <p className="text-xs text-muted-foreground">
-                  Estimasi waktu pengiriman dari order sampai barang datang
-                </p>
-              </div>
-
-              <div className="flex items-center space-x-2">
-                <input
-                  type="checkbox"
-                  id="is_preferred"
-                  checked={formData.is_preferred}
-                  onChange={(e) =>
-                    setFormData({ ...formData, is_preferred: e.target.checked })
-                  }
-                  className="h-4 w-4"
-                />
-                <Label htmlFor="is_preferred" className="cursor-pointer">
-                  Preferred Supplier (harga prioritas)
-                </Label>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="space-y-1.5">
+                  <Label htmlFor="harga" className="text-xs">Harga per Satuan <span className="text-red-500">*</span></Label>
+                  <Input
+                    id="harga"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={formData.harga}
+                    onChange={(e) => setFormData({ ...formData, harga: parseFloat(e.target.value) || 0 })}
+                    placeholder="Rp 0"
+                    className="h-9 text-sm font-mono"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="minimum_qty" className="text-xs">Minimum Qty</Label>
+                  <Input
+                    id="minimum_qty"
+                    type="number"
+                    min="1"
+                    value={formData.minimum_qty}
+                    onChange={(e) => setFormData({ ...formData, minimum_qty: parseFloat(e.target.value) || 1 })}
+                    className="h-9 text-sm"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="lead_time" className="text-xs">Lead Time (hari)</Label>
+                  <Input
+                    id="lead_time"
+                    type="number"
+                    min="0"
+                    value={formData.lead_time_days}
+                    onChange={(e) => setFormData({ ...formData, lead_time_days: parseFloat(e.target.value) || 0 })}
+                    className="h-9 text-sm"
+                  />
+                </div>
               </div>
             </CardContent>
           </Card>
+
+          {/* Card 3: Validity & Notes */}
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2">
+                <Calendar className="w-4 h-4" />
+                Validity & Catatan
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <Label htmlFor="berlaku_dari" className="text-xs">Berlaku Dari</Label>
+                  <Input
+                    id="berlaku_dari"
+                    type="date"
+                    value={formData.berlaku_dari}
+                    onChange={(e) => setFormData({ ...formData, berlaku_dari: e.target.value })}
+                    className="h-9 text-sm"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="berlaku_sampai" className="text-xs">Berlaku Sampai</Label>
+                  <Input
+                    id="berlaku_sampai"
+                    type="date"
+                    value={formData.berlaku_sampai}
+                    onChange={(e) => setFormData({ ...formData, berlaku_sampai: e.target.value })}
+                    className="h-9 text-sm"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="catatan" className="text-xs">Catatan</Label>
+                <Textarea
+                  id="catatan"
+                  value={formData.catatan}
+                  onChange={(e) => setFormData({ ...formData, catatan: e.target.value })}
+                  placeholder="Catatan tambahan..."
+                  rows={2}
+                  className="text-sm resize-none"
+                />
+              </div>
+            </CardContent>
+          </Card>
+
         </div>
 
-        {/* Validity Period */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Validity Period</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Berlaku Dari</Label>
-                <Input
-                  type="date"
-                  value={formData.berlaku_dari}
-                  onChange={(e) =>
-                    setFormData({ ...formData, berlaku_dari: e.target.value })
-                  }
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Berlaku Sampai (opsional)</Label>
-                <Input
-                  type="date"
-                  value={formData.berlaku_sampai}
-                  onChange={(e) =>
-                    setFormData({ ...formData, berlaku_sampai: e.target.value })
-                  }
-                />
-                <p className="text-xs text-muted-foreground">
-                  Kosongkan jika harga berlaku tanpa batas waktu
-                </p>
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label>Catatan</Label>
-              <Textarea
-                value={formData.catatan}
-                onChange={(e) =>
-                  setFormData({ ...formData, catatan: e.target.value })
-                }
-                placeholder="Catatan tambahan (misal: syarat pembayaran, kondisi khusus, dll)"
-                rows={3}
-              />
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Actions */}
-        <div className="flex justify-end gap-4">
-          <Link href="/dashboard/purchasing/price-list">
-            <Button variant="outline" type="button" disabled={isSubmitting}>
-              Batal
-            </Button>
-          </Link>
-          <Button type="submit" disabled={isSubmitting}>
+        {/* Action Buttons */}
+        <div className="flex items-center justify-end gap-3 mt-6 pt-4 border-t">
+          <Button type="button" variant="outline" onClick={() => router.back()} className="px-6">
+            Batal
+          </Button>
+          <Button type="submit" disabled={isSubmitting} className="px-6">
             <Save className="w-4 h-4 mr-2" />
             {isSubmitting ? "Menyimpan..." : "Simpan Price List"}
           </Button>
