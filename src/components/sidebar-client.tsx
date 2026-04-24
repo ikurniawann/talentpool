@@ -137,11 +137,12 @@ export default function SidebarClient({ user, navItems, children }: SidebarClien
               <XMarkIcon className="w-5 h-5 text-white/70" />
             </button>
           </div>
-        <div className="px-4 pb-3">
-          <p className="text-xs text-white/60 px-2 mb-2 text-center">Backoffice</p>
-          <div className="mt-3 p-2.5 bg-white/10 backdrop-blur-sm rounded-lg text-center">
-            <p className="text-xs font-medium text-white">{user.full_name}</p>
-            <p className="text-xs text-white/60 capitalize">{user.role.replace("_", " ")}</p>
+          <div className="px-4 pb-3 w-full">
+            <p className="text-xs text-white/60 px-2 mb-2 text-center">Backoffice</p>
+            <div className="mt-3 p-2.5 bg-white/10 backdrop-blur-sm rounded-lg text-center">
+              <p className="text-xs font-medium text-white">{user.full_name}</p>
+              <p className="text-xs text-white/60 capitalize">{user.role.replace("_", " ")}</p>
+            </div>
           </div>
         </div>
 
