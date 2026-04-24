@@ -1526,3 +1526,550 @@ See this log for the ancestor stack trace.
 [browser] React does not recognize the `totalItems` prop on a DOM element. If you intentionally want it to appear in the DOM as a custom attribute, spell it as lowercase `totalitems` instead. If you accidentally passed it from a parent component, remove it from the DOM element. 
 [browser] Unknown event handler property `onPageChange`. It will be ignored. 
  GET /api/purchasing/units?page=1&limit=20 200 in 294ms (next.js: 3ms, application-code: 291ms)
+⚠ ./src/app/pink-buttons.css:27:32
+Parsing CSS source code failed
+  [90m25 |[0m
+  [90m26 |[0m button:has(span:contains([32m"Tambah"[0m)):hover,
+[31m[1m>[0m [90m27 |[0m button:has(svg + span:contains([32m"Tambah"[0m)):hover {
+  [90m   |[0m                                [31m[1m^[0m
+  [90m28 |[0m   background: linear-gradient([35m135[0mdeg, #db2777 [35m0[0m%, #be185d [35m100[0m%) !important;
+  [90m29 |[0m }
+  [90m30 |[0m
+
+'contains' is not recognized as a valid pseudo-class. Did you mean '::contains' (pseudo-element) or is this a typo?
+
+Generated code of PostCSS transform of file content of src/app/pink-buttons.css:
+./src/app/pink-buttons.css:27:32
+  [90m25 |[0m
+  [90m26 |[0m button:has(span:contains([32m"Tambah"[0m)):hover,
+[31m[1m>[0m [90m27 |[0m button:has(svg + span:contains([32m"Tambah"[0m)):hover {
+  [90m   |[0m                                [31m[1m^[0m
+  [90m28 |[0m   background: linear-gradient([35m135[0mdeg, #db2777 [35m0[0m%, #be185d [35m100[0m%) !important;
+  [90m29 |[0m }
+  [90m30 |[0m
+
+Import trace:
+  Client Component Browser:
+    ./src/app/pink-buttons.css [Client Component Browser]
+    ./src/app/layout.tsx [Server Component]
+
+
+✓ Compiled in 152ms
+⚠ ./src/app/pink-buttons.css:27:32
+Parsing CSS source code failed
+  [90m25 |[0m
+  [90m26 |[0m button:has(span:contains([32m"Tambah"[0m)):hover,
+[31m[1m>[0m [90m27 |[0m button:has(svg + span:contains([32m"Tambah"[0m)):hover {
+  [90m   |[0m                                [31m[1m^[0m
+  [90m28 |[0m   background: linear-gradient([35m135[0mdeg, #db2777 [35m0[0m%, #be185d [35m100[0m%) !important;
+  [90m29 |[0m }
+  [90m30 |[0m
+
+'contains' is not recognized as a valid pseudo-class. Did you mean '::contains' (pseudo-element) or is this a typo?
+
+Generated code of PostCSS transform of file content of src/app/pink-buttons.css:
+./src/app/pink-buttons.css:27:32
+  [90m25 |[0m
+  [90m26 |[0m button:has(span:contains([32m"Tambah"[0m)):hover,
+[31m[1m>[0m [90m27 |[0m button:has(svg + span:contains([32m"Tambah"[0m)):hover {
+  [90m   |[0m                                [31m[1m^[0m
+  [90m28 |[0m   background: linear-gradient([35m135[0mdeg, #db2777 [35m0[0m%, #be185d [35m100[0m%) !important;
+  [90m29 |[0m }
+  [90m30 |[0m
+
+Import trace:
+  Client Component Browser:
+    ./src/app/pink-buttons.css [Client Component Browser]
+    ./src/app/layout.tsx [Server Component]
+
+
+✓ Compiled in 0ms
+⚠ ./src/app/pink-buttons.css:27:32
+Parsing CSS source code failed
+  [90m25 |[0m
+  [90m26 |[0m button:has(span:contains([32m"Tambah"[0m)):hover,
+[31m[1m>[0m [90m27 |[0m button:has(svg + span:contains([32m"Tambah"[0m)):hover {
+  [90m   |[0m                                [31m[1m^[0m
+  [90m28 |[0m   background: linear-gradient([35m135[0mdeg, #db2777 [35m0[0m%, #be185d [35m100[0m%) !important;
+  [90m29 |[0m }
+  [90m30 |[0m
+
+'contains' is not recognized as a valid pseudo-class. Did you mean '::contains' (pseudo-element) or is this a typo?
+
+Generated code of PostCSS transform of file content of src/app/pink-buttons.css:
+./src/app/pink-buttons.css:27:32
+  [90m25 |[0m
+  [90m26 |[0m button:has(span:contains([32m"Tambah"[0m)):hover,
+[31m[1m>[0m [90m27 |[0m button:has(svg + span:contains([32m"Tambah"[0m)):hover {
+  [90m   |[0m                                [31m[1m^[0m
+  [90m28 |[0m   background: linear-gradient([35m135[0mdeg, #db2777 [35m0[0m%, #be185d [35m100[0m%) !important;
+  [90m29 |[0m }
+  [90m30 |[0m
+
+Import trace:
+  Client Component Browser:
+    ./src/app/pink-buttons.css [Client Component Browser]
+    ./src/app/layout.tsx [Server Component]
+
+
+⚠ ./src/app/pink-buttons.css:27:32
+Parsing CSS source code failed
+  [90m25 |[0m
+  [90m26 |[0m button:has(span:contains([32m"Tambah"[0m)):hover,
+[31m[1m>[0m [90m27 |[0m button:has(svg + span:contains([32m"Tambah"[0m)):hover {
+  [90m   |[0m                                [31m[1m^[0m
+  [90m28 |[0m   background: linear-gradient([35m135[0mdeg, #db2777 [35m0[0m%, #be185d [35m100[0m%) !important;
+  [90m29 |[0m }
+  [90m30 |[0m
+
+'contains' is not recognized as a valid pseudo-class. Did you mean '::contains' (pseudo-element) or is this a typo?
+
+Generated code of PostCSS transform of file content of src/app/pink-buttons.css:
+./src/app/pink-buttons.css:27:32
+  [90m25 |[0m
+  [90m26 |[0m button:has(span:contains([32m"Tambah"[0m)):hover,
+[31m[1m>[0m [90m27 |[0m button:has(svg + span:contains([32m"Tambah"[0m)):hover {
+  [90m   |[0m                                [31m[1m^[0m
+  [90m28 |[0m   background: linear-gradient([35m135[0mdeg, #db2777 [35m0[0m%, #be185d [35m100[0m%) !important;
+  [90m29 |[0m }
+  [90m30 |[0m
+
+Import trace:
+  Client Component Browser:
+    ./src/app/pink-buttons.css [Client Component Browser]
+    ./src/app/layout.tsx [Server Component]
+
+
+ GET /dashboard/purchasing/units 200 in 331ms (next.js: 33ms, application-code: 297ms)
+⚠ ./src/app/pink-buttons.css:27:32
+Parsing CSS source code failed
+  [90m25 |[0m
+  [90m26 |[0m button:has(span:contains([32m"Tambah"[0m)):hover,
+[31m[1m>[0m [90m27 |[0m button:has(svg + span:contains([32m"Tambah"[0m)):hover {
+  [90m   |[0m                                [31m[1m^[0m
+  [90m28 |[0m   background: linear-gradient([35m135[0mdeg, #db2777 [35m0[0m%, #be185d [35m100[0m%) !important;
+  [90m29 |[0m }
+  [90m30 |[0m
+
+'contains' is not recognized as a valid pseudo-class. Did you mean '::contains' (pseudo-element) or is this a typo?
+
+Generated code of PostCSS transform of file content of src/app/pink-buttons.css:
+./src/app/pink-buttons.css:27:32
+  [90m25 |[0m
+  [90m26 |[0m button:has(span:contains([32m"Tambah"[0m)):hover,
+[31m[1m>[0m [90m27 |[0m button:has(svg + span:contains([32m"Tambah"[0m)):hover {
+  [90m   |[0m                                [31m[1m^[0m
+  [90m28 |[0m   background: linear-gradient([35m135[0mdeg, #db2777 [35m0[0m%, #be185d [35m100[0m%) !important;
+  [90m29 |[0m }
+  [90m30 |[0m
+
+Import trace:
+  Client Component Browser:
+    ./src/app/pink-buttons.css [Client Component Browser]
+    ./src/app/layout.tsx [Server Component]
+
+
+⚠ ./src/app/pink-buttons.css:27:32
+Parsing CSS source code failed
+  [90m25 |[0m
+  [90m26 |[0m button:has(span:contains([32m"Tambah"[0m)):hover,
+[31m[1m>[0m [90m27 |[0m button:has(svg + span:contains([32m"Tambah"[0m)):hover {
+  [90m   |[0m                                [31m[1m^[0m
+  [90m28 |[0m   background: linear-gradient([35m135[0mdeg, #db2777 [35m0[0m%, #be185d [35m100[0m%) !important;
+  [90m29 |[0m }
+  [90m30 |[0m
+
+'contains' is not recognized as a valid pseudo-class. Did you mean '::contains' (pseudo-element) or is this a typo?
+
+Generated code of PostCSS transform of file content of src/app/pink-buttons.css:
+./src/app/pink-buttons.css:27:32
+  [90m25 |[0m
+  [90m26 |[0m button:has(span:contains([32m"Tambah"[0m)):hover,
+[31m[1m>[0m [90m27 |[0m button:has(svg + span:contains([32m"Tambah"[0m)):hover {
+  [90m   |[0m                                [31m[1m^[0m
+  [90m28 |[0m   background: linear-gradient([35m135[0mdeg, #db2777 [35m0[0m%, #be185d [35m100[0m%) !important;
+  [90m29 |[0m }
+  [90m30 |[0m
+
+Import trace:
+  Client Component Browser:
+    ./src/app/pink-buttons.css [Client Component Browser]
+    ./src/app/layout.tsx [Server Component]
+
+
+ GET /dashboard/purchasing/units 200 in 303ms (next.js: 1121µs, application-code: 302ms)
+⚠ ./src/app/pink-buttons.css:27:32
+Parsing CSS source code failed
+  [90m25 |[0m
+  [90m26 |[0m button:has(span:contains([32m"Tambah"[0m)):hover,
+[31m[1m>[0m [90m27 |[0m button:has(svg + span:contains([32m"Tambah"[0m)):hover {
+  [90m   |[0m                                [31m[1m^[0m
+  [90m28 |[0m   background: linear-gradient([35m135[0mdeg, #db2777 [35m0[0m%, #be185d [35m100[0m%) !important;
+  [90m29 |[0m }
+  [90m30 |[0m
+
+'contains' is not recognized as a valid pseudo-class. Did you mean '::contains' (pseudo-element) or is this a typo?
+
+Generated code of PostCSS transform of file content of src/app/pink-buttons.css:
+./src/app/pink-buttons.css:27:32
+  [90m25 |[0m
+  [90m26 |[0m button:has(span:contains([32m"Tambah"[0m)):hover,
+[31m[1m>[0m [90m27 |[0m button:has(svg + span:contains([32m"Tambah"[0m)):hover {
+  [90m   |[0m                                [31m[1m^[0m
+  [90m28 |[0m   background: linear-gradient([35m135[0mdeg, #db2777 [35m0[0m%, #be185d [35m100[0m%) !important;
+  [90m29 |[0m }
+  [90m30 |[0m
+
+Import trace:
+  Client Component Browser:
+    ./src/app/pink-buttons.css [Client Component Browser]
+    ./src/app/layout.tsx [Server Component]
+
+
+⚠ ./src/app/pink-buttons.css:27:32
+Parsing CSS source code failed
+  [90m25 |[0m
+  [90m26 |[0m button:has(span:contains([32m"Tambah"[0m)):hover,
+[31m[1m>[0m [90m27 |[0m button:has(svg + span:contains([32m"Tambah"[0m)):hover {
+  [90m   |[0m                                [31m[1m^[0m
+  [90m28 |[0m   background: linear-gradient([35m135[0mdeg, #db2777 [35m0[0m%, #be185d [35m100[0m%) !important;
+  [90m29 |[0m }
+  [90m30 |[0m
+
+'contains' is not recognized as a valid pseudo-class. Did you mean '::contains' (pseudo-element) or is this a typo?
+
+Generated code of PostCSS transform of file content of src/app/pink-buttons.css:
+./src/app/pink-buttons.css:27:32
+  [90m25 |[0m
+  [90m26 |[0m button:has(span:contains([32m"Tambah"[0m)):hover,
+[31m[1m>[0m [90m27 |[0m button:has(svg + span:contains([32m"Tambah"[0m)):hover {
+  [90m   |[0m                                [31m[1m^[0m
+  [90m28 |[0m   background: linear-gradient([35m135[0mdeg, #db2777 [35m0[0m%, #be185d [35m100[0m%) !important;
+  [90m29 |[0m }
+  [90m30 |[0m
+
+Import trace:
+  Client Component Browser:
+    ./src/app/pink-buttons.css [Client Component Browser]
+    ./src/app/layout.tsx [Server Component]
+
+
+ GET /dashboard/purchasing/units 200 in 57ms (next.js: 1201µs, application-code: 56ms)
+⚠ ./src/app/pink-buttons.css:27:32
+Parsing CSS source code failed
+  [90m25 |[0m
+  [90m26 |[0m button:has(span:contains([32m"Tambah"[0m)):hover,
+[31m[1m>[0m [90m27 |[0m button:has(svg + span:contains([32m"Tambah"[0m)):hover {
+  [90m   |[0m                                [31m[1m^[0m
+  [90m28 |[0m   background: linear-gradient([35m135[0mdeg, #db2777 [35m0[0m%, #be185d [35m100[0m%) !important;
+  [90m29 |[0m }
+  [90m30 |[0m
+
+'contains' is not recognized as a valid pseudo-class. Did you mean '::contains' (pseudo-element) or is this a typo?
+
+Generated code of PostCSS transform of file content of src/app/pink-buttons.css:
+./src/app/pink-buttons.css:27:32
+  [90m25 |[0m
+  [90m26 |[0m button:has(span:contains([32m"Tambah"[0m)):hover,
+[31m[1m>[0m [90m27 |[0m button:has(svg + span:contains([32m"Tambah"[0m)):hover {
+  [90m   |[0m                                [31m[1m^[0m
+  [90m28 |[0m   background: linear-gradient([35m135[0mdeg, #db2777 [35m0[0m%, #be185d [35m100[0m%) !important;
+  [90m29 |[0m }
+  [90m30 |[0m
+
+Import trace:
+  Client Component Browser:
+    ./src/app/pink-buttons.css [Client Component Browser]
+    ./src/app/layout.tsx [Server Component]
+
+
+ GET /dashboard/purchasing/units 200 in 65ms (next.js: 984µs, application-code: 64ms)
+ GET /dashboard/purchasing/units 200 in 51ms (next.js: 1170µs, application-code: 50ms)
+ GET /dashboard/purchasing/units 200 in 41ms (next.js: 964µs, application-code: 40ms)
+ GET /dashboard/purchasing/units 200 in 27ms (next.js: 1536µs, application-code: 26ms)
+ GET /dashboard/purchasing/units 200 in 1069ms (next.js: 101ms, application-code: 968ms)
+ GET /dashboard/purchasing/units 200 in 1174ms (next.js: 10ms, application-code: 1164ms)
+⚠ ./src/app/pink-buttons.css:27:32
+Parsing CSS source code failed
+  [90m25 |[0m
+  [90m26 |[0m button:has(span:contains([32m"Tambah"[0m)):hover,
+[31m[1m>[0m [90m27 |[0m button:has(svg + span:contains([32m"Tambah"[0m)):hover {
+  [90m   |[0m                                [31m[1m^[0m
+  [90m28 |[0m   background: linear-gradient([35m135[0mdeg, #db2777 [35m0[0m%, #be185d [35m100[0m%) !important;
+  [90m29 |[0m }
+  [90m30 |[0m
+
+'contains' is not recognized as a valid pseudo-class. Did you mean '::contains' (pseudo-element) or is this a typo?
+
+Generated code of PostCSS transform of file content of src/app/pink-buttons.css:
+./src/app/pink-buttons.css:27:32
+  [90m25 |[0m
+  [90m26 |[0m button:has(span:contains([32m"Tambah"[0m)):hover,
+[31m[1m>[0m [90m27 |[0m button:has(svg + span:contains([32m"Tambah"[0m)):hover {
+  [90m   |[0m                                [31m[1m^[0m
+  [90m28 |[0m   background: linear-gradient([35m135[0mdeg, #db2777 [35m0[0m%, #be185d [35m100[0m%) !important;
+  [90m29 |[0m }
+  [90m30 |[0m
+
+Import trace:
+  Client Component Browser:
+    ./src/app/pink-buttons.css [Client Component Browser]
+    ./src/app/layout.tsx [Server Component]
+
+
+⚠ ./src/app/pink-buttons.css:27:32
+Parsing CSS source code failed
+  [90m25 |[0m
+  [90m26 |[0m button:has(span:contains([32m"Tambah"[0m)):hover,
+[31m[1m>[0m [90m27 |[0m button:has(svg + span:contains([32m"Tambah"[0m)):hover {
+  [90m   |[0m                                [31m[1m^[0m
+  [90m28 |[0m   background: linear-gradient([35m135[0mdeg, #db2777 [35m0[0m%, #be185d [35m100[0m%) !important;
+  [90m29 |[0m }
+  [90m30 |[0m
+
+'contains' is not recognized as a valid pseudo-class. Did you mean '::contains' (pseudo-element) or is this a typo?
+
+Generated code of PostCSS transform of file content of src/app/pink-buttons.css:
+./src/app/pink-buttons.css:27:32
+  [90m25 |[0m
+  [90m26 |[0m button:has(span:contains([32m"Tambah"[0m)):hover,
+[31m[1m>[0m [90m27 |[0m button:has(svg + span:contains([32m"Tambah"[0m)):hover {
+  [90m   |[0m                                [31m[1m^[0m
+  [90m28 |[0m   background: linear-gradient([35m135[0mdeg, #db2777 [35m0[0m%, #be185d [35m100[0m%) !important;
+  [90m29 |[0m }
+  [90m30 |[0m
+
+Import trace:
+  Client Component Browser:
+    ./src/app/pink-buttons.css [Client Component Browser]
+    ./src/app/layout.tsx [Server Component]
+
+
+⚠ ./src/app/pink-buttons.css:27:32
+Parsing CSS source code failed
+  [90m25 |[0m
+  [90m26 |[0m button:has(span:contains([32m"Tambah"[0m)):hover,
+[31m[1m>[0m [90m27 |[0m button:has(svg + span:contains([32m"Tambah"[0m)):hover {
+  [90m   |[0m                                [31m[1m^[0m
+  [90m28 |[0m   background: linear-gradient([35m135[0mdeg, #db2777 [35m0[0m%, #be185d [35m100[0m%) !important;
+  [90m29 |[0m }
+  [90m30 |[0m
+
+'contains' is not recognized as a valid pseudo-class. Did you mean '::contains' (pseudo-element) or is this a typo?
+
+Generated code of PostCSS transform of file content of src/app/pink-buttons.css:
+./src/app/pink-buttons.css:27:32
+  [90m25 |[0m
+  [90m26 |[0m button:has(span:contains([32m"Tambah"[0m)):hover,
+[31m[1m>[0m [90m27 |[0m button:has(svg + span:contains([32m"Tambah"[0m)):hover {
+  [90m   |[0m                                [31m[1m^[0m
+  [90m28 |[0m   background: linear-gradient([35m135[0mdeg, #db2777 [35m0[0m%, #be185d [35m100[0m%) !important;
+  [90m29 |[0m }
+  [90m30 |[0m
+
+Import trace:
+  Client Component Browser:
+    ./src/app/pink-buttons.css [Client Component Browser]
+    ./src/app/layout.tsx [Server Component]
+
+
+⚠ ./src/app/pink-buttons.css:27:32
+Parsing CSS source code failed
+  [90m25 |[0m
+  [90m26 |[0m button:has(span:contains([32m"Tambah"[0m)):hover,
+[31m[1m>[0m [90m27 |[0m button:has(svg + span:contains([32m"Tambah"[0m)):hover {
+  [90m   |[0m                                [31m[1m^[0m
+  [90m28 |[0m   background: linear-gradient([35m135[0mdeg, #db2777 [35m0[0m%, #be185d [35m100[0m%) !important;
+  [90m29 |[0m }
+  [90m30 |[0m
+
+'contains' is not recognized as a valid pseudo-class. Did you mean '::contains' (pseudo-element) or is this a typo?
+
+Generated code of PostCSS transform of file content of src/app/pink-buttons.css:
+./src/app/pink-buttons.css:27:32
+  [90m25 |[0m
+  [90m26 |[0m button:has(span:contains([32m"Tambah"[0m)):hover,
+[31m[1m>[0m [90m27 |[0m button:has(svg + span:contains([32m"Tambah"[0m)):hover {
+  [90m   |[0m                                [31m[1m^[0m
+  [90m28 |[0m   background: linear-gradient([35m135[0mdeg, #db2777 [35m0[0m%, #be185d [35m100[0m%) !important;
+  [90m29 |[0m }
+  [90m30 |[0m
+
+Import trace:
+  Client Component Browser:
+    ./src/app/pink-buttons.css [Client Component Browser]
+    ./src/app/layout.tsx [Server Component]
+
+
+⚠ ./src/app/pink-buttons.css:27:32
+Parsing CSS source code failed
+  [90m25 |[0m
+  [90m26 |[0m button:has(span:contains([32m"Tambah"[0m)):hover,
+[31m[1m>[0m [90m27 |[0m button:has(svg + span:contains([32m"Tambah"[0m)):hover {
+  [90m   |[0m                                [31m[1m^[0m
+  [90m28 |[0m   background: linear-gradient([35m135[0mdeg, #db2777 [35m0[0m%, #be185d [35m100[0m%) !important;
+  [90m29 |[0m }
+  [90m30 |[0m
+
+'contains' is not recognized as a valid pseudo-class. Did you mean '::contains' (pseudo-element) or is this a typo?
+
+Generated code of PostCSS transform of file content of src/app/pink-buttons.css:
+./src/app/pink-buttons.css:27:32
+  [90m25 |[0m
+  [90m26 |[0m button:has(span:contains([32m"Tambah"[0m)):hover,
+[31m[1m>[0m [90m27 |[0m button:has(svg + span:contains([32m"Tambah"[0m)):hover {
+  [90m   |[0m                                [31m[1m^[0m
+  [90m28 |[0m   background: linear-gradient([35m135[0mdeg, #db2777 [35m0[0m%, #be185d [35m100[0m%) !important;
+  [90m29 |[0m }
+  [90m30 |[0m
+
+Import trace:
+  Client Component Browser:
+    ./src/app/pink-buttons.css [Client Component Browser]
+    ./src/app/layout.tsx [Server Component]
+
+
+⚠ ./src/app/pink-buttons.css:27:32
+Parsing CSS source code failed
+  [90m25 |[0m
+  [90m26 |[0m button:has(span:contains([32m"Tambah"[0m)):hover,
+[31m[1m>[0m [90m27 |[0m button:has(svg + span:contains([32m"Tambah"[0m)):hover {
+  [90m   |[0m                                [31m[1m^[0m
+  [90m28 |[0m   background: linear-gradient([35m135[0mdeg, #db2777 [35m0[0m%, #be185d [35m100[0m%) !important;
+  [90m29 |[0m }
+  [90m30 |[0m
+
+'contains' is not recognized as a valid pseudo-class. Did you mean '::contains' (pseudo-element) or is this a typo?
+
+Generated code of PostCSS transform of file content of src/app/pink-buttons.css:
+./src/app/pink-buttons.css:27:32
+  [90m25 |[0m
+  [90m26 |[0m button:has(span:contains([32m"Tambah"[0m)):hover,
+[31m[1m>[0m [90m27 |[0m button:has(svg + span:contains([32m"Tambah"[0m)):hover {
+  [90m   |[0m                                [31m[1m^[0m
+  [90m28 |[0m   background: linear-gradient([35m135[0mdeg, #db2777 [35m0[0m%, #be185d [35m100[0m%) !important;
+  [90m29 |[0m }
+  [90m30 |[0m
+
+Import trace:
+  Client Component Browser:
+    ./src/app/pink-buttons.css [Client Component Browser]
+    ./src/app/layout.tsx [Server Component]
+
+
+⚠ ./src/app/pink-buttons.css:27:32
+Parsing CSS source code failed
+  [90m25 |[0m
+  [90m26 |[0m button:has(span:contains([32m"Tambah"[0m)):hover,
+[31m[1m>[0m [90m27 |[0m button:has(svg + span:contains([32m"Tambah"[0m)):hover {
+  [90m   |[0m                                [31m[1m^[0m
+  [90m28 |[0m   background: linear-gradient([35m135[0mdeg, #db2777 [35m0[0m%, #be185d [35m100[0m%) !important;
+  [90m29 |[0m }
+  [90m30 |[0m
+
+'contains' is not recognized as a valid pseudo-class. Did you mean '::contains' (pseudo-element) or is this a typo?
+
+Generated code of PostCSS transform of file content of src/app/pink-buttons.css:
+./src/app/pink-buttons.css:27:32
+  [90m25 |[0m
+  [90m26 |[0m button:has(span:contains([32m"Tambah"[0m)):hover,
+[31m[1m>[0m [90m27 |[0m button:has(svg + span:contains([32m"Tambah"[0m)):hover {
+  [90m   |[0m                                [31m[1m^[0m
+  [90m28 |[0m   background: linear-gradient([35m135[0mdeg, #db2777 [35m0[0m%, #be185d [35m100[0m%) !important;
+  [90m29 |[0m }
+  [90m30 |[0m
+
+Import trace:
+  Client Component Browser:
+    ./src/app/pink-buttons.css [Client Component Browser]
+    ./src/app/layout.tsx [Server Component]
+
+
+⚠ ./src/app/pink-buttons.css:27:32
+Parsing CSS source code failed
+  [90m25 |[0m
+  [90m26 |[0m button:has(span:contains([32m"Tambah"[0m)):hover,
+[31m[1m>[0m [90m27 |[0m button:has(svg + span:contains([32m"Tambah"[0m)):hover {
+  [90m   |[0m                                [31m[1m^[0m
+  [90m28 |[0m   background: linear-gradient([35m135[0mdeg, #db2777 [35m0[0m%, #be185d [35m100[0m%) !important;
+  [90m29 |[0m }
+  [90m30 |[0m
+
+'contains' is not recognized as a valid pseudo-class. Did you mean '::contains' (pseudo-element) or is this a typo?
+
+Generated code of PostCSS transform of file content of src/app/pink-buttons.css:
+./src/app/pink-buttons.css:27:32
+  [90m25 |[0m
+  [90m26 |[0m button:has(span:contains([32m"Tambah"[0m)):hover,
+[31m[1m>[0m [90m27 |[0m button:has(svg + span:contains([32m"Tambah"[0m)):hover {
+  [90m   |[0m                                [31m[1m^[0m
+  [90m28 |[0m   background: linear-gradient([35m135[0mdeg, #db2777 [35m0[0m%, #be185d [35m100[0m%) !important;
+  [90m29 |[0m }
+  [90m30 |[0m
+
+Import trace:
+  Client Component Browser:
+    ./src/app/pink-buttons.css [Client Component Browser]
+    ./src/app/layout.tsx [Server Component]
+
+
+ GET /api/purchasing/units?page=1&limit=20 200 in 269ms (next.js: 56ms, application-code: 213ms)
+[browser] Encountered two children with the same key, `/dashboard/purchasing`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. 
+[browser] In HTML, <button> cannot be a descendant of <button>.
+This will cause a hydration error.
+
+  ...
+    <ClientSegmentRoot Component={function PurchasingLayout} slots={{children:{...}, ...}} ...>
+      <PurchasingLayout sidebar={{...}} params={Promise}>
+        <div>
+          <div className="sticky top...">
+            <div className="flex h-12 ...">
+              <div>
+              <div className="flex items...">
+                <ActivityLogBell>
+                  <DropdownMenu open={false} onOpenChange={function bound dispatchSetState}>
+                    <MenuRoot data-slot="dropdown-menu" open={false} onOpenChange={function bound dispatchSetState}>
+                      <FloatingTree externalTree={{nodesRef:{...}, ...}}>
+                        <DropdownMenuTrigger asChild={true}>
+                          <MenuTrigger data-slot="dropdown-m..." asChild={true}>
+>                           <button
+>                             type="button"
+>                             onClick={function}
+>                             onMouseDown={function}
+>                             onKeyDown={function}
+>                             onKeyUp={function}
+>                             onPointerDown={function}
+>                             tabIndex={0}
+>                             disabled={false}
+>                             aria-haspopup="menu"
+>                             id="base-ui-_r_4_"
+>                             data-slot="dropdown-menu-trigger"
+>                             asChild={true}
+>                             ref={function}
+>                           >
+                              <Button variant="ghost" size="icon" className="relative h...">
+                                <Button data-slot="button" className={"group/bu..."}>
+>                                 <button
+>                                   type="button"
+>                                   onClick={function}
+>                                   onMouseDown={function}
+>                                   onKeyDown={function}
+>                                   onKeyUp={function}
+>                                   onPointerDown={function}
+>                                   tabIndex={0}
+>                                   disabled={false}
+>                                   data-slot="button"
+>                                   ref={function}
+>                                   className={"group/button inline-flex shrink-0 items-center justify-center rounded..."}
+>                                 >
+                        ...
+                ...
+          ...
+ 
+[browser] <button> cannot contain a nested <button>.
+See this log for the ancestor stack trace. 
+[browser] React does not recognize the `asChild` prop on a DOM element. If you intentionally want it to appear in the DOM as a custom attribute, spell it as lowercase `aschild` instead. If you accidentally passed it from a parent component, remove it from the DOM element. 
+[browser] React does not recognize the `currentPage` prop on a DOM element. If you intentionally want it to appear in the DOM as a custom attribute, spell it as lowercase `currentpage` instead. If you accidentally passed it from a parent component, remove it from the DOM element. 
+[browser] React does not recognize the `totalPages` prop on a DOM element. If you intentionally want it to appear in the DOM as a custom attribute, spell it as lowercase `totalpages` instead. If you accidentally passed it from a parent component, remove it from the DOM element. 
+[browser] React does not recognize the `totalItems` prop on a DOM element. If you intentionally want it to appear in the DOM as a custom attribute, spell it as lowercase `totalitems` instead. If you accidentally passed it from a parent component, remove it from the DOM element. 
+[browser] Unknown event handler property `onPageChange`. It will be ignored. 
