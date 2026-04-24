@@ -75,8 +75,7 @@ export default function SidebarNav({ navItems, userName, userRole }: SidebarNavP
   return (
     <aside className="w-64 bg-gradient-to-br from-[#303b64] to-[#425aad] flex flex-col shadow-xl">
       <div className="p-6 border-b border-white/10">
-        <h2 className="font-bold text-lg text-white">Talent Pool</h2>
-        <p className="text-xs text-white/60 mt-0.5">Aapex Technology</p>
+        <img src="/logos/logo.png" alt="Wounderland Backoffice" className="w-full h-auto mb-4" />
         <div className="mt-3 p-2 bg-white/10 backdrop-blur-sm rounded-lg">
           <p className="text-xs font-medium text-white">{userName}</p>
           <p className="text-xs text-white/60 capitalize">{userRole.replace("_", " ")}</p>

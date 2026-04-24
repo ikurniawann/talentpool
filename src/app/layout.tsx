@@ -11,8 +11,11 @@ import { ErrorBoundary } from "@/components/error-boundary";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Wounderland Backoffice - Aapex Technology",
+  title: "Wounderland Backoffice",
   description: "Sistem ERP Terintegrasi: Talent Pool, Purchasing & Inventory Management",
+  icons: {
+    icon: '/favicon.svg',
+  },
 };
 
 export default function RootLayout({
