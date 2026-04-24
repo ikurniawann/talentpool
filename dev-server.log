@@ -2608,3 +2608,1776 @@ Import traces:
     ./src/components/ui/datepicker.tsx [Client Component SSR]
     ./src/app/(dashboard)/dashboard/purchasing/po/new/page.tsx [Client Component SSR]
     ./src/app/(dashboard)/dashboard/purchasing/po/new/page.tsx [Server Component] 
+⨯ ./src/components/ui/datepicker.tsx:8:1
+Module not found: Can't resolve 'react-datepicker/dist/react-datepicker.css'
+  [90m 6 |[0m [36mimport[0m { cn } [36mfrom[0m [32m"@/lib/utils"[0m;
+  [90m 7 |[0m [36mimport[0m { [33mButton[0m } [36mfrom[0m [32m"@/components/ui/button"[0m;
+[31m[1m>[0m [90m 8 |[0m [36mimport[0m [32m"react-datepicker/dist/react-datepicker.css"[0m;
+  [90m   |[0m [31m[1m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  [90m 9 |[0m
+  [90m10 |[0m [36minterface[0m [33mDatePickerProps[0m {
+  [90m11 |[0m   value?: string;
+
+
+
+Import traces:
+  Client Component Browser:
+    ./src/components/ui/datepicker.tsx [Client Component Browser]
+    ./src/app/(dashboard)/dashboard/purchasing/po/new/page.tsx [Client Component Browser]
+    ./src/app/(dashboard)/dashboard/purchasing/po/new/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/components/ui/datepicker.tsx [Client Component SSR]
+    ./src/app/(dashboard)/dashboard/purchasing/po/new/page.tsx [Client Component SSR]
+    ./src/app/(dashboard)/dashboard/purchasing/po/new/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+⨯ ./src/components/ui/calendar.tsx:5:1
+Module not found: Can't resolve 'react-day-picker'
+  [90m3 |[0m [36mimport[0m * [36mas[0m [33mReact[0m [36mfrom[0m [32m"react"[0m;
+  [90m4 |[0m [36mimport[0m { [33mChevronLeft[0m, [33mChevronRight[0m } [36mfrom[0m [32m"lucide-react"[0m;
+[31m[1m>[0m [90m5 |[0m [36mimport[0m { [33mDayPicker[0m } [36mfrom[0m [32m"react-day-picker"[0m;
+  [90m  |[0m [31m[1m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  [90m6 |[0m [36mimport[0m { cn } [36mfrom[0m [32m"@/lib/utils"[0m;
+  [90m7 |[0m [36mimport[0m { buttonVariants } [36mfrom[0m [32m"@/components/ui/button"[0m;
+  [90m8 |[0m
+
+
+
+Import trace:
+  Client Component Browser:
+    ./src/components/ui/calendar.tsx [Client Component Browser]
+    ./src/components/ui/datepicker.tsx [Client Component Browser]
+    ./src/app/(dashboard)/dashboard/purchasing/po/new/page.tsx [Client Component Browser]
+    ./src/app/(dashboard)/dashboard/purchasing/po/new/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+⨯ ./src/components/ui/calendar.tsx:5:1
+Module not found: Can't resolve 'react-day-picker'
+  [90m3 |[0m [36mimport[0m * [36mas[0m [33mReact[0m [36mfrom[0m [32m"react"[0m;
+  [90m4 |[0m [36mimport[0m { [33mChevronLeft[0m, [33mChevronRight[0m } [36mfrom[0m [32m"lucide-react"[0m;
+[31m[1m>[0m [90m5 |[0m [36mimport[0m { [33mDayPicker[0m } [36mfrom[0m [32m"react-day-picker"[0m;
+  [90m  |[0m [31m[1m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  [90m6 |[0m [36mimport[0m { cn } [36mfrom[0m [32m"@/lib/utils"[0m;
+  [90m7 |[0m [36mimport[0m { buttonVariants } [36mfrom[0m [32m"@/components/ui/button"[0m;
+  [90m8 |[0m
+
+
+
+Import trace:
+  Client Component Browser:
+    ./src/components/ui/calendar.tsx [Client Component Browser]
+    ./src/components/ui/datepicker.tsx [Client Component Browser]
+    ./src/app/(dashboard)/dashboard/purchasing/po/new/page.tsx [Client Component Browser]
+    ./src/app/(dashboard)/dashboard/purchasing/po/new/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+⨯ ./src/components/ui/datepicker.tsx
+Error evaluating Node.js code
+SyntaxError: /Users/ilham/Desktop/talentpool/src/components/ui/datepicker.tsx: Identifier 'DatePicker' has already been declared. (22:16)
+
+  20 | }
+  21 |
+> 22 | export function DatePicker({
+     |                 ^
+  23 |   value,
+  24 |   onChange,
+  25 |   placeholder = "Pilih tanggal...",
+  (from /Users/ilham/Desktop/talentpool/node_modules/next/dist/build/babel/loader/index.js)
+    [at constructor (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:137105)]
+    [at TypeScriptParserMixin.raise (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:194164)]
+    [at TypeScriptScopeHandler.checkRedeclarationInScope (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:163166)]
+    [at TypeScriptScopeHandler.declareName (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:162529)]
+    [at TypeScriptScopeHandler.declareName (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:271160)]
+    [at TypeScriptParserMixin.registerFunctionStatementId (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:404843)]
+    [at TypeScriptParserMixin.registerFunctionStatementId (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:318299)]
+    [at TypeScriptParserMixin.parseFunction (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:404441)]
+    [at TypeScriptParserMixin.parseFunctionStatement (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:397088)]
+    [at TypeScriptParserMixin.parseStatementContent (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:390089)]
+    [at TypeScriptParserMixin.parseStatementContent (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:324042)]
+    [at TypeScriptParserMixin.parseStatementLike (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:389494)]
+    [at TypeScriptParserMixin.parseStatementListItem (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:389120)]
+    [at TypeScriptParserMixin.parseExportDeclaration (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:415606)]
+    [at TypeScriptParserMixin.parseExportDeclaration (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:327104)]
+    [at TypeScriptParserMixin.maybeParseExportDeclaration (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:414570)]
+    [at TypeScriptParserMixin.parseExport (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:412708)]
+    [at TypeScriptParserMixin.parseExport (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:322862)]
+    [at TypeScriptParserMixin.parseStatementContent (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:391808)]
+    [at TypeScriptParserMixin.parseStatementContent (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:324042)]
+    [at TypeScriptParserMixin.parseStatementLike (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:389494)]
+    [at TypeScriptParserMixin.parseModuleItem (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:389055)]
+    [at TypeScriptParserMixin.parseBlockOrModuleBlockBody (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:401400)]
+    [at TypeScriptParserMixin.parseBlockBody (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:401223)]
+    [at TypeScriptParserMixin.parseProgram (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:386857)]
+    [at TypeScriptParserMixin.parseTopLevel (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:386575)]
+    [at TypeScriptParserMixin.parse (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:426834)]
+    [at TypeScriptParserMixin.parse (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:337631)]
+    [at parse (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:427092)]
+    [at parser (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:1:142456)]
+    [at <anonymous>]
+    [at normalizeFile (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:13:13275)]
+    [at <anonymous>]
+    [at consumeIterator (/Users/ilham/Desktop/talentpool/node_modules/next/src/build/babel/loader/util.ts:5:34)]
+    [at transform (/Users/ilham/Desktop/talentpool/node_modules/next/src/build/babel/loader/transform.ts:99:31)]
+    [at async <anonymous> (/Users/ilham/Desktop/talentpool/node_modules/next/src/build/babel/loader/index.ts:34:9)]
+    [at async DummySpan.traceAsyncFn (turbopack:///[turbopack-node]/transforms/webpack-loaders.ts:115:12)]
+    [at async nextBabelLoader (/Users/ilham/Desktop/talentpool/node_modules/next/src/build/babel/loader/index.ts:32:5)]
+    [at async DummySpan.traceAsyncFn (turbopack:///[turbopack-node]/transforms/webpack-loaders.ts:115:12)]
+
+Import traces:
+  Client Component Browser:
+    ./src/components/ui/datepicker.tsx [Client Component Browser]
+    ./src/app/(dashboard)/dashboard/purchasing/po/new/page.tsx [Client Component Browser]
+    ./src/app/(dashboard)/dashboard/purchasing/po/new/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/components/ui/datepicker.tsx [Client Component SSR]
+    ./src/app/(dashboard)/dashboard/purchasing/po/new/page.tsx [Client Component SSR]
+    ./src/app/(dashboard)/dashboard/purchasing/po/new/page.tsx [Server Component]
+
+
+
+./src/components/ui/datepicker.tsx:22:17
+the name `DatePicker` is defined multiple times
+  [90m20 |[0m }
+  [90m21 |[0m
+[31m[1m>[0m [90m22 |[0m [36mexport[0m [36mfunction[0m [33mDatePicker[0m({
+  [90m   |[0m                 [31m[1m^^^^^^^^^^[0m
+  [90m23 |[0m   value,
+  [90m24 |[0m   onChange,
+  [90m25 |[0m   placeholder = [32m"Pilih tanggal..."[0m,
+
+Ecmascript file had an error
+
+Import traces:
+  Client Component Browser:
+    ./src/components/ui/datepicker.tsx [Client Component Browser]
+    ./src/app/(dashboard)/dashboard/purchasing/po/new/page.tsx [Client Component Browser]
+    ./src/app/(dashboard)/dashboard/purchasing/po/new/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/components/ui/datepicker.tsx [Client Component SSR]
+    ./src/app/(dashboard)/dashboard/purchasing/po/new/page.tsx [Client Component SSR]
+    ./src/app/(dashboard)/dashboard/purchasing/po/new/page.tsx [Server Component]
+
+
+
+./src/components/ui/datepicker.tsx:8:1
+Module not found: Can't resolve 'react-datepicker/dist/react-datepicker.css'
+  [90m 6 |[0m [36mimport[0m { cn } [36mfrom[0m [32m"@/lib/utils"[0m;
+  [90m 7 |[0m [36mimport[0m { [33mButton[0m } [36mfrom[0m [32m"@/components/ui/button"[0m;
+[31m[1m>[0m [90m 8 |[0m [36mimport[0m [32m"react-datepicker/dist/react-datepicker.css"[0m;
+  [90m   |[0m [31m[1m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  [90m 9 |[0m
+  [90m10 |[0m [36minterface[0m [33mDatePickerProps[0m {
+  [90m11 |[0m   value?: string;
+
+
+
+Import traces:
+  Client Component Browser:
+    ./src/components/ui/datepicker.tsx [Client Component Browser]
+    ./src/app/(dashboard)/dashboard/purchasing/po/new/page.tsx [Client Component Browser]
+    ./src/app/(dashboard)/dashboard/purchasing/po/new/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/components/ui/datepicker.tsx [Client Component SSR]
+    ./src/app/(dashboard)/dashboard/purchasing/po/new/page.tsx [Client Component SSR]
+    ./src/app/(dashboard)/dashboard/purchasing/po/new/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+
+./src/components/ui/calendar.tsx:5:1
+Module not found: Can't resolve 'react-day-picker'
+  [90m3 |[0m [36mimport[0m * [36mas[0m [33mReact[0m [36mfrom[0m [32m"react"[0m;
+  [90m4 |[0m [36mimport[0m { [33mChevronLeft[0m, [33mChevronRight[0m } [36mfrom[0m [32m"lucide-react"[0m;
+[31m[1m>[0m [90m5 |[0m [36mimport[0m { [33mDayPicker[0m } [36mfrom[0m [32m"react-day-picker"[0m;
+  [90m  |[0m [31m[1m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  [90m6 |[0m [36mimport[0m { cn } [36mfrom[0m [32m"@/lib/utils"[0m;
+  [90m7 |[0m [36mimport[0m { buttonVariants } [36mfrom[0m [32m"@/components/ui/button"[0m;
+  [90m8 |[0m
+
+
+
+Import trace:
+  Client Component Browser:
+    ./src/components/ui/calendar.tsx [Client Component Browser]
+    ./src/components/ui/datepicker.tsx [Client Component Browser]
+    ./src/app/(dashboard)/dashboard/purchasing/po/new/page.tsx [Client Component Browser]
+    ./src/app/(dashboard)/dashboard/purchasing/po/new/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+ GET /dashboard/purchasing/po/new 500 in 11ms (next.js: 5ms, application-code: 6ms)
+⨯ ./src/components/ui/datepicker.tsx
+Error evaluating Node.js code
+SyntaxError: /Users/ilham/Desktop/talentpool/src/components/ui/datepicker.tsx: Identifier 'DatePicker' has already been declared. (22:16)
+
+  20 | }
+  21 |
+> 22 | export function DatePicker({
+     |                 ^
+  23 |   value,
+  24 |   onChange,
+  25 |   placeholder = "Pilih tanggal...",
+  (from /Users/ilham/Desktop/talentpool/node_modules/next/dist/build/babel/loader/index.js)
+    [at constructor (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:137105)]
+    [at TypeScriptParserMixin.raise (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:194164)]
+    [at TypeScriptScopeHandler.checkRedeclarationInScope (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:163166)]
+    [at TypeScriptScopeHandler.declareName (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:162529)]
+    [at TypeScriptScopeHandler.declareName (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:271160)]
+    [at TypeScriptParserMixin.registerFunctionStatementId (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:404843)]
+    [at TypeScriptParserMixin.registerFunctionStatementId (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:318299)]
+    [at TypeScriptParserMixin.parseFunction (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:404441)]
+    [at TypeScriptParserMixin.parseFunctionStatement (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:397088)]
+    [at TypeScriptParserMixin.parseStatementContent (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:390089)]
+    [at TypeScriptParserMixin.parseStatementContent (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:324042)]
+    [at TypeScriptParserMixin.parseStatementLike (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:389494)]
+    [at TypeScriptParserMixin.parseStatementListItem (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:389120)]
+    [at TypeScriptParserMixin.parseExportDeclaration (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:415606)]
+    [at TypeScriptParserMixin.parseExportDeclaration (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:327104)]
+    [at TypeScriptParserMixin.maybeParseExportDeclaration (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:414570)]
+    [at TypeScriptParserMixin.parseExport (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:412708)]
+    [at TypeScriptParserMixin.parseExport (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:322862)]
+    [at TypeScriptParserMixin.parseStatementContent (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:391808)]
+    [at TypeScriptParserMixin.parseStatementContent (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:324042)]
+    [at TypeScriptParserMixin.parseStatementLike (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:389494)]
+    [at TypeScriptParserMixin.parseModuleItem (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:389055)]
+    [at TypeScriptParserMixin.parseBlockOrModuleBlockBody (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:401400)]
+    [at TypeScriptParserMixin.parseBlockBody (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:401223)]
+    [at TypeScriptParserMixin.parseProgram (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:386857)]
+    [at TypeScriptParserMixin.parseTopLevel (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:386575)]
+    [at TypeScriptParserMixin.parse (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:426834)]
+    [at TypeScriptParserMixin.parse (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:337631)]
+    [at parse (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:427092)]
+    [at parser (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:1:142456)]
+    [at <anonymous>]
+    [at normalizeFile (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:13:13275)]
+    [at <anonymous>]
+    [at consumeIterator (/Users/ilham/Desktop/talentpool/node_modules/next/src/build/babel/loader/util.ts:5:34)]
+    [at transform (/Users/ilham/Desktop/talentpool/node_modules/next/src/build/babel/loader/transform.ts:99:31)]
+    [at async <anonymous> (/Users/ilham/Desktop/talentpool/node_modules/next/src/build/babel/loader/index.ts:34:9)]
+    [at async DummySpan.traceAsyncFn (turbopack:///[turbopack-node]/transforms/webpack-loaders.ts:115:12)]
+    [at async nextBabelLoader (/Users/ilham/Desktop/talentpool/node_modules/next/src/build/babel/loader/index.ts:32:5)]
+    [at async DummySpan.traceAsyncFn (turbopack:///[turbopack-node]/transforms/webpack-loaders.ts:115:12)]
+
+Import traces:
+  Client Component Browser:
+    ./src/components/ui/datepicker.tsx [Client Component Browser]
+    ./src/app/(dashboard)/dashboard/purchasing/po/new/page.tsx [Client Component Browser]
+    ./src/app/(dashboard)/dashboard/purchasing/po/new/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/components/ui/datepicker.tsx [Client Component SSR]
+    ./src/app/(dashboard)/dashboard/purchasing/po/new/page.tsx [Client Component SSR]
+    ./src/app/(dashboard)/dashboard/purchasing/po/new/page.tsx [Server Component]
+
+
+
+./src/components/ui/datepicker.tsx:22:17
+the name `DatePicker` is defined multiple times
+  [90m20 |[0m }
+  [90m21 |[0m
+[31m[1m>[0m [90m22 |[0m [36mexport[0m [36mfunction[0m [33mDatePicker[0m({
+  [90m   |[0m                 [31m[1m^^^^^^^^^^[0m
+  [90m23 |[0m   value,
+  [90m24 |[0m   onChange,
+  [90m25 |[0m   placeholder = [32m"Pilih tanggal..."[0m,
+
+Ecmascript file had an error
+
+Import traces:
+  Client Component Browser:
+    ./src/components/ui/datepicker.tsx [Client Component Browser]
+    ./src/app/(dashboard)/dashboard/purchasing/po/new/page.tsx [Client Component Browser]
+    ./src/app/(dashboard)/dashboard/purchasing/po/new/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/components/ui/datepicker.tsx [Client Component SSR]
+    ./src/app/(dashboard)/dashboard/purchasing/po/new/page.tsx [Client Component SSR]
+    ./src/app/(dashboard)/dashboard/purchasing/po/new/page.tsx [Server Component]
+
+
+
+./src/components/ui/datepicker.tsx:8:1
+Module not found: Can't resolve 'react-datepicker/dist/react-datepicker.css'
+  [90m 6 |[0m [36mimport[0m { cn } [36mfrom[0m [32m"@/lib/utils"[0m;
+  [90m 7 |[0m [36mimport[0m { [33mButton[0m } [36mfrom[0m [32m"@/components/ui/button"[0m;
+[31m[1m>[0m [90m 8 |[0m [36mimport[0m [32m"react-datepicker/dist/react-datepicker.css"[0m;
+  [90m   |[0m [31m[1m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  [90m 9 |[0m
+  [90m10 |[0m [36minterface[0m [33mDatePickerProps[0m {
+  [90m11 |[0m   value?: string;
+
+
+
+Import traces:
+  Client Component Browser:
+    ./src/components/ui/datepicker.tsx [Client Component Browser]
+    ./src/app/(dashboard)/dashboard/purchasing/po/new/page.tsx [Client Component Browser]
+    ./src/app/(dashboard)/dashboard/purchasing/po/new/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/components/ui/datepicker.tsx [Client Component SSR]
+    ./src/app/(dashboard)/dashboard/purchasing/po/new/page.tsx [Client Component SSR]
+    ./src/app/(dashboard)/dashboard/purchasing/po/new/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+
+./src/components/ui/calendar.tsx:5:1
+Module not found: Can't resolve 'react-day-picker'
+  [90m3 |[0m [36mimport[0m * [36mas[0m [33mReact[0m [36mfrom[0m [32m"react"[0m;
+  [90m4 |[0m [36mimport[0m { [33mChevronLeft[0m, [33mChevronRight[0m } [36mfrom[0m [32m"lucide-react"[0m;
+[31m[1m>[0m [90m5 |[0m [36mimport[0m { [33mDayPicker[0m } [36mfrom[0m [32m"react-day-picker"[0m;
+  [90m  |[0m [31m[1m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  [90m6 |[0m [36mimport[0m { cn } [36mfrom[0m [32m"@/lib/utils"[0m;
+  [90m7 |[0m [36mimport[0m { buttonVariants } [36mfrom[0m [32m"@/components/ui/button"[0m;
+  [90m8 |[0m
+
+
+
+Import trace:
+  Client Component Browser:
+    ./src/components/ui/calendar.tsx [Client Component Browser]
+    ./src/components/ui/datepicker.tsx [Client Component Browser]
+    ./src/app/(dashboard)/dashboard/purchasing/po/new/page.tsx [Client Component Browser]
+    ./src/app/(dashboard)/dashboard/purchasing/po/new/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+⨯ ./src/components/ui/datepicker.tsx
+Error evaluating Node.js code
+SyntaxError: /Users/ilham/Desktop/talentpool/src/components/ui/datepicker.tsx: Identifier 'DatePicker' has already been declared. (22:16)
+
+  20 | }
+  21 |
+> 22 | export function DatePicker({
+     |                 ^
+  23 |   value,
+  24 |   onChange,
+  25 |   placeholder = "Pilih tanggal...",
+  (from /Users/ilham/Desktop/talentpool/node_modules/next/dist/build/babel/loader/index.js)
+    [at constructor (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:137105)]
+    [at TypeScriptParserMixin.raise (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:194164)]
+    [at TypeScriptScopeHandler.checkRedeclarationInScope (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:163166)]
+    [at TypeScriptScopeHandler.declareName (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:162529)]
+    [at TypeScriptScopeHandler.declareName (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:271160)]
+    [at TypeScriptParserMixin.registerFunctionStatementId (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:404843)]
+    [at TypeScriptParserMixin.registerFunctionStatementId (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:318299)]
+    [at TypeScriptParserMixin.parseFunction (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:404441)]
+    [at TypeScriptParserMixin.parseFunctionStatement (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:397088)]
+    [at TypeScriptParserMixin.parseStatementContent (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:390089)]
+    [at TypeScriptParserMixin.parseStatementContent (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:324042)]
+    [at TypeScriptParserMixin.parseStatementLike (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:389494)]
+    [at TypeScriptParserMixin.parseStatementListItem (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:389120)]
+    [at TypeScriptParserMixin.parseExportDeclaration (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:415606)]
+    [at TypeScriptParserMixin.parseExportDeclaration (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:327104)]
+    [at TypeScriptParserMixin.maybeParseExportDeclaration (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:414570)]
+    [at TypeScriptParserMixin.parseExport (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:412708)]
+    [at TypeScriptParserMixin.parseExport (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:322862)]
+    [at TypeScriptParserMixin.parseStatementContent (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:391808)]
+    [at TypeScriptParserMixin.parseStatementContent (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:324042)]
+    [at TypeScriptParserMixin.parseStatementLike (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:389494)]
+    [at TypeScriptParserMixin.parseModuleItem (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:389055)]
+    [at TypeScriptParserMixin.parseBlockOrModuleBlockBody (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:401400)]
+    [at TypeScriptParserMixin.parseBlockBody (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:401223)]
+    [at TypeScriptParserMixin.parseProgram (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:386857)]
+    [at TypeScriptParserMixin.parseTopLevel (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:386575)]
+    [at TypeScriptParserMixin.parse (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:426834)]
+    [at TypeScriptParserMixin.parse (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:337631)]
+    [at parse (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:427092)]
+    [at parser (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:1:142456)]
+    [at <anonymous>]
+    [at normalizeFile (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:13:13275)]
+    [at <anonymous>]
+    [at consumeIterator (/Users/ilham/Desktop/talentpool/node_modules/next/src/build/babel/loader/util.ts:5:34)]
+    [at transform (/Users/ilham/Desktop/talentpool/node_modules/next/src/build/babel/loader/transform.ts:99:31)]
+    [at async <anonymous> (/Users/ilham/Desktop/talentpool/node_modules/next/src/build/babel/loader/index.ts:34:9)]
+    [at async DummySpan.traceAsyncFn (turbopack:///[turbopack-node]/transforms/webpack-loaders.ts:115:12)]
+    [at async nextBabelLoader (/Users/ilham/Desktop/talentpool/node_modules/next/src/build/babel/loader/index.ts:32:5)]
+    [at async DummySpan.traceAsyncFn (turbopack:///[turbopack-node]/transforms/webpack-loaders.ts:115:12)]
+
+Import traces:
+  Client Component Browser:
+    ./src/components/ui/datepicker.tsx [Client Component Browser]
+    ./src/app/(dashboard)/dashboard/purchasing/po/new/page.tsx [Client Component Browser]
+    ./src/app/(dashboard)/dashboard/purchasing/po/new/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/components/ui/datepicker.tsx [Client Component SSR]
+    ./src/app/(dashboard)/dashboard/purchasing/po/new/page.tsx [Client Component SSR]
+    ./src/app/(dashboard)/dashboard/purchasing/po/new/page.tsx [Server Component]
+
+
+
+./src/components/ui/datepicker.tsx:22:17
+the name `DatePicker` is defined multiple times
+  [90m20 |[0m }
+  [90m21 |[0m
+[31m[1m>[0m [90m22 |[0m [36mexport[0m [36mfunction[0m [33mDatePicker[0m({
+  [90m   |[0m                 [31m[1m^^^^^^^^^^[0m
+  [90m23 |[0m   value,
+  [90m24 |[0m   onChange,
+  [90m25 |[0m   placeholder = [32m"Pilih tanggal..."[0m,
+
+Ecmascript file had an error
+
+Import traces:
+  Client Component Browser:
+    ./src/components/ui/datepicker.tsx [Client Component Browser]
+    ./src/app/(dashboard)/dashboard/purchasing/po/new/page.tsx [Client Component Browser]
+    ./src/app/(dashboard)/dashboard/purchasing/po/new/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/components/ui/datepicker.tsx [Client Component SSR]
+    ./src/app/(dashboard)/dashboard/purchasing/po/new/page.tsx [Client Component SSR]
+    ./src/app/(dashboard)/dashboard/purchasing/po/new/page.tsx [Server Component]
+
+
+
+./src/components/ui/datepicker.tsx:8:1
+Module not found: Can't resolve 'react-datepicker/dist/react-datepicker.css'
+  [90m 6 |[0m [36mimport[0m { cn } [36mfrom[0m [32m"@/lib/utils"[0m;
+  [90m 7 |[0m [36mimport[0m { [33mButton[0m } [36mfrom[0m [32m"@/components/ui/button"[0m;
+[31m[1m>[0m [90m 8 |[0m [36mimport[0m [32m"react-datepicker/dist/react-datepicker.css"[0m;
+  [90m   |[0m [31m[1m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  [90m 9 |[0m
+  [90m10 |[0m [36minterface[0m [33mDatePickerProps[0m {
+  [90m11 |[0m   value?: string;
+
+
+
+Import traces:
+  Client Component Browser:
+    ./src/components/ui/datepicker.tsx [Client Component Browser]
+    ./src/app/(dashboard)/dashboard/purchasing/po/new/page.tsx [Client Component Browser]
+    ./src/app/(dashboard)/dashboard/purchasing/po/new/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/components/ui/datepicker.tsx [Client Component SSR]
+    ./src/app/(dashboard)/dashboard/purchasing/po/new/page.tsx [Client Component SSR]
+    ./src/app/(dashboard)/dashboard/purchasing/po/new/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+
+./src/components/ui/calendar.tsx:5:1
+Module not found: Can't resolve 'react-day-picker'
+  [90m3 |[0m [36mimport[0m * [36mas[0m [33mReact[0m [36mfrom[0m [32m"react"[0m;
+  [90m4 |[0m [36mimport[0m { [33mChevronLeft[0m, [33mChevronRight[0m } [36mfrom[0m [32m"lucide-react"[0m;
+[31m[1m>[0m [90m5 |[0m [36mimport[0m { [33mDayPicker[0m } [36mfrom[0m [32m"react-day-picker"[0m;
+  [90m  |[0m [31m[1m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  [90m6 |[0m [36mimport[0m { cn } [36mfrom[0m [32m"@/lib/utils"[0m;
+  [90m7 |[0m [36mimport[0m { buttonVariants } [36mfrom[0m [32m"@/components/ui/button"[0m;
+  [90m8 |[0m
+
+
+
+Import trace:
+  Client Component Browser:
+    ./src/components/ui/calendar.tsx [Client Component Browser]
+    ./src/components/ui/datepicker.tsx [Client Component Browser]
+    ./src/app/(dashboard)/dashboard/purchasing/po/new/page.tsx [Client Component Browser]
+    ./src/app/(dashboard)/dashboard/purchasing/po/new/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+ GET /dashboard/purchasing/suppliers 500 in 14ms (next.js: 9ms, application-code: 4ms)
+ GET /dashboard/purchasing/po/new 500 in 19ms (next.js: 8ms, application-code: 11ms)
+ GET /dashboard/purchasing/po/new 500 in 19ms (next.js: 14ms, application-code: 5ms)
+[browser] Uncaught Error: ./src/components/ui/datepicker.tsx
+Error evaluating Node.js code
+SyntaxError: /Users/ilham/Desktop/talentpool/src/components/ui/datepicker.tsx: Identifier 'DatePicker' has already been declared. (22:16)
+
+  20 | }
+  21 |
+> 22 | export function DatePicker({
+     |                 ^
+  23 |   value,
+  24 |   onChange,
+  25 |   placeholder = "Pilih tanggal...",
+  (from /Users/ilham/Desktop/talentpool/node_modules/next/dist/build/babel/loader/index.js)
+    [at constructor (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:137105)]
+    [at TypeScriptParserMixin.raise (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:194164)]
+    [at TypeScriptScopeHandler.checkRedeclarationInScope (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:163166)]
+    [at TypeScriptScopeHandler.declareName (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:162529)]
+    [at TypeScriptScopeHandler.declareName (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:271160)]
+    [at TypeScriptParserMixin.registerFunctionStatementId (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:404843)]
+    [at TypeScriptParserMixin.registerFunctionStatementId (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:318299)]
+    [at TypeScriptParserMixin.parseFunction (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:404441)]
+    [at TypeScriptParserMixin.parseFunctionStatement (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:397088)]
+    [at TypeScriptParserMixin.parseStatementContent (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:390089)]
+    [at TypeScriptParserMixin.parseStatementContent (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:324042)]
+    [at TypeScriptParserMixin.parseStatementLike (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:389494)]
+    [at TypeScriptParserMixin.parseStatementListItem (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:389120)]
+    [at TypeScriptParserMixin.parseExportDeclaration (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:415606)]
+    [at TypeScriptParserMixin.parseExportDeclaration (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:327104)]
+    [at TypeScriptParserMixin.maybeParseExportDeclaration (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:414570)]
+    [at TypeScriptParserMixin.parseExport (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:412708)]
+    [at TypeScriptParserMixin.parseExport (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:322862)]
+    [at TypeScriptParserMixin.parseStatementContent (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:391808)]
+    [at TypeScriptParserMixin.parseStatementContent (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:324042)]
+    [at TypeScriptParserMixin.parseStatementLike (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:389494)]
+    [at TypeScriptParserMixin.parseModuleItem (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:389055)]
+    [at TypeScriptParserMixin.parseBlockOrModuleBlockBody (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:401400)]
+    [at TypeScriptParserMixin.parseBlockBody (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:401223)]
+    [at TypeScriptParserMixin.parseProgram (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:386857)]
+    [at TypeScriptParserMixin.parseTopLevel (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:386575)]
+    [at TypeScriptParserMixin.parse (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:426834)]
+    [at TypeScriptParserMixin.parse (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:337631)]
+    [at parse (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:427092)]
+    [at parser (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:1:142456)]
+    [at <anonymous>]
+    [at normalizeFile (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:13:13275)]
+    [at <anonymous>]
+    [at consumeIterator (/Users/ilham/Desktop/talentpool/node_modules/next/src/build/babel/loader/util.ts:5:34)]
+    [at transform (/Users/ilham/Desktop/talentpool/node_modules/next/src/build/babel/loader/transform.ts:99:31)]
+    [at async <anonymous> (/Users/ilham/Desktop/talentpool/node_modules/next/src/build/babel/loader/index.ts:34:9)]
+    [at async DummySpan.traceAsyncFn (turbopack:///[turbopack-node]/transforms/webpack-loaders.ts:115:12)]
+    [at async nextBabelLoader (/Users/ilham/Desktop/talentpool/node_modules/next/src/build/babel/loader/index.ts:32:5)]
+    [at async DummySpan.traceAsyncFn (turbopack:///[turbopack-node]/transforms/webpack-loaders.ts:115:12)]
+
+Import traces:
+  Client Component Browser:
+    ./src/components/ui/datepicker.tsx [Client Component Browser]
+    ./src/app/(dashboard)/dashboard/purchasing/po/new/page.tsx [Client Component Browser]
+    ./src/app/(dashboard)/dashboard/purchasing/po/new/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/components/ui/datepicker.tsx [Client Component SSR]
+    ./src/app/(dashboard)/dashboard/purchasing/po/new/page.tsx [Client Component SSR]
+    ./src/app/(dashboard)/dashboard/purchasing/po/new/page.tsx [Server Component]
+
+
+[browser] Uncaught Error: ./src/components/ui/datepicker.tsx
+Error evaluating Node.js code
+SyntaxError: /Users/ilham/Desktop/talentpool/src/components/ui/datepicker.tsx: Identifier 'DatePicker' has already been declared. (22:16)
+
+  20 | }
+  21 |
+> 22 | export function DatePicker({
+     |                 ^
+  23 |   value,
+  24 |   onChange,
+  25 |   placeholder = "Pilih tanggal...",
+  (from /Users/ilham/Desktop/talentpool/node_modules/next/dist/build/babel/loader/index.js)
+    [at constructor (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:137105)]
+    [at TypeScriptParserMixin.raise (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:194164)]
+    [at TypeScriptScopeHandler.checkRedeclarationInScope (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:163166)]
+    [at TypeScriptScopeHandler.declareName (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:162529)]
+    [at TypeScriptScopeHandler.declareName (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:271160)]
+    [at TypeScriptParserMixin.registerFunctionStatementId (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:404843)]
+    [at TypeScriptParserMixin.registerFunctionStatementId (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:318299)]
+    [at TypeScriptParserMixin.parseFunction (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:404441)]
+    [at TypeScriptParserMixin.parseFunctionStatement (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:397088)]
+    [at TypeScriptParserMixin.parseStatementContent (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:390089)]
+    [at TypeScriptParserMixin.parseStatementContent (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:324042)]
+    [at TypeScriptParserMixin.parseStatementLike (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:389494)]
+    [at TypeScriptParserMixin.parseStatementListItem (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:389120)]
+    [at TypeScriptParserMixin.parseExportDeclaration (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:415606)]
+    [at TypeScriptParserMixin.parseExportDeclaration (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:327104)]
+    [at TypeScriptParserMixin.maybeParseExportDeclaration (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:414570)]
+    [at TypeScriptParserMixin.parseExport (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:412708)]
+    [at TypeScriptParserMixin.parseExport (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:322862)]
+    [at TypeScriptParserMixin.parseStatementContent (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:391808)]
+    [at TypeScriptParserMixin.parseStatementContent (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:324042)]
+    [at TypeScriptParserMixin.parseStatementLike (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:389494)]
+    [at TypeScriptParserMixin.parseModuleItem (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:389055)]
+    [at TypeScriptParserMixin.parseBlockOrModuleBlockBody (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:401400)]
+    [at TypeScriptParserMixin.parseBlockBody (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:401223)]
+    [at TypeScriptParserMixin.parseProgram (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:386857)]
+    [at TypeScriptParserMixin.parseTopLevel (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:386575)]
+    [at TypeScriptParserMixin.parse (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:426834)]
+    [at TypeScriptParserMixin.parse (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:337631)]
+    [at parse (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:427092)]
+    [at parser (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:1:142456)]
+    [at <anonymous>]
+    [at normalizeFile (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:13:13275)]
+    [at <anonymous>]
+    [at consumeIterator (/Users/ilham/Desktop/talentpool/node_modules/next/src/build/babel/loader/util.ts:5:34)]
+    [at transform (/Users/ilham/Desktop/talentpool/node_modules/next/src/build/babel/loader/transform.ts:99:31)]
+    [at async <anonymous> (/Users/ilham/Desktop/talentpool/node_modules/next/src/build/babel/loader/index.ts:34:9)]
+    [at async DummySpan.traceAsyncFn (turbopack:///[turbopack-node]/transforms/webpack-loaders.ts:115:12)]
+    [at async nextBabelLoader (/Users/ilham/Desktop/talentpool/node_modules/next/src/build/babel/loader/index.ts:32:5)]
+    [at async DummySpan.traceAsyncFn (turbopack:///[turbopack-node]/transforms/webpack-loaders.ts:115:12)]
+
+Import traces:
+  Client Component Browser:
+    ./src/components/ui/datepicker.tsx [Client Component Browser]
+    ./src/app/(dashboard)/dashboard/purchasing/po/new/page.tsx [Client Component Browser]
+    ./src/app/(dashboard)/dashboard/purchasing/po/new/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/components/ui/datepicker.tsx [Client Component SSR]
+    ./src/app/(dashboard)/dashboard/purchasing/po/new/page.tsx [Client Component SSR]
+    ./src/app/(dashboard)/dashboard/purchasing/po/new/page.tsx [Server Component]
+
+
+[browser] Uncaught Error: ./src/components/ui/datepicker.tsx
+Error evaluating Node.js code
+SyntaxError: /Users/ilham/Desktop/talentpool/src/components/ui/datepicker.tsx: Identifier 'DatePicker' has already been declared. (22:16)
+
+  20 | }
+  21 |
+> 22 | export function DatePicker({
+     |                 ^
+  23 |   value,
+  24 |   onChange,
+  25 |   placeholder = "Pilih tanggal...",
+  (from /Users/ilham/Desktop/talentpool/node_modules/next/dist/build/babel/loader/index.js)
+    [at constructor (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:137105)]
+    [at TypeScriptParserMixin.raise (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:194164)]
+    [at TypeScriptScopeHandler.checkRedeclarationInScope (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:163166)]
+    [at TypeScriptScopeHandler.declareName (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:162529)]
+    [at TypeScriptScopeHandler.declareName (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:271160)]
+    [at TypeScriptParserMixin.registerFunctionStatementId (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:404843)]
+    [at TypeScriptParserMixin.registerFunctionStatementId (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:318299)]
+    [at TypeScriptParserMixin.parseFunction (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:404441)]
+    [at TypeScriptParserMixin.parseFunctionStatement (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:397088)]
+    [at TypeScriptParserMixin.parseStatementContent (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:390089)]
+    [at TypeScriptParserMixin.parseStatementContent (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:324042)]
+    [at TypeScriptParserMixin.parseStatementLike (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:389494)]
+    [at TypeScriptParserMixin.parseStatementListItem (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:389120)]
+    [at TypeScriptParserMixin.parseExportDeclaration (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:415606)]
+    [at TypeScriptParserMixin.parseExportDeclaration (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:327104)]
+    [at TypeScriptParserMixin.maybeParseExportDeclaration (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:414570)]
+    [at TypeScriptParserMixin.parseExport (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:412708)]
+    [at TypeScriptParserMixin.parseExport (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:322862)]
+    [at TypeScriptParserMixin.parseStatementContent (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:391808)]
+    [at TypeScriptParserMixin.parseStatementContent (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:324042)]
+    [at TypeScriptParserMixin.parseStatementLike (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:389494)]
+    [at TypeScriptParserMixin.parseModuleItem (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:389055)]
+    [at TypeScriptParserMixin.parseBlockOrModuleBlockBody (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:401400)]
+    [at TypeScriptParserMixin.parseBlockBody (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:401223)]
+    [at TypeScriptParserMixin.parseProgram (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:386857)]
+    [at TypeScriptParserMixin.parseTopLevel (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:386575)]
+    [at TypeScriptParserMixin.parse (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:426834)]
+    [at TypeScriptParserMixin.parse (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:337631)]
+    [at parse (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:427092)]
+    [at parser (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:1:142456)]
+    [at <anonymous>]
+    [at normalizeFile (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:13:13275)]
+    [at <anonymous>]
+    [at consumeIterator (/Users/ilham/Desktop/talentpool/node_modules/next/src/build/babel/loader/util.ts:5:34)]
+    [at transform (/Users/ilham/Desktop/talentpool/node_modules/next/src/build/babel/loader/transform.ts:99:31)]
+    [at async <anonymous> (/Users/ilham/Desktop/talentpool/node_modules/next/src/build/babel/loader/index.ts:34:9)]
+    [at async DummySpan.traceAsyncFn (turbopack:///[turbopack-node]/transforms/webpack-loaders.ts:115:12)]
+    [at async nextBabelLoader (/Users/ilham/Desktop/talentpool/node_modules/next/src/build/babel/loader/index.ts:32:5)]
+    [at async DummySpan.traceAsyncFn (turbopack:///[turbopack-node]/transforms/webpack-loaders.ts:115:12)]
+
+Import traces:
+  Client Component Browser:
+    ./src/components/ui/datepicker.tsx [Client Component Browser]
+    ./src/app/(dashboard)/dashboard/purchasing/po/new/page.tsx [Client Component Browser]
+    ./src/app/(dashboard)/dashboard/purchasing/po/new/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/components/ui/datepicker.tsx [Client Component SSR]
+    ./src/app/(dashboard)/dashboard/purchasing/po/new/page.tsx [Client Component SSR]
+    ./src/app/(dashboard)/dashboard/purchasing/po/new/page.tsx [Server Component]
+
+
+[browser] ./src/components/ui/datepicker.tsx
+Error evaluating Node.js code
+SyntaxError: /Users/ilham/Desktop/talentpool/src/components/ui/datepicker.tsx: Identifier 'DatePicker' has already been declared. (22:16)
+
+  20 | }
+  21 |
+> 22 | export function DatePicker({
+     |                 ^
+  23 |   value,
+  24 |   onChange,
+  25 |   placeholder = "Pilih tanggal...",
+  (from /Users/ilham/Desktop/talentpool/node_modules/next/dist/build/babel/loader/index.js)
+    [at constructor (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:137105)]
+    [at TypeScriptParserMixin.raise (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:194164)]
+    [at TypeScriptScopeHandler.checkRedeclarationInScope (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:163166)]
+    [at TypeScriptScopeHandler.declareName (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:162529)]
+    [at TypeScriptScopeHandler.declareName (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:271160)]
+    [at TypeScriptParserMixin.registerFunctionStatementId (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:404843)]
+    [at TypeScriptParserMixin.registerFunctionStatementId (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:318299)]
+    [at TypeScriptParserMixin.parseFunction (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:404441)]
+    [at TypeScriptParserMixin.parseFunctionStatement (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:397088)]
+    [at TypeScriptParserMixin.parseStatementContent (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:390089)]
+    [at TypeScriptParserMixin.parseStatementContent (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:324042)]
+    [at TypeScriptParserMixin.parseStatementLike (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:389494)]
+    [at TypeScriptParserMixin.parseStatementListItem (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:389120)]
+    [at TypeScriptParserMixin.parseExportDeclaration (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:415606)]
+    [at TypeScriptParserMixin.parseExportDeclaration (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:327104)]
+    [at TypeScriptParserMixin.maybeParseExportDeclaration (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:414570)]
+    [at TypeScriptParserMixin.parseExport (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:412708)]
+    [at TypeScriptParserMixin.parseExport (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:322862)]
+    [at TypeScriptParserMixin.parseStatementContent (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:391808)]
+    [at TypeScriptParserMixin.parseStatementContent (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:324042)]
+    [at TypeScriptParserMixin.parseStatementLike (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:389494)]
+    [at TypeScriptParserMixin.parseModuleItem (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:389055)]
+    [at TypeScriptParserMixin.parseBlockOrModuleBlockBody (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:401400)]
+    [at TypeScriptParserMixin.parseBlockBody (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:401223)]
+    [at TypeScriptParserMixin.parseProgram (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:386857)]
+    [at TypeScriptParserMixin.parseTopLevel (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:386575)]
+    [at TypeScriptParserMixin.parse (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:426834)]
+    [at TypeScriptParserMixin.parse (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:337631)]
+    [at parse (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:427092)]
+    [at parser (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:1:142456)]
+    [at <anonymous>]
+    [at normalizeFile (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:13:13275)]
+    [at <anonymous>]
+    [at consumeIterator (/Users/ilham/Desktop/talentpool/node_modules/next/src/build/babel/loader/util.ts:5:34)]
+    [at transform (/Users/ilham/Desktop/talentpool/node_modules/next/src/build/babel/loader/transform.ts:99:31)]
+    [at async <anonymous> (/Users/ilham/Desktop/talentpool/node_modules/next/src/build/babel/loader/index.ts:34:9)]
+    [at async DummySpan.traceAsyncFn (turbopack:///[turbopack-node]/transforms/webpack-loaders.ts:115:12)]
+    [at async nextBabelLoader (/Users/ilham/Desktop/talentpool/node_modules/next/src/build/babel/loader/index.ts:32:5)]
+    [at async DummySpan.traceAsyncFn (turbopack:///[turbopack-node]/transforms/webpack-loaders.ts:115:12)]
+
+Import traces:
+  Client Component Browser:
+    ./src/components/ui/datepicker.tsx [Client Component Browser]
+    ./src/app/(dashboard)/dashboard/purchasing/po/new/page.tsx [Client Component Browser]
+    ./src/app/(dashboard)/dashboard/purchasing/po/new/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/components/ui/datepicker.tsx [Client Component SSR]
+    ./src/app/(dashboard)/dashboard/purchasing/po/new/page.tsx [Client Component SSR]
+    ./src/app/(dashboard)/dashboard/purchasing/po/new/page.tsx [Server Component] 
+[browser] ./src/components/ui/datepicker.tsx:22:17
+the name `DatePicker` is defined multiple times
+  20 | }
+  21 |
+> 22 | export function DatePicker({
+     |                 ^^^^^^^^^^
+  23 |   value,
+  24 |   onChange,
+  25 |   placeholder = "Pilih tanggal...",
+
+Ecmascript file had an error
+
+Import traces:
+  Client Component Browser:
+    ./src/components/ui/datepicker.tsx [Client Component Browser]
+    ./src/app/(dashboard)/dashboard/purchasing/po/new/page.tsx [Client Component Browser]
+    ./src/app/(dashboard)/dashboard/purchasing/po/new/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/components/ui/datepicker.tsx [Client Component SSR]
+    ./src/app/(dashboard)/dashboard/purchasing/po/new/page.tsx [Client Component SSR]
+    ./src/app/(dashboard)/dashboard/purchasing/po/new/page.tsx [Server Component] 
+[browser] ./src/components/ui/datepicker.tsx:8:1
+Module not found: Can't resolve 'react-datepicker/dist/react-datepicker.css'
+   6 | import { cn } from "@/lib/utils";
+   7 | import { Button } from "@/components/ui/button";
+>  8 | import "react-datepicker/dist/react-datepicker.css";
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   9 |
+  10 | interface DatePickerProps {
+  11 |   value?: string;
+
+Import traces:
+  Client Component Browser:
+    ./src/components/ui/datepicker.tsx [Client Component Browser]
+    ./src/app/(dashboard)/dashboard/purchasing/po/new/page.tsx [Client Component Browser]
+    ./src/app/(dashboard)/dashboard/purchasing/po/new/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/components/ui/datepicker.tsx [Client Component SSR]
+    ./src/app/(dashboard)/dashboard/purchasing/po/new/page.tsx [Client Component SSR]
+    ./src/app/(dashboard)/dashboard/purchasing/po/new/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found 
+[browser] ./src/components/ui/calendar.tsx:5:1
+Module not found: Can't resolve 'react-day-picker'
+  3 | import * as React from "react";
+  4 | import { ChevronLeft, ChevronRight } from "lucide-react";
+> 5 | import { DayPicker } from "react-day-picker";
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  6 | import { cn } from "@/lib/utils";
+  7 | import { buttonVariants } from "@/components/ui/button";
+  8 |
+
+Import trace:
+  Client Component Browser:
+    ./src/components/ui/calendar.tsx [Client Component Browser]
+    ./src/components/ui/datepicker.tsx [Client Component Browser]
+    ./src/app/(dashboard)/dashboard/purchasing/po/new/page.tsx [Client Component Browser]
+    ./src/app/(dashboard)/dashboard/purchasing/po/new/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found 
+[browser] ./src/components/ui/datepicker.tsx
+Error evaluating Node.js code
+SyntaxError: /Users/ilham/Desktop/talentpool/src/components/ui/datepicker.tsx: Identifier 'DatePicker' has already been declared. (22:16)
+
+  20 | }
+  21 |
+> 22 | export function DatePicker({
+     |                 ^
+  23 |   value,
+  24 |   onChange,
+  25 |   placeholder = "Pilih tanggal...",
+  (from /Users/ilham/Desktop/talentpool/node_modules/next/dist/build/babel/loader/index.js)
+    [at constructor (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:137105)]
+    [at TypeScriptParserMixin.raise (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:194164)]
+    [at TypeScriptScopeHandler.checkRedeclarationInScope (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:163166)]
+    [at TypeScriptScopeHandler.declareName (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:162529)]
+    [at TypeScriptScopeHandler.declareName (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:271160)]
+    [at TypeScriptParserMixin.registerFunctionStatementId (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:404843)]
+    [at TypeScriptParserMixin.registerFunctionStatementId (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:318299)]
+    [at TypeScriptParserMixin.parseFunction (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:404441)]
+    [at TypeScriptParserMixin.parseFunctionStatement (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:397088)]
+    [at TypeScriptParserMixin.parseStatementContent (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:390089)]
+    [at TypeScriptParserMixin.parseStatementContent (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:324042)]
+    [at TypeScriptParserMixin.parseStatementLike (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:389494)]
+    [at TypeScriptParserMixin.parseStatementListItem (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:389120)]
+    [at TypeScriptParserMixin.parseExportDeclaration (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:415606)]
+    [at TypeScriptParserMixin.parseExportDeclaration (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:327104)]
+    [at TypeScriptParserMixin.maybeParseExportDeclaration (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:414570)]
+    [at TypeScriptParserMixin.parseExport (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:412708)]
+    [at TypeScriptParserMixin.parseExport (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:322862)]
+    [at TypeScriptParserMixin.parseStatementContent (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:391808)]
+    [at TypeScriptParserMixin.parseStatementContent (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:324042)]
+    [at TypeScriptParserMixin.parseStatementLike (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:389494)]
+    [at TypeScriptParserMixin.parseModuleItem (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:389055)]
+    [at TypeScriptParserMixin.parseBlockOrModuleBlockBody (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:401400)]
+    [at TypeScriptParserMixin.parseBlockBody (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:401223)]
+    [at TypeScriptParserMixin.parseProgram (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:386857)]
+    [at TypeScriptParserMixin.parseTopLevel (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:386575)]
+    [at TypeScriptParserMixin.parse (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:426834)]
+    [at TypeScriptParserMixin.parse (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:337631)]
+    [at parse (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:427092)]
+    [at parser (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:1:142456)]
+    [at <anonymous>]
+    [at normalizeFile (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:13:13275)]
+    [at <anonymous>]
+    [at consumeIterator (/Users/ilham/Desktop/talentpool/node_modules/next/src/build/babel/loader/util.ts:5:34)]
+    [at transform (/Users/ilham/Desktop/talentpool/node_modules/next/src/build/babel/loader/transform.ts:99:31)]
+    [at async <anonymous> (/Users/ilham/Desktop/talentpool/node_modules/next/src/build/babel/loader/index.ts:34:9)]
+    [at async DummySpan.traceAsyncFn (turbopack:///[turbopack-node]/transforms/webpack-loaders.ts:115:12)]
+    [at async nextBabelLoader (/Users/ilham/Desktop/talentpool/node_modules/next/src/build/babel/loader/index.ts:32:5)]
+    [at async DummySpan.traceAsyncFn (turbopack:///[turbopack-node]/transforms/webpack-loaders.ts:115:12)]
+
+Import traces:
+  Client Component Browser:
+    ./src/components/ui/datepicker.tsx [Client Component Browser]
+    ./src/app/(dashboard)/dashboard/purchasing/po/new/page.tsx [Client Component Browser]
+    ./src/app/(dashboard)/dashboard/purchasing/po/new/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/components/ui/datepicker.tsx [Client Component SSR]
+    ./src/app/(dashboard)/dashboard/purchasing/po/new/page.tsx [Client Component SSR]
+    ./src/app/(dashboard)/dashboard/purchasing/po/new/page.tsx [Server Component] 
+[browser] ./src/components/ui/datepicker.tsx:22:17
+the name `DatePicker` is defined multiple times
+  20 | }
+  21 |
+> 22 | export function DatePicker({
+     |                 ^^^^^^^^^^
+  23 |   value,
+  24 |   onChange,
+  25 |   placeholder = "Pilih tanggal...",
+
+Ecmascript file had an error
+
+Import traces:
+  Client Component Browser:
+    ./src/components/ui/datepicker.tsx [Client Component Browser]
+    ./src/app/(dashboard)/dashboard/purchasing/po/new/page.tsx [Client Component Browser]
+    ./src/app/(dashboard)/dashboard/purchasing/po/new/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/components/ui/datepicker.tsx [Client Component SSR]
+    ./src/app/(dashboard)/dashboard/purchasing/po/new/page.tsx [Client Component SSR]
+    ./src/app/(dashboard)/dashboard/purchasing/po/new/page.tsx [Server Component] 
+[browser] ./src/components/ui/datepicker.tsx:8:1
+Module not found: Can't resolve 'react-datepicker/dist/react-datepicker.css'
+   6 | import { cn } from "@/lib/utils";
+   7 | import { Button } from "@/components/ui/button";
+>  8 | import "react-datepicker/dist/react-datepicker.css";
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   9 |
+  10 | interface DatePickerProps {
+  11 |   value?: string;
+
+Import traces:
+  Client Component Browser:
+    ./src/components/ui/datepicker.tsx [Client Component Browser]
+    ./src/app/(dashboard)/dashboard/purchasing/po/new/page.tsx [Client Component Browser]
+    ./src/app/(dashboard)/dashboard/purchasing/po/new/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/components/ui/datepicker.tsx [Client Component SSR]
+    ./src/app/(dashboard)/dashboard/purchasing/po/new/page.tsx [Client Component SSR]
+    ./src/app/(dashboard)/dashboard/purchasing/po/new/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found 
+[browser] ./src/components/ui/calendar.tsx:5:1
+Module not found: Can't resolve 'react-day-picker'
+  3 | import * as React from "react";
+  4 | import { ChevronLeft, ChevronRight } from "lucide-react";
+> 5 | import { DayPicker } from "react-day-picker";
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  6 | import { cn } from "@/lib/utils";
+  7 | import { buttonVariants } from "@/components/ui/button";
+  8 |
+
+Import trace:
+  Client Component Browser:
+    ./src/components/ui/calendar.tsx [Client Component Browser]
+    ./src/components/ui/datepicker.tsx [Client Component Browser]
+    ./src/app/(dashboard)/dashboard/purchasing/po/new/page.tsx [Client Component Browser]
+    ./src/app/(dashboard)/dashboard/purchasing/po/new/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found 
+[browser] ./src/components/ui/datepicker.tsx
+Error evaluating Node.js code
+SyntaxError: /Users/ilham/Desktop/talentpool/src/components/ui/datepicker.tsx: Identifier 'DatePicker' has already been declared. (22:16)
+
+  20 | }
+  21 |
+> 22 | export function DatePicker({
+     |                 ^
+  23 |   value,
+  24 |   onChange,
+  25 |   placeholder = "Pilih tanggal...",
+  (from /Users/ilham/Desktop/talentpool/node_modules/next/dist/build/babel/loader/index.js)
+    [at constructor (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:137105)]
+    [at TypeScriptParserMixin.raise (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:194164)]
+    [at TypeScriptScopeHandler.checkRedeclarationInScope (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:163166)]
+    [at TypeScriptScopeHandler.declareName (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:162529)]
+    [at TypeScriptScopeHandler.declareName (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:271160)]
+    [at TypeScriptParserMixin.registerFunctionStatementId (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:404843)]
+    [at TypeScriptParserMixin.registerFunctionStatementId (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:318299)]
+    [at TypeScriptParserMixin.parseFunction (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:404441)]
+    [at TypeScriptParserMixin.parseFunctionStatement (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:397088)]
+    [at TypeScriptParserMixin.parseStatementContent (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:390089)]
+    [at TypeScriptParserMixin.parseStatementContent (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:324042)]
+    [at TypeScriptParserMixin.parseStatementLike (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:389494)]
+    [at TypeScriptParserMixin.parseStatementListItem (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:389120)]
+    [at TypeScriptParserMixin.parseExportDeclaration (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:415606)]
+    [at TypeScriptParserMixin.parseExportDeclaration (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:327104)]
+    [at TypeScriptParserMixin.maybeParseExportDeclaration (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:414570)]
+    [at TypeScriptParserMixin.parseExport (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:412708)]
+    [at TypeScriptParserMixin.parseExport (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:322862)]
+    [at TypeScriptParserMixin.parseStatementContent (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:391808)]
+    [at TypeScriptParserMixin.parseStatementContent (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:324042)]
+    [at TypeScriptParserMixin.parseStatementLike (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:389494)]
+    [at TypeScriptParserMixin.parseModuleItem (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:389055)]
+    [at TypeScriptParserMixin.parseBlockOrModuleBlockBody (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:401400)]
+    [at TypeScriptParserMixin.parseBlockBody (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:401223)]
+    [at TypeScriptParserMixin.parseProgram (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:386857)]
+    [at TypeScriptParserMixin.parseTopLevel (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:386575)]
+    [at TypeScriptParserMixin.parse (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:426834)]
+    [at TypeScriptParserMixin.parse (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:337631)]
+    [at parse (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:427092)]
+    [at parser (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:1:142456)]
+    [at <anonymous>]
+    [at normalizeFile (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:13:13275)]
+    [at <anonymous>]
+    [at consumeIterator (/Users/ilham/Desktop/talentpool/node_modules/next/src/build/babel/loader/util.ts:5:34)]
+    [at transform (/Users/ilham/Desktop/talentpool/node_modules/next/src/build/babel/loader/transform.ts:99:31)]
+    [at async <anonymous> (/Users/ilham/Desktop/talentpool/node_modules/next/src/build/babel/loader/index.ts:34:9)]
+    [at async DummySpan.traceAsyncFn (turbopack:///[turbopack-node]/transforms/webpack-loaders.ts:115:12)]
+    [at async nextBabelLoader (/Users/ilham/Desktop/talentpool/node_modules/next/src/build/babel/loader/index.ts:32:5)]
+    [at async DummySpan.traceAsyncFn (turbopack:///[turbopack-node]/transforms/webpack-loaders.ts:115:12)]
+
+Import traces:
+  Client Component Browser:
+    ./src/components/ui/datepicker.tsx [Client Component Browser]
+    ./src/app/(dashboard)/dashboard/purchasing/po/new/page.tsx [Client Component Browser]
+    ./src/app/(dashboard)/dashboard/purchasing/po/new/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/components/ui/datepicker.tsx [Client Component SSR]
+    ./src/app/(dashboard)/dashboard/purchasing/po/new/page.tsx [Client Component SSR]
+    ./src/app/(dashboard)/dashboard/purchasing/po/new/page.tsx [Server Component] 
+[browser] ./src/components/ui/datepicker.tsx:22:17
+the name `DatePicker` is defined multiple times
+  20 | }
+  21 |
+> 22 | export function DatePicker({
+     |                 ^^^^^^^^^^
+  23 |   value,
+  24 |   onChange,
+  25 |   placeholder = "Pilih tanggal...",
+
+Ecmascript file had an error
+
+Import traces:
+  Client Component Browser:
+    ./src/components/ui/datepicker.tsx [Client Component Browser]
+    ./src/app/(dashboard)/dashboard/purchasing/po/new/page.tsx [Client Component Browser]
+    ./src/app/(dashboard)/dashboard/purchasing/po/new/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/components/ui/datepicker.tsx [Client Component SSR]
+    ./src/app/(dashboard)/dashboard/purchasing/po/new/page.tsx [Client Component SSR]
+    ./src/app/(dashboard)/dashboard/purchasing/po/new/page.tsx [Server Component] 
+[browser] ./src/components/ui/datepicker.tsx:8:1
+Module not found: Can't resolve 'react-datepicker/dist/react-datepicker.css'
+   6 | import { cn } from "@/lib/utils";
+   7 | import { Button } from "@/components/ui/button";
+>  8 | import "react-datepicker/dist/react-datepicker.css";
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   9 |
+  10 | interface DatePickerProps {
+  11 |   value?: string;
+
+Import traces:
+  Client Component Browser:
+    ./src/components/ui/datepicker.tsx [Client Component Browser]
+    ./src/app/(dashboard)/dashboard/purchasing/po/new/page.tsx [Client Component Browser]
+    ./src/app/(dashboard)/dashboard/purchasing/po/new/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/components/ui/datepicker.tsx [Client Component SSR]
+    ./src/app/(dashboard)/dashboard/purchasing/po/new/page.tsx [Client Component SSR]
+    ./src/app/(dashboard)/dashboard/purchasing/po/new/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found 
+[browser] ./src/components/ui/calendar.tsx:5:1
+Module not found: Can't resolve 'react-day-picker'
+  3 | import * as React from "react";
+  4 | import { ChevronLeft, ChevronRight } from "lucide-react";
+> 5 | import { DayPicker } from "react-day-picker";
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  6 | import { cn } from "@/lib/utils";
+  7 | import { buttonVariants } from "@/components/ui/button";
+  8 |
+
+Import trace:
+  Client Component Browser:
+    ./src/components/ui/calendar.tsx [Client Component Browser]
+    ./src/components/ui/datepicker.tsx [Client Component Browser]
+    ./src/app/(dashboard)/dashboard/purchasing/po/new/page.tsx [Client Component Browser]
+    ./src/app/(dashboard)/dashboard/purchasing/po/new/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found 
+[browser] ./src/components/ui/datepicker.tsx
+Error evaluating Node.js code
+SyntaxError: /Users/ilham/Desktop/talentpool/src/components/ui/datepicker.tsx: Identifier 'DatePicker' has already been declared. (22:16)
+
+  20 | }
+  21 |
+> 22 | export function DatePicker({
+     |                 ^
+  23 |   value,
+  24 |   onChange,
+  25 |   placeholder = "Pilih tanggal...",
+  (from /Users/ilham/Desktop/talentpool/node_modules/next/dist/build/babel/loader/index.js)
+    [at constructor (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:137105)]
+    [at TypeScriptParserMixin.raise (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:194164)]
+    [at TypeScriptScopeHandler.checkRedeclarationInScope (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:163166)]
+    [at TypeScriptScopeHandler.declareName (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:162529)]
+    [at TypeScriptScopeHandler.declareName (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:271160)]
+    [at TypeScriptParserMixin.registerFunctionStatementId (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:404843)]
+    [at TypeScriptParserMixin.registerFunctionStatementId (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:318299)]
+    [at TypeScriptParserMixin.parseFunction (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:404441)]
+    [at TypeScriptParserMixin.parseFunctionStatement (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:397088)]
+    [at TypeScriptParserMixin.parseStatementContent (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:390089)]
+    [at TypeScriptParserMixin.parseStatementContent (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:324042)]
+    [at TypeScriptParserMixin.parseStatementLike (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:389494)]
+    [at TypeScriptParserMixin.parseStatementListItem (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:389120)]
+    [at TypeScriptParserMixin.parseExportDeclaration (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:415606)]
+    [at TypeScriptParserMixin.parseExportDeclaration (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:327104)]
+    [at TypeScriptParserMixin.maybeParseExportDeclaration (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:414570)]
+    [at TypeScriptParserMixin.parseExport (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:412708)]
+    [at TypeScriptParserMixin.parseExport (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:322862)]
+    [at TypeScriptParserMixin.parseStatementContent (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:391808)]
+    [at TypeScriptParserMixin.parseStatementContent (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:324042)]
+    [at TypeScriptParserMixin.parseStatementLike (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:389494)]
+    [at TypeScriptParserMixin.parseModuleItem (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:389055)]
+    [at TypeScriptParserMixin.parseBlockOrModuleBlockBody (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:401400)]
+    [at TypeScriptParserMixin.parseBlockBody (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:401223)]
+    [at TypeScriptParserMixin.parseProgram (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:386857)]
+    [at TypeScriptParserMixin.parseTopLevel (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:386575)]
+    [at TypeScriptParserMixin.parse (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:426834)]
+    [at TypeScriptParserMixin.parse (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:337631)]
+    [at parse (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:427092)]
+    [at parser (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:1:142456)]
+    [at <anonymous>]
+    [at normalizeFile (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:13:13275)]
+    [at <anonymous>]
+    [at consumeIterator (/Users/ilham/Desktop/talentpool/node_modules/next/src/build/babel/loader/util.ts:5:34)]
+    [at transform (/Users/ilham/Desktop/talentpool/node_modules/next/src/build/babel/loader/transform.ts:99:31)]
+    [at async <anonymous> (/Users/ilham/Desktop/talentpool/node_modules/next/src/build/babel/loader/index.ts:34:9)]
+    [at async DummySpan.traceAsyncFn (turbopack:///[turbopack-node]/transforms/webpack-loaders.ts:115:12)]
+    [at async nextBabelLoader (/Users/ilham/Desktop/talentpool/node_modules/next/src/build/babel/loader/index.ts:32:5)]
+    [at async DummySpan.traceAsyncFn (turbopack:///[turbopack-node]/transforms/webpack-loaders.ts:115:12)]
+
+Import traces:
+  Client Component Browser:
+    ./src/components/ui/datepicker.tsx [Client Component Browser]
+    ./src/app/(dashboard)/dashboard/purchasing/po/new/page.tsx [Client Component Browser]
+    ./src/app/(dashboard)/dashboard/purchasing/po/new/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/components/ui/datepicker.tsx [Client Component SSR]
+    ./src/app/(dashboard)/dashboard/purchasing/po/new/page.tsx [Client Component SSR]
+    ./src/app/(dashboard)/dashboard/purchasing/po/new/page.tsx [Server Component] 
+[browser] ./src/components/ui/datepicker.tsx:22:17
+the name `DatePicker` is defined multiple times
+  20 | }
+  21 |
+> 22 | export function DatePicker({
+     |                 ^^^^^^^^^^
+  23 |   value,
+  24 |   onChange,
+  25 |   placeholder = "Pilih tanggal...",
+
+Ecmascript file had an error
+
+Import traces:
+  Client Component Browser:
+    ./src/components/ui/datepicker.tsx [Client Component Browser]
+    ./src/app/(dashboard)/dashboard/purchasing/po/new/page.tsx [Client Component Browser]
+    ./src/app/(dashboard)/dashboard/purchasing/po/new/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/components/ui/datepicker.tsx [Client Component SSR]
+    ./src/app/(dashboard)/dashboard/purchasing/po/new/page.tsx [Client Component SSR]
+    ./src/app/(dashboard)/dashboard/purchasing/po/new/page.tsx [Server Component] 
+[browser] ./src/components/ui/datepicker.tsx:8:1
+Module not found: Can't resolve 'react-datepicker/dist/react-datepicker.css'
+   6 | import { cn } from "@/lib/utils";
+   7 | import { Button } from "@/components/ui/button";
+>  8 | import "react-datepicker/dist/react-datepicker.css";
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   9 |
+  10 | interface DatePickerProps {
+  11 |   value?: string;
+
+Import traces:
+  Client Component Browser:
+    ./src/components/ui/datepicker.tsx [Client Component Browser]
+    ./src/app/(dashboard)/dashboard/purchasing/po/new/page.tsx [Client Component Browser]
+    ./src/app/(dashboard)/dashboard/purchasing/po/new/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/components/ui/datepicker.tsx [Client Component SSR]
+    ./src/app/(dashboard)/dashboard/purchasing/po/new/page.tsx [Client Component SSR]
+    ./src/app/(dashboard)/dashboard/purchasing/po/new/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found 
+[browser] ./src/components/ui/calendar.tsx:5:1
+Module not found: Can't resolve 'react-day-picker'
+  3 | import * as React from "react";
+  4 | import { ChevronLeft, ChevronRight } from "lucide-react";
+> 5 | import { DayPicker } from "react-day-picker";
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  6 | import { cn } from "@/lib/utils";
+  7 | import { buttonVariants } from "@/components/ui/button";
+  8 |
+
+Import trace:
+  Client Component Browser:
+    ./src/components/ui/calendar.tsx [Client Component Browser]
+    ./src/components/ui/datepicker.tsx [Client Component Browser]
+    ./src/app/(dashboard)/dashboard/purchasing/po/new/page.tsx [Client Component Browser]
+    ./src/app/(dashboard)/dashboard/purchasing/po/new/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found 
+[browser] ./src/components/ui/datepicker.tsx
+Error evaluating Node.js code
+SyntaxError: /Users/ilham/Desktop/talentpool/src/components/ui/datepicker.tsx: Identifier 'DatePicker' has already been declared. (22:16)
+
+  20 | }
+  21 |
+> 22 | export function DatePicker({
+     |                 ^
+  23 |   value,
+  24 |   onChange,
+  25 |   placeholder = "Pilih tanggal...",
+  (from /Users/ilham/Desktop/talentpool/node_modules/next/dist/build/babel/loader/index.js)
+    [at constructor (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:137105)]
+    [at TypeScriptParserMixin.raise (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:194164)]
+    [at TypeScriptScopeHandler.checkRedeclarationInScope (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:163166)]
+    [at TypeScriptScopeHandler.declareName (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:162529)]
+    [at TypeScriptScopeHandler.declareName (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:271160)]
+    [at TypeScriptParserMixin.registerFunctionStatementId (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:404843)]
+    [at TypeScriptParserMixin.registerFunctionStatementId (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:318299)]
+    [at TypeScriptParserMixin.parseFunction (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:404441)]
+    [at TypeScriptParserMixin.parseFunctionStatement (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:397088)]
+    [at TypeScriptParserMixin.parseStatementContent (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:390089)]
+    [at TypeScriptParserMixin.parseStatementContent (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:324042)]
+    [at TypeScriptParserMixin.parseStatementLike (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:389494)]
+    [at TypeScriptParserMixin.parseStatementListItem (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:389120)]
+    [at TypeScriptParserMixin.parseExportDeclaration (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:415606)]
+    [at TypeScriptParserMixin.parseExportDeclaration (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:327104)]
+    [at TypeScriptParserMixin.maybeParseExportDeclaration (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:414570)]
+    [at TypeScriptParserMixin.parseExport (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:412708)]
+    [at TypeScriptParserMixin.parseExport (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:322862)]
+    [at TypeScriptParserMixin.parseStatementContent (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:391808)]
+    [at TypeScriptParserMixin.parseStatementContent (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:324042)]
+    [at TypeScriptParserMixin.parseStatementLike (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:389494)]
+    [at TypeScriptParserMixin.parseModuleItem (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:389055)]
+    [at TypeScriptParserMixin.parseBlockOrModuleBlockBody (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:401400)]
+    [at TypeScriptParserMixin.parseBlockBody (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:401223)]
+    [at TypeScriptParserMixin.parseProgram (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:386857)]
+    [at TypeScriptParserMixin.parseTopLevel (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:386575)]
+    [at TypeScriptParserMixin.parse (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:426834)]
+    [at TypeScriptParserMixin.parse (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:337631)]
+    [at parse (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:427092)]
+    [at parser (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:1:142456)]
+    [at <anonymous>]
+    [at normalizeFile (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:13:13275)]
+    [at <anonymous>]
+    [at consumeIterator (/Users/ilham/Desktop/talentpool/node_modules/next/src/build/babel/loader/util.ts:5:34)]
+    [at transform (/Users/ilham/Desktop/talentpool/node_modules/next/src/build/babel/loader/transform.ts:99:31)]
+    [at async <anonymous> (/Users/ilham/Desktop/talentpool/node_modules/next/src/build/babel/loader/index.ts:34:9)]
+    [at async DummySpan.traceAsyncFn (turbopack:///[turbopack-node]/transforms/webpack-loaders.ts:115:12)]
+    [at async nextBabelLoader (/Users/ilham/Desktop/talentpool/node_modules/next/src/build/babel/loader/index.ts:32:5)]
+    [at async DummySpan.traceAsyncFn (turbopack:///[turbopack-node]/transforms/webpack-loaders.ts:115:12)]
+
+Import traces:
+  Client Component Browser:
+    ./src/components/ui/datepicker.tsx [Client Component Browser]
+    ./src/app/(dashboard)/dashboard/purchasing/po/new/page.tsx [Client Component Browser]
+    ./src/app/(dashboard)/dashboard/purchasing/po/new/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/components/ui/datepicker.tsx [Client Component SSR]
+    ./src/app/(dashboard)/dashboard/purchasing/po/new/page.tsx [Client Component SSR]
+    ./src/app/(dashboard)/dashboard/purchasing/po/new/page.tsx [Server Component] 
+[browser] ./src/components/ui/datepicker.tsx:22:17
+the name `DatePicker` is defined multiple times
+  20 | }
+  21 |
+> 22 | export function DatePicker({
+     |                 ^^^^^^^^^^
+  23 |   value,
+  24 |   onChange,
+  25 |   placeholder = "Pilih tanggal...",
+
+Ecmascript file had an error
+
+Import traces:
+  Client Component Browser:
+    ./src/components/ui/datepicker.tsx [Client Component Browser]
+    ./src/app/(dashboard)/dashboard/purchasing/po/new/page.tsx [Client Component Browser]
+    ./src/app/(dashboard)/dashboard/purchasing/po/new/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/components/ui/datepicker.tsx [Client Component SSR]
+    ./src/app/(dashboard)/dashboard/purchasing/po/new/page.tsx [Client Component SSR]
+    ./src/app/(dashboard)/dashboard/purchasing/po/new/page.tsx [Server Component] 
+[browser] ./src/components/ui/datepicker.tsx:8:1
+Module not found: Can't resolve 'react-datepicker/dist/react-datepicker.css'
+   6 | import { cn } from "@/lib/utils";
+   7 | import { Button } from "@/components/ui/button";
+>  8 | import "react-datepicker/dist/react-datepicker.css";
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   9 |
+  10 | interface DatePickerProps {
+  11 |   value?: string;
+
+Import traces:
+  Client Component Browser:
+    ./src/components/ui/datepicker.tsx [Client Component Browser]
+    ./src/app/(dashboard)/dashboard/purchasing/po/new/page.tsx [Client Component Browser]
+    ./src/app/(dashboard)/dashboard/purchasing/po/new/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/components/ui/datepicker.tsx [Client Component SSR]
+    ./src/app/(dashboard)/dashboard/purchasing/po/new/page.tsx [Client Component SSR]
+    ./src/app/(dashboard)/dashboard/purchasing/po/new/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found 
+[browser] ./src/components/ui/calendar.tsx:5:1
+Module not found: Can't resolve 'react-day-picker'
+  3 | import * as React from "react";
+  4 | import { ChevronLeft, ChevronRight } from "lucide-react";
+> 5 | import { DayPicker } from "react-day-picker";
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  6 | import { cn } from "@/lib/utils";
+  7 | import { buttonVariants } from "@/components/ui/button";
+  8 |
+
+Import trace:
+  Client Component Browser:
+    ./src/components/ui/calendar.tsx [Client Component Browser]
+    ./src/components/ui/datepicker.tsx [Client Component Browser]
+    ./src/app/(dashboard)/dashboard/purchasing/po/new/page.tsx [Client Component Browser]
+    ./src/app/(dashboard)/dashboard/purchasing/po/new/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found 
+⨯ ./src/components/ui/datepicker.tsx
+Error evaluating Node.js code
+SyntaxError: /Users/ilham/Desktop/talentpool/src/components/ui/datepicker.tsx: Identifier 'DatePicker' has already been declared. (22:16)
+
+  20 | }
+  21 |
+> 22 | export function DatePicker({
+     |                 ^
+  23 |   value,
+  24 |   onChange,
+  25 |   placeholder = "Pilih tanggal...",
+  (from /Users/ilham/Desktop/talentpool/node_modules/next/dist/build/babel/loader/index.js)
+    [at constructor (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:137105)]
+    [at TypeScriptParserMixin.raise (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:194164)]
+    [at TypeScriptScopeHandler.checkRedeclarationInScope (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:163166)]
+    [at TypeScriptScopeHandler.declareName (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:162529)]
+    [at TypeScriptScopeHandler.declareName (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:271160)]
+    [at TypeScriptParserMixin.registerFunctionStatementId (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:404843)]
+    [at TypeScriptParserMixin.registerFunctionStatementId (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:318299)]
+    [at TypeScriptParserMixin.parseFunction (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:404441)]
+    [at TypeScriptParserMixin.parseFunctionStatement (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:397088)]
+    [at TypeScriptParserMixin.parseStatementContent (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:390089)]
+    [at TypeScriptParserMixin.parseStatementContent (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:324042)]
+    [at TypeScriptParserMixin.parseStatementLike (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:389494)]
+    [at TypeScriptParserMixin.parseStatementListItem (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:389120)]
+    [at TypeScriptParserMixin.parseExportDeclaration (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:415606)]
+    [at TypeScriptParserMixin.parseExportDeclaration (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:327104)]
+    [at TypeScriptParserMixin.maybeParseExportDeclaration (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:414570)]
+    [at TypeScriptParserMixin.parseExport (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:412708)]
+    [at TypeScriptParserMixin.parseExport (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:322862)]
+    [at TypeScriptParserMixin.parseStatementContent (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:391808)]
+    [at TypeScriptParserMixin.parseStatementContent (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:324042)]
+    [at TypeScriptParserMixin.parseStatementLike (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:389494)]
+    [at TypeScriptParserMixin.parseModuleItem (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:389055)]
+    [at TypeScriptParserMixin.parseBlockOrModuleBlockBody (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:401400)]
+    [at TypeScriptParserMixin.parseBlockBody (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:401223)]
+    [at TypeScriptParserMixin.parseProgram (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:386857)]
+    [at TypeScriptParserMixin.parseTopLevel (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:386575)]
+    [at TypeScriptParserMixin.parse (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:426834)]
+    [at TypeScriptParserMixin.parse (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:337631)]
+    [at parse (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:427092)]
+    [at parser (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:1:142456)]
+    [at <anonymous>]
+    [at normalizeFile (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:13:13275)]
+    [at <anonymous>]
+    [at consumeIterator (/Users/ilham/Desktop/talentpool/node_modules/next/src/build/babel/loader/util.ts:5:34)]
+    [at transform (/Users/ilham/Desktop/talentpool/node_modules/next/src/build/babel/loader/transform.ts:99:31)]
+    [at async <anonymous> (/Users/ilham/Desktop/talentpool/node_modules/next/src/build/babel/loader/index.ts:34:9)]
+    [at async DummySpan.traceAsyncFn (turbopack:///[turbopack-node]/transforms/webpack-loaders.ts:115:12)]
+    [at async nextBabelLoader (/Users/ilham/Desktop/talentpool/node_modules/next/src/build/babel/loader/index.ts:32:5)]
+    [at async DummySpan.traceAsyncFn (turbopack:///[turbopack-node]/transforms/webpack-loaders.ts:115:12)]
+
+Import traces:
+  Client Component Browser:
+    ./src/components/ui/datepicker.tsx [Client Component Browser]
+    ./src/app/(dashboard)/dashboard/purchasing/po/new/page.tsx [Client Component Browser]
+    ./src/app/(dashboard)/dashboard/purchasing/po/new/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/components/ui/datepicker.tsx [Client Component SSR]
+    ./src/app/(dashboard)/dashboard/purchasing/po/new/page.tsx [Client Component SSR]
+    ./src/app/(dashboard)/dashboard/purchasing/po/new/page.tsx [Server Component]
+
+
+
+./src/components/ui/datepicker.tsx:22:17
+the name `DatePicker` is defined multiple times
+  [90m20 |[0m }
+  [90m21 |[0m
+[31m[1m>[0m [90m22 |[0m [36mexport[0m [36mfunction[0m [33mDatePicker[0m({
+  [90m   |[0m                 [31m[1m^^^^^^^^^^[0m
+  [90m23 |[0m   value,
+  [90m24 |[0m   onChange,
+  [90m25 |[0m   placeholder = [32m"Pilih tanggal..."[0m,
+
+Ecmascript file had an error
+
+Import traces:
+  Client Component Browser:
+    ./src/components/ui/datepicker.tsx [Client Component Browser]
+    ./src/app/(dashboard)/dashboard/purchasing/po/new/page.tsx [Client Component Browser]
+    ./src/app/(dashboard)/dashboard/purchasing/po/new/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/components/ui/datepicker.tsx [Client Component SSR]
+    ./src/app/(dashboard)/dashboard/purchasing/po/new/page.tsx [Client Component SSR]
+    ./src/app/(dashboard)/dashboard/purchasing/po/new/page.tsx [Server Component]
+
+
+
+./src/components/ui/datepicker.tsx:8:1
+Module not found: Can't resolve 'react-datepicker/dist/react-datepicker.css'
+  [90m 6 |[0m [36mimport[0m { cn } [36mfrom[0m [32m"@/lib/utils"[0m;
+  [90m 7 |[0m [36mimport[0m { [33mButton[0m } [36mfrom[0m [32m"@/components/ui/button"[0m;
+[31m[1m>[0m [90m 8 |[0m [36mimport[0m [32m"react-datepicker/dist/react-datepicker.css"[0m;
+  [90m   |[0m [31m[1m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  [90m 9 |[0m
+  [90m10 |[0m [36minterface[0m [33mDatePickerProps[0m {
+  [90m11 |[0m   value?: string;
+
+
+
+Import traces:
+  Client Component Browser:
+    ./src/components/ui/datepicker.tsx [Client Component Browser]
+    ./src/app/(dashboard)/dashboard/purchasing/po/new/page.tsx [Client Component Browser]
+    ./src/app/(dashboard)/dashboard/purchasing/po/new/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/components/ui/datepicker.tsx [Client Component SSR]
+    ./src/app/(dashboard)/dashboard/purchasing/po/new/page.tsx [Client Component SSR]
+    ./src/app/(dashboard)/dashboard/purchasing/po/new/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+
+./src/components/ui/calendar.tsx:5:1
+Module not found: Can't resolve 'react-day-picker'
+  [90m3 |[0m [36mimport[0m * [36mas[0m [33mReact[0m [36mfrom[0m [32m"react"[0m;
+  [90m4 |[0m [36mimport[0m { [33mChevronLeft[0m, [33mChevronRight[0m } [36mfrom[0m [32m"lucide-react"[0m;
+[31m[1m>[0m [90m5 |[0m [36mimport[0m { [33mDayPicker[0m } [36mfrom[0m [32m"react-day-picker"[0m;
+  [90m  |[0m [31m[1m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  [90m6 |[0m [36mimport[0m { cn } [36mfrom[0m [32m"@/lib/utils"[0m;
+  [90m7 |[0m [36mimport[0m { buttonVariants } [36mfrom[0m [32m"@/components/ui/button"[0m;
+  [90m8 |[0m
+
+
+
+Import trace:
+  Client Component Browser:
+    ./src/components/ui/calendar.tsx [Client Component Browser]
+    ./src/components/ui/datepicker.tsx [Client Component Browser]
+    ./src/app/(dashboard)/dashboard/purchasing/po/new/page.tsx [Client Component Browser]
+    ./src/app/(dashboard)/dashboard/purchasing/po/new/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+ GET /dashboard/purchasing/po/new 500 in 14ms (next.js: 6ms, application-code: 8ms)
+[browser] Uncaught Error: ./src/components/ui/datepicker.tsx
+Error evaluating Node.js code
+SyntaxError: /Users/ilham/Desktop/talentpool/src/components/ui/datepicker.tsx: Identifier 'DatePicker' has already been declared. (22:16)
+
+  20 | }
+  21 |
+> 22 | export function DatePicker({
+     |                 ^
+  23 |   value,
+  24 |   onChange,
+  25 |   placeholder = "Pilih tanggal...",
+  (from /Users/ilham/Desktop/talentpool/node_modules/next/dist/build/babel/loader/index.js)
+    [at constructor (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:137105)]
+    [at TypeScriptParserMixin.raise (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:194164)]
+    [at TypeScriptScopeHandler.checkRedeclarationInScope (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:163166)]
+    [at TypeScriptScopeHandler.declareName (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:162529)]
+    [at TypeScriptScopeHandler.declareName (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:271160)]
+    [at TypeScriptParserMixin.registerFunctionStatementId (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:404843)]
+    [at TypeScriptParserMixin.registerFunctionStatementId (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:318299)]
+    [at TypeScriptParserMixin.parseFunction (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:404441)]
+    [at TypeScriptParserMixin.parseFunctionStatement (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:397088)]
+    [at TypeScriptParserMixin.parseStatementContent (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:390089)]
+    [at TypeScriptParserMixin.parseStatementContent (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:324042)]
+    [at TypeScriptParserMixin.parseStatementLike (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:389494)]
+    [at TypeScriptParserMixin.parseStatementListItem (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:389120)]
+    [at TypeScriptParserMixin.parseExportDeclaration (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:415606)]
+    [at TypeScriptParserMixin.parseExportDeclaration (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:327104)]
+    [at TypeScriptParserMixin.maybeParseExportDeclaration (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:414570)]
+    [at TypeScriptParserMixin.parseExport (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:412708)]
+    [at TypeScriptParserMixin.parseExport (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:322862)]
+    [at TypeScriptParserMixin.parseStatementContent (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:391808)]
+    [at TypeScriptParserMixin.parseStatementContent (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:324042)]
+    [at TypeScriptParserMixin.parseStatementLike (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:389494)]
+    [at TypeScriptParserMixin.parseModuleItem (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:389055)]
+    [at TypeScriptParserMixin.parseBlockOrModuleBlockBody (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:401400)]
+    [at TypeScriptParserMixin.parseBlockBody (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:401223)]
+    [at TypeScriptParserMixin.parseProgram (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:386857)]
+    [at TypeScriptParserMixin.parseTopLevel (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:386575)]
+    [at TypeScriptParserMixin.parse (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:426834)]
+    [at TypeScriptParserMixin.parse (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:337631)]
+    [at parse (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:427092)]
+    [at parser (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:1:142456)]
+    [at <anonymous>]
+    [at normalizeFile (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:13:13275)]
+    [at <anonymous>]
+    [at consumeIterator (/Users/ilham/Desktop/talentpool/node_modules/next/src/build/babel/loader/util.ts:5:34)]
+    [at transform (/Users/ilham/Desktop/talentpool/node_modules/next/src/build/babel/loader/transform.ts:99:31)]
+    [at async <anonymous> (/Users/ilham/Desktop/talentpool/node_modules/next/src/build/babel/loader/index.ts:34:9)]
+    [at async DummySpan.traceAsyncFn (turbopack:///[turbopack-node]/transforms/webpack-loaders.ts:115:12)]
+    [at async nextBabelLoader (/Users/ilham/Desktop/talentpool/node_modules/next/src/build/babel/loader/index.ts:32:5)]
+    [at async DummySpan.traceAsyncFn (turbopack:///[turbopack-node]/transforms/webpack-loaders.ts:115:12)]
+
+Import traces:
+  Client Component Browser:
+    ./src/components/ui/datepicker.tsx [Client Component Browser]
+    ./src/app/(dashboard)/dashboard/purchasing/po/new/page.tsx [Client Component Browser]
+    ./src/app/(dashboard)/dashboard/purchasing/po/new/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/components/ui/datepicker.tsx [Client Component SSR]
+    ./src/app/(dashboard)/dashboard/purchasing/po/new/page.tsx [Client Component SSR]
+    ./src/app/(dashboard)/dashboard/purchasing/po/new/page.tsx [Server Component]
+
+
+[browser] ./src/components/ui/datepicker.tsx
+Error evaluating Node.js code
+SyntaxError: /Users/ilham/Desktop/talentpool/src/components/ui/datepicker.tsx: Identifier 'DatePicker' has already been declared. (22:16)
+
+  20 | }
+  21 |
+> 22 | export function DatePicker({
+     |                 ^
+  23 |   value,
+  24 |   onChange,
+  25 |   placeholder = "Pilih tanggal...",
+  (from /Users/ilham/Desktop/talentpool/node_modules/next/dist/build/babel/loader/index.js)
+    [at constructor (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:137105)]
+    [at TypeScriptParserMixin.raise (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:194164)]
+    [at TypeScriptScopeHandler.checkRedeclarationInScope (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:163166)]
+    [at TypeScriptScopeHandler.declareName (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:162529)]
+    [at TypeScriptScopeHandler.declareName (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:271160)]
+    [at TypeScriptParserMixin.registerFunctionStatementId (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:404843)]
+    [at TypeScriptParserMixin.registerFunctionStatementId (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:318299)]
+    [at TypeScriptParserMixin.parseFunction (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:404441)]
+    [at TypeScriptParserMixin.parseFunctionStatement (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:397088)]
+    [at TypeScriptParserMixin.parseStatementContent (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:390089)]
+    [at TypeScriptParserMixin.parseStatementContent (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:324042)]
+    [at TypeScriptParserMixin.parseStatementLike (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:389494)]
+    [at TypeScriptParserMixin.parseStatementListItem (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:389120)]
+    [at TypeScriptParserMixin.parseExportDeclaration (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:415606)]
+    [at TypeScriptParserMixin.parseExportDeclaration (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:327104)]
+    [at TypeScriptParserMixin.maybeParseExportDeclaration (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:414570)]
+    [at TypeScriptParserMixin.parseExport (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:412708)]
+    [at TypeScriptParserMixin.parseExport (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:322862)]
+    [at TypeScriptParserMixin.parseStatementContent (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:391808)]
+    [at TypeScriptParserMixin.parseStatementContent (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:324042)]
+    [at TypeScriptParserMixin.parseStatementLike (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:389494)]
+    [at TypeScriptParserMixin.parseModuleItem (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:389055)]
+    [at TypeScriptParserMixin.parseBlockOrModuleBlockBody (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:401400)]
+    [at TypeScriptParserMixin.parseBlockBody (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:401223)]
+    [at TypeScriptParserMixin.parseProgram (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:386857)]
+    [at TypeScriptParserMixin.parseTopLevel (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:386575)]
+    [at TypeScriptParserMixin.parse (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:426834)]
+    [at TypeScriptParserMixin.parse (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:337631)]
+    [at parse (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:427092)]
+    [at parser (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:1:142456)]
+    [at <anonymous>]
+    [at normalizeFile (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:13:13275)]
+    [at <anonymous>]
+    [at consumeIterator (/Users/ilham/Desktop/talentpool/node_modules/next/src/build/babel/loader/util.ts:5:34)]
+    [at transform (/Users/ilham/Desktop/talentpool/node_modules/next/src/build/babel/loader/transform.ts:99:31)]
+    [at async <anonymous> (/Users/ilham/Desktop/talentpool/node_modules/next/src/build/babel/loader/index.ts:34:9)]
+    [at async DummySpan.traceAsyncFn (turbopack:///[turbopack-node]/transforms/webpack-loaders.ts:115:12)]
+    [at async nextBabelLoader (/Users/ilham/Desktop/talentpool/node_modules/next/src/build/babel/loader/index.ts:32:5)]
+    [at async DummySpan.traceAsyncFn (turbopack:///[turbopack-node]/transforms/webpack-loaders.ts:115:12)]
+
+Import traces:
+  Client Component Browser:
+    ./src/components/ui/datepicker.tsx [Client Component Browser]
+    ./src/app/(dashboard)/dashboard/purchasing/po/new/page.tsx [Client Component Browser]
+    ./src/app/(dashboard)/dashboard/purchasing/po/new/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/components/ui/datepicker.tsx [Client Component SSR]
+    ./src/app/(dashboard)/dashboard/purchasing/po/new/page.tsx [Client Component SSR]
+    ./src/app/(dashboard)/dashboard/purchasing/po/new/page.tsx [Server Component] 
+[browser] ./src/components/ui/datepicker.tsx:22:17
+the name `DatePicker` is defined multiple times
+  20 | }
+  21 |
+> 22 | export function DatePicker({
+     |                 ^^^^^^^^^^
+  23 |   value,
+  24 |   onChange,
+  25 |   placeholder = "Pilih tanggal...",
+
+Ecmascript file had an error
+
+Import traces:
+  Client Component Browser:
+    ./src/components/ui/datepicker.tsx [Client Component Browser]
+    ./src/app/(dashboard)/dashboard/purchasing/po/new/page.tsx [Client Component Browser]
+    ./src/app/(dashboard)/dashboard/purchasing/po/new/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/components/ui/datepicker.tsx [Client Component SSR]
+    ./src/app/(dashboard)/dashboard/purchasing/po/new/page.tsx [Client Component SSR]
+    ./src/app/(dashboard)/dashboard/purchasing/po/new/page.tsx [Server Component] 
+[browser] ./src/components/ui/datepicker.tsx:8:1
+Module not found: Can't resolve 'react-datepicker/dist/react-datepicker.css'
+   6 | import { cn } from "@/lib/utils";
+   7 | import { Button } from "@/components/ui/button";
+>  8 | import "react-datepicker/dist/react-datepicker.css";
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   9 |
+  10 | interface DatePickerProps {
+  11 |   value?: string;
+
+Import traces:
+  Client Component Browser:
+    ./src/components/ui/datepicker.tsx [Client Component Browser]
+    ./src/app/(dashboard)/dashboard/purchasing/po/new/page.tsx [Client Component Browser]
+    ./src/app/(dashboard)/dashboard/purchasing/po/new/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/components/ui/datepicker.tsx [Client Component SSR]
+    ./src/app/(dashboard)/dashboard/purchasing/po/new/page.tsx [Client Component SSR]
+    ./src/app/(dashboard)/dashboard/purchasing/po/new/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found 
+[browser] ./src/components/ui/calendar.tsx:5:1
+Module not found: Can't resolve 'react-day-picker'
+  3 | import * as React from "react";
+  4 | import { ChevronLeft, ChevronRight } from "lucide-react";
+> 5 | import { DayPicker } from "react-day-picker";
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  6 | import { cn } from "@/lib/utils";
+  7 | import { buttonVariants } from "@/components/ui/button";
+  8 |
+
+Import trace:
+  Client Component Browser:
+    ./src/components/ui/calendar.tsx [Client Component Browser]
+    ./src/components/ui/datepicker.tsx [Client Component Browser]
+    ./src/app/(dashboard)/dashboard/purchasing/po/new/page.tsx [Client Component Browser]
+    ./src/app/(dashboard)/dashboard/purchasing/po/new/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found 
+[browser] ./src/components/ui/datepicker.tsx
+Error evaluating Node.js code
+SyntaxError: /Users/ilham/Desktop/talentpool/src/components/ui/datepicker.tsx: Identifier 'DatePicker' has already been declared. (22:16)
+
+  20 | }
+  21 |
+> 22 | export function DatePicker({
+     |                 ^
+  23 |   value,
+  24 |   onChange,
+  25 |   placeholder = "Pilih tanggal...",
+  (from /Users/ilham/Desktop/talentpool/node_modules/next/dist/build/babel/loader/index.js)
+    [at constructor (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:137105)]
+    [at TypeScriptParserMixin.raise (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:194164)]
+    [at TypeScriptScopeHandler.checkRedeclarationInScope (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:163166)]
+    [at TypeScriptScopeHandler.declareName (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:162529)]
+    [at TypeScriptScopeHandler.declareName (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:271160)]
+    [at TypeScriptParserMixin.registerFunctionStatementId (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:404843)]
+    [at TypeScriptParserMixin.registerFunctionStatementId (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:318299)]
+    [at TypeScriptParserMixin.parseFunction (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:404441)]
+    [at TypeScriptParserMixin.parseFunctionStatement (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:397088)]
+    [at TypeScriptParserMixin.parseStatementContent (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:390089)]
+    [at TypeScriptParserMixin.parseStatementContent (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:324042)]
+    [at TypeScriptParserMixin.parseStatementLike (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:389494)]
+    [at TypeScriptParserMixin.parseStatementListItem (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:389120)]
+    [at TypeScriptParserMixin.parseExportDeclaration (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:415606)]
+    [at TypeScriptParserMixin.parseExportDeclaration (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:327104)]
+    [at TypeScriptParserMixin.maybeParseExportDeclaration (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:414570)]
+    [at TypeScriptParserMixin.parseExport (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:412708)]
+    [at TypeScriptParserMixin.parseExport (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:322862)]
+    [at TypeScriptParserMixin.parseStatementContent (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:391808)]
+    [at TypeScriptParserMixin.parseStatementContent (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:324042)]
+    [at TypeScriptParserMixin.parseStatementLike (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:389494)]
+    [at TypeScriptParserMixin.parseModuleItem (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:389055)]
+    [at TypeScriptParserMixin.parseBlockOrModuleBlockBody (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:401400)]
+    [at TypeScriptParserMixin.parseBlockBody (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:401223)]
+    [at TypeScriptParserMixin.parseProgram (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:386857)]
+    [at TypeScriptParserMixin.parseTopLevel (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:386575)]
+    [at TypeScriptParserMixin.parse (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:426834)]
+    [at TypeScriptParserMixin.parse (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:337631)]
+    [at parse (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:191:427092)]
+    [at parser (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:1:142456)]
+    [at <anonymous>]
+    [at normalizeFile (/Users/ilham/Desktop/talentpool/node_modules/next/dist/compiled/babel/bundle.js:13:13275)]
+    [at <anonymous>]
+    [at consumeIterator (/Users/ilham/Desktop/talentpool/node_modules/next/src/build/babel/loader/util.ts:5:34)]
+    [at transform (/Users/ilham/Desktop/talentpool/node_modules/next/src/build/babel/loader/transform.ts:99:31)]
+    [at async <anonymous> (/Users/ilham/Desktop/talentpool/node_modules/next/src/build/babel/loader/index.ts:34:9)]
+    [at async DummySpan.traceAsyncFn (turbopack:///[turbopack-node]/transforms/webpack-loaders.ts:115:12)]
+    [at async nextBabelLoader (/Users/ilham/Desktop/talentpool/node_modules/next/src/build/babel/loader/index.ts:32:5)]
+    [at async DummySpan.traceAsyncFn (turbopack:///[turbopack-node]/transforms/webpack-loaders.ts:115:12)]
+
+Import traces:
+  Client Component Browser:
+    ./src/components/ui/datepicker.tsx [Client Component Browser]
+    ./src/app/(dashboard)/dashboard/purchasing/po/new/page.tsx [Client Component Browser]
+    ./src/app/(dashboard)/dashboard/purchasing/po/new/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/components/ui/datepicker.tsx [Client Component SSR]
+    ./src/app/(dashboard)/dashboard/purchasing/po/new/page.tsx [Client Component SSR]
+    ./src/app/(dashboard)/dashboard/purchasing/po/new/page.tsx [Server Component] 
+[browser] ./src/components/ui/datepicker.tsx:22:17
+the name `DatePicker` is defined multiple times
+  20 | }
+  21 |
+> 22 | export function DatePicker({
+     |                 ^^^^^^^^^^
+  23 |   value,
+  24 |   onChange,
+  25 |   placeholder = "Pilih tanggal...",
+
+Ecmascript file had an error
+
+Import traces:
+  Client Component Browser:
+    ./src/components/ui/datepicker.tsx [Client Component Browser]
+    ./src/app/(dashboard)/dashboard/purchasing/po/new/page.tsx [Client Component Browser]
+    ./src/app/(dashboard)/dashboard/purchasing/po/new/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/components/ui/datepicker.tsx [Client Component SSR]
+    ./src/app/(dashboard)/dashboard/purchasing/po/new/page.tsx [Client Component SSR]
+    ./src/app/(dashboard)/dashboard/purchasing/po/new/page.tsx [Server Component] 
+[browser] ./src/components/ui/datepicker.tsx:8:1
+Module not found: Can't resolve 'react-datepicker/dist/react-datepicker.css'
+   6 | import { cn } from "@/lib/utils";
+   7 | import { Button } from "@/components/ui/button";
+>  8 | import "react-datepicker/dist/react-datepicker.css";
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   9 |
+  10 | interface DatePickerProps {
+  11 |   value?: string;
+
+Import traces:
+  Client Component Browser:
+    ./src/components/ui/datepicker.tsx [Client Component Browser]
+    ./src/app/(dashboard)/dashboard/purchasing/po/new/page.tsx [Client Component Browser]
+    ./src/app/(dashboard)/dashboard/purchasing/po/new/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/components/ui/datepicker.tsx [Client Component SSR]
+    ./src/app/(dashboard)/dashboard/purchasing/po/new/page.tsx [Client Component SSR]
+    ./src/app/(dashboard)/dashboard/purchasing/po/new/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found 
+[browser] ./src/components/ui/calendar.tsx:5:1
+Module not found: Can't resolve 'react-day-picker'
+  3 | import * as React from "react";
+  4 | import { ChevronLeft, ChevronRight } from "lucide-react";
+> 5 | import { DayPicker } from "react-day-picker";
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  6 | import { cn } from "@/lib/utils";
+  7 | import { buttonVariants } from "@/components/ui/button";
+  8 |
+
+Import trace:
+  Client Component Browser:
+    ./src/components/ui/calendar.tsx [Client Component Browser]
+    ./src/components/ui/datepicker.tsx [Client Component Browser]
+    ./src/app/(dashboard)/dashboard/purchasing/po/new/page.tsx [Client Component Browser]
+    ./src/app/(dashboard)/dashboard/purchasing/po/new/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found 
+ GET /dashboard/purchasing/po/new 200 in 230ms (next.js: 78ms, application-code: 152ms)
+ GET /dashboard/purchasing/po/new 200 in 895ms (next.js: 33ms, application-code: 861ms)
+ GET /dashboard/purchasing/suppliers 200 in 1125ms (next.js: 50ms, application-code: 1074ms)
+ GET /dashboard/purchasing/po/new 200 in 825ms (next.js: 1325µs, application-code: 824ms)
+ GET /api/purchasing/suppliers? 200 in 495ms (next.js: 60ms, application-code: 434ms)
+ GET /api/purchasing/suppliers?is_active=true&page=1&limit=20&sort_by=nama_supplier&sort_dir=ASC 200 in 463ms (next.js: 833µs, application-code: 462ms)
+Raw materials fetched: 10 items
+ GET /api/purchasing/raw-materials?limit=100 200 in 167ms (next.js: 24ms, application-code: 143ms)
+ GET /api/purchasing/units? 200 in 183ms (next.js: 26ms, application-code: 157ms)
+ GET /api/purchasing/suppliers? 200 in 404ms (next.js: 1724µs, application-code: 403ms)
+ GET /api/purchasing/suppliers? 200 in 522ms (next.js: 2ms, application-code: 520ms)
+Raw materials fetched: 10 items
+ GET /api/purchasing/raw-materials?limit=100 200 in 146ms (next.js: 3ms, application-code: 143ms)
+Raw materials fetched: 10 items
+ GET /api/purchasing/raw-materials?limit=100 200 in 148ms (next.js: 4ms, application-code: 144ms)
+ GET /api/purchasing/suppliers?is_active=true&page=1&limit=20&sort_by=nama_supplier&sort_dir=ASC 200 in 628ms (next.js: 799µs, application-code: 628ms)
+ GET /api/purchasing/units? 200 in 166ms (next.js: 3ms, application-code: 163ms)
+ GET /api/purchasing/units? 200 in 142ms (next.js: 4ms, application-code: 138ms)

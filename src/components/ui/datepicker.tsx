@@ -1,11 +1,12 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
-import DatePicker from "react-datepicker";
+import React, { useEffect, useRef, useState } from "react";
+import flatpickr from "flatpickr";
 import { CalendarIcon, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import "react-datepicker/dist/react-datepicker.css";
+import "flatpickr/dist/themes/light.css";
+import { Indonesian } from "flatpickr/dist/l10n/id.js";
 
 interface DatePickerProps {
   value?: string;
@@ -30,66 +31,102 @@ export function DatePicker({
   showClear = true,
   id,
 }: DatePickerProps) {
-  const [date, setDate] = useState<Date | undefined>(
-    value ? new Date(value) : undefined
-  );
-  const [isOpen, setIsOpen] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [date, setDate] = useState<string | undefined>(value);
+  const fpInstance = useRef<flatpickr.Instance | null>(null);
 
   useEffect(() => {
-    setDate(value ? new Date(value) : undefined);
+    if (inputRef.current && !fpInstance.current) {
+      fpInstance.current = flatpickr(inputRef.current, {
+        dateFormat: "d M Y",
+        locale: Indonesian,
+        disableMobile: true, // Force desktop calendar on mobile too
+        minDate: minDate,
+        maxDate: maxDate,
+        defaultDate: value || undefined,
+        onChange: (selectedDates) => {
+          const selectedDate = selectedDates[0];
+          const dateStr = selectedDate
+            ? selectedDate.toISOString().split("T")[0]
+            : "";
+          setDate(dateStr || undefined);
+          onChange?.(dateStr);
+        },
+        clickOpens: !disabled,
+      });
+    }
+
+    return () => {
+      if (fpInstance.current) {
+        fpInstance.current.destroy();
+        fpInstance.current = null;
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (fpInstance.current && value !== undefined) {
+      fpInstance.current.setDate(value, true);
+    }
   }, [value]);
 
-  const handleSelect = (selectedDate: Date | null) => {
-    setDate(selectedDate || undefined);
-    if (onChange && selectedDate) {
-      onChange(selectedDate.toISOString().split("T")[0]);
+  useEffect(() => {
+    if (fpInstance.current) {
+      fpInstance.current.set("minDate", minDate);
+      fpInstance.current.set("maxDate", maxDate);
+      fpInstance.current.set("disabled", disabled);
     }
-    setIsOpen(false);
-  };
+  }, [minDate, maxDate, disabled]);
 
   const handleClear = (e: React.MouseEvent) => {
     e.stopPropagation();
     setDate(undefined);
-    if (onChange) {
-      onChange("");
+    onChange?.("");
+    if (fpInstance.current) {
+      fpInstance.current.clear();
     }
   };
 
   return (
     <div className="relative">
-      <DatePicker
-        selected={date}
-        onChange={handleSelect}
-        dateFormat="dd MMM yyyy"
-        placeholderText={placeholder}
-        minDate={minDate}
-        maxDate={maxDate}
+      <input
+        ref={inputRef}
+        id={id}
+        type="text"
+        readOnly
+        placeholder={placeholder}
         disabled={disabled}
-        open={isOpen}
-        onFocus={() => !disabled && setIsOpen(true)}
-        onBlur={() => setTimeout(() => setIsOpen(false), 200)}
-        customInput={
-          <Button
-            variant="outline"
-            className={cn(
-              "w-full justify-start text-left font-normal h-9 text-sm",
-              !date && "text-muted-foreground",
-              className
-            )}
-            type="button"
-            disabled={disabled}
-          >
-            <CalendarIcon className="mr-2 h-4 w-4" />
-            {date ? (
-              <span>{new Intl.DateTimeFormat('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }).format(date)}</span>
-            ) : (
-              <span>{placeholder}</span>
-            )}
-          </Button>
-        }
-        popperClassName="z-50"
-        calendarClassName="rounded-md border shadow-lg p-3 bg-white"
+        className="sr-only"
+        aria-label={placeholder}
       />
+      <Button
+        variant="outline"
+        className={cn(
+          "w-full justify-start text-left font-normal h-9 text-sm",
+          !date && "text-muted-foreground",
+          className
+        )}
+        type="button"
+        disabled={disabled}
+        onClick={() => {
+          if (!disabled && fpInstance.current) {
+            fpInstance.current.open();
+          }
+        }}
+      >
+        <CalendarIcon className="mr-2 h-4 w-4" />
+        {date ? (
+          <span>
+            {new Intl.DateTimeFormat("id-ID", {
+              day: "numeric",
+              month: "short",
+              year: "numeric",
+            }).format(new Date(date))}
+          </span>
+        ) : (
+          <span>{placeholder}</span>
+        )}
+      </Button>
       {showClear && date && !disabled && (
         <button
           type="button"
