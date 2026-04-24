@@ -128,7 +128,7 @@ export default function SidebarClient({ user, navItems, children }: SidebarClien
       >
         {/* Logo / Brand */}
         <div className="p-4 border-b border-white/10 flex items-center justify-between">
-          <img src="/logos/logo.png" alt="Prologue in Wounderland" className="w-full h-auto bg-white rounded-lg p-2 mb-2" />
+          <img src="/logos/logo.png" alt="Prologue in Wounderland" className="w-32 h-auto object-contain" />
           <button
             onClick={closeMobile}
             className="p-1.5 rounded-lg hover:bg-white/10 lg:hidden"
