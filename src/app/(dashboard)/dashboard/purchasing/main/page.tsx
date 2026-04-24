@@ -10,7 +10,6 @@ export default function PurchasingMainMenuPage() {
       title: "Supplier",
       href: "/dashboard/purchasing/suppliers",
       icon: Building2,
-      color: "bg-blue-500",
       description: "Kelola data supplier & vendor",
       features: ["Add/Edit Supplier", "Payment Terms", "Contact Info"],
     },
@@ -18,7 +17,6 @@ export default function PurchasingMainMenuPage() {
       title: "Bahan Baku",
       href: "/dashboard/purchasing/raw-materials",
       icon: Package,
-      color: "bg-green-500",
       description: "Master data bahan baku",
       features: ["Raw Materials", "Stock Tracking", "Unit Conversion"],
     },
@@ -26,7 +24,6 @@ export default function PurchasingMainMenuPage() {
       title: "Purchase Order",
       href: "/dashboard/purchasing/po",
       icon: ShoppingCart,
-      color: "bg-purple-500",
       description: "Create & manage PO",
       features: ["New PO", "Approval Workflow", "Print PO"],
     },
@@ -34,7 +31,6 @@ export default function PurchasingMainMenuPage() {
       title: "Penerimaan Barang",
       href: "/dashboard/purchasing/grn",
       icon: Truck,
-      color: "bg-orange-500",
       description: "Goods Receipt Note (GRN)",
       features: ["Receive Items", "Partial Receive", "Update Stock"],
     },
@@ -42,7 +38,6 @@ export default function PurchasingMainMenuPage() {
       title: "Inventory",
       href: "/dashboard/inventory",
       icon: Warehouse,
-      color: "bg-teal-500",
       description: "Manage warehouse stock",
       features: ["Stock List", "Low Stock Alert", "Movements"],
     },
@@ -50,7 +45,6 @@ export default function PurchasingMainMenuPage() {
       title: "Retur",
       href: "/dashboard/purchasing/returns",
       icon: ArrowLeftRight,
-      color: "bg-red-500",
       description: "Return to supplier",
       features: ["Create Return", "Track Status", "Credit Note"],
     },
@@ -58,7 +52,6 @@ export default function PurchasingMainMenuPage() {
       title: "Laporan",
       href: "/dashboard/inventory/low-stock",
       icon: FileText,
-      color: "bg-indigo-500",
       description: "Analytics & reports",
       features: ["Low Stock Report", "PO Summary", "Valuation"],
     },
@@ -80,7 +73,7 @@ export default function PurchasingMainMenuPage() {
           <Link key={module.href} href={module.href}>
             <Card className="border-0 shadow-md hover:shadow-xl transition-all cursor-pointer h-full group">
               <CardHeader className="pb-4">
-                <div className={`w-16 h-16 ${module.color} rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform`}>
+                <div className="w-16 h-16 bg-gray-900 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
                   <module.icon className="w-8 h-8 text-white" />
                 </div>
                 <CardTitle className="text-xl">{module.title}</CardTitle>
@@ -90,7 +83,7 @@ export default function PurchasingMainMenuPage() {
                 <div className="space-y-2">
                   {module.features.map((feature, idx) => (
                     <div key={idx} className="flex items-center gap-2 text-xs text-gray-500">
-                      <div className="w-1.5 h-1.5 bg-gray-300 rounded-full" />
+                      <div className="w-1.5 h-1.5 bg-gray-400 rounded-full" />
                       <span>{feature}</span>
                     </div>
                   ))}
