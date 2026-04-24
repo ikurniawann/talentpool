@@ -93,14 +93,26 @@ export default function CreateGrnPage() {
     try {
       const res = await fetch("/api/purchasing/delivery?limit=100");
       const data = await res.json();
-      if (data.data) {
-        // Enhance delivery data with searchable text
-        const enhanced = data.data.map((d: Delivery) => ({
-          ...d,
-          supplier_name: d.kurir || d.no_surat_jalan || d.no_resi,
-          po_number: d.nomor_resi || d.no_resi,
-          search_text: `${d.no_resi} ${d.nomor_resi} ${d.no_surat_jalan} ${d.kurir}`.toLowerCase(),
+      console.log('Deliveries API response:', data);
+      if (data.data && Array.isArray(data.data)) {
+        // Enhance delivery data with searchable text and safe defaults
+        const enhanced = data.data.map((d: any) => ({
+          id: d.id,
+          no_resi: d.no_resi || d.nomor_resi || '',
+          nomor_resi: d.nomor_resi || d.no_resi || '',
+          no_surat_jalan: d.no_surat_jalan || '',
+          kurir: d.kurir || d.ekspedisi || d.vendor_name || '',
+          status: d.status || 'pending',
+          purchase_order_id: d.purchase_order_id || d.po_id || '',
+          po_id: d.po_id || d.purchase_order_id || '',
+          supplier_id: d.supplier_id || '',
+          tanggal_kirim: d.tanggal_kirim || '',
+          tanggal_estimasi_tiba: d.tanggal_estimasi_tiba || '',
+          supplier_name: d.supplier_name || d.kurir || d.ekspedisi || d.no_surat_jalan || d.no_resi || 'Unknown',
+          po_number: d.po_number || d.nomor_resi || d.no_resi || '',
+          search_text: `${d.no_resi || ''} ${d.nomor_resi || ''} ${d.no_surat_jalan || ''} ${d.kurir || ''} ${d.ekspedisi || ''}`.toLowerCase(),
         }));
+        console.log('Enhanced deliveries:', enhanced);
         setDeliveries(enhanced);
       }
     } catch (e) {
@@ -294,7 +306,10 @@ export default function CreateGrnPage() {
                       >
                         <span className="truncate text-left font-medium">
                           {selectedDelivery
-                            ? `${selectedDelivery.no_resi}${selectedDelivery.kurir ? ` - ${selectedDelivery.kurir}` : ''}`
+                            ? (() => {
+                                const kurir = selectedDelivery.kurir || 'No Kurir';
+                                return `${selectedDelivery.no_resi} - ${kurir}`;
+                              })()
                             : "Pilih pengiriman..."}
                         </span>
                         <ChevronsUpDown className="h-4 w-4 shrink-0 opacity-50" />
