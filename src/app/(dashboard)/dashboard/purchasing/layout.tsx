@@ -85,8 +85,8 @@ export default function PurchasingLayout({ children }: { children: React.ReactNo
                 className={clsx(
                   "flex items-center gap-1.5 px-3 py-2 text-sm font-medium border-b-2 transition-colors cursor-pointer",
                   isInMasterSection
-                    ? "border-gray-400 text-gray-700"
-                    : "border-transparent text-gray-600 hover:text-gray-800 hover:border-gray-300"
+                    ? "border-pink-600 text-pink-600"
+                    : "border-transparent text-gray-600 hover:text-pink-600 hover:border-pink-400"
                 )}
               >
                 <CubeIcon className="w-4 h-4" />
@@ -119,7 +119,7 @@ export default function PurchasingLayout({ children }: { children: React.ReactNo
                   href={item.href}
                   className={clsx(
                     "flex items-center gap-1.5 px-3 py-2 text-sm font-medium border-b-2 transition-colors",
-                    active ? "border-gray-400 text-gray-700" : "border-transparent text-gray-600 hover:text-gray-800 hover:border-gray-300"
+                    active ? "border-pink-600 text-pink-600" : "border-transparent text-gray-600 hover:text-pink-600 hover:border-pink-400"
                   )}
                 >
                   <item.icon className="w-4 h-4" />
@@ -135,8 +135,8 @@ export default function PurchasingLayout({ children }: { children: React.ReactNo
                 className={clsx(
                   "flex items-center gap-1.5 px-3 py-2 text-sm font-medium border-b-2 transition-colors cursor-pointer",
                   isInReportSection
-                    ? "border-gray-400 text-gray-700"
-                    : "border-transparent text-gray-600 hover:text-gray-800 hover:border-gray-300"
+                    ? "border-pink-600 text-pink-600"
+                    : "border-transparent text-gray-600 hover:text-pink-600 hover:border-pink-400"
                 )}
               >
                 <DocumentChartBarIcon className="w-4 h-4" />

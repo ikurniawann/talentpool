@@ -2503,3 +2503,14 @@ https://react.dev/link/hydration-mismatch
 [browser] React does not recognize the `totalPages` prop on a DOM element. If you intentionally want it to appear in the DOM as a custom attribute, spell it as lowercase `totalpages` instead. If you accidentally passed it from a parent component, remove it from the DOM element. 
 [browser] React does not recognize the `totalItems` prop on a DOM element. If you intentionally want it to appear in the DOM as a custom attribute, spell it as lowercase `totalitems` instead. If you accidentally passed it from a parent component, remove it from the DOM element. 
 [browser] Unknown event handler property `onPageChange`. It will be ignored. 
+ GET /dashboard/purchasing/po 200 in 364ms (next.js: 355ms, application-code: 9ms)
+[browser] Encountered two children with the same key, `/dashboard/purchasing`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. 
+[browser] Encountered two children with the same key, `/dashboard/purchasing`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. 
+ GET /api/purchasing/po?page=1&limit=20 200 in 960ms (next.js: 69ms, application-code: 891ms)
+ GET /api/purchasing/po?page=1&limit=20 200 in 229ms (next.js: 1394µs, application-code: 228ms)
+ GET /api/purchasing/po?page=1&limit=20 200 in 206ms (next.js: 2ms, application-code: 203ms)
+ GET /dashboard/purchasing/grn 200 in 310ms (next.js: 302ms, application-code: 8ms)
+[browser] Encountered two children with the same key, `/dashboard/purchasing`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. 
+ GET /api/purchasing/grn?page=1&limit=15 200 in 2.0s (next.js: 70ms, application-code: 1963ms)
+ GET /api/purchasing/grn?page=1&limit=15 200 in 1133ms (next.js: 2ms, application-code: 1130ms)
+✓ Compiled in 117ms
