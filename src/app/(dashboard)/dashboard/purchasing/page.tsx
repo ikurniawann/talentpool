@@ -145,9 +145,9 @@ export default function PurchasingDashboardPage() {
           <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-2">
             {quickLinks.map((link) => (
               <Link key={link.href} href={link.href}>
-                <div className="flex flex-col items-center justify-center p-2 rounded-md hover:bg-gray-100 transition-all group">
-                  <link.icon className="w-5 h-5 mb-1 text-gray-600 group-hover:text-gray-900" />
-                  <span className="text-xs font-medium text-center text-gray-700 group-hover:text-gray-900">{link.label}</span>
+                <div className="flex flex-col items-center justify-center p-2 rounded-md bg-gradient-to-br from-gray-50 to-gray-100 hover:from-gray-100 hover:to-gray-200 transition-all group border border-gray-200/50">
+                  <link.icon className="w-5 h-5 mb-1 text-gray-500 group-hover:text-gray-700" />
+                  <span className="text-xs font-medium text-center text-gray-600 group-hover:text-gray-800">{link.label}</span>
                 </div>
               </Link>
             ))}
