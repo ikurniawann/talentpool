@@ -20,6 +20,8 @@ import {
   BookOpenIcon,
   CubeIcon,
   ChevronDownIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
 } from "@heroicons/react/24/outline";
 import {
   HomeIcon as HomeIconSolid,
@@ -77,6 +79,7 @@ export default function SidebarClient({ user, navItems, children }: SidebarClien
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [expandedMenus, setExpandedMenus] = useState<string[]>([]);
+  const [collapsed, setCollapsed] = useState(false);
 
   const isActive = (href: string, isChildItem = false) => {
     if (href === "/dashboard") {
@@ -120,22 +123,25 @@ export default function SidebarClient({ user, navItems, children }: SidebarClien
       {/* Sidebar */}
       <aside
         className={`
-          fixed inset-y-0 left-0 z-40 w-64 bg-gradient-to-br from-[#303b64] to-[#425aad] flex flex-col
-          transform transition-transform duration-200 ease-in-out shadow-xl
+          fixed inset-y-0 left-0 z-40 bg-gradient-to-br from-[#303b64] to-[#425aad] flex flex-col
+          transform transition-all duration-200 ease-in-out shadow-xl
           lg:relative lg:translate-x-0 lg:z-0 lg:flex
           ${mobileOpen ? "translate-x-0" : "-translate-x-full"}
+          ${collapsed ? "lg:w-20" : "lg:w-64"}
         `}
       >
         {/* Logo / Brand */}
-        <div className="p-4 border-b border-white/10 flex flex-col items-center">
-          <img src="/logos/logo.png" alt="Prologue in Wounderland" className="w-32 h-auto object-contain mb-3" />
-          <div className="px-4 pb-3 w-full">
-            <p className="text-xs text-white/60 px-2 mb-2 text-center">Backoffice</p>
-            <div className="mt-3 p-2.5 bg-white/10 backdrop-blur-sm rounded-lg text-center">
-              <p className="text-xs font-medium text-white">{user.full_name}</p>
-              <p className="text-xs text-white/60 capitalize">{user.role.replace("_", " ")}</p>
+        <div className={`p-4 border-b border-white/10 flex flex-col items-center ${collapsed ? 'px-2' : ''}`}>
+          <img src="/logos/logo.png" alt="Prologue in Wounderland" className={`${collapsed ? 'w-12 h-12' : 'w-32 h-auto'} object-contain mb-3 transition-all`} />
+          {!collapsed && (
+            <div className="px-4 pb-3 w-full">
+              <p className="text-xs text-white/60 px-2 mb-2 text-center">Backoffice</p>
+              <div className="mt-3 p-2.5 bg-white/10 backdrop-blur-sm rounded-lg text-center">
+                <p className="text-xs font-medium text-white">{user.full_name}</p>
+                <p className="text-xs text-white/60 capitalize">{user.role.replace("_", " ")}</p>
+              </div>
             </div>
-          </div>
+          )}
         </div>
 
         {/* Navigation */}
@@ -150,27 +156,31 @@ export default function SidebarClient({ user, navItems, children }: SidebarClien
                 {hasChildren ? (
                   <>
                     <button
-                      onClick={() => toggleMenu(item.label)}
+                      onClick={() => !collapsed && toggleMenu(item.label)}
                       className={`
-                        w-full flex items-center justify-between gap-3 px-3 py-2.5 text-sm rounded-lg transition-colors
+                        w-full flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg transition-colors
                         ${itemActive
                           ? "bg-white/20 text-white font-medium"
                           : "text-white/80 hover:bg-white/10"
                         }
+                        ${collapsed ? 'justify-center' : 'justify-between'}
                         cursor-pointer
                       `}
+                      title={collapsed ? item.label : ''}
                     >
                       <div className="flex items-center gap-3">
                         <NavIcon name={item.icon} isActive={itemActive} />
-                        {item.label}
+                        {!collapsed && item.label}
                       </div>
-                      <ChevronDownIcon
-                        className={`w-4 h-4 transition-transform ${
-                          isExpanded ? 'rotate-180' : ''
-                        }`}
-                      />
+                      {!collapsed && (
+                        <ChevronDownIcon
+                          className={`w-4 h-4 transition-transform ${
+                            isExpanded ? 'rotate-180' : ''
+                          }`}
+                        />
+                      )}
                     </button>
-                    {isExpanded && (
+                    {isExpanded && !collapsed && (
                       <div className="ml-9 mt-1 space-y-0.5">
                         {item.children!.map((child) => {
                           const childActive = isActive(child.href, true); // exact match for child
@@ -204,10 +214,12 @@ export default function SidebarClient({ user, navItems, children }: SidebarClien
                         ? "bg-white/20 text-white font-medium"
                         : "text-white/80 hover:bg-white/10"
                       }
+                      ${collapsed ? 'justify-center' : ''}
                     `}
+                    title={collapsed ? item.label : ''}
                   >
                     <NavIcon name={item.icon} isActive={itemActive} />
-                    {item.label}
+                    {!collapsed && item.label}
                   </Link>
                 )}
               </div>
@@ -215,14 +227,29 @@ export default function SidebarClient({ user, navItems, children }: SidebarClien
           })}
         </nav>
 
-        {/* Logout */}
-        <div className="p-3 border-t border-white/10">
+        {/* Logout & Collapse Toggle */}
+        <div className="p-3 border-t border-white/10 space-y-2">
           <button
             onClick={handleLogout}
-            className="w-full flex items-center gap-3 px-3 py-2.5 text-sm text-red-300 rounded-lg hover:bg-red-500/20 transition-colors"
+            className={`w-full flex items-center gap-3 px-3 py-2.5 text-sm text-red-300 rounded-lg hover:bg-red-500/20 transition-colors ${collapsed ? 'justify-center' : ''}`}
+            title={collapsed ? 'Keluar' : ''}
           >
             <NavIcon name="logout" className="w-5 h-5" isActive={false} />
-            Keluar
+            {!collapsed && 'Keluar'}
+          </button>
+          <button
+            onClick={() => setCollapsed(!collapsed)}
+            className="w-full flex items-center justify-center gap-3 px-3 py-2.5 text-sm text-white/80 rounded-lg hover:bg-white/10 transition-colors"
+            title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          >
+            {collapsed ? (
+              <ChevronRightIcon className="w-5 h-5" />
+            ) : (
+              <>
+                <ChevronLeftIcon className="w-5 h-5" />
+                <span>Collapse</span>
+              </>
+            )}
           </button>
         </div>
       </aside>
