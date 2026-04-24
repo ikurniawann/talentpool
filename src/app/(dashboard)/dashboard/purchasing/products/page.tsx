@@ -198,12 +198,12 @@ export default function ProductsPage() {
                   </TableCell>
                   <TableCell>
                     <DropdownMenu>
-                      <DropdownMenuTrigger>
-                        <Button variant="ghost" size="icon">
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon" className="relative z-10">
                           <MoreVertical className="w-4 h-4" />
                         </Button>
                       </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
+                      <DropdownMenuContent align="end" className="z-50 bg-white shadow-lg border border-gray-200">
                         <Link href={`/dashboard/purchasing/products/${product.id}`}>
                           <DropdownMenuItem>
                             <Package className="w-4 h-4 mr-2" />
