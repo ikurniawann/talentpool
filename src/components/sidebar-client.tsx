@@ -130,7 +130,16 @@ export default function SidebarClient({ user, navItems, children }: SidebarClien
         <div className="p-4 border-b border-white/10">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="font-bold text-base text-white">Wounderland</h2>
+              {/* Logo Section */}
+          <div className="flex items-center gap-3 px-6 py-5">
+            <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-pink-500 to-purple-600 flex items-center justify-center shadow-lg">
+              <span className="text-white font-bold text-xl">W</span>
+            </div>
+            <div>
+              <h2 className="font-bold text-lg text-white">Wounderland</h2>
+              <p className="text-xs text-gray-400">Backoffice</p>
+            </div>
+          </div>
               <p className="text-xs text-white/60">Backoffice</p>
             </div>
             <button
@@ -245,7 +254,16 @@ export default function SidebarClient({ user, navItems, children }: SidebarClien
           >
             <Bars3Icon className="w-5 h-5 text-white" />
           </button>
-          <h2 className="font-semibold text-white text-sm">Wounderland</h2>
+        {/* Logo Section */}
+        <div className="flex items-center gap-3 px-6 py-5 border-b border-white/10">
+          <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-pink-500 to-purple-600 flex items-center justify-center shadow-lg">
+            <span className="text-white font-bold text-lg">W</span>
+          </div>
+          <div>
+            <h2 className="font-semibold text-white text-base">Wounderland</h2>
+            <p className="text-xs text-gray-400">Backoffice</p>
+          </div>
+        </div>
         </div>
 
         {/* Page content */}
