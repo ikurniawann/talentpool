@@ -26,10 +26,12 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Plus, Search, MoreVertical, ArrowUpDown, AlertCircle } from "lucide-react";
+import { Plus, Search, MoreVertical, ArrowUpDown, AlertCircle, ArrowUpTray } from "lucide-react";
 import { toast } from "sonner";
 import { RawMaterialWithStock, MaterialCategory, PaginatedResponse } from "@/types/purchasing";
 import { listRawMaterials } from "@/lib/purchasing";
+import { CsvImporter } from "@/components/ui/csv-importer";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import {
   Pagination,
   PaginationContent,
@@ -65,6 +67,7 @@ export default function RawMaterialsPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<MaterialCategory | "">("");
   const [statusFilter, setStatusFilter] = useState("");
+  const [importDialogOpen, setImportDialogOpen] = useState(false);
 
   useEffect(() => {
     loadMaterials();
@@ -159,12 +162,18 @@ export default function RawMaterialsPage() {
             Kelola data bahan baku dengan monitoring stok real-time
           </p>
         </div>
-        <Link href="/dashboard/purchasing/raw-materials/new">
-          <Button>
-            <Plus className="w-4 h-4 mr-2" />
-            Tambah Bahan Baku
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => setImportDialogOpen(true)}>
+            <ArrowUpTray className="w-4 h-4 mr-2" />
+            Import
           </Button>
-        </Link>
+          <Link href="/dashboard/purchasing/raw-materials/new">
+            <Button>
+              <Plus className="w-4 h-4 mr-2" />
+              Tambah Bahan Baku
+            </Button>
+          </Link>
+        </div>
       </div>
 
       {/* Filters */}
@@ -366,6 +375,42 @@ export default function RawMaterialsPage() {
           </PaginationContent>
         </Pagination>
       )}
+
+      {/* Import Dialog */}
+      <Dialog open={importDialogOpen} onOpenChange={setImportDialogOpen}>
+        <DialogContent className="sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Import Bahan Baku dari CSV</DialogTitle>
+            <DialogDescription>
+              Upload file CSV untuk menambahkan bahan baku secara massal
+            </DialogDescription>
+          </DialogHeader>
+          <CsvImporter
+            title="Import Bahan Baku"
+            description="Import data bahan baku dari file CSV"
+            templateName="template-bahan-baku.csv"
+            apiEndpoint="/api/purchasing/import/raw-materials"
+            onSuccess={() => loadMaterials()}
+            columns={[
+              { key: "kode", label: "Kode", required: true },
+              { key: "nama", label: "Nama", required: true },
+              { key: "nama_lain", label: "Nama Lain", required: false },
+              { key: "kategori", label: "Kategori", required: false },
+              { key: "satuan_pembelian", label: "Satuan Pembelian", required: true },
+              { key: "satuan_penggunaan", label: "Satuan Penggunaan", required: false },
+              { key: "qty_per_unit", label: "Qty Per Unit", required: false, type: "number" },
+              { key: "harga_rata_rata", label: "Harga Rata-rata", required: false, type: "number" },
+              { key: "stok_minimum", label: "Stok Minimum", required: false, type: "number" },
+              { key: "stok_maksimum", label: "Stok Maksimum", required: false, type: "number" },
+              { key: "tanggal_mulai_produksi", label: "Tanggal Mulai Produksi", required: false, type: "date" },
+              { key: "masa_simpan", label: "Masa Simpan (bulan)", required: false, type: "number" },
+              { key: "supplier_utama", label: "Supplier Utama", required: false },
+              { key: "deskripsi", label: "Deskripsi", required: false },
+              { key: "status", label: "Status", required: false },
+            ]}
+          />
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
