@@ -316,7 +316,20 @@ export default function CreateGrnPage() {
                                 key={d.id}
                                 value={`${d.no_resi} - ${d.kurir}`}
                                 onSelect={() => {
-                                  setSelectedDelivery(d);
+                                  const simplifiedDelivery = {
+                                    id: d.id,
+                                    no_resi: d.no_resi,
+                                    nomor_resi: d.nomor_resi,
+                                    no_surat_jalan: d.no_surat_jalan,
+                                    kurir: d.kurir,
+                                    status: d.status,
+                                    purchase_order_id: d.purchase_order_id,
+                                    po_id: d.po_id,
+                                    supplier_id: d.supplier_id,
+                                    tanggal_kirim: d.tanggal_kirim,
+                                    tanggal_estimasi_tiba: d.tanggal_estimasi_tiba,
+                                  };
+                                  setSelectedDelivery(simplifiedDelivery);
                                   setFormData({ ...formData, delivery_id: d.id });
                                   setOpenDelivery(false);
                                   setSearchQuery("");
