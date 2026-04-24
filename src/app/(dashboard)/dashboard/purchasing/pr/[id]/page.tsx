@@ -240,7 +240,7 @@ export default async function PRDetailPage({ params }: PRDetailPageProps) {
                 {/* Requester */}
                 <div className="flex items-start gap-3">
                   <div className="p-2 bg-blue-100 rounded-full">
-                    <User className="w-4 h-4 text-blue-600" />
+                    <User className="w-4 h-4 text-pink-600" />
                   </div>
                   <div>
                     <p className="font-medium">Dibuat oleh {pr.requester?.full_name}</p>
@@ -381,14 +381,14 @@ export default async function PRDetailPage({ params }: PRDetailPageProps) {
               {approvalInfo.level && (
                 <div className="p-3 bg-blue-50 rounded-lg mt-4">
                   <div className="flex items-center gap-2 mb-2">
-                    <Clock className="w-4 h-4 text-blue-600" />
+                    <Clock className="w-4 h-4 text-pink-600" />
                     <p className="font-medium text-blue-900">Approval Required</p>
                   </div>
                   <p className="text-sm text-blue-800">
                     PR ini memerlukan approval {approvalInfo.level === "head_dept" ? "Head Dept" : 
                       approvalInfo.level === "finance" ? "Finance" : "Direksi"}
                   </p>
-                  <p className="text-xs text-blue-600 mt-1">
+                  <p className="text-xs text-pink-600 mt-1">
                     Threshold: &gt; {formatRupiah(approvalInfo.minAmount)}
                   </p>
                 </div>

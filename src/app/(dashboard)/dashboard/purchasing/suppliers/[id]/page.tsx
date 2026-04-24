@@ -222,7 +222,7 @@ function SupplierDetailInner() {
       <div className="flex items-start justify-between gap-4">
         <div className="flex items-start gap-4">
           <div className="w-14 h-14 rounded-xl bg-blue-50 flex items-center justify-center shrink-0">
-            <BuildingOfficeIcon className="w-7 h-7 text-blue-500" />
+            <BuildingOfficeIcon className="w-7 h-7 text-pink-500" />
           </div>
           <div>
             <div className="flex items-center gap-3 flex-wrap">
@@ -265,7 +265,7 @@ function SupplierDetailInner() {
           value={String(a.po_aktif_count)}
           sub={a.po_aktif_nilai > 0 ? formatCurrency(a.po_aktif_nilai, supplier.currency) : "—"}
           icon={ReceiptPercentIcon}
-          color="bg-blue-50 text-blue-600"
+          color="bg-pink-50 text-pink-600"
         />
         <KPICard
           label="Transaksi 12 Bulan"

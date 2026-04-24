@@ -194,7 +194,7 @@ function DropdownItem({ href, label, icon: Icon, onClick }: {
       onClick={onClick}
       className={clsx(
         "flex items-center gap-2 px-3 py-2 text-sm transition-colors",
-        active ? "bg-blue-50 text-blue-600 font-medium" : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+        active ? "bg-pink-50 text-pink-600 font-medium" : "text-gray-600 hover:bg-pink-50 hover:text-pink-600"
       )}
     >
       <Icon className="w-4 h-4" />

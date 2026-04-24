@@ -76,7 +76,7 @@ export default function TestActivityLogPage() {
     <div className="space-y-6 p-6">
       {/* Header */}
       <div className="flex items-center gap-4">
-        <Bell className="w-8 h-8 text-blue-600" />
+        <Bell className="w-8 h-8 text-pink-600" />
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Activity Log - Test Page</h1>
           <p className="text-sm text-gray-500">Click buttons below to test activity logging</p>
@@ -128,7 +128,7 @@ export default function TestActivityLogPage() {
         <CardContent>
           <div className="grid grid-cols-3 gap-4">
             <div className="text-center">
-              <p className="text-2xl font-bold text-blue-600">10</p>
+              <p className="text-2xl font-bold text-pink-600">10</p>
               <p className="text-xs text-gray-500">Test Actions</p>
             </div>
             <div className="text-center">

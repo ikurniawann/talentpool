@@ -531,7 +531,7 @@ export default function ContinueGrnPage() {
                           </p>
                         </td>
                         <td className="py-3 px-4 text-center font-medium">{qtyOrdered}</td>
-                        <td className="py-3 px-4 text-center text-blue-600 font-medium">
+                        <td className="py-3 px-4 text-center text-pink-600 font-medium">
                           {qtyReceived}
                         </td>
                         <td className="py-3 px-4 text-center text-orange-600 font-medium">

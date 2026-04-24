@@ -174,7 +174,7 @@ export default function ProductsPage() {
                   <TableCell>
                     <Link
                       href={`/dashboard/purchasing/products/${product.id}`}
-                      className="hover:underline text-blue-600"
+                      className="hover:underline text-pink-600"
                     >
                       {product.nama}
                     </Link>

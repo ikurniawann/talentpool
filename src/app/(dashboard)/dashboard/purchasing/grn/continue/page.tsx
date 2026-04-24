@@ -217,7 +217,7 @@ export default function GrnContinueListPage() {
                 ) : (
                   grns.map((g) => (
                     <tr key={g.id} className="hover:bg-gray-50">
-                      <td className="py-3 px-4 text-sm font-mono font-medium text-blue-600">
+                      <td className="py-3 px-4 text-sm font-mono font-medium text-pink-600">
                         {g.nomor_grn}
                       </td>
                       <td className="py-3 px-4 text-sm font-medium">

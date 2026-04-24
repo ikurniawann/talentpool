@@ -61,7 +61,7 @@ export default function PurchasingDashboardPage() {
   );
 
   const quickLinks = [
-    { href: "/dashboard/purchasing/suppliers", label: "Supplier", icon: Building2, color: "text-blue-600 bg-blue-50 hover:bg-blue-100" },
+    { href: "/dashboard/purchasing/suppliers", label: "Supplier", icon: Building2, color: "text-pink-600 bg-pink-50 hover:bg-pink-100" },
     { href: "/dashboard/purchasing/raw-materials", label: "Bahan Baku", icon: Package, color: "text-green-600 bg-green-50 hover:bg-green-100" },
     { href: "/dashboard/purchasing/purchase-orders", label: "Purchase Order", icon: ShoppingCart, color: "text-purple-600 bg-purple-50 hover:bg-purple-100" },
     { href: "/dashboard/purchasing/grn", label: "Penerimaan", icon: Truck, color: "text-orange-600 bg-orange-50 hover:bg-orange-100" },

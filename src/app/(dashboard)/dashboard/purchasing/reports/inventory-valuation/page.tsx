@@ -109,7 +109,7 @@ export default function InventoryValuationPage() {
             <CardTitle className="text-sm font-medium text-gray-500">Total Nilai Inventori</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold text-blue-600">{formatRupiah(totalNilai)}</p>
+            <p className="text-2xl font-bold text-pink-600">{formatRupiah(totalNilai)}</p>
           </CardContent>
         </Card>
         <Card>

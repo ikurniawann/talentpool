@@ -99,7 +99,7 @@ export default function HPPBreakdownPage() {
             <CardTitle className="text-sm font-medium text-gray-500">Rata-rata HPP</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold text-blue-600">{formatRupiah(avgHPP)}</p>
+            <p className="text-2xl font-bold text-pink-600">{formatRupiah(avgHPP)}</p>
           </CardContent>
         </Card>
       </div>

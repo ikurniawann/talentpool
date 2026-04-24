@@ -249,7 +249,7 @@ export default function RawMaterialsPage() {
                   <TableCell>
                     <Link
                       href={`/dashboard/purchasing/raw-materials/${material.id}`}
-                      className="hover:underline text-blue-600"
+                      className="hover:underline text-pink-600"
                     >
                       {material.nama}
                     </Link>

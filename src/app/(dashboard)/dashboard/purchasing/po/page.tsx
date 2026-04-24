@@ -469,7 +469,7 @@ export default function PurchaseOrdersPage() {
                   <TableCell className="font-medium">
                     <Link
                       href={`/dashboard/purchasing/po/${po.id}`}
-                      className="hover:underline text-blue-600"
+                      className="hover:underline text-pink-600"
                     >
                       {po.nomor_po}
                     </Link>
@@ -519,7 +519,7 @@ export default function PurchaseOrdersPage() {
                           <>
                             <Link href={`/dashboard/purchasing/po/${po.id}/edit`}>
                               <DropdownMenuItem>
-                                <FileText className="w-4 h-4 mr-2 text-blue-600" />
+                                <FileText className="w-4 h-4 mr-2 text-pink-600" />
                                 Edit PO
                               </DropdownMenuItem>
                             </Link>
@@ -531,7 +531,7 @@ export default function PurchaseOrdersPage() {
                         )}
                         {po.status === "APPROVED" && (
                           <DropdownMenuItem onClick={() => handleOpenSend(po)}>
-                            <Send className="w-4 h-4 mr-2 text-blue-600" />
+                            <Send className="w-4 h-4 mr-2 text-pink-600" />
                             Kirim ke Supplier
                           </DropdownMenuItem>
                         )}
