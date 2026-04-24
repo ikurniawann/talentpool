@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Building2, Package, ShoppingCart, Truck, Warehouse, ArrowLeftRight, FileText } from "lucide-react";
+import { Building2, Package, ShoppingCart, Truck, Warehouse, ArrowLeftRight, FileText, ArrowRight } from "lucide-react";
 
 export default function PurchasingMainMenuPage() {
   const modules = [
@@ -62,7 +62,7 @@ export default function PurchasingMainMenuPage() {
       {/* Header */}
       <div>
         <h1 className="text-xl font-bold text-gray-900">🛒 Purchasing Modules</h1>
-        <p className="text-xs text-gray-500 mt-0.5">Pilih modul untuk memulai</p>
+        <p className="text-xs text-gray-500">Pilih modul untuk memulai</p>
       </div>
 
       {/* Modules Grid */}
@@ -70,15 +70,18 @@ export default function PurchasingMainMenuPage() {
         {modules.map((module) => (
           <Link key={module.href} href={module.href}>
             <Card className="border-0 shadow-md hover:shadow-lg transition-all cursor-pointer h-full group">
-              <CardHeader className="pb-3">
-                <div className="w-12 h-12 bg-gray-900 rounded-lg flex items-center justify-center mb-3 group-hover:scale-105 transition-transform">
-                  <module.icon className="w-6 h-6 text-white" />
+              <CardHeader className="pb-2">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="w-10 h-10 bg-gray-900 rounded-lg flex items-center justify-center group-hover:scale-105 transition-transform">
+                    <module.icon className="w-5 h-5 text-white" />
+                  </div>
+                  <ArrowRight className="w-4 h-4 text-gray-400 group-hover:text-gray-600 group-hover:translate-x-1 transition-all" />
                 </div>
-                <CardTitle className="text-base">{module.title}</CardTitle>
+                <CardTitle className="text-sm font-semibold mt-2">{module.title}</CardTitle>
               </CardHeader>
               <CardContent className="pt-0">
-                <p className="text-xs text-gray-600 mb-3">{module.description}</p>
-                <div className="space-y-1.5">
+                <p className="text-xs text-gray-600 mb-2">{module.description}</p>
+                <div className="space-y-1">
                   {module.features.map((feature, idx) => (
                     <div key={idx} className="flex items-center gap-1.5 text-xs text-gray-500">
                       <div className="w-1 h-1 bg-gray-400 rounded-full flex-shrink-0" />
