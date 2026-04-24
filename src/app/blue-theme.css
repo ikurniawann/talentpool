@@ -1,19 +1,19 @@
-/* Pink Gradient Theme - Vibrant Hot Pink! */
+/* Solid Hot Pink Theme - Vibrant & Bold! */
 
-/* Sidebar Background - Hot Pink Gradient */
+/* Sidebar Background - SOLID HOT PINK */
 aside[class*="sidebar"],
 [data-slot="sidebar"],
 .lg\:translate-x-0 {
-  background: linear-gradient(180deg, #ec4899 0%, #db2777 50%, #be185d 100%) !important;
+  background: #ec4899 !important; /* Solid hot pink, no gradient */
 }
 
-/* Glassmorphism effect */
+/* Subtle overlay for depth */
 aside[class*="sidebar"]::before {
   content: '';
   position: absolute;
   inset: 0;
-  background: rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(10px);
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(5px);
   pointer-events: none;
 }
 
@@ -49,11 +49,11 @@ aside[class*="sidebar"] span {
 
 /* Mobile toggle button */
 button[class*="lg:hidden"][class*="top-4"] {
-  background: rgba(236, 72, 153, 0.3) !important;
+  background: rgba(255, 255, 255, 0.2) !important;
   backdrop-filter: blur(10px);
   color: white !important;
 }
 
 button[class*="lg:hidden"][class*="top-4"]:hover {
-  background: rgba(236, 72, 153, 0.4) !important;
+  background: rgba(255, 255, 255, 0.3) !important;
 }

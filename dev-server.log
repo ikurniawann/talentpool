@@ -1357,3 +1357,5 @@ Import trace:
  GET /dashboard/purchasing/units 200 in 47ms (next.js: 4ms, application-code: 42ms)
  GET /dashboard/purchasing/units 200 in 19ms (next.js: 1827µs, application-code: 17ms)
 ✓ Compiled in 49ms
+✓ Compiled in 44ms
+[browser] Encountered two children with the same key, `/dashboard/purchasing`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. 
