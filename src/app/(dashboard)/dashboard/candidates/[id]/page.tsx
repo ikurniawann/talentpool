@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { useRouter } from "next/navigation";
+import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -119,9 +119,12 @@ interface Note {
   created_at: string;
 }
 
-export default function CandidateDetailPage({ params }: { params: Promise<{ id: string }> }) {
+export default function CandidateDetailPage() {
   const router = useRouter();
+  const params = useParams();
   const supabase = createClient();
+  const candidateId = params?.id as string;
+  
   const [loading, setLoading] = useState(true);
   const [candidate, setCandidate] = useState<Candidate | null>(null);
   const [activities, setActivities] = useState<Activity[]>([]);
@@ -130,23 +133,15 @@ export default function CandidateDetailPage({ params }: { params: Promise<{ id: 
   const [showNoteDialog, setShowNoteDialog] = useState(false);
   const [newNote, setNewNote] = useState("");
   const [statusUpdating, setStatusUpdating] = useState(false);
-  const [resolvedParams, setResolvedParams] = useState<{ id: string } | null>(null);
 
   useEffect(() => {
-    // Resolve the params promise
-    params.then((resolved) => {
-      setResolvedParams(resolved);
-    });
-  }, [params]);
-
-  useEffect(() => {
-    if (resolvedParams) {
+    if (candidateId) {
       fetchCandidateDetail();
     }
-  }, [resolvedParams]);
+  }, [candidateId]);
 
   const fetchCandidateDetail = async () => {
-    if (!resolvedParams) return;
+    if (!candidateId) return;
     
     setLoading(true);
     try {
@@ -154,7 +149,7 @@ export default function CandidateDetailPage({ params }: { params: Promise<{ id: 
       const { data: candidateData, error: candidateError } = await supabase
         .from("candidates")
         .select("*")
-        .eq("id", resolvedParams.id)
+        .eq("id", candidateId)
         .single();
 
       if (candidateError) {
@@ -204,7 +199,7 @@ export default function CandidateDetailPage({ params }: { params: Promise<{ id: 
         const { data: activitiesData } = await supabase
           .from("candidate_activities")
           .select("*")
-          .eq("candidate_id", resolvedParams.id)
+          .eq("candidate_id", candidateId)
           .order("created_at", { ascending: false });
 
         if (activitiesData) setActivities(activitiesData);
@@ -218,7 +213,7 @@ export default function CandidateDetailPage({ params }: { params: Promise<{ id: 
         const { data: notesData } = await supabase
           .from("candidate_notes")
           .select("*")
-          .eq("candidate_id", resolvedParams.id)
+          .eq("candidate_id", candidateId)
           .order("created_at", { ascending: false });
 
         if (notesData) setNotes(notesData);
