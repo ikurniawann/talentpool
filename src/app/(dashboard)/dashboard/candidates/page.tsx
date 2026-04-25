@@ -505,38 +505,41 @@ export default function CandidatesPage() {
 
       {/* Add Candidate Dialog */}
       <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
-        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Tambah Kandidat Manual</DialogTitle>
-            <DialogDescription>
+            <DialogTitle className="text-lg font-semibold">Tambah Kandidat Manual</DialogTitle>
+            <DialogDescription className="text-sm">
               Input kandidat dari walk-in, referral, dll.
             </DialogDescription>
           </DialogHeader>
 
-          <form onSubmit={addForm.handleSubmit(handleAddCandidate)} className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
+          <form onSubmit={addForm.handleSubmit(handleAddCandidate)} className="space-y-4 mt-4">
+            <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <Label>
+                <Label className="text-xs font-medium">
                   Nama Lengkap <span className="text-red-500">*</span>
                 </Label>
                 <Input
                   placeholder="Nama lengkap"
-                  {...addForm.register("full_name")}
-                  className={addForm.formState.errors.full_name ? "border-red-500" : ""}
+                  {...addForm.register("full_name", { required: "Nama lengkap wajib diisi" })}
+                  className="h-9 text-sm"
                 />
                 {addForm.formState.errors.full_name && (
                   <p className="text-xs text-red-500">{addForm.formState.errors.full_name.message}</p>
                 )}
               </div>
               <div className="space-y-1.5">
-                <Label>
+                <Label className="text-xs font-medium">
                   Email <span className="text-red-500">*</span>
                 </Label>
                 <Input
                   type="email"
                   placeholder="email@contoh.com"
-                  {...addForm.register("email")}
-                  className={addForm.formState.errors.email ? "border-red-500" : ""}
+                  {...addForm.register("email", { 
+                    required: "Email wajib diisi",
+                    pattern: { value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i, message: "Email tidak valid" }
+                  })}
+                  className="h-9 text-sm"
                 />
                 {addForm.formState.errors.email && (
                   <p className="text-xs text-red-500">{addForm.formState.errors.email.message}</p>
@@ -544,28 +547,28 @@ export default function CandidatesPage() {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <Label>
+                <Label className="text-xs font-medium">
                   No. WhatsApp <span className="text-red-500">*</span>
                 </Label>
                 <Input
                   placeholder="081234567890"
-                  {...addForm.register("phone")}
-                  className={addForm.formState.errors.phone ? "border-red-500" : ""}
+                  {...addForm.register("phone", { required: "No. WhatsApp wajib diisi" })}
+                  className="h-9 text-sm"
                 />
                 {addForm.formState.errors.phone && (
                   <p className="text-xs text-red-500">{addForm.formState.errors.phone.message}</p>
                 )}
               </div>
               <div className="space-y-1.5">
-                <Label>
+                <Label className="text-xs font-medium">
                   Domisili <span className="text-red-500">*</span>
                 </Label>
                 <Input
                   placeholder="Kota"
-                  {...addForm.register("domicile")}
-                  className={addForm.formState.errors.domicile ? "border-red-500" : ""}
+                  {...addForm.register("domicile", { required: "Domisili wajib diisi" })}
+                  className="h-9 text-sm"
                 />
                 {addForm.formState.errors.domicile && (
                   <p className="text-xs text-red-500">{addForm.formState.errors.domicile.message}</p>
@@ -573,9 +576,9 @@ export default function CandidatesPage() {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <Label>Outlet / Brand</Label>
+                <Label className="text-xs font-medium">Outlet / Brand</Label>
                 <Controller
                   name="brand_id"
                   control={addForm.control}
@@ -587,7 +590,7 @@ export default function CandidatesPage() {
                         onValueChange={field.onChange}
                         disabled={brands.length === 0}
                       >
-                        <SelectTrigger>
+                        <SelectTrigger className="h-9 text-sm">
                           <SelectValue placeholder={brands.length === 0 ? "Loading..." : "Pilih Outlet"}>
                             {selectedBrand?.name}
                           </SelectValue>
@@ -603,14 +606,14 @@ export default function CandidatesPage() {
                 />
               </div>
               <div className="space-y-1.5">
-                <Label>Sumber</Label>
+                <Label className="text-xs font-medium">Sumber</Label>
                 <Controller
                   name="source"
                   control={addForm.control}
                   defaultValue="walk_in"
                   render={({ field }) => (
                     <Select value={field.value} onValueChange={field.onChange}>
-                      <SelectTrigger>
+                      <SelectTrigger className="h-9 text-sm">
                         <SelectValue placeholder="Pilih Sumber" />
                       </SelectTrigger>
                       <SelectContent>
@@ -631,14 +634,14 @@ export default function CandidatesPage() {
             </div>
 
             <div className="space-y-1.5">
-              <Label>Status Awal</Label>
+              <Label className="text-xs font-medium">Status Awal</Label>
               <Controller
                 name="status"
                 control={addForm.control}
                 defaultValue="new"
                 render={({ field }) => (
                   <Select value={field.value || "new"} onValueChange={field.onChange}>
-                    <SelectTrigger>
+                    <SelectTrigger className="h-9 text-sm w-[180px]">
                       <SelectValue placeholder="Pilih Status" />
                     </SelectTrigger>
                     <SelectContent>
@@ -651,7 +654,7 @@ export default function CandidatesPage() {
             </div>
 
             <div className="space-y-1.5">
-              <Label>CV / Resume</Label>
+              <Label className="text-xs font-medium">CV / Resume</Label>
               <input
                 ref={cvFileRef}
                 type="file"
@@ -666,17 +669,17 @@ export default function CandidatesPage() {
                   size="sm"
                   onClick={() => cvFileRef.current?.click()}
                   disabled={uploadingCv}
-                  className="flex items-center gap-1"
+                  className="h-9 text-sm"
                 >
                   {cvFile ? (
-                    <FileText className="w-4 h-4 text-blue-600" />
+                    <FileText className="w-4 h-4 mr-2 text-blue-600" />
                   ) : (
-                    <Upload className="w-4 h-4" />
+                    <Upload className="w-4 h-4 mr-2" />
                   )}
                   {cvFile ? "Ganti File" : "Pilih File"}
                 </Button>
                 {cvFile && (
-                  <span className="text-sm text-gray-600 truncate max-w-[150px]">
+                  <span className="text-sm text-gray-600 truncate max-w-[200px]">
                     {cvFile.name}
                   </span>
                 )}
@@ -685,12 +688,12 @@ export default function CandidatesPage() {
             </div>
 
             <div className="space-y-1.5">
-              <Label>Catatan</Label>
-              <textarea
+              <Label className="text-xs font-medium">Catatan</Label>
+              <Textarea
                 placeholder="Catatan internal (opsional)"
                 rows={3}
                 {...addForm.register("notes")}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="text-sm resize-none"
               />
             </div>
 
@@ -705,7 +708,11 @@ export default function CandidatesPage() {
               >
                 Batal
               </Button>
-              <Button type="submit" disabled={addForm.formState.isSubmitting || uploadingCv}>
+              <Button 
+                type="submit" 
+                disabled={addForm.formState.isSubmitting || uploadingCv}
+                className="bg-pink-600 hover:bg-pink-700"
+              >
                 {addForm.formState.isSubmitting || uploadingCv ? (
                   <Loader2 className="w-4 h-4 animate-spin mr-2" />
                 ) : (
