@@ -167,7 +167,7 @@ export default function NewPriceListPage() {
                   <Combobox
                     options={suppliers.map((s) => ({ value: s.id, label: s.nama_supplier, description: s.kota }))}
                     value={formData.supplier_id}
-                    onChange={(v) => setFormData({ ...formData, supplier_id: v })}
+                    onChange={(v) => setFormData((prev) => ({ ...prev, supplier_id: v }))}
                     placeholder="Pilih supplier..."
                     searchPlaceholder="Cari..."
                     emptyMessage="Supplier tidak ditemukan"
@@ -180,7 +180,7 @@ export default function NewPriceListPage() {
                   <Combobox
                     options={materials.map((m) => ({ value: m.id, label: m.nama, description: m.kode }))}
                     value={formData.bahan_baku_id}
-                    onChange={(v) => setFormData({ ...formData, bahan_baku_id: v })}
+                    onChange={(v) => setFormData((prev) => ({ ...prev, bahan_baku_id: v }))}
                     placeholder="Pilih bahan baku..."
                     searchPlaceholder="Cari..."
                     emptyMessage="Bahan baku tidak ditemukan"
@@ -195,7 +195,7 @@ export default function NewPriceListPage() {
                 <Combobox
                   options={units.map((u) => ({ value: u.id, label: u.nama, description: u.kode }))}
                   value={formData.satuan_id}
-                  onChange={(v) => setFormData({ ...formData, satuan_id: v })}
+                  onChange={(v) => setFormData((prev) => ({ ...prev, satuan_id: v }))}
                   placeholder="Pilih satuan..."
                   searchPlaceholder="Cari..."
                   emptyMessage="Satuan tidak ditemukan"
@@ -224,7 +224,7 @@ export default function NewPriceListPage() {
                     min="0"
                     step="0.01"
                     value={formData.harga}
-                    onChange={(e) => setFormData({ ...formData, harga: parseFloat(e.target.value) || 0 })}
+                    onChange={(e) => setFormData((prev) => ({ ...prev, harga: parseFloat(e.target.value) || 0 }))}
                     placeholder="Rp 0"
                     className="h-9 text-sm font-mono"
                   />
@@ -236,7 +236,7 @@ export default function NewPriceListPage() {
                     type="number"
                     min="1"
                     value={formData.minimum_qty}
-                    onChange={(e) => setFormData({ ...formData, minimum_qty: parseFloat(e.target.value) || 1 })}
+                    onChange={(e) => setFormData((prev) => ({ ...prev, minimum_qty: parseFloat(e.target.value) || 1 }))}
                     className="h-9 text-sm"
                   />
                 </div>
@@ -247,7 +247,7 @@ export default function NewPriceListPage() {
                     type="number"
                     min="0"
                     value={formData.lead_time_days}
-                    onChange={(e) => setFormData({ ...formData, lead_time_days: parseFloat(e.target.value) || 0 })}
+                    onChange={(e) => setFormData((prev) => ({ ...prev, lead_time_days: parseFloat(e.target.value) || 0 }))}
                     className="h-9 text-sm"
                   />
                 </div>
@@ -269,7 +269,7 @@ export default function NewPriceListPage() {
                   <Label htmlFor="berlaku_dari" className="text-xs">Berlaku Dari</Label>
                   <DatePicker
                     value={formData.berlaku_dari}
-                    onChange={(v) => setFormData({ ...formData, berlaku_dari: v })}
+                    onChange={(v) => setFormData((prev) => ({ ...prev, berlaku_dari: v }))}
                     placeholder="Dari..."
                   />
                 </div>
@@ -277,7 +277,7 @@ export default function NewPriceListPage() {
                   <Label htmlFor="berlaku_sampai" className="text-xs">Berlaku Sampai</Label>
                   <DatePicker
                     value={formData.berlaku_sampai}
-                    onChange={(v) => setFormData({ ...formData, berlaku_sampai: v })}
+                    onChange={(v) => setFormData((prev) => ({ ...prev, berlaku_sampai: v }))}
                     placeholder="Sampai..."
                   />
                 </div>
@@ -288,7 +288,7 @@ export default function NewPriceListPage() {
                 <Textarea
                   id="catatan"
                   value={formData.catatan}
-                  onChange={(e) => setFormData({ ...formData, catatan: e.target.value })}
+                  onChange={(e) => setFormData((prev) => ({ ...prev, catatan: e.target.value }))}
                   placeholder="Catatan tambahan..."
                   rows={2}
                   className="text-sm resize-none"
