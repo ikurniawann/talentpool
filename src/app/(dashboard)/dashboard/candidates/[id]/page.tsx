@@ -138,35 +138,86 @@ export default function CandidateDetailPage({ params }: { params: { id: string }
   const fetchCandidateDetail = async () => {
     setLoading(true);
     try {
-      const { data, error } = await supabase
+      // First, get basic candidate data
+      const { data: candidateData, error: candidateError } = await supabase
         .from("candidates")
-        .select("*, brands(name), positions(title)")
+        .select("*")
         .eq("id", params.id)
         .single();
 
-      if (error) throw error;
-      setCandidate(data as Candidate);
+      if (candidateError) {
+        console.error("Error fetching candidate:", candidateError);
+        throw candidateError;
+      }
 
-      // Fetch activities
-      const { data: activitiesData } = await supabase
-        .from("candidate_activities")
-        .select("*")
-        .eq("candidate_id", params.id)
-        .order("created_at", { ascending: false });
+      if (!candidateData) {
+        setCandidate(null);
+        setLoading(false);
+        return;
+      }
 
-      if (activitiesData) setActivities(activitiesData);
+      // Get related brand and position data separately
+      let brandData = null;
+      let positionData = null;
 
-      // Fetch notes
-      const { data: notesData } = await supabase
-        .from("candidate_notes")
-        .select("*")
-        .eq("candidate_id", params.id)
-        .order("created_at", { ascending: false });
+      if (candidateData.brand_id) {
+        const { data: brand } = await supabase
+          .from("brands")
+          .select("name")
+          .eq("id", candidateData.brand_id)
+          .single();
+        brandData = brand;
+      }
 
-      if (notesData) setNotes(notesData);
+      if (candidateData.position_id) {
+        const { data: position } = await supabase
+          .from("positions")
+          .select("title")
+          .eq("id", candidateData.position_id)
+          .single();
+        positionData = position;
+      }
+
+      // Combine data
+      const candidate = {
+        ...candidateData,
+        brands: brandData ? { name: brandData.name } : null,
+        positions: positionData ? { title: positionData.title } : null,
+      };
+
+      setCandidate(candidate as Candidate);
+
+      // Fetch activities (ignore errors if table doesn't exist yet)
+      try {
+        const { data: activitiesData } = await supabase
+          .from("candidate_activities")
+          .select("*")
+          .eq("candidate_id", params.id)
+          .order("created_at", { ascending: false });
+
+        if (activitiesData) setActivities(activitiesData);
+      } catch (err) {
+        console.log("Activities table not available yet");
+        setActivities([]);
+      }
+
+      // Fetch notes (ignore errors if table doesn't exist yet)
+      try {
+        const { data: notesData } = await supabase
+          .from("candidate_notes")
+          .select("*")
+          .eq("candidate_id", params.id)
+          .order("created_at", { ascending: false });
+
+        if (notesData) setNotes(notesData);
+      } catch (err) {
+        console.log("Notes table not available yet");
+        setNotes([]);
+      }
     } catch (error: any) {
       console.error("Error fetching candidate:", error);
-      toast.error("Gagal memuat data kandidat");
+      toast.error("Gagal memuat data kandidat: " + (error.message || "Unknown error"));
+      setCandidate(null);
     } finally {
       setLoading(false);
     }
