@@ -255,12 +255,12 @@ export default function NewPriceListPage() {
             </CardContent>
           </Card>
 
-          {/* Card 3: Validity & Notes */}
+          {/* Card 3: Contract Price */}
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="text-base flex items-center gap-2">
                 <Calendar className="w-4 h-4" />
-                Validity & Catatan
+                Contract Price
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
