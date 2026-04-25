@@ -58,23 +58,33 @@ export default function NewSupplierPage() {
       return;
     }
 
-    // Mapping field dari form ke API schema
-    const payload = {
-      kode_supplier: formData.kode_supplier || "",
+    // Mapping field dari form ke API schema (omit undefined fields)
+    const payload: any = {
       nama_supplier: formData.nama_supplier,
-      pic_name: formData.pic_name || undefined,
-      pic_phone: formData.pic_phone || undefined,
-      email: formData.email || undefined,
-      alamat: formData.alamat || undefined,
       kota: formData.kota,
-      npwp: formData.npwp || undefined,
       payment_terms: formData.payment_terms as PaymentTerms,
       currency: formData.currency as Currency,
-      bank_nama: undefined,
-      bank_rekening: undefined,
-      bank_atas_nama: undefined,
-      kategori: undefined,
     };
+
+    // Add optional fields only if they have values
+    if (formData.kode_supplier && formData.kode_supplier.trim()) {
+      payload.kode_supplier = formData.kode_supplier.trim();
+    }
+    if (formData.pic_name && formData.pic_name.trim()) {
+      payload.pic_name = formData.pic_name.trim();
+    }
+    if (formData.pic_phone && formData.pic_phone.trim()) {
+      payload.pic_phone = formData.pic_phone.trim();
+    }
+    if (formData.email && formData.email.trim()) {
+      payload.email = formData.email.trim();
+    }
+    if (formData.alamat && formData.alamat.trim()) {
+      payload.alamat = formData.alamat.trim();
+    }
+    if (formData.npwp && formData.npwp.trim()) {
+      payload.npwp = formData.npwp.trim();
+    }
 
     setLoading(true);
     try {
