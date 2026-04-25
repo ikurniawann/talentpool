@@ -311,7 +311,9 @@ export default function CandidatesPage() {
                 onValueChange={(v) => { setFilter((f) => ({ ...f, brand_id: v === "all" ? "" : (v as string) })); setPage(1); }}
               >
                 <SelectTrigger className="w-[140px] flex-shrink-0">
-                  <SelectValue placeholder="Outlet" />
+                  <SelectValue placeholder="Outlet">
+                    {filter.brand_id && filter.brand_id !== "all" && brands.find(b => b.id === filter.brand_id)?.name}
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Semua Outlet</SelectItem>
