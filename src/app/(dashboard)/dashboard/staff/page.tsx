@@ -306,7 +306,9 @@ export default function StaffPage() {
         </div>
         <Select value={brandFilter} onValueChange={(v) => setBrandFilter(v ?? "all")}>
           <SelectTrigger className="w-full sm:w-44">
-            <SelectValue placeholder="Semua Outlet" />
+            <SelectValue placeholder="Semua Outlet">
+              {brandFilter !== "all" && brands.find(b => b.id === brandFilter)?.name}
+            </SelectValue>
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Semua Outlet</SelectItem>
