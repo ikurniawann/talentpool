@@ -231,8 +231,11 @@ export default function NewPOPage() {
 
     setIsSubmitting(true);
     try {
+      console.log("Creating PO with formData:", formData);
       // Create PO
       const po = await createPurchaseOrder(formData);
+
+      console.log("PO created:", po);
 
       // Create items
       for (const item of items) {
@@ -250,7 +253,13 @@ export default function NewPOPage() {
       router.push(`/dashboard/purchasing/po/${po.id}`);
     } catch (error: any) {
       console.error("Error creating PO:", error);
-      toast.error(error.message || "Gagal membuat PO");
+      if (error.response) {
+        const errorData = await error.response.json();
+        console.error("API Error details:", errorData);
+        toast.error(errorData.message || "Gagal membuat PO");
+      } else {
+        toast.error(error.message || "Gagal membuat PO");
+      }
     } finally {
       setIsSubmitting(false);
     }
