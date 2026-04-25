@@ -146,13 +146,18 @@ export default function CandidatesPage() {
   }, []);
 
   const handleAddCandidate = async (values: AddFormValues) => {
+    // Normalize source value to match database constraint
+    const normalizedSource = values.source || 'walk_in';
+    
+    console.log('Submitting candidate with source:', normalizedSource);
+    
     // First insert the candidate
     const { data: newCandidate, error } = await supabase.from("candidates").insert({
       full_name: values.full_name,
       email: values.email,
       phone: values.phone,
       domicile: values.domicile,
-      source: values.source,
+      source: normalizedSource,
       brand_id: values.brand_id || null,
       position_id: values.position_id || null,
       status: values.status,
@@ -160,6 +165,7 @@ export default function CandidatesPage() {
     }).select().single();
 
     if (error) {
+      console.error('Insert error:', error);
       alert(`Gagal menyimpan: ${error.message}`);
       return;
     }
