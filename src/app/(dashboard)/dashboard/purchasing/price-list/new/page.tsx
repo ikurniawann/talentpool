@@ -43,14 +43,19 @@ export default function NewPriceListPage() {
 
   const loadData = async () => {
     try {
-      const [suppliersData, materialsData, unitsData] = await Promise.all([
+      const [suppliersRes, materialsRes, unitsRes] = await Promise.all([
         listSuppliers({ is_active: true }),
         listRawMaterials({ limit: 100, is_active: true }),
         listUnits(),
       ]);
+      // Handle paginated responses
+      const suppliersData = Array.isArray(suppliersRes) ? suppliersRes : (suppliersRes.data || []);
+      const materialsData = materialsRes.data;
+      const unitsData = Array.isArray(unitsRes) ? unitsRes : (unitsRes.data || []);
+      
       setSuppliers(suppliersData);
-      setMaterials(materialsData.data);
-      setUnits(unitsData.data || []);
+      setMaterials(materialsData);
+      setUnits(unitsData);
     } catch (error) {
       console.error("Error loading data:", error);
       toast.error("Gagal memuat data");
