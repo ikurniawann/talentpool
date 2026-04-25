@@ -253,17 +253,25 @@ export default function NewPOPage() {
       router.push(`/dashboard/purchasing/po/${po.id}`);
     } catch (error: any) {
       console.error("Error creating PO:", error);
+      console.error("Error response:", error.response);
+      
       if (error.response) {
-        const errorData = await error.response.json();
-        console.error("API Error details:", errorData);
-        // Show detailed validation errors
-        if (errorData.errors) {
-          const errorMessages = Object.entries(errorData.errors)
-            .map(([field, messages]) => `${field}: ${(messages as string[]).join(", ")}`)
-            .join("\n");
-          toast.error(`Validasi gagal:\n${errorMessages}`);
-        } else {
-          toast.error(errorData.message || "Gagal membuat PO");
+        try {
+          const errorData = await error.response.json();
+          console.error("API Error details:", JSON.stringify(errorData, null, 2));
+          
+          // Show detailed validation errors
+          if (errorData.errors && Object.keys(errorData.errors).length > 0) {
+            const errorMessages = Object.entries(errorData.errors)
+              .map(([field, messages]) => `${field}: ${(messages as string[]).join(", ")}`)
+              .join("\n");
+            toast.error(`Validasi gagal:\n${errorMessages}`);
+          } else {
+            toast.error(errorData.message || "Gagal membuat PO");
+          }
+        } catch (parseError) {
+          console.error("Failed to parse error response:", parseError);
+          toast.error("Gagal membuat PO");
         }
       } else {
         toast.error(error.message || "Gagal membuat PO");
