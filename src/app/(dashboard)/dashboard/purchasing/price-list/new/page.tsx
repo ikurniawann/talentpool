@@ -32,7 +32,7 @@ export default function NewPriceListPage() {
     minimum_qty: 1,
     lead_time_days: 0,
     is_preferred: false,
-    berlaku_dari: new Date().toISOString().split("T")[0],
+    berlaku_dari: "",
     berlaku_sampai: "",
     catatan: "",
   });
