@@ -247,7 +247,7 @@ export default function EditPriceListPage() {
                   <Label htmlFor="berlaku_dari" className="text-xs">Berlaku Dari</Label>
                   <DatePicker
                     value={formData.berlaku_dari}
-                    onChange={(v) => setFormData({ ...formData, berlaku_dari: v })}
+                    onChange={(v) => setFormData((prev) => ({ ...prev, berlaku_dari: v }))}
                     placeholder="Dari..."
                   />
                 </div>
@@ -255,7 +255,7 @@ export default function EditPriceListPage() {
                   <Label htmlFor="berlaku_sampai" className="text-xs">Berlaku Sampai</Label>
                   <DatePicker
                     value={formData.berlaku_sampai}
-                    onChange={(v) => setFormData({ ...formData, berlaku_sampai: v })}
+                    onChange={(v) => setFormData((prev) => ({ ...prev, berlaku_sampai: v }))}
                     placeholder="Sampai..."
                   />
                 </div>

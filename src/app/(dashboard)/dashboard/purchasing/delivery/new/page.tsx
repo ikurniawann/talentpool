@@ -215,7 +215,7 @@ export default function CreateDeliveryPage() {
                                 role="option"
                                 aria-selected={formData.po_id === po.id}
                                 onClick={() => {
-                                  setFormData({ ...formData, po_id: po.id });
+                                  setFormData((prev) => ({ ...prev, po_id: po.id }));
                                   setPoPopoverOpen(false);
                                 }}
                                 className={cn(
@@ -251,7 +251,7 @@ export default function CreateDeliveryPage() {
                     placeholder="Contoh: SJ-2025-0001"
                     value={formData.no_surat_jalan}
                     onChange={(e) =>
-                      setFormData({ ...formData, no_surat_jalan: e.target.value })
+                      setFormData((prev) => ({ ...prev, no_surat_jalan: e.target.value }))
                     }
                   />
                 </div>
@@ -263,7 +263,7 @@ export default function CreateDeliveryPage() {
                     placeholder="Contoh: JNE, J&T, SiCepat"
                     value={formData.ekspedisi}
                     onChange={(e) =>
-                      setFormData({ ...formData, ekspedisi: e.target.value })
+                      setFormData((prev) => ({ ...prev, ekspedisi: e.target.value }))
                     }
                   />
                 </div>
@@ -275,7 +275,7 @@ export default function CreateDeliveryPage() {
                     placeholder="Contoh: JNE123456789"
                     value={formData.no_resi}
                     onChange={(e) =>
-                      setFormData({ ...formData, no_resi: e.target.value })
+                      setFormData((prev) => ({ ...prev, no_resi: e.target.value }))
                     }
                   />
                 </div>
@@ -286,7 +286,7 @@ export default function CreateDeliveryPage() {
                     <DatePicker
                       id="tanggal_kirim"
                       value={formData.tanggal_kirim}
-                      onChange={(v) => setFormData({ ...formData, tanggal_kirim: v })}
+                      onChange={(v) => setFormData((prev) => ({ ...prev, tanggal_kirim: v }))}
                       placeholder="Tanggal kirim..."
                     />
                   </div>
@@ -295,7 +295,7 @@ export default function CreateDeliveryPage() {
                     <DatePicker
                       id="tanggal_estimasi_tiba"
                       value={formData.tanggal_estimasi_tiba}
-                      onChange={(v) => setFormData({ ...formData, tanggal_estimasi_tiba: v })}
+                      onChange={(v) => setFormData((prev) => ({ ...prev, tanggal_estimasi_tiba: v }))}
                       placeholder="Estimasi tiba..."
                     />
                   </div>
@@ -312,7 +312,7 @@ export default function CreateDeliveryPage() {
                   placeholder="Tambahkan catatan jika diperlikan..."
                   value={formData.catatan}
                   onChange={(e) =>
-                    setFormData({ ...formData, catatan: e.target.value })
+                    setFormData((prev) => ({ ...prev, catatan: e.target.value }))
                   }
                   rows={4}
                 />

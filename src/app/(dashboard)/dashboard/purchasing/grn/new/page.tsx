@@ -361,7 +361,7 @@ export default function CreateGrnPage() {
                                     tanggal_estimasi_tiba: d.tanggal_estimasi_tiba,
                                   };
                                   setSelectedDelivery(simplifiedDelivery);
-                                  setFormData({ ...formData, delivery_id: d.id });
+                                  setFormData((prev) => ({ ...prev, delivery_id: d.id }));
                                   setOpenDelivery(false);
                                   setSearchQuery("");
                                 }}
@@ -441,7 +441,7 @@ export default function CreateGrnPage() {
                       id="tanggal"
                       date={formData.tanggal_penerimaan ? new Date(formData.tanggal_penerimaan) : new Date()}
                       onChange={(date) =>
-                        setFormData({ ...formData, tanggal_penerimaan: date?.toISOString().split("T")[0] || "" })
+                        setFormData((prev) => ({ ...prev, tanggal_penerimaan: date?.toISOString().split("T")[0] || "" }))
                       }
                     />
                   </div>
@@ -450,7 +450,7 @@ export default function CreateGrnPage() {
                     <Textarea
                       id="catatan"
                       value={formData.catatan || ""}
-                      onChange={(e) => setFormData({ ...formData, catatan: e.target.value })}
+                      onChange={(e) => setFormData((prev) => ({ ...prev, catatan: e.target.value }))}
                       placeholder="Catatan tambahan (opsional)"
                       rows={2}
                       className="resize-none"

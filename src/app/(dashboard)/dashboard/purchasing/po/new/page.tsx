@@ -155,7 +155,7 @@ export default function NewPOPage() {
   };
 
   const handleSelectSupplier = (supplier: Supplier) => {
-    setFormData({ ...formData, supplier_id: supplier.id });
+    setFormData((prev) => ({ ...prev, supplier_id: supplier.id }));
     setSupplierModalOpen(false);
     setSupplierSearch("");
   };
@@ -314,7 +314,7 @@ export default function NewPOPage() {
                   <Label>Tanggal PO</Label>
                   <DatePicker
                     value={formData.tanggal_po}
-                    onChange={(v) => setFormData({ ...formData, tanggal_po: v })}
+                    onChange={(v) => setFormData((prev) => ({ ...prev, tanggal_po: v }))}
                     placeholder="Tanggal PO..."
                   />
                 </div>
@@ -325,12 +325,7 @@ export default function NewPOPage() {
                   <Label>Tanggal Kirim Estimasi</Label>
                   <DatePicker
                     value={formData.tanggal_kirim_estimasi}
-                    onChange={(v) =>
-                      setFormData({
-                        ...formData,
-                        tanggal_kirim_estimasi: v,
-                      })
-                    }
+                    onChange={(v) => setFormData((prev) => ({ ...prev, tanggal_kirim_estimasi: v }))}
                     placeholder="Estimasi kirim..."
                   />
                 </div>
@@ -341,7 +336,7 @@ export default function NewPOPage() {
                 <Textarea
                   value={formData.catatan}
                   onChange={(e) =>
-                    setFormData({ ...formData, catatan: e.target.value })
+                    setFormData((prev) => ({ ...prev, catatan: e.target.value }))
                   }
                   placeholder="Catatan untuk supplier..."
                   rows={2}

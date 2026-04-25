@@ -93,7 +93,7 @@ export default function PurchasingDashboardPage() {
                 </label>
                 <DatePicker
                   value={dateRange.start}
-                  onChange={(v) => setDateRange({ ...dateRange, start: v })}
+                  onChange={(v) => setDateRange((prev) => ({ ...prev, start: v }))}
                   placeholder="Dari..."
                 />
               </div>
@@ -103,7 +103,7 @@ export default function PurchasingDashboardPage() {
                 </label>
                 <DatePicker
                   value={dateRange.end}
-                  onChange={(v) => setDateRange({ ...dateRange, end: v })}
+                  onChange={(v) => setDateRange((prev) => ({ ...prev, end: v }))}
                   placeholder="Sampai..."
                 />
               </div>
