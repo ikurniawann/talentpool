@@ -580,9 +580,13 @@ export default function CandidatesPage() {
                   name="brand_id"
                   control={addForm.control}
                   render={({ field }) => (
-                    <Select value={field.value} onValueChange={field.onChange}>
+                    <Select 
+                      value={field.value} 
+                      onValueChange={field.onChange}
+                      disabled={brands.length === 0}
+                    >
                       <SelectTrigger>
-                        <SelectValue placeholder="Pilih Outlet" />
+                        <SelectValue placeholder={brands.length === 0 ? "Loading..." : "Pilih Outlet"} />
                       </SelectTrigger>
                       <SelectContent>
                         {brands.map((b) => (
@@ -598,6 +602,7 @@ export default function CandidatesPage() {
                 <Controller
                   name="source"
                   control={addForm.control}
+                  defaultValue="walk_in"
                   render={({ field }) => (
                     <Select value={field.value} onValueChange={field.onChange}>
                       <SelectTrigger>
@@ -625,8 +630,9 @@ export default function CandidatesPage() {
               <Controller
                 name="status"
                 control={addForm.control}
+                defaultValue="new"
                 render={({ field }) => (
-                  <Select value={field.value} onValueChange={field.onChange}>
+                  <Select value={field.value || "new"} onValueChange={field.onChange}>
                     <SelectTrigger>
                       <SelectValue placeholder="Pilih Status" />
                     </SelectTrigger>
