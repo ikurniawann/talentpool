@@ -573,22 +573,27 @@ export default function CandidatesPage() {
                 <Controller
                   name="brand_id"
                   control={addForm.control}
-                  render={({ field }) => (
-                    <Select 
-                      value={field.value} 
-                      onValueChange={field.onChange}
-                      disabled={brands.length === 0}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder={brands.length === 0 ? "Loading..." : "Pilih Outlet"} />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {brands.map((b) => (
-                          <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  )}
+                  render={({ field }) => {
+                    const selectedBrand = brands.find(b => b.id === field.value);
+                    return (
+                      <Select 
+                        value={field.value} 
+                        onValueChange={field.onChange}
+                        disabled={brands.length === 0}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder={brands.length === 0 ? "Loading..." : "Pilih Outlet"}>
+                            {selectedBrand?.name}
+                          </SelectValue>
+                        </SelectTrigger>
+                        <SelectContent>
+                          {brands.map((b) => (
+                            <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    );
+                  }}
                 />
               </div>
               <div className="space-y-1.5">
