@@ -12,7 +12,8 @@ import { ArrowLeft, Save, DollarSign, Calendar, Package } from "lucide-react";
 import { toast } from "sonner";
 import { Combobox } from "@/components/ui/combobox";
 import { DatePicker } from "@/components/ui/datepicker";
-import { Supplier, RawMaterialWithStock, Unit, SupplierPriceListFormData } from "@/types/purchasing";
+import { Supplier } from "@/types/supplier";
+import { RawMaterialWithStock, Unit, SupplierPriceListFormData } from "@/types/raw-material";
 import { listSuppliers, listRawMaterials, listUnits, createPriceList } from "@/lib/purchasing";
 
 export default function NewPriceListPage() {

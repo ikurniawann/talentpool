@@ -178,3 +178,30 @@ export interface UpdateRawMaterialInput {
   shelf_life_days?: number;
   storage_condition?: string;
 }
+
+// ─── Raw Material with Stock (for combobox) ─────────────────────────────────
+
+export interface RawMaterialWithStock {
+  id: string;
+  kode: string;
+  nama: string;
+  kategori: Kategori | null;
+  is_active: boolean;
+  qty_onhand?: number;
+  avg_cost?: number;
+}
+
+// ─── Supplier Price List Form Data ──────────────────────────────────────────
+
+export interface SupplierPriceListFormData {
+  supplier_id: string;
+  bahan_baku_id: string;
+  harga: number;
+  satuan_id: string;
+  minimum_qty: number;
+  lead_time_days: number;
+  is_preferred?: boolean;
+  berlaku_dari?: string;
+  berlaku_sampai?: string;
+  catatan?: string;
+}
