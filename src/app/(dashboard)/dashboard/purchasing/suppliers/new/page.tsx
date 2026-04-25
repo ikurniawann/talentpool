@@ -78,12 +78,20 @@ export default function NewSupplierPage() {
 
     setLoading(true);
     try {
+      console.log("Submitting supplier payload:", payload);
       await createSupplier(payload);
       toast.success("Supplier berhasil ditambahkan");
       router.push("/dashboard/purchasing/suppliers");
     } catch (error: any) {
       console.error("Error creating supplier:", error);
-      toast.error(error.message || "Gagal menambahkan supplier");
+      // Log detailed error if available
+      if (error.response) {
+        const errorData = await error.response.json();
+        console.error("API Error details:", errorData);
+        toast.error(errorData.message || errorData.error || "Gagal menambahkan supplier");
+      } else {
+        toast.error(error.message || "Gagal menambahkan supplier");
+      }
     } finally {
       setLoading(false);
     }
