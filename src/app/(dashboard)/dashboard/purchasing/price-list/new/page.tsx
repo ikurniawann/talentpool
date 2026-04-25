@@ -74,14 +74,30 @@ export default function NewPriceListPage() {
       return;
     }
 
+    // Ensure numeric fields are numbers
+    const payload = {
+      ...formData,
+      harga: Number(formData.harga),
+      minimum_qty: Number(formData.minimum_qty),
+      lead_time_days: Number(formData.lead_time_days),
+    };
+
+    console.log("Submitting price list payload:", payload);
+
     setIsSubmitting(true);
     try {
-      await createPriceList(formData);
+      await createPriceList(payload);
       toast.success("Price list berhasil ditambahkan");
       router.push("/dashboard/purchasing/price-list");
     } catch (error: any) {
       console.error("Error creating price list:", error);
-      toast.error(error.message || "Gagal menambahkan price list");
+      if (error.response) {
+        const errorData = await error.response.json();
+        console.error("API Error details:", errorData);
+        toast.error(errorData.message || "Gagal menambahkan price list");
+      } else {
+        toast.error(error.message || "Gagal menambahkan price list");
+      }
     } finally {
       setIsSubmitting(false);
     }
