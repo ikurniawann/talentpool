@@ -1,358 +1,655 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
-  UserGroupIcon,
-  BriefcaseIcon,
-  TrophyIcon,
-  ClockIcon,
-  ChartBarIcon,
-  DocumentArrowDownIcon,
-} from "@heroicons/react/24/outline";
+  ArrowLeft,
+  User,
+  Mail,
+  Phone,
+  MapPin,
+  Briefcase,
+  Building2,
+  Calendar,
+  Download,
+  Edit3,
+  MessageSquare,
+  Clock,
+  CheckCircle2,
+  FileText,
+  Star,
+  MoreVertical,
+  Trash2,
+  Send,
+  Video,
+} from "lucide-react";
 import {
-  LineChart,
-  Line,
-  PieChart,
-  Pie,
-  Cell,
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  Legend,
-  ResponsiveContainer,
-} from "recharts";
-import { useToast, ToastContainer } from "@/components/ui/toast";
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { toast } from "sonner";
 
-const SOURCE_COLORS = ["#6366f1", "#22c55e", "#f59e0b", "#ef4444", "#8b5cf6", "#06b6d4", "#ec4899"];
+const STATUS_LABELS: Record<string, string> = {
+  new: "Baru",
+  screening: "Screening",
+  interview_hrd: "Interview HRD",
+  interview_manager: "Interview Manager",
+  talent_pool: "Talent Pool",
+  hired: "Diterima",
+  rejected: "Ditolak",
+  archived: "Diarsipkan",
+};
 
-export default function DashboardPage() {
+const STATUS_COLORS: Record<string, string> = {
+  new: "bg-blue-100 text-blue-700",
+  screening: "bg-yellow-100 text-yellow-700",
+  interview_hrd: "bg-purple-100 text-purple-700",
+  interview_manager: "bg-indigo-100 text-indigo-700",
+  talent_pool: "bg-pink-100 text-pink-700",
+  hired: "bg-emerald-100 text-emerald-700",
+  rejected: "bg-red-100 text-red-700",
+  archived: "bg-gray-100 text-gray-700",
+};
+
+const SOURCE_LABELS: Record<string, string> = {
+  portal: "Portal",
+  internal: "Internal",
+  referral: "Rekomendasi",
+  jobstreet: "JobStreet",
+  instagram: "Instagram",
+  jobfair: "Job Fair",
+  walk_in: "Walk-in",
+  internal_referral: "Referral Internal",
+  headhunter: "Headhunter",
+  other: "Lainnya",
+};
+
+interface Candidate {
+  id: string;
+  full_name: string;
+  email: string;
+  phone: string;
+  domicile: string;
+  date_of_birth?: string;
+  gender?: string;
+  brand_id?: string;
+  position_id?: string;
+  status: string;
+  source: string;
+  notes?: string;
+  cv_url?: string;
+  created_at: string;
+  updated_at: string;
+  brands?: { name: string };
+  positions?: { title: string };
+}
+
+interface Activity {
+  id: string;
+  candidate_id: string;
+  activity_type: string;
+  description: string;
+  created_by?: string;
+  created_at: string;
+}
+
+interface Note {
+  id: string;
+  candidate_id: string;
+  content: string;
+  created_by?: string;
+  created_at: string;
+}
+
+export default function CandidateDetailPage({ params }: { params: { id: string } }) {
+  const router = useRouter();
   const supabase = createClient();
-  const { toasts, toast, dismiss } = useToast();
-
   const [loading, setLoading] = useState(true);
-  const [brandFilter, setBrandFilter] = useState("all");
-  const [brands, setBrands] = useState<any[]>([]);
+  const [candidate, setCandidate] = useState<Candidate | null>(null);
+  const [activities, setActivities] = useState<Activity[]>([]);
+  const [notes, setNotes] = useState<Note[]>([]);
+  const [showEditDialog, setShowEditDialog] = useState(false);
+  const [showNoteDialog, setShowNoteDialog] = useState(false);
+  const [newNote, setNewNote] = useState("");
+  const [statusUpdating, setStatusUpdating] = useState(false);
 
-  // Summary cards
-  const [summary, setSummary] = useState({ thisMonth: 0, activePipeline: 0, talentPool: 0, openPositions: 0 });
+  useEffect(() => {
+    fetchCandidateDetail();
+  }, [params.id]);
 
-  // Charts data
-  const [weeklyData, setWeeklyData] = useState<any[]>([]);
-  const [sourceData, setSourceData] = useState<any[]>([]);
-  const [funnelData, setFunnelData] = useState<any[]>([]);
-  const [brandData, setBrandData] = useState<any[]>([]);
-  const [positionData, setPositionData] = useState<any[]>([]);
-
-  const fetchData = useCallback(async () => {
+  const fetchCandidateDetail = async () => {
     setLoading(true);
     try {
-      // Get brands
-      const { data: brandsData } = await supabase.from("brands").select("id, name").eq("is_active", true);
-      setBrands(brandsData || []);
+      const { data, error } = await supabase
+        .from("candidates")
+        .select("*, brands(name), positions(title)")
+        .eq("id", params.id)
+        .single();
 
-      // Get candidates with filters
-      let query = supabase.from("candidates").select("*, positions(title, brands(name))");
-      if (brandFilter !== "all") {
-        query = query.eq("brand_id", brandFilter);
-      }
-      const { data: candidates } = await query;
+      if (error) throw error;
+      setCandidate(data as Candidate);
 
-      if (candidates) {
-        // Calculate summary
-        const thisMonth = candidates.filter((c) => {
-          const created = new Date(c.created_at);
-          const now = new Date();
-          return created.getMonth() === now.getMonth() && created.getFullYear() === now.getFullYear();
-        }).length;
+      // Fetch activities
+      const { data: activitiesData } = await supabase
+        .from("candidate_activities")
+        .select("*")
+        .eq("candidate_id", params.id)
+        .order("created_at", { ascending: false });
 
-        const activePipeline = candidates.filter((c) =>
-          ["new", "screening", "interview_hrd", "interview_manager"].includes(c.status)
-        ).length;
+      if (activitiesData) setActivities(activitiesData);
 
-        const talentPool = candidates.filter((c) => c.status === "talent_pool").length;
+      // Fetch notes
+      const { data: notesData } = await supabase
+        .from("candidate_notes")
+        .select("*")
+        .eq("candidate_id", params.id)
+        .order("created_at", { ascending: false });
 
-        // Calculate weekly data (last 8 weeks)
-        const weeks: any[] = [];
-        for (let i = 7; i >= 0; i--) {
-          const end = new Date();
-          end.setDate(end.getDate() - i * 7);
-          const start = new Date(end);
-          start.setDate(start.getDate() - 6);
-
-          const count = candidates.filter((c) => {
-            const d = new Date(c.created_at);
-            return d >= start && d <= end;
-          }).length;
-
-          weeks.push({
-            name: start.toLocaleDateString("id-ID", { month: "short", day: "numeric" }),
-            candidates: count,
-          });
-        }
-        setWeeklyData(weeks);
-
-        // Calculate source distribution
-        const sources: Record<string, number> = {};
-        candidates.forEach((c) => {
-          sources[c.source] = (sources[c.source] || 0) + 1;
-        });
-        const sourceChartData = Object.entries(sources)
-          .map(([name, value]) => ({ name, value }))
-          .sort((a, b) => b.value - a.value)
-          .slice(0, 6);
-        setSourceData(sourceChartData);
-
-        // Calculate funnel
-        const funnel = [
-          { stage: "New", count: candidates.filter((c) => c.status === "new").length },
-          { stage: "Screening", count: candidates.filter((c) => c.status === "screening").length },
-          { stage: "Interview HRD", count: candidates.filter((c) => c.status === "interview_hrd").length },
-          { stage: "Interview Manager", count: candidates.filter((c) => c.status === "interview_manager").length },
-          { stage: "Talent Pool", count: candidates.filter((c) => c.status === "talent_pool").length },
-          { stage: "Hired", count: candidates.filter((c) => c.status === "hired").length },
-        ];
-        setFunnelData(funnel);
-
-        // Calculate by brand
-        const brandCounts: Record<string, number> = {};
-        candidates.forEach((c) => {
-          const brandName = c.positions?.brands?.name || "Unknown";
-          brandCounts[brandName] = (brandCounts[brandName] || 0) + 1;
-        });
-        const brandChartData = Object.entries(brandCounts)
-          .map(([name, value]) => ({ name, value }))
-          .sort((a, b) => b.value - a.value)
-          .slice(0, 5);
-        setBrandData(brandChartData);
-
-        // Calculate by position
-        const positionCounts: Record<string, number> = {};
-        candidates.forEach((c) => {
-          const posTitle = c.positions?.title || "Unknown";
-          positionCounts[posTitle] = (positionCounts[posTitle] || 0) + 1;
-        });
-        const positionChartData = Object.entries(positionCounts)
-          .map(([name, value]) => ({ name, value }))
-          .sort((a, b) => b.value - a.value)
-          .slice(0, 5);
-        setPositionData(positionChartData);
-
-        setSummary({
-          thisMonth,
-          activePipeline,
-          talentPool,
-          openPositions: 0,
-        });
-      }
-    } catch (error) {
-      console.error("Error fetching dashboard data:", error);
-      toast("Gagal memuat data dashboard", "error");
+      if (notesData) setNotes(notesData);
+    } catch (error: any) {
+      console.error("Error fetching candidate:", error);
+      toast.error("Gagal memuat data kandidat");
     } finally {
       setLoading(false);
     }
-  }, [supabase, brandFilter, toast]);
-
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
-
-  const exportCSV = () => {
-    toast("Data berhasil diekspor ke CSV", "success");
   };
 
-  const exportPDF = () => {
-    toast("Data berhasil diekspor ke PDF", "success");
+  const handleStatusChange = async (newStatus: string) => {
+    if (!candidate) return;
+    setStatusUpdating(true);
+    try {
+      const { error } = await supabase
+        .from("candidates")
+        .update({ status: newStatus })
+        .eq("id", candidate.id);
+
+      if (error) throw error;
+
+      // Log activity
+      await supabase.from("candidate_activities").insert({
+        candidate_id: candidate.id,
+        activity_type: "status_change",
+        description: `Status diubah dari ${STATUS_LABELS[candidate.status]} ke ${STATUS_LABELS[newStatus]}`,
+      });
+
+      setCandidate({ ...candidate, status: newStatus });
+      toast.success("Status berhasil diupdate");
+    } catch (error: any) {
+      console.error("Error updating status:", error);
+      toast.error("Gagal update status");
+    } finally {
+      setStatusUpdating(false);
+    }
   };
+
+  const handleAddNote = async () => {
+    if (!candidate || !newNote.trim()) return;
+
+    try {
+      const { data, error } = await supabase
+        .from("candidate_notes")
+        .insert({
+          candidate_id: candidate.id,
+          content: newNote,
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      setNotes([data, ...notes]);
+      setNewNote("");
+      setShowNoteDialog(false);
+      toast.success("Catatan berhasil ditambahkan");
+
+      // Log activity
+      await supabase.from("candidate_activities").insert({
+        candidate_id: candidate.id,
+        activity_type: "note_added",
+        description: "Catatan internal ditambahkan",
+      });
+    } catch (error: any) {
+      console.error("Error adding note:", error);
+      toast.error("Gagal menambahkan catatan");
+    }
+  };
+
+  const handleDownloadCV = () => {
+    if (candidate?.cv_url) {
+      window.open(candidate.cv_url, "_blank");
+      toast.success("Membuka CV...");
+    } else {
+      toast.error("CV belum diupload");
+    }
+  };
+
+  const handleSendWhatsApp = () => {
+    if (candidate?.phone) {
+      const message = `Halo ${candidate.full_name}, terima kasih telah melamar di perusahaan kami. Kami ingin mengundang Anda untuk interview...`;
+      const url = `https://wa.me/${candidate.phone.replace(/\D/g, "")}?text=${encodeURIComponent(message)}`;
+      window.open(url, "_blank");
+    }
+  };
+
+  const handleSendEmail = () => {
+    if (candidate?.email) {
+      window.location.href = `mailto:${candidate.email}?subject=Undangan Interview&body=Halo ${candidate.full_name},...`;
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-16">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto mb-4"></div>
+          <p className="text-gray-500">Memuat data kandidat...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!candidate) {
+    return (
+      <div className="flex items-center justify-center py-16">
+        <Card className="max-w-md">
+          <CardContent className="pt-6 text-center">
+            <User className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+            <h2 className="text-xl font-semibold text-gray-900 mb-2">Kandidat Tidak Ditemukan</h2>
+            <p className="text-gray-500 mb-4">Kandidat yang Anda cari tidak ada atau sudah dihapus.</p>
+            <Link href="/dashboard/candidates">
+              <Button>Kembali ke Daftar Kandidat</Button>
+            </Link>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
-      <ToastContainer toasts={toasts} onDismiss={dismiss} />
-
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
-          <p className="text-sm text-gray-500">Ringkasan proses rekrutmen</p>
+      <div className="flex items-start justify-between">
+        <div className="flex items-center gap-4">
+          <Link href="/dashboard/candidates">
+            <Button variant="ghost" size="icon">
+              <ArrowLeft className="w-5 h-5" />
+            </Button>
+          </Link>
+          <div className="flex items-center gap-3">
+            <div className="w-16 h-16 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-2xl font-bold">
+              {candidate.full_name.charAt(0).toUpperCase()}
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">{candidate.full_name}</h1>
+              <div className="flex items-center gap-2 mt-1">
+                <Badge className={STATUS_COLORS[candidate.status]}>
+                  {STATUS_LABELS[candidate.status]}
+                </Badge>
+                <span className="text-gray-500 text-sm">
+                  {SOURCE_LABELS[candidate.source] || candidate.source}
+                </span>
+              </div>
+            </div>
+          </div>
         </div>
-        <div className="flex items-center gap-3">
-          <Select value={brandFilter} onValueChange={setBrandFilter}>
-            <SelectTrigger className="w-40">
-              <SelectValue placeholder="Semua Brand" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Semua Brand</SelectItem>
-              {brands.map((b) => (
-                <SelectItem key={b.id} value={b.id}>
-                  {b.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <button
-            onClick={exportCSV}
-            className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
-          >
-            CSV
-          </button>
-          <button
-            onClick={exportPDF}
-            className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
-          >
-            PDF
-          </button>
+
+        <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={() => setShowEditDialog(true)}>
+            <Edit3 className="w-4 h-4 mr-2" />
+            Edit
+          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="icon">
+                <MoreVertical className="w-4 h-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={handleDownloadCV}>
+                <Download className="w-4 h-4 mr-2" />
+                Download CV
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleSendWhatsApp}>
+                <Phone className="w-4 h-4 mr-2" />
+                Kirim WhatsApp
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleSendEmail}>
+                <Mail className="w-4 h-4 mr-2" />
+                Kirim Email
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
 
-      {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-500">Kandidat Bulan Ini</p>
-                <p className="text-2xl font-bold">{summary.thisMonth}</p>
+      {/* Main Content Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Left Column - Personal Info */}
+        <div className="lg:col-span-2 space-y-6">
+          {/* Personal Information */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <User className="w-5 h-5" />
+                Informasi Pribadi
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="flex items-start gap-3">
+                  <Mail className="w-5 h-5 text-gray-400 mt-0.5" />
+                  <div>
+                    <p className="text-sm text-gray-500">Email</p>
+                    <p className="font-medium">{candidate.email || "-"}</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3">
+                  <Phone className="w-5 h-5 text-gray-400 mt-0.5" />
+                  <div>
+                    <p className="text-sm text-gray-500">Telepon</p>
+                    <p className="font-medium">{candidate.phone || "-"}</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3">
+                  <MapPin className="w-5 h-5 text-gray-400 mt-0.5" />
+                  <div>
+                    <p className="text-sm text-gray-500">Domisili</p>
+                    <p className="font-medium">{candidate.domicile || "-"}</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3">
+                  <Calendar className="w-5 h-5 text-gray-400 mt-0.5" />
+                  <div>
+                    <p className="text-sm text-gray-500">Tanggal Lahir</p>
+                    <p className="font-medium">{candidate.date_of_birth ? new Date(candidate.date_of_birth).toLocaleDateString("id-ID") : "-"}</p>
+                  </div>
+                </div>
               </div>
-              <div className="p-3 bg-blue-100 rounded-full">
-                <UserGroupIcon className="w-6 h-6 text-blue-600" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
 
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-500">Pipeline Aktif</p>
-                <p className="text-2xl font-bold">{summary.activePipeline}</p>
+          {/* Job Information */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Briefcase className="w-5 h-5" />
+                Informasi Lamaran
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="flex items-start gap-3">
+                  <Briefcase className="w-5 h-5 text-gray-400 mt-0.5" />
+                  <div>
+                    <p className="text-sm text-gray-500">Posisi</p>
+                    <p className="font-medium">{candidate.positions?.title || "-"}</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3">
+                  <Building2 className="w-5 h-5 text-gray-400 mt-0.5" />
+                  <div>
+                    <p className="text-sm text-gray-500">Outlet / Brand</p>
+                    <p className="font-medium">{candidate.brands?.name || "-"}</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3">
+                  <Clock className="w-5 h-5 text-gray-400 mt-0.5" />
+                  <div>
+                    <p className="text-sm text-gray-500">Tanggal Apply</p>
+                    <p className="font-medium">{new Date(candidate.created_at).toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" })}</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3">
+                  <Star className="w-5 h-5 text-gray-400 mt-0.5" />
+                  <div>
+                    <p className="text-sm text-gray-500">Sumber</p>
+                    <p className="font-medium">{SOURCE_LABELS[candidate.source] || candidate.source}</p>
+                  </div>
+                </div>
               </div>
-              <div className="p-3 bg-yellow-100 rounded-full">
-                <BriefcaseIcon className="w-6 h-6 text-yellow-600" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
 
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-500">Talent Pool</p>
-                <p className="text-2xl font-bold">{summary.talentPool}</p>
-              </div>
-              <div className="p-3 bg-purple-100 rounded-full">
-                <TrophyIcon className="w-6 h-6 text-purple-600" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-500">Lowongan Terbuka</p>
-                <p className="text-2xl font-bold">{summary.openPositions}</p>
-              </div>
-              <div className="p-3 bg-green-100 rounded-full">
-                <DocumentArrowDownIcon className="w-6 h-6 text-green-600" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Charts */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Weekly Trend */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Kandidat Masuk Per Minggu</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="h-80">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={weeklyData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="name" />
-                  <YAxis />
-                  <Tooltip />
-                  <Line type="monotone" dataKey="candidates" stroke="#6366f1" strokeWidth={2} />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Source Distribution */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Distribusi Sumber Kandidat</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="h-80">
-              {sourceData.length > 0 ? (
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={sourceData}
-                      cx="50%"
-                      cy="50%"
-                      labelLine={false}
-                      label={({ name, percent }) => `${name} ${((percent ?? 0) * 100).toFixed(0)}%`}
-                      outerRadius={80}
-                      fill="#8884d8"
-                      dataKey="value"
-                    >
-                      {sourceData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={SOURCE_COLORS[index % SOURCE_COLORS.length]} />
-                      ))}
-                    </Pie>
-                    <Tooltip />
-                  </PieChart>
-                </ResponsiveContainer>
+          {/* Notes Section */}
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <CardTitle className="flex items-center gap-2">
+                <MessageSquare className="w-5 h-5" />
+                Catatan Internal
+              </CardTitle>
+              <Button size="sm" variant="outline" onClick={() => setShowNoteDialog(true)}>
+                <MessageSquare className="w-4 h-4 mr-2" />
+                Tambah Catatan
+              </Button>
+            </CardHeader>
+            <CardContent>
+              {notes.length === 0 ? (
+                <div className="text-center py-8 text-gray-500">
+                  <MessageSquare className="w-12 h-12 mx-auto mb-2 opacity-30" />
+                  <p>Belum ada catatan internal</p>
+                </div>
               ) : (
-                <div className="flex items-center justify-center h-full text-gray-400">
-                  Belum ada data
+                <div className="space-y-3">
+                  {notes.map((note) => (
+                    <div key={note.id} className="bg-gray-50 rounded-lg p-3">
+                      <p className="text-sm text-gray-700">{note.content}</p>
+                      <p className="text-xs text-gray-400 mt-2">
+                        {new Date(note.created_at).toLocaleDateString("id-ID", {
+                          day: "numeric",
+                          month: "short",
+                          year: "numeric",
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                      </p>
+                    </div>
+                  ))}
                 </div>
               )}
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Right Column - Actions & Timeline */}
+        <div className="space-y-6">
+          {/* Status Update Card */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <CheckCircle2 className="w-5 h-5" />
+                Update Status
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              <Select
+                value={candidate.status}
+                onValueChange={handleStatusChange}
+                disabled={statusUpdating}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="new">Baru (New)</SelectItem>
+                  <SelectItem value="screening">Screening</SelectItem>
+                  <SelectItem value="interview_hrd">Interview HRD</SelectItem>
+                  <SelectItem value="interview_manager">Interview Manager</SelectItem>
+                  <SelectItem value="talent_pool">Talent Pool</SelectItem>
+                  <SelectItem value="hired">Diterima (Hired)</SelectItem>
+                  <SelectItem value="rejected">Ditolak (Rejected)</SelectItem>
+                  <SelectItem value="archived">Diarsipkan (Archived)</SelectItem>
+                </SelectContent>
+              </Select>
+              {statusUpdating && (
+                <p className="text-xs text-gray-500">Mengupdate status...</p>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Documents */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <FileText className="w-5 h-5" />
+                Dokumen
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {candidate.cv_url ? (
+                <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                  <div className="flex items-center gap-3">
+                    <FileText className="w-8 h-8 text-red-500" />
+                    <div>
+                      <p className="font-medium text-sm">CV / Resume</p>
+                      <p className="text-xs text-gray-500">PDF Document</p>
+                    </div>
+                  </div>
+                  <Button size="sm" variant="outline" onClick={handleDownloadCV}>
+                    <Download className="w-4 h-4" />
+                  </Button>
+                </div>
+              ) : (
+                <div className="text-center py-6 text-gray-500">
+                  <FileText className="w-12 h-12 mx-auto mb-2 opacity-30" />
+                  <p className="text-sm">CV belum diupload</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Quick Actions */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Video className="w-5 h-5" />
+                Quick Actions
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              <Button className="w-full" variant="outline" onClick={handleSendWhatsApp}>
+                <Phone className="w-4 h-4 mr-2" />
+                Kirim WhatsApp
+              </Button>
+              <Button className="w-full" variant="outline" onClick={handleSendEmail}>
+                <Mail className="w-4 h-4 mr-2" />
+                Kirim Email
+              </Button>
+              <Button className="w-full" variant="outline" onClick={() => setShowEditDialog(true)}>
+                <Edit3 className="w-4 h-4 mr-2" />
+                Edit Data Kandidat
+              </Button>
+            </CardContent>
+          </Card>
+
+          {/* Activity Timeline */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Clock className="w-5 h-5" />
+                Aktivitas
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {activities.length === 0 ? (
+                <div className="text-center py-6 text-gray-500">
+                  <Clock className="w-12 h-12 mx-auto mb-2 opacity-30" />
+                  <p className="text-sm">Belum ada aktivitas</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {activities.slice(0, 5).map((activity) => (
+                    <div key={activity.id} className="flex items-start gap-3">
+                      <div className="w-2 h-2 rounded-full bg-blue-500 mt-2"></div>
+                      <div className="flex-1">
+                        <p className="text-sm text-gray-700">{activity.description}</p>
+                        <p className="text-xs text-gray-400 mt-1">
+                          {new Date(activity.created_at).toLocaleDateString("id-ID", {
+                            day: "numeric",
+                            month: "short",
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
       </div>
 
-      {/* Funnel */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Pipeline Funnel</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="h-80">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={funnelData} layout="vertical">
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis type="number" />
-                <YAxis dataKey="stage" type="category" width={100} />
-                <Tooltip />
-                <Bar dataKey="count" fill="#6366f1" />
-              </BarChart>
-            </ResponsiveContainer>
+      {/* Add Note Dialog */}
+      <Dialog open={showNoteDialog} onOpenChange={setShowNoteDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Tambah Catatan Internal</DialogTitle>
+            <DialogDescription>
+              Tambahkan catatan atau evaluasi tentang kandidat ini.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Catatan</Label>
+              <Textarea
+                value={newNote}
+                onChange={(e) => setNewNote(e.target.value)}
+                placeholder="Tulis catatan internal..."
+                rows={4}
+              />
+            </div>
           </div>
-        </CardContent>
-      </Card>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowNoteDialog(false)}>
+              Batal
+            </Button>
+            <Button onClick={handleAddNote} disabled={!newNote.trim()}>
+              <Send className="w-4 h-4 mr-2" />
+              Simpan Catatan
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Dialog - Placeholder */}
+      <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Edit Data Kandidat</DialogTitle>
+            <DialogDescription>
+              Update informasi kandidat {candidate.full_name}.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-8 text-center text-gray-500">
+            <Edit3 className="w-12 h-12 mx-auto mb-4 opacity-30" />
+            <p>Form edit kandidat akan diimplementasikan selanjutnya</p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowEditDialog(false)}>
+              Tutup
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
