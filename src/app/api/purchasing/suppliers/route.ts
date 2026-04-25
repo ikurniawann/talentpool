@@ -8,7 +8,7 @@ import { requireApiRole, ApiError } from "@/lib/api/auth";
 // ========================
 
 const createSupplierSchema = z.object({
-  kode_supplier: z.string().min(1, "Kode supplier wajib diisi").max(50),
+  kode_supplier: z.string().min(1, "Kode supplier wajib diisi").max(50).optional(),
   nama_supplier: z.string().min(1, "Nama supplier wajib diisi").max(200),
   pic_name: z.string().max(100).optional(),
   pic_phone: z.string().max(30).optional(),
@@ -135,9 +135,9 @@ export async function POST(request: NextRequest) {
 
     const supabase = await createClient();
 
-    // Auto-generate kode if placeholder or empty
+    // Auto-generate kode if not provided, placeholder, or empty
     let kodeSupplier = validated.kode_supplier;
-    if (!kodeSupplier || kodeSupplier.includes("XXXX")) {
+    if (!kodeSupplier || kodeSupplier.trim() === "" || kodeSupplier.includes("XXXX")) {
       kodeSupplier = await generateSupplierCode(supabase);
     }
 
