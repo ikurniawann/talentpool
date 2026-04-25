@@ -49,8 +49,9 @@ TRUNCATE TABLE bahan_baku CASCADE;
 -- 11. Supplier
 TRUNCATE TABLE suppliers CASCADE;
 
--- 12. Satuan (terakhir - paling independen)
-TRUNCATE TABLE satuan CASCADE;
+-- 12. Units (terakhir - paling independen)
+-- Note: Tabel 'satuan' adalah legacy, aplikasi menggunakan 'units'
+TRUNCATE TABLE units CASCADE;
 
 COMMIT;
 
@@ -58,7 +59,7 @@ COMMIT;
 -- Verification: Tampilkan jumlah baris setelah truncate
 -- ============================================================
 
-SELECT 'satuan' AS table_name, COUNT(*) AS row_count FROM satuan
+SELECT 'units' AS table_name, COUNT(*) AS row_count FROM units
 UNION ALL
 SELECT 'suppliers' AS table_name, COUNT(*) AS row_count FROM suppliers
 UNION ALL
