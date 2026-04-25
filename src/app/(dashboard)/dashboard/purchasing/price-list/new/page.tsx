@@ -92,10 +92,13 @@ export default function NewPriceListPage() {
 
     // Add optional fields only if they have values
     if (formData.berlaku_dari) {
-      payload.berlaku_dari = formData.berlaku_dari;
+      // Ensure date format is YYYY-MM-DD
+      const dateStr = formData.berlaku_dari;
+      payload.berlaku_dari = dateStr.length === 10 ? dateStr : new Date(dateStr).toISOString().split('T')[0];
     }
     if (formData.berlaku_sampai) {
-      payload.berlaku_sampai = formData.berlaku_sampai;
+      const dateStr = formData.berlaku_sampai;
+      payload.berlaku_sampai = dateStr.length === 10 ? dateStr : new Date(dateStr).toISOString().split('T')[0];
     }
     if (formData.catatan && formData.catatan.trim()) {
       payload.catatan = formData.catatan.trim();

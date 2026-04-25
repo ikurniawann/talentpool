@@ -99,8 +99,12 @@ export async function POST(request: NextRequest) {
     const supabase = await createClient();
     const body = await request.json();
 
+    console.log("Price list API - Received body:", body);
+
     // Validasi input
     const validated = priceListSchema.parse(body);
+
+    console.log("Price list API - Validated data:", validated);
 
     // Set default berlaku_dari to today if not provided
     if (!validated.berlaku_dari) {
@@ -127,6 +131,7 @@ export async function POST(request: NextRequest) {
     console.error("Error creating price list:", error);
 
     if (error instanceof z.ZodError) {
+      console.error("Zod validation errors:", JSON.stringify(error.flatten(), null, 2));
       return Response.json(
         {
           success: false,
