@@ -4,7 +4,7 @@
 
 export type PaymentTerms = "CBD" | "TOP7" | "TOP14" | "TOP30" | "TOP45" | "TOP60";
 export type Currency = "IDR" | "USD" | "EUR";
-export type SupplierStatus = "active" | "inactive" | "probation" | "blocked";
+export type SupplierStatus = "active" | "inactive" | "probation" | "blocked" | "draft";
 export type POStatus =
   | "draft"
   | "pending_head"
