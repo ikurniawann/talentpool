@@ -339,7 +339,11 @@ export default function NewPOPage() {
                   <Label>Tanggal PO</Label>
                   <DatePicker
                     value={formData.tanggal_po}
-                    onChange={(v) => setFormData((prev) => ({ ...prev, tanggal_po: v }))}
+                    onChange={(v) => {
+                      // Convert to YYYY-MM-DD format
+                      const date = v ? new Date(v).toISOString().split('T')[0] : '';
+                      setFormData((prev) => ({ ...prev, tanggal_po: date }));
+                    }}
                     placeholder="Tanggal PO..."
                   />
                 </div>
@@ -350,7 +354,11 @@ export default function NewPOPage() {
                   <Label>Tanggal Kirim Estimasi</Label>
                   <DatePicker
                     value={formData.tanggal_kirim_estimasi}
-                    onChange={(v) => setFormData((prev) => ({ ...prev, tanggal_kirim_estimasi: v }))}
+                    onChange={(v) => {
+                      // Convert to YYYY-MM-DD format
+                      const date = v ? new Date(v).toISOString().split('T')[0] : '';
+                      setFormData((prev) => ({ ...prev, tanggal_kirim_estimasi: date }));
+                    }}
                     placeholder="Estimasi kirim..."
                   />
                 </div>
