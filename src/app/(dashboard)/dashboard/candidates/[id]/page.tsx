@@ -119,7 +119,7 @@ interface Note {
   created_at: string;
 }
 
-export default function CandidateDetailPage({ params }: { params: { id: string } }) {
+export default function CandidateDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter();
   const supabase = createClient();
   const [loading, setLoading] = useState(true);
@@ -130,19 +130,31 @@ export default function CandidateDetailPage({ params }: { params: { id: string }
   const [showNoteDialog, setShowNoteDialog] = useState(false);
   const [newNote, setNewNote] = useState("");
   const [statusUpdating, setStatusUpdating] = useState(false);
+  const [resolvedParams, setResolvedParams] = useState<{ id: string } | null>(null);
 
   useEffect(() => {
-    fetchCandidateDetail();
-  }, [params.id]);
+    // Resolve the params promise
+    params.then((resolved) => {
+      setResolvedParams(resolved);
+    });
+  }, [params]);
+
+  useEffect(() => {
+    if (resolvedParams) {
+      fetchCandidateDetail();
+    }
+  }, [resolvedParams]);
 
   const fetchCandidateDetail = async () => {
+    if (!resolvedParams) return;
+    
     setLoading(true);
     try {
       // First, get basic candidate data
       const { data: candidateData, error: candidateError } = await supabase
         .from("candidates")
         .select("*")
-        .eq("id", params.id)
+        .eq("id", resolvedParams.id)
         .single();
 
       if (candidateError) {
@@ -192,7 +204,7 @@ export default function CandidateDetailPage({ params }: { params: { id: string }
         const { data: activitiesData } = await supabase
           .from("candidate_activities")
           .select("*")
-          .eq("candidate_id", params.id)
+          .eq("candidate_id", resolvedParams.id)
           .order("created_at", { ascending: false });
 
         if (activitiesData) setActivities(activitiesData);
@@ -206,7 +218,7 @@ export default function CandidateDetailPage({ params }: { params: { id: string }
         const { data: notesData } = await supabase
           .from("candidate_notes")
           .select("*")
-          .eq("candidate_id", params.id)
+          .eq("candidate_id", resolvedParams.id)
           .order("created_at", { ascending: false });
 
         if (notesData) setNotes(notesData);
