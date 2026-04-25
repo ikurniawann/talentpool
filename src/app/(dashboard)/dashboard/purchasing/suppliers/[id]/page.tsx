@@ -251,170 +251,172 @@ function SupplierDetailInner() {
       </div>
 
       {/* Content Tabs */}
-      <Tabs defaultValue="overview" className="w-full">
-        <TabsList className="w-full grid grid-cols-4 bg-gray-100">
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="contact">Kontak</TabsTrigger>
-          <TabsTrigger value="transactions">Transaksi</TabsTrigger>
-          <TabsTrigger value="products">Produk</TabsTrigger>
-        </TabsList>
+      <div className="w-full">
+        <Tabs defaultValue="overview" className="w-full">
+          <TabsList className="w-full grid grid-cols-4 bg-gray-100 rounded-lg mb-4">
+            <TabsTrigger value="overview" className="text-sm py-2">Overview</TabsTrigger>
+            <TabsTrigger value="contact" className="text-sm py-2">Kontak</TabsTrigger>
+            <TabsTrigger value="transactions" className="text-sm py-2">Transaksi</TabsTrigger>
+            <TabsTrigger value="products" className="text-sm py-2">Produk</TabsTrigger>
+          </TabsList>
 
-        {/* Overview */}
-        <TabsContent value="overview" className="space-y-4 mt-4">
-          <div className="grid gap-4 md:grid-cols-2">
-            {/* Company Info */}
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-semibold flex items-center gap-2">
-                  <Building2 className="w-4 h-4 text-blue-600" />
-                  Informasi Perusahaan
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3 text-sm">
-                <InfoRow label="Nama" value={supplier.nama_supplier} />
-                <InfoRow label="Kode" value={supplier.kode} />
-                <InfoRow label="Kategori" value={supplier.kategori} />
-                <InfoRow label="NPWP" value={supplier.npwp} />
-                <InfoRow label="Mata Uang" value={supplier.currency} />
-                {supplier.alamat && (
-                  <div className="pt-3 border-t">
-                    <div className="flex gap-2">
-                      <MapPin className="w-4 h-4 text-gray-400 mt-0.5 shrink-0" />
-                      <div>
-                        <p className="text-xs text-gray-500 mb-1">Alamat</p>
-                        <p className="text-gray-900 whitespace-pre-wrap">{supplier.alamat}</p>
+          {/* Overview */}
+          <TabsContent value="overview" className="space-y-4 mt-0">
+            <div className="grid gap-4 md:grid-cols-2">
+              {/* Company Info */}
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                    <Building2 className="w-4 h-4 text-blue-600" />
+                    Informasi Perusahaan
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3 text-sm">
+                  <InfoRow label="Nama" value={supplier.nama_supplier} />
+                  <InfoRow label="Kode" value={supplier.kode} />
+                  <InfoRow label="Kategori" value={supplier.kategori} />
+                  <InfoRow label="NPWP" value={supplier.npwp} />
+                  <InfoRow label="Mata Uang" value={supplier.currency} />
+                  {supplier.alamat && (
+                    <div className="pt-3 border-t">
+                      <div className="flex gap-2">
+                        <MapPin className="w-4 h-4 text-gray-400 mt-0.5 shrink-0" />
+                        <div>
+                          <p className="text-xs text-gray-500 mb-1">Alamat</p>
+                          <p className="text-gray-900 whitespace-pre-wrap">{supplier.alamat}</p>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+                  )}
+                </CardContent>
+              </Card>
 
-            {/* Payment & Bank */}
-            <Card>
+              {/* Payment & Bank */}
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                    <CreditCard className="w-4 h-4 text-amber-600" />
+                    Pembayaran & Bank
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3 text-sm">
+                  <InfoRow label="Payment Terms" value={supplier.payment_terms?.replace("TOP", "TOP ")} />
+                  {(supplier.bank_nama || supplier.bank_rekening || supplier.bank_atas_nama) && (
+                    <div className="pt-3 border-t space-y-3">
+                      <InfoRow label="Bank" value={supplier.bank_nama} />
+                      <InfoRow label="No. Rekening" value={supplier.bank_rekening} />
+                      <InfoRow label="Atas Nama" value={supplier.bank_atas_nama} />
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+
+          {/* Contact */}
+          <TabsContent value="contact" className="mt-0">
+            <Card className="max-w-2xl">
               <CardHeader className="pb-3">
                 <CardTitle className="text-sm font-semibold flex items-center gap-2">
-                  <CreditCard className="w-4 h-4 text-amber-600" />
-                  Pembayaran & Bank
+                  <User className="w-4 h-4 text-blue-600" />
+                  Kontak PIC
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3 text-sm">
-                <InfoRow label="Payment Terms" value={supplier.payment_terms?.replace("TOP", "TOP ")} />
-                {(supplier.bank_nama || supplier.bank_rekening || supplier.bank_atas_nama) && (
-                  <div className="pt-3 border-t space-y-3">
-                    <InfoRow label="Bank" value={supplier.bank_nama} />
-                    <InfoRow label="No. Rekening" value={supplier.bank_rekening} />
-                    <InfoRow label="Atas Nama" value={supplier.bank_atas_nama} />
+                {supplier.pic_name || supplier.pic_jabatan || supplier.email || supplier.pic_phone ? (
+                  <>
+                    <InfoRow label="Nama" value={supplier.pic_name} icon={User} />
+                    <InfoRow label="Jabatan" value={supplier.pic_jabatan} icon={User} />
+                    <InfoRow label="Email" value={supplier.email} icon={Mail} />
+                    <InfoRow label="Telepon" value={supplier.pic_phone} icon={Phone} />
+                  </>
+                ) : (
+                  <div className="text-center py-8 text-gray-400">
+                    <User className="w-12 h-12 mx-auto mb-2 opacity-20" />
+                    <p className="text-sm">Belum ada informasi kontak</p>
                   </div>
                 )}
               </CardContent>
             </Card>
-          </div>
-        </TabsContent>
+          </TabsContent>
 
-        {/* Contact */}
-        <TabsContent value="contact" className="mt-4">
-          <Card className="max-w-2xl">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-semibold flex items-center gap-2">
-                <User className="w-4 h-4 text-blue-600" />
-                Kontak PIC
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3 text-sm">
-              {supplier.pic_name || supplier.pic_jabatan || supplier.email || supplier.pic_phone ? (
-                <>
-                  <InfoRow label="Nama" value={supplier.pic_name} icon={User} />
-                  <InfoRow label="Jabatan" value={supplier.pic_jabatan} icon={User} />
-                  <InfoRow label="Email" value={supplier.email} icon={Mail} />
-                  <InfoRow label="Telepon" value={supplier.pic_phone} icon={Phone} />
-                </>
-              ) : (
-                <div className="text-center py-8 text-gray-400">
-                  <User className="w-12 h-12 mx-auto mb-2 opacity-20" />
-                  <p className="text-sm">Belum ada informasi kontak</p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* Transactions */}
-        <TabsContent value="transactions" className="mt-4">
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-semibold flex items-center gap-2">
-                <FileText className="w-4 h-4 text-purple-600" />
-                Riwayat Purchase Order
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {poLoading ? (
-                <div className="text-center py-8 text-gray-400">Memuat...</div>
-              ) : poHistory.length === 0 ? (
-                <div className="text-center py-8 text-gray-400">
-                  <FileText className="w-12 h-12 mx-auto mb-2 opacity-20" />
-                  <p className="text-sm">Belum ada purchase order</p>
-                </div>
-              ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead className="bg-gray-50 border-b">
-                      <tr>
-                        <th className="px-4 py-2.5 text-left font-medium text-gray-600">No. PO</th>
-                        <th className="px-4 py-2.5 text-left font-medium text-gray-600">Tanggal</th>
-                        <th className="px-4 py-2.5 text-left font-medium text-gray-600">Status</th>
-                        <th className="px-4 py-2.5 text-right font-medium text-gray-600">Items</th>
-                        <th className="px-4 py-2.5 text-right font-medium text-gray-600">Total</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y">
-                      {poHistory.map((po) => (
-                        <tr key={po.id} className="hover:bg-gray-50">
-                          <td className="px-4 py-3 font-mono text-blue-600 font-medium">{po.po_number}</td>
-                          <td className="px-4 py-3 text-gray-600">{formatDate(po.tanggal)}</td>
-                          <td className="px-4 py-3"><POStatusBadge status={po.status} /></td>
-                          <td className="px-4 py-3 text-right text-gray-600">{po.jumlah_item}</td>
-                          <td className="px-4 py-3 text-right font-semibold">{formatCurrency(po.total, po.currency)}</td>
+          {/* Transactions */}
+          <TabsContent value="transactions" className="mt-0">
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                  <FileText className="w-4 h-4 text-purple-600" />
+                  Riwayat Purchase Order
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {poLoading ? (
+                  <div className="text-center py-8 text-gray-400">Memuat...</div>
+                ) : poHistory.length === 0 ? (
+                  <div className="text-center py-8 text-gray-400">
+                    <FileText className="w-12 h-12 mx-auto mb-2 opacity-20" />
+                    <p className="text-sm">Belum ada purchase order</p>
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead className="bg-gray-50 border-b">
+                        <tr>
+                          <th className="px-4 py-2.5 text-left font-medium text-gray-600">No. PO</th>
+                          <th className="px-4 py-2.5 text-left font-medium text-gray-600">Tanggal</th>
+                          <th className="px-4 py-2.5 text-left font-medium text-gray-600">Status</th>
+                          <th className="px-4 py-2.5 text-right font-medium text-gray-600">Items</th>
+                          <th className="px-4 py-2.5 text-right font-medium text-gray-600">Total</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
+                      </thead>
+                      <tbody className="divide-y">
+                        {poHistory.map((po) => (
+                          <tr key={po.id} className="hover:bg-gray-50">
+                            <td className="px-4 py-3 font-mono text-blue-600 font-medium">{po.po_number}</td>
+                            <td className="px-4 py-3 text-gray-600">{formatDate(po.tanggal)}</td>
+                            <td className="px-4 py-3"><POStatusBadge status={po.status} /></td>
+                            <td className="px-4 py-3 text-right text-gray-600">{po.jumlah_item}</td>
+                            <td className="px-4 py-3 text-right font-semibold">{formatCurrency(po.total, po.currency)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
 
-        {/* Products */}
-        <TabsContent value="products" className="space-y-4 mt-4">
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-semibold flex items-center gap-2">
-                <FileText className="w-4 h-4 text-green-600" />
-                Bahan yang Sering Dibeli
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {a.bahan_sering_dibeli?.length ? (
-                <div className="flex flex-wrap gap-2">
-                  {a.bahan_sering_dibeli.map((bahan, i) => (
-                    <Badge key={i} variant="secondary" className="bg-green-50 text-green-700 hover:bg-green-100">
-                      {bahan}
-                    </Badge>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-8 text-gray-400">
-                  <FileText className="w-12 h-12 mx-auto mb-2 opacity-20" />
-                  <p className="text-sm">Belum ada data bahan</p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-          <SupplierPriceHistoryPanel supplierId={supplier.id} supplierName={supplier.nama_supplier} />
-        </TabsContent>
-      </Tabs>
+          {/* Products */}
+          <TabsContent value="products" className="space-y-4 mt-0">
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                  <FileText className="w-4 h-4 text-green-600" />
+                  Bahan yang Sering Dibeli
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {a.bahan_sering_dibeli?.length ? (
+                  <div className="flex flex-wrap gap-2">
+                    {a.bahan_sering_dibeli.map((bahan, i) => (
+                      <Badge key={i} variant="secondary" className="bg-green-50 text-green-700 hover:bg-green-100">
+                        {bahan}
+                      </Badge>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-8 text-gray-400">
+                    <FileText className="w-12 h-12 mx-auto mb-2 opacity-20" />
+                    <p className="text-sm">Belum ada data bahan</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+            <SupplierPriceHistoryPanel supplierId={supplier.id} supplierName={supplier.nama_supplier} />
+          </TabsContent>
+        </Tabs>
+      </div>
 
       {/* Deactivate Dialog */}
       <Dialog open={deactivateDialog} onOpenChange={setDeactivateDialog}>
