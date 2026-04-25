@@ -256,7 +256,15 @@ export default function NewPOPage() {
       if (error.response) {
         const errorData = await error.response.json();
         console.error("API Error details:", errorData);
-        toast.error(errorData.message || "Gagal membuat PO");
+        // Show detailed validation errors
+        if (errorData.errors) {
+          const errorMessages = Object.entries(errorData.errors)
+            .map(([field, messages]) => `${field}: ${(messages as string[]).join(", ")}`)
+            .join("\n");
+          toast.error(`Validasi gagal:\n${errorMessages}`);
+        } else {
+          toast.error(errorData.message || "Gagal membuat PO");
+        }
       } else {
         toast.error(error.message || "Gagal membuat PO");
       }
