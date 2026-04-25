@@ -80,13 +80,26 @@ export default function NewPriceListPage() {
       return;
     }
 
-    // Ensure numeric fields are numbers
-    const payload = {
-      ...formData,
+    // Ensure numeric fields are numbers and omit empty optional fields
+    const payload: any = {
+      supplier_id: formData.supplier_id,
+      bahan_baku_id: formData.bahan_baku_id,
       harga: Number(formData.harga),
+      satuan_id: formData.satuan_id || undefined,
       minimum_qty: Number(formData.minimum_qty),
       lead_time_days: Number(formData.lead_time_days),
     };
+
+    // Add optional fields only if they have values
+    if (formData.berlaku_dari) {
+      payload.berlaku_dari = formData.berlaku_dari;
+    }
+    if (formData.berlaku_sampai) {
+      payload.berlaku_sampai = formData.berlaku_sampai;
+    }
+    if (formData.catatan && formData.catatan.trim()) {
+      payload.catatan = formData.catatan.trim();
+    }
 
     console.log("Submitting price list payload:", payload);
 
