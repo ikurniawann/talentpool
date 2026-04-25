@@ -576,10 +576,10 @@ export default function CandidatesPage() {
                 <Label>Outlet / Brand</Label>
                 <Select
                   value={addForm.watch("brand_id") || ""}
-                  onValueChange={(v) => addForm.setValue("brand_id", v || undefined)}
+                  onValueChange={(v) => addForm.setValue("brand_id", v === "" ? undefined : v)}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder={brands.find(b => b.id === addForm.watch("brand_id"))?.name || "Pilih Outlet"} />
+                    <SelectValue placeholder="Pilih Outlet" />
                   </SelectTrigger>
                   <SelectContent>
                     {brands.map((b) => (
@@ -591,21 +591,11 @@ export default function CandidatesPage() {
               <div className="space-y-1.5">
                 <Label>Sumber</Label>
                 <Select
-                  value={addForm.watch("source") || "portal"}
-                  onValueChange={(v) => addForm.setValue("source", v as any)}
+                  value={addForm.watch("source")}
+                  onValueChange={(v) => addForm.setValue("source", v)}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder={{
-                      walk_in: "Walk-in",
-                      referral: "Rekomendasi",
-                      internal_referral: "Referral Internal",
-                      jobfair: "Job Fair",
-                      headhunter: "Headhunter",
-                      portal: "Portal",
-                      instagram: "Instagram",
-                      jobstreet: "JobStreet",
-                      other: "Lainnya",
-                    }[addForm.watch("source") as string] || "Pilih Sumber"} />
+                    <SelectValue placeholder="Pilih Sumber" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="walk_in">Walk-in</SelectItem>
@@ -625,12 +615,12 @@ export default function CandidatesPage() {
             <div className="space-y-1.5">
               <Label>Status Awal</Label>
               <Select
-                value={addForm.watch("status") || "new"}
-                onValueChange={(v) => addForm.setValue("status", v as any)}
+                value={addForm.watch("status")}
+                onValueChange={(v) => addForm.setValue("status", v)}
               >
-                  <SelectTrigger>
-                    <SelectValue placeholder={{ new: "Baru (New)", screening: "Screening" }[addForm.watch("status") as string] || "Baru (New)"} />
-                  </SelectTrigger>
+                <SelectTrigger>
+                  <SelectValue placeholder="Pilih Status" />
+                </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="new">Baru (New)</SelectItem>
                   <SelectItem value="screening">Screening</SelectItem>
