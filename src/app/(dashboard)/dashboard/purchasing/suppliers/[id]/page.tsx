@@ -38,21 +38,9 @@ import {
   ReceiptPercentIcon,
   ChartBarIcon,
   TruckIcon,
-  CheckCircleIcon,
-  XCircleIcon,
-  ClockIcon,
 } from "@heroicons/react/24/outline";
-import {
-  SupplierDetail,
-  SupplierPOSummary,
-  formatNPWP,
-  KOTA_OPTIONS,
-} from "@/types/supplier";
-import {
-  getSupplier,
-  deactivateSupplier,
-  getSupplierPOHistory,
-} from "@/lib/purchasing/supplier";
+import { SupplierDetail, SupplierPOSummary } from "@/types/supplier";
+import { getSupplier, deactivateSupplier, getSupplierPOHistory } from "@/lib/purchasing/supplier";
 import { useToast } from "@/components/ui/toast";
 import { useAuth } from "@/hooks/use-auth";
 
@@ -84,20 +72,36 @@ function formatDate(dateStr: string): string {
   }
 }
 
+// ─── InfoRow helper ────────────────────────────────────────────
+
+function InfoRow({ label, value, icon: Icon }: {
+  label: string; value: string; icon?: React.ElementType;
+}) {
+  return (
+    <div className="flex items-start gap-3">
+      {Icon && <Icon className="w-4 h-4 text-gray-400 mt-0.5 shrink-0" />}
+      <div className="min-w-0">
+        <p className="text-xs text-gray-400">{label}</p>
+        <p className="text-sm text-gray-900 font-medium break-words">{value}</p>
+      </div>
+    </div>
+  );
+}
+
 // ─── PO Status Badge ───────────────────────────────────────────
 
 function POStatusBadge({ status }: { status: string }) {
   const map: Record<string, { label: string; className: string }> = {
-    draft:            { label: "Draft", className: "bg-gray-100 text-gray-600" },
-    pending_head:     { label: "Pending Head", className: "bg-yellow-100 text-yellow-700" },
-    pending_finance:  { label: "Pending Finance", className: "bg-orange-100 text-orange-700" },
-    pending_direksi:  { label: "Pending Direksi", className: "bg-orange-100 text-orange-800" },
-    approved:         { label: "Approved", className: "bg-blue-100 text-blue-700" },
-    rejected:         { label: "Rejected", className: "bg-red-100 text-red-700" },
-    sent:             { label: "Sent", className: "bg-purple-100 text-purple-700" },
+    draft: { label: "Draft", className: "bg-gray-100 text-gray-600" },
+    pending_head: { label: "Pending Head", className: "bg-yellow-100 text-yellow-700" },
+    pending_finance: { label: "Pending Finance", className: "bg-orange-100 text-orange-700" },
+    pending_direksi: { label: "Pending Direksi", className: "bg-orange-100 text-orange-800" },
+    approved: { label: "Approved", className: "bg-blue-100 text-blue-700" },
+    rejected: { label: "Rejected", className: "bg-red-100 text-red-700" },
+    sent: { label: "Sent", className: "bg-purple-100 text-purple-700" },
     partially_received: { label: "Partial", className: "bg-indigo-100 text-indigo-700" },
-    received:         { label: "Received", className: "bg-green-100 text-green-700" },
-    cancelled:        { label: "Cancelled", className: "bg-gray-200 text-gray-500" },
+    received: { label: "Received", className: "bg-green-100 text-green-700" },
+    cancelled: { label: "Cancelled", className: "bg-gray-200 text-gray-500" },
   };
   const cfg = map[status] ?? { label: status, className: "bg-gray-100 text-gray-600" };
   return <Badge className={cfg.className}>{cfg.label}</Badge>;
@@ -147,7 +151,6 @@ function SupplierDetailInner() {
   const [deactivateDialog, setDeactivateDialog] = useState(false);
   const [deactivateLoading, setDeactivateLoading] = useState(false);
 
-  // Load supplier
   const fetchSupplier = useCallback(async () => {
     try {
       const data = await getSupplier(supplierId);
@@ -162,7 +165,6 @@ function SupplierDetailInner() {
 
   useEffect(() => { fetchSupplier(); }, [fetchSupplier]);
 
-  // Load PO history
   useEffect(() => {
     async function loadPO() {
       setPOLoading(true);
@@ -218,7 +220,6 @@ function SupplierDetailInner() {
         { label: supplier.nama_supplier },
       ]} />
 
-      {/* Header */}
       <div className="flex items-start justify-between gap-4">
         <div className="flex items-start gap-4">
           <div className="w-14 h-14 rounded-xl bg-blue-50 flex items-center justify-center shrink-0">
@@ -258,7 +259,6 @@ function SupplierDetailInner() {
         </div>
       </div>
 
-      {/* KPI Grid */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <KPICard
           label="PO Aktif"
@@ -269,14 +269,14 @@ function SupplierDetailInner() {
         />
         <KPICard
           label="Transaksi 12 Bulan"
-          value={a.jumlah_po_12_bulan > 0 ? String(a.jumlah_po_12_bulan) + " PO" : "—"}
+          value={a.jumlah_po_12_bulan > 0 ? `${String(a.jumlah_po_12_bulan)} PO` : "—"}
           sub={a.total_transaksi_12_bulan > 0 ? formatCurrency(a.total_transaksi_12_bulan, supplier.currency) : "Tidak ada data"}
           icon={ChartBarIcon}
           color="bg-gray-50 text-gray-700"
         />
         <KPICard
           label="On-Time Delivery"
-          value={a.on_time_delivery_rate > 0 ? a.on_time_delivery_rate + "%" : "—"}
+          value={a.on_time_delivery_rate > 0 ? `${a.on_time_delivery_rate}%` : "—"}
           sub={a.on_time_delivery_rate > 0 ? "12 bulan terakhir" : "Tidak ada data"}
           icon={TruckIcon}
           color="bg-gray-50 text-gray-700"
@@ -290,20 +290,16 @@ function SupplierDetailInner() {
         />
       </div>
 
-      {/* Tabs */}
-      <div className="w-full">
-        <Tabs defaultValue="info" className="w-full">
-          <TabsList className="grid grid-cols-2 md:grid-cols-4 w-full">
-            <TabsTrigger value="info" className="text-xs md:text-sm">Informasi</TabsTrigger>
-            <TabsTrigger value="materials" className="text-xs md:text-sm">Bahan Dibeli</TabsTrigger>
-            <TabsTrigger value="po" className="text-xs md:text-sm">Riwayat PO</TabsTrigger>
-            <TabsTrigger value="prices" className="text-xs md:text-sm">Price History</TabsTrigger>
-          </TabsList>
+      <Tabs defaultValue="info" className="w-full">
+        <TabsList className="grid grid-cols-2 md:grid-cols-4 w-full">
+          <TabsTrigger value="info" className="text-xs md:text-sm">Informasi</TabsTrigger>
+          <TabsTrigger value="materials" className="text-xs md:text-sm">Bahan Dibeli</TabsTrigger>
+          <TabsTrigger value="po" className="text-xs md:text-sm">Riwayat PO</TabsTrigger>
+          <TabsTrigger value="prices" className="text-xs md:text-sm">Price History</TabsTrigger>
+        </TabsList>
 
-          {/* Info Tab */}
-          <TabsContent value="info" className="mt-4">
+        <TabsContent value="info" className="mt-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Supplier Info Card */}
             <Card>
               <CardHeader><CardTitle className="text-base">Detail Supplier</CardTitle></CardHeader>
               <CardContent className="space-y-3">
@@ -317,7 +313,6 @@ function SupplierDetailInner() {
               </CardContent>
             </Card>
 
-            {/* PIC Card */}
             <Card>
               <CardHeader><CardTitle className="text-base">Informasi PIC</CardTitle></CardHeader>
               <CardContent className="space-y-3">
@@ -327,7 +322,6 @@ function SupplierDetailInner() {
               </CardContent>
             </Card>
 
-            {/* Bank Card */}
             {supplier.bank_nama && (
               <Card>
                 <CardHeader><CardTitle className="text-base">Informasi Bank</CardTitle></CardHeader>
@@ -339,7 +333,6 @@ function SupplierDetailInner() {
               </Card>
             )}
 
-            {/* Address Card */}
             <Card>
               <CardHeader><CardTitle className="text-base">Alamat</CardTitle></CardHeader>
               <CardContent>
@@ -351,7 +344,6 @@ function SupplierDetailInner() {
           </div>
         </TabsContent>
 
-        {/* Materials Tab */}
         <TabsContent value="materials">
           <Card>
             <CardHeader><CardTitle className="text-base">Bahan yang Sering Dibeli dari Supplier Ini</CardTitle></CardHeader>
@@ -369,7 +361,6 @@ function SupplierDetailInner() {
           </Card>
         </TabsContent>
 
-        {/* PO History Tab */}
         <TabsContent value="po">
           <Card>
             <CardHeader>
@@ -417,16 +408,15 @@ function SupplierDetailInner() {
             </CardContent>
           </Card>
         </TabsContent>
+
         <TabsContent value="prices" className="mt-6">
           <SupplierPriceHistoryPanel 
             supplierId={supplier.id} 
             supplierName={supplier.nama_supplier}
           />
         </TabsContent>
-
       </Tabs>
 
-      {/* Deactivate Dialog */}
       <Dialog open={deactivateDialog} onOpenChange={setDeactivateDialog}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
@@ -449,22 +439,6 @@ function SupplierDetailInner() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
-  );
-}
-
-// ─── InfoRow helper ────────────────────────────────────────────
-
-function InfoRow({ label, value, icon: Icon }: {
-  label: string; value: string; icon?: React.ElementType;
-}) {
-  return (
-    <div className="flex items-start gap-3">
-      {Icon && <Icon className="w-4 h-4 text-gray-400 mt-0.5 shrink-0" />}
-      <div className="min-w-0">
-        <p className="text-xs text-gray-400">{label}</p>
-        <p className="text-sm text-gray-900 font-medium break-words">{value}</p>
-      </div>
     </div>
   );
 }
