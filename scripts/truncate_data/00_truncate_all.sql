@@ -32,8 +32,6 @@ TRUNCATE TABLE deliveries CASCADE;
 
 -- 6. Purchase Order
 TRUNCATE TABLE purchase_order_items CASCADE;
-TRUNCATE TABLE purchase_order_approvals CASCADE;
-TRUNCATE TABLE purchase_order_logs CASCADE;
 TRUNCATE TABLE purchase_orders CASCADE;
 
 -- 7. Price List
