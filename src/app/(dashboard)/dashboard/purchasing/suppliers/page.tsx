@@ -121,7 +121,7 @@ function SuppliersListInner() {
 
   // Filters
   const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState<"all" | "active" | "inactive">("active");
+  const [statusFilter, setStatusFilter] = useState<"all" | "active" | "inactive" | "draft">("active");
   const [paymentFilter, setPaymentFilter] = useState<PaymentTerms | "all">("all");
 
   // Pagination
@@ -309,6 +309,7 @@ function SuppliersListInner() {
                 <SelectItem value="all">Semua Status</SelectItem>
                 <SelectItem value="active">Aktif</SelectItem>
                 <SelectItem value="inactive">Nonaktif</SelectItem>
+                <SelectItem value="draft">Draft</SelectItem>
               </SelectContent>
             </Select>
 
