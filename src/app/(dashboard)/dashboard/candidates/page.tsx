@@ -575,8 +575,10 @@ export default function CandidatesPage() {
               <div className="space-y-1.5">
                 <Label>Outlet / Brand</Label>
                 <Select
-                  value={addForm.watch("brand_id") || ""}
-                  onValueChange={(v) => addForm.setValue("brand_id", v === "" ? undefined : v)}
+                  value={addForm.watch("brand_id")}
+                  onValueChange={(v) => {
+                    addForm.setValue("brand_id", v);
+                  }}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Pilih Outlet" />
@@ -592,7 +594,9 @@ export default function CandidatesPage() {
                 <Label>Sumber</Label>
                 <Select
                   value={addForm.watch("source")}
-                  onValueChange={(v) => addForm.setValue("source", v)}
+                  onValueChange={(v) => {
+                    addForm.setValue("source", v);
+                  }}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Pilih Sumber" />
@@ -616,7 +620,9 @@ export default function CandidatesPage() {
               <Label>Status Awal</Label>
               <Select
                 value={addForm.watch("status")}
-                onValueChange={(v) => addForm.setValue("status", v)}
+                onValueChange={(v) => {
+                  addForm.setValue("status", v);
+                }}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Pilih Status" />
