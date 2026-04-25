@@ -6,14 +6,6 @@ import { useRouter, useParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import {
-  Table,
-  TableHeader,
-  TableBody,
-  TableRow,
-  TableHead,
-  TableCell,
-} from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Dialog,
@@ -38,6 +30,12 @@ import {
   ReceiptPercentIcon,
   ChartBarIcon,
   TruckIcon,
+  UserCircleIcon,
+  DocumentTextIcon,
+  CalendarIcon,
+  CheckCircleIcon,
+  XCircleIcon,
+  ClockIcon,
 } from "@heroicons/react/24/outline";
 import { SupplierDetail, SupplierPOSummary } from "@/types/supplier";
 import { getSupplier, deactivateSupplier, getSupplierPOHistory } from "@/lib/purchasing/supplier";
@@ -72,20 +70,9 @@ function formatDate(dateStr: string): string {
   }
 }
 
-// ─── InfoRow helper ────────────────────────────────────────────
-
-function InfoRow({ label, value, icon: Icon }: {
-  label: string; value: string; icon?: React.ElementType;
-}) {
-  return (
-    <div className="flex items-start gap-3">
-      {Icon && <Icon className="w-4 h-4 text-gray-400 mt-0.5 shrink-0" />}
-      <div className="min-w-0">
-        <p className="text-xs text-gray-400">{label}</p>
-        <p className="text-sm text-gray-900 font-medium break-words">{value}</p>
-      </div>
-    </div>
-  );
+function formatPercentage(value: number): string {
+  if (value <= 0) return "-";
+  return `${value.toFixed(1)}%`;
 }
 
 // ─── PO Status Badge ───────────────────────────────────────────
@@ -109,18 +96,56 @@ function POStatusBadge({ status }: { status: string }) {
 
 // ─── KPI Card ──────────────────────────────────────────────────
 
-function KPICard({ label, value, sub, icon: Icon, color }: {
-  label: string; value: string; sub?: string; icon: React.ElementType; color: string;
+function KPICard({ label, value, sub, icon: Icon, color, trend }: {
+  label: string;
+  value: string | number;
+  sub?: string;
+  icon: React.ElementType;
+  color: string;
+  trend?: "up" | "down" | "neutral";
 }) {
   return (
-    <div className="bg-white rounded-xl border p-4 flex items-start gap-3">
-      <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${color}`}>
-        <Icon className="w-5 h-5" />
-      </div>
-      <div>
-        <p className="text-xs text-gray-500 font-medium">{label}</p>
-        <p className="text-lg font-bold text-gray-900">{value}</p>
-        {sub && <p className="text-xs text-gray-400">{sub}</p>}
+    <Card className="border-0 shadow-sm">
+      <CardContent className="p-4">
+        <div className="flex items-start justify-between gap-3">
+          <div className="space-y-1">
+            <p className="text-xs text-gray-500 font-medium">{label}</p>
+            <p className="text-2xl font-bold text-gray-900">{value}</p>
+            {sub && <p className="text-xs text-gray-400">{sub}</p>}
+          </div>
+          <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 ${color}`}>
+            <Icon className="w-6 h-6" />
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+// ─── Info Section Component ────────────────────────────────────
+
+function InfoSection({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div className="space-y-3">
+      <h3 className="text-sm font-semibold text-gray-900 uppercase tracking-wide">{title}</h3>
+      <div className="space-y-3">{children}</div>
+    </div>
+  );
+}
+
+function InfoField({ label, value, icon: Icon }: {
+  label: string;
+  value: string | React.ReactNode;
+  icon?: React.ElementType;
+}) {
+  if (!value || value === "-" || value === "") return null;
+  
+  return (
+    <div className="flex items-start gap-3 py-2 border-b border-gray-100 last:border-0">
+      {Icon && <Icon className="w-4 h-4 text-gray-400 mt-0.5 shrink-0" />}
+      <div className="min-w-0 flex-1">
+        <p className="text-xs text-gray-500 mb-0.5">{label}</p>
+        <div className="text-sm text-gray-900 font-medium break-words">{value}</div>
       </div>
     </div>
   );
@@ -209,10 +234,10 @@ function SupplierDetailInner() {
   if (!supplier) return null;
 
   const a = supplier.analytics;
-  const date = formatDate(supplier.created_at);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pb-8">
+      {/* Breadcrumb */}
       <BreadcrumbNav items={[
         { label: "Dashboard", href: "/dashboard" },
         { label: "Purchasing", href: "/dashboard/purchasing" },
@@ -220,209 +245,297 @@ function SupplierDetailInner() {
         { label: supplier.nama_supplier },
       ]} />
 
-      <div className="flex items-start justify-between gap-4">
-        <div className="flex items-start gap-4">
-          <div className="w-14 h-14 rounded-xl bg-blue-50 flex items-center justify-center shrink-0">
-            <BuildingOfficeIcon className="w-7 h-7 text-gray-900" />
-          </div>
-          <div>
-            <div className="flex items-center gap-3 flex-wrap">
-              <h1 className="text-2xl font-bold text-gray-900">{supplier.nama_supplier}</h1>
-              <Badge className={supplier.is_active ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-500"}>
-                {supplier.is_active ? "Aktif" : "Nonaktif"}
-              </Badge>
+      {/* Header */}
+      <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-2xl p-6 border border-blue-100">
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex items-start gap-4">
+            <div className="w-16 h-16 rounded-2xl bg-white shadow-sm flex items-center justify-center shrink-0 border border-gray-200">
+              <BuildingOfficeIcon className="w-8 h-8 text-blue-600" />
             </div>
-            <p className="text-sm text-gray-500 mt-1">
-              {supplier.kode} &bull; {supplier.kota ?? "—"} &bull; Terdaftar {date}
-            </p>
+            <div>
+              <div className="flex items-center gap-3 flex-wrap">
+                <h1 className="text-2xl font-bold text-gray-900">{supplier.nama_supplier}</h1>
+                <Badge className={supplier.is_active ? "bg-green-100 text-green-700 border-green-200" : "bg-gray-100 text-gray-500 border-gray-200"}>
+                  {supplier.is_active ? "✓ Aktif" : "✕ Nonaktif"}
+                </Badge>
+              </div>
+              <p className="text-sm text-gray-600 mt-1.5">
+                {supplier.kode && <span className="font-mono bg-white px-2 py-0.5 rounded border">{supplier.kode}</span>}
+                {supplier.kota && <span className="mx-2">•</span>}
+                {supplier.kota && <span>{supplier.kota}</span>}
+                {supplier.created_at && <span className="mx-2">•</span>}
+                {supplier.created_at && <span>Terdaftar {formatDate(supplier.created_at)}</span>}
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <Link href="/dashboard/purchasing/suppliers">
+              <Button variant="white" size="sm" className="shadow-sm">
+                <ArrowLeftIcon className="w-4 h-4 mr-1" />Kembali
+              </Button>
+            </Link>
+            {isAdmin && supplier.is_active && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setDeactivateDialog(true)}
+                className="text-red-600 border-red-200 hover:bg-red-50"
+              >
+                <PowerIcon className="w-4 h-4 mr-1" />Nonaktifkan
+              </Button>
+            )}
+            {isAdmin && (
+              <Link href={`/dashboard/purchasing/suppliers/${supplier.id}/edit`}>
+                <Button size="sm" className="bg-blue-600 hover:bg-blue-700">
+                  <PencilSquareIcon className="w-4 h-4 mr-1" />Edit
+                </Button>
+              </Link>
+            )}
           </div>
         </div>
-        <div className="flex items-center gap-2 shrink-0">
-          <Link href="/dashboard/purchasing/suppliers">
-            <Button variant="outline" size="sm"><ArrowLeftIcon className="w-4 h-4 mr-1" />Daftar</Button>
-          </Link>
-          {isAdmin && supplier.is_active && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setDeactivateDialog(true)}
-              className="text-orange-600 border-orange-200 hover:bg-orange-50"
-            >
-              <PowerIcon className="w-4 h-4 mr-1" />Nonaktifkan
-            </Button>
+      </div>
+
+      {/* KPI Cards - Only show if has data */}
+      {(a.po_aktif_count > 0 || a.jumlah_po_12_bulan > 0 || a.on_time_delivery_rate > 0 || supplier.payment_terms) && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {a.po_aktif_count > 0 && (
+            <KPICard
+              label="PO Aktif"
+              value={a.po_aktif_count}
+              sub={a.po_aktif_nilai > 0 ? formatCurrency(a.po_aktif_nilai, supplier.currency) : undefined}
+              icon={ReceiptPercentIcon}
+              color="bg-blue-50 text-blue-600"
+            />
           )}
-          {isAdmin && (
-            <Link href={`/dashboard/purchasing/suppliers/${supplier.id}/edit`}>
-              <Button size="sm"><PencilSquareIcon className="w-4 h-4 mr-1" />Edit</Button>
-            </Link>
+          {a.jumlah_po_12_bulan > 0 && (
+            <KPICard
+              label="Transaksi (12B)"
+              value={a.jumlah_po_12_bulan}
+              sub={a.total_transaksi_12_bulan > 0 ? formatCurrency(a.total_transaksi_12_bulan, supplier.currency) : undefined}
+              icon={ChartBarIcon}
+              color="bg-purple-50 text-purple-600"
+            />
+          )}
+          {a.on_time_delivery_rate > 0 && (
+            <KPICard
+              label="On-Time Delivery"
+              value={formatPercentage(a.on_time_delivery_rate)}
+              sub="12 bulan terakhir"
+              icon={TruckIcon}
+              color="bg-green-50 text-green-600"
+            />
+          )}
+          {supplier.payment_terms && (
+            <KPICard
+              label="Payment Terms"
+              value={supplier.payment_terms.replace("TOP", "TOP ")}
+              sub={supplier.currency}
+              icon={BanknotesIcon}
+              color="bg-amber-50 text-amber-600"
+            />
           )}
         </div>
-      </div>
+      )}
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <KPICard
-          label="PO Aktif"
-          value={String(a.po_aktif_count)}
-          sub={a.po_aktif_nilai > 0 ? formatCurrency(a.po_aktif_nilai, supplier.currency) : "—"}
-          icon={ReceiptPercentIcon}
-          color="bg-gray-50 text-gray-700"
-        />
-        <KPICard
-          label="Transaksi 12 Bulan"
-          value={a.jumlah_po_12_bulan > 0 ? `${String(a.jumlah_po_12_bulan)} PO` : "—"}
-          sub={a.total_transaksi_12_bulan > 0 ? formatCurrency(a.total_transaksi_12_bulan, supplier.currency) : "Tidak ada data"}
-          icon={ChartBarIcon}
-          color="bg-gray-50 text-gray-700"
-        />
-        <KPICard
-          label="On-Time Delivery"
-          value={a.on_time_delivery_rate > 0 ? `${a.on_time_delivery_rate}%` : "—"}
-          sub={a.on_time_delivery_rate > 0 ? "12 bulan terakhir" : "Tidak ada data"}
-          icon={TruckIcon}
-          color="bg-gray-50 text-gray-700"
-        />
-        <KPICard
-          label="Payment Terms"
-          value={supplier.payment_terms}
-          sub={supplier.currency}
-          icon={BanknotesIcon}
-          color="bg-gray-50 text-gray-700"
-        />
-      </div>
-
-      <Tabs defaultValue="info" className="w-full">
-        <TabsList className="grid grid-cols-2 md:grid-cols-4 w-full">
-          <TabsTrigger value="info" className="text-xs md:text-sm">Informasi</TabsTrigger>
-          <TabsTrigger value="materials" className="text-xs md:text-sm">Bahan Dibeli</TabsTrigger>
-          <TabsTrigger value="po" className="text-xs md:text-sm">Riwayat PO</TabsTrigger>
-          <TabsTrigger value="prices" className="text-xs md:text-sm">Price History</TabsTrigger>
+      {/* Tabs */}
+      <Tabs defaultValue="overview" className="w-full">
+        <TabsList className="grid grid-cols-2 md:grid-cols-4 w-full bg-gray-100">
+          <TabsTrigger value="overview" className="text-xs md:text-sm data-[state=active]:bg-white">Overview</TabsTrigger>
+          <TabsTrigger value="contact" className="text-xs md:text-sm data-[state=active]:bg-white">Kontak</TabsTrigger>
+          <TabsTrigger value="transactions" className="text-xs md:text-sm data-[state=active]:bg-white">Transaksi</TabsTrigger>
+          <TabsTrigger value="products" className="text-xs md:text-sm data-[state=active]:bg-white">Produk</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="info" className="mt-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Card>
-              <CardHeader><CardTitle className="text-base">Detail Supplier</CardTitle></CardHeader>
-              <CardContent className="space-y-3">
-                <InfoRow label="Kode" value={supplier.kode} />
-                <InfoRow label="Nama" value={supplier.nama_supplier} />
-                <InfoRow label="Kota" value={supplier.kota} />
-                <InfoRow label="NPWP" value={supplier.npwp ?? "—"} />
-                <InfoRow label="Payment Terms" value={supplier.payment_terms} />
-                <InfoRow label="Mata Uang" value={supplier.currency} />
-                <InfoRow label="Kategori" value={supplier.kategori ?? "—"} />
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader><CardTitle className="text-base">Informasi PIC</CardTitle></CardHeader>
-              <CardContent className="space-y-3">
-                <InfoRow icon={MapPinIcon} label="Nama PIC" value={supplier.pic_name ?? "—"} />
-                <InfoRow icon={PhoneIcon} label="Telepon" value={supplier.pic_phone ?? "—"} />
-                <InfoRow icon={EnvelopeIcon} label="Email" value={supplier.email ?? "—"} />
-              </CardContent>
-            </Card>
-
-            {supplier.bank_nama && (
-              <Card>
-                <CardHeader><CardTitle className="text-base">Informasi Bank</CardTitle></CardHeader>
-                <CardContent className="space-y-3">
-                  <InfoRow icon={BanknotesIcon} label="Bank" value={supplier.bank_nama} />
-                  <InfoRow label="No. Rekening" value={supplier.bank_rekening ?? "—"} />
-                  <InfoRow label="Atas Nama" value={supplier.bank_atas_nama ?? "—"} />
-                </CardContent>
-              </Card>
-            )}
-
-            <Card>
-              <CardHeader><CardTitle className="text-base">Alamat</CardTitle></CardHeader>
+        {/* Overview Tab */}
+        <TabsContent value="overview" className="mt-6 space-y-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Company Info */}
+            <Card className="border-0 shadow-sm">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <BuildingOfficeIcon className="w-5 h-5 text-blue-600" />
+                  Informasi Perusahaan
+                </CardTitle>
+              </CardHeader>
               <CardContent>
-                <p className="text-sm text-gray-700 whitespace-pre-wrap">
-                  {supplier.alamat ?? "—"}
-                </p>
+                <InfoSection title="Data Legal">
+                  <InfoField label="Nama Supplier" value={supplier.nama_supplier} />
+                  <InfoField label="Kode Supplier" value={supplier.kode} />
+                  <InfoField label="Kategori" value={supplier.kategori} />
+                  <InfoField label="NPWP" value={supplier.npwp} />
+                  <InfoField label="Mata Uang" value={supplier.currency} />
+                </InfoSection>
+                
+                <div className="pt-4 mt-4 border-t border-gray-100">
+                  <InfoSection title="Alamat">
+                    {supplier.alamat && (
+                      <div className="flex items-start gap-3 py-2">
+                        <MapPinIcon className="w-4 h-4 text-gray-400 mt-0.5 shrink-0" />
+                        <div className="text-sm text-gray-900 whitespace-pre-wrap">{supplier.alamat}</div>
+                      </div>
+                    )}
+                  </InfoSection>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Payment & Bank Info */}
+            <Card className="border-0 shadow-sm">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <BanknotesIcon className="w-5 h-5 text-amber-600" />
+                  Pembayaran & Bank
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <InfoSection title="Syarat Pembayaran">
+                  <InfoField label="Payment Terms" value={supplier.payment_terms?.replace("TOP", "TOP ")} />
+                </InfoSection>
+                
+                {(supplier.bank_nama || supplier.bank_rekening || supplier.bank_atas_nama) && (
+                  <div className="pt-4 mt-4 border-t border-gray-100">
+                    <InfoSection title="Rekening Bank">
+                      <InfoField label="Nama Bank" value={supplier.bank_nama} icon={BuildingOfficeIcon} />
+                      <InfoField label="Nomor Rekening" value={supplier.bank_rekening} icon={BanknotesIcon} />
+                      <InfoField label="Atas Nama" value={supplier.bank_atas_nama} icon={UserCircleIcon} />
+                    </InfoSection>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </div>
         </TabsContent>
 
-        <TabsContent value="materials">
-          <Card>
-            <CardHeader><CardTitle className="text-base">Bahan yang Sering Dibeli dari Supplier Ini</CardTitle></CardHeader>
+        {/* Contact Tab */}
+        <TabsContent value="contact" className="mt-6">
+          <Card className="border-0 shadow-sm">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2">
+                <UserCircleIcon className="w-5 h-5 text-blue-600" />
+                Informasi Kontak PIC
+              </CardTitle>
+            </CardHeader>
             <CardContent>
-              {a.bahan_sering_dibeli && a.bahan_sering_dibeli.length > 0 ? (
-                <div className="flex flex-wrap gap-2">
-                  {a.bahan_sering_dibeli.map((bahan, i) => (
-                    <Badge key={i} variant="outline" className="text-sm px-3 py-1">{bahan}</Badge>
-                  ))}
+              {(supplier.pic_name || supplier.pic_phone || supplier.email) ? (
+                <div className="space-y-4">
+                  <InfoField label="Nama PIC" value={supplier.pic_name} icon={UserCircleIcon} />
+                  <InfoField label="Jabatan" value={supplier.pic_jabatan} icon={UserCircleIcon} />
+                  <InfoField label="Email" value={supplier.email} icon={EnvelopeIcon} />
+                  <InfoField label="Telepon" value={supplier.pic_phone} icon={PhoneIcon} />
                 </div>
               ) : (
-                <p className="text-sm text-gray-400 py-8 text-center">Belum ada data bahan untuk supplier ini.</p>
+                <div className="text-center py-12 text-gray-400">
+                  <UserCircleIcon className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                  <p>Belum ada informasi kontak PIC</p>
+                </div>
               )}
             </CardContent>
           </Card>
         </TabsContent>
 
-        <TabsContent value="po">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Riwayat Purchase Order</CardTitle>
+        {/* Transactions Tab */}
+        <TabsContent value="transactions" className="mt-6">
+          <Card className="border-0 shadow-sm">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2">
+                <ReceiptPercentIcon className="w-5 h-5 text-purple-600" />
+                Riwayat Purchase Order
+              </CardTitle>
             </CardHeader>
             <CardContent className="p-0">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>No. PO</TableHead>
-                    <TableHead>Tanggal</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Jumlah Item</TableHead>
-                    <TableHead className="text-right">Total</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {poLoading ? (
-                    <TableRow>
-                      <TableCell colSpan={5} className="text-center py-8 text-gray-400">
-                        Memuat...
-                      </TableCell>
-                    </TableRow>
-                  ) : poHistory.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={5} className="text-center py-8 text-gray-400">
-                        Belum ada Purchase Order
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    poHistory.map((po) => (
-                      <TableRow key={po.id}>
-                        <TableCell className="font-mono text-sm">{po.po_number}</TableCell>
-                        <TableCell className="text-sm">{formatDate(po.tanggal)}</TableCell>
-                        <TableCell><POStatusBadge status={po.status} /></TableCell>
-                        <TableCell className="text-right text-sm">{po.jumlah_item}</TableCell>
-                        <TableCell className="text-right font-medium">
-                          {formatCurrency(po.total, po.currency)}
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
+              {poLoading ? (
+                <div className="flex items-center justify-center py-12 text-gray-400">
+                  <svg className="w-5 h-5 animate-spin mr-2" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                  </svg>
+                  Memuat data...
+                </div>
+              ) : poHistory.length === 0 ? (
+                <div className="text-center py-12 text-gray-400">
+                  <ReceiptPercentIcon className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                  <p>Belum ada purchase order</p>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead className="bg-gray-50 border-b border-gray-200">
+                      <tr>
+                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">No. PO</th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Tanggal</th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Status</th>
+                        <th className="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase">Items</th>
+                        <th className="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase">Total</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                      {poHistory.map((po) => (
+                        <tr key={po.id} className="hover:bg-gray-50 transition-colors">
+                          <td className="px-4 py-3 font-mono text-sm font-medium text-blue-600">{po.po_number}</td>
+                          <td className="px-4 py-3 text-sm text-gray-600">{formatDate(po.tanggal)}</td>
+                          <td className="px-4 py-3"><POStatusBadge status={po.status} /></td>
+                          <td className="px-4 py-3 text-right text-sm text-gray-600">{po.jumlah_item}</td>
+                          <td className="px-4 py-3 text-right font-semibold text-gray-900">
+                            {formatCurrency(po.total, po.currency)}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
 
-        <TabsContent value="prices" className="mt-6">
-          <SupplierPriceHistoryPanel 
-            supplierId={supplier.id} 
-            supplierName={supplier.nama_supplier}
-          />
+        {/* Products Tab */}
+        <TabsContent value="products" className="mt-6">
+          <Card className="border-0 shadow-sm">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2">
+                <DocumentTextIcon className="w-5 h-5 text-green-600" />
+                Bahan yang Sering Dibeli
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {a.bahan_sering_dibeli && a.bahan_sering_dibeli.length > 0 ? (
+                <div className="flex flex-wrap gap-2">
+                  {a.bahan_sering_dibeli.map((bahan, i) => (
+                    <Badge key={i} variant="secondary" className="text-sm px-3 py-1.5 bg-green-50 text-green-700 hover:bg-green-100">
+                      {bahan}
+                    </Badge>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-12 text-gray-400">
+                  <DocumentTextIcon className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                  <p>Belum ada data bahan untuk supplier ini</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Price History Panel */}
+          <div className="mt-6">
+            <SupplierPriceHistoryPanel 
+              supplierId={supplier.id} 
+              supplierName={supplier.nama_supplier}
+            />
+          </div>
         </TabsContent>
       </Tabs>
 
+      {/* Deactivate Dialog */}
       <Dialog open={deactivateDialog} onOpenChange={setDeactivateDialog}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Nonaktifkan Supplier</DialogTitle>
+            <DialogTitle className="flex items-center gap-2">
+              <PowerIcon className="w-5 h-5 text-red-600" />
+              Nonaktifkan Supplier
+            </DialogTitle>
             <DialogDescription>
-              Apakah Anda yakin ingin menonaktifkan supplier &quot;{supplier.nama_supplier}&quot;? Supplier tidak akan muncul di daftar aktif tapi data tidak dihapus.
+              Apakah Anda yakin ingin menonaktifkan supplier &quot;{supplier.nama_supplier}&quot;? 
+              Supplier tidak akan muncul di daftar aktif tetapi data tidak dihapus.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="gap-2 sm:gap-0">
