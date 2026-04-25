@@ -25,7 +25,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { useForm } from "react-hook-form";
+import { useForm, Controller } from "react-hook-form";
 import { Loader2, Plus, Download, Search, User, Trash2, Upload, FileText } from "lucide-react";
 import type { Candidate, CandidateStatus, Brand } from "@/types";
 
@@ -574,64 +574,67 @@ export default function CandidatesPage() {
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
                 <Label>Outlet / Brand</Label>
-                <Select
-                  value={addForm.watch("brand_id")}
-                  onValueChange={(v) => {
-                    addForm.setValue("brand_id", v);
-                  }}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Pilih Outlet" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {brands.map((b) => (
-                      <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Controller
+                  name="brand_id"
+                  control={addForm.control}
+                  render={({ field }) => (
+                    <Select value={field.value} onValueChange={field.onChange}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Pilih Outlet" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {brands.map((b) => (
+                          <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
               </div>
               <div className="space-y-1.5">
                 <Label>Sumber</Label>
-                <Select
-                  value={addForm.watch("source")}
-                  onValueChange={(v) => {
-                    addForm.setValue("source", v);
-                  }}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Pilih Sumber" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="walk_in">Walk-in</SelectItem>
-                    <SelectItem value="referral">Rekomendasi</SelectItem>
-                    <SelectItem value="internal_referral">Referral Internal</SelectItem>
-                    <SelectItem value="jobfair">Job Fair</SelectItem>
-                    <SelectItem value="headhunter">Headhunter</SelectItem>
-                    <SelectItem value="portal">Portal</SelectItem>
-                    <SelectItem value="instagram">Instagram</SelectItem>
-                    <SelectItem value="jobstreet">JobStreet</SelectItem>
-                    <SelectItem value="other">Lainnya</SelectItem>
-                  </SelectContent>
-                </Select>
+                <Controller
+                  name="source"
+                  control={addForm.control}
+                  render={({ field }) => (
+                    <Select value={field.value} onValueChange={field.onChange}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Pilih Sumber" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="walk_in">Walk-in</SelectItem>
+                        <SelectItem value="referral">Rekomendasi</SelectItem>
+                        <SelectItem value="internal_referral">Referral Internal</SelectItem>
+                        <SelectItem value="jobfair">Job Fair</SelectItem>
+                        <SelectItem value="headhunter">Headhunter</SelectItem>
+                        <SelectItem value="portal">Portal</SelectItem>
+                        <SelectItem value="instagram">Instagram</SelectItem>
+                        <SelectItem value="jobstreet">JobStreet</SelectItem>
+                        <SelectItem value="other">Lainnya</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
               </div>
             </div>
 
             <div className="space-y-1.5">
               <Label>Status Awal</Label>
-              <Select
-                value={addForm.watch("status")}
-                onValueChange={(v) => {
-                  addForm.setValue("status", v);
-                }}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Pilih Status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="new">Baru (New)</SelectItem>
-                  <SelectItem value="screening">Screening</SelectItem>
-                </SelectContent>
-              </Select>
+              <Controller
+                name="status"
+                control={addForm.control}
+                render={({ field }) => (
+                  <Select value={field.value} onValueChange={field.onChange}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Pilih Status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="new">Baru (New)</SelectItem>
+                      <SelectItem value="screening">Screening</SelectItem>
+                    </SelectContent>
+                  </Select>
+                )}
+              />
             </div>
 
             <div className="space-y-1.5">
