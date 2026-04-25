@@ -18,6 +18,7 @@ import {
   CURRENCY_OPTIONS,
   KOTA_OPTIONS,
   formatNPWP,
+  getPaymentTermsLabel,
 } from "@/types/supplier";
 import { getSupplier, updateSupplier } from "@/lib/purchasing/supplier";
 import { toast } from "sonner";
@@ -30,7 +31,7 @@ export default function EditSupplierPage() {
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const [formData, setFormData] = useState<SupplierFormData>({
+  const [formData, setFormData] = useState({
     nama_supplier: "",
     kode_supplier: "",
     kota: "",
@@ -40,8 +41,8 @@ export default function EditSupplierPage() {
     pic_name: "",
     pic_phone: "",
     pic_email: "",
-    payment_terms: "NET 30",
-    currency: "IDR",
+    payment_terms: "TOP30" as PaymentTerms,
+    currency: "IDR" as Currency,
     npwp: "",
     catatan: "",
   });
@@ -63,7 +64,7 @@ export default function EditSupplierPage() {
         pic_name: data.pic_name || "",
         pic_phone: data.pic_phone || "",
         pic_email: data.pic_email || "",
-        payment_terms: (data.payment_terms as PaymentTerms) || "NET 30",
+        payment_terms: (data.payment_terms as PaymentTerms) || "TOP30",
         currency: (data.currency as Currency) || "IDR",
         npwp: data.npwp || "",
         catatan: data.catatan || "",

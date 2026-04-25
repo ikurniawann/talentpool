@@ -37,7 +37,7 @@ export default function NewSupplierPage() {
     pic_name: "",
     pic_phone: "",
     pic_email: "",
-    payment_terms: "NET30" as PaymentTerms,
+    payment_terms: "TOP30" as PaymentTerms,
     currency: "IDR" as Currency,
     npwp: "",
     catatan: "",

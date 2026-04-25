@@ -52,6 +52,7 @@ import {
   SupplierListParams,
   PaymentTerms,
   PAYMENT_TERMS_OPTIONS,
+  getPaymentTermsLabel,
 } from "@/types/supplier";
 import {
   listSuppliers,
@@ -437,7 +438,7 @@ function SuppliersListInner() {
                         )}
                       </TableCell>
                       <TableCell>
-                        <Badge variant="outline">{supplier.payment_terms}</Badge>
+                        <Badge variant="outline">{getPaymentTermsLabel(supplier.payment_terms)}</Badge>
                       </TableCell>
                       <TableCell className="text-center">
                         <StatusBadge isActive={supplier.is_active} />

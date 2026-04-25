@@ -17,8 +17,8 @@ const createSupplierSchema = z.object({
   kota: z.string().max(100).optional(),
   npwp: z.string().max(50).optional(),
   payment_terms: z
-    .enum(["COD", "NET7", "NET14", "NET30", "NET45", "NET60"])
-    .default("NET30"),
+    .enum(["CBD", "TOP7", "TOP14", "TOP30", "TOP45", "TOP60"])
+    .default("TOP30"),
   currency: z.enum(["IDR", "USD", "EUR"]).default("IDR"),
   bank_nama: z.string().optional(),
   bank_rekening: z.string().optional(),
@@ -29,7 +29,7 @@ const createSupplierSchema = z.object({
 const queryParamsSchema = z.object({
   search: z.string().optional(),
   is_active: z.coerce.boolean().default(true),
-  payment_terms: z.enum(["COD", "NET7", "NET14", "NET30", "NET45", "NET60"]).optional(),
+  payment_terms: z.enum(["CBD", "TOP7", "TOP14", "TOP30", "TOP45", "TOP60"]).optional(),
   page: z.coerce.number().min(1).default(1),
   limit: z.coerce.number().min(1).max(100).default(20),
   sort_by: z

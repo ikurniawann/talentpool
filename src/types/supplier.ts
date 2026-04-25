@@ -2,7 +2,7 @@
 // Shared Types — Purchasing Supplier
 // ============================================================
 
-export type PaymentTerms = "COD" | "NET7" | "NET14" | "NET30" | "NET45" | "NET60";
+export type PaymentTerms = "CBD" | "TOP7" | "TOP14" | "TOP30" | "TOP45" | "TOP60";
 export type Currency = "IDR" | "USD" | "EUR";
 export type SupplierStatus = "active" | "inactive" | "probation" | "blocked";
 export type POStatus =
@@ -159,12 +159,12 @@ export const KOTA_OPTIONS = [
 ] as const;
 
 export const PAYMENT_TERMS_OPTIONS: PaymentTerms[] = [
-  "COD",
-  "NET7",
-  "NET14",
-  "NET30",
-  "NET45",
-  "NET60",
+  "CBD",
+  "TOP7",
+  "TOP14",
+  "TOP30",
+  "TOP45",
+  "TOP60",
 ];
 
 export const CURRENCY_OPTIONS: Currency[] = ["IDR", "USD", "EUR"];
@@ -186,4 +186,23 @@ export function formatNPWP(value: string): string {
   if (digits.length > 9) formatted += "-" + digits.slice(9, 12);
   if (digits.length > 12) formatted += "." + digits.slice(12, 15);
   return formatted;
+}
+
+// ─── Display helpers ───────────────────────────────────────────
+
+/**
+ * Get display label for payment terms
+ * CBD = Cash Before Delivery
+ * TOP = Term of Payment
+ */
+export function getPaymentTermsLabel(value: PaymentTerms): string {
+  const labels: Record<PaymentTerms, string> = {
+    "CBD": "CBD",
+    "TOP7": "TOP 7",
+    "TOP14": "TOP 14",
+    "TOP30": "TOP 30",
+    "TOP45": "TOP 45",
+    "TOP60": "TOP 60",
+  };
+  return labels[value] || value;
 }
