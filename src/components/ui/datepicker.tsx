@@ -43,7 +43,9 @@ export function DatePicker({
       const jakartaTime = new Date(today.toLocaleString('en-US', { timeZone: 'Asia/Jakarta' }));
       
       fpInstance.current = flatpickr(inputRef.current, {
-        dateFormat: "d M Y",
+        dateFormat: "Y-m-d", // ISO format for easier parsing
+        altFormat: "d M Y", // Display format
+        altInput: true, // Use alternate input for display
         locale: Indonesian,
         disableMobile: true,
         minDate: minDate,
@@ -123,13 +125,7 @@ export function DatePicker({
       >
         <CalendarIcon className="mr-2 h-4 w-4" />
         {displayDate ? (
-          <span>
-            {new Intl.DateTimeFormat("id-ID", {
-              day: "numeric",
-              month: "short",
-              year: "numeric",
-            }).format(new Date(displayDate))}
-          </span>
+          <span>{displayDate}</span>
         ) : (
           <span>{placeholder}</span>
         )}
