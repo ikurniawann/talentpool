@@ -18,6 +18,7 @@ import {
   CURRENCY_OPTIONS,
   KOTA_OPTIONS,
   formatNPWP,
+  validateNPWP,
 } from "@/types/supplier";
 import { createSupplier } from "@/lib/purchasing/supplier";
 import { toast } from "sonner";
@@ -26,7 +27,7 @@ export default function NewSupplierPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
 
-  const [formData, setFormData] = useState<SupplierFormData>({
+  const [formData, setFormData] = useState({
     nama_supplier: "",
     kode_supplier: "",
     kota: "",
@@ -36,8 +37,8 @@ export default function NewSupplierPage() {
     pic_name: "",
     pic_phone: "",
     pic_email: "",
-    payment_terms: "NET 30",
-    currency: "IDR",
+    payment_terms: "NET30" as PaymentTerms,
+    currency: "IDR" as Currency,
     npwp: "",
     catatan: "",
   });
@@ -45,14 +46,39 @@ export default function NewSupplierPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    // Validasi field wajib
     if (!formData.nama_supplier || !formData.kota) {
       toast.error("Nama supplier dan kota wajib diisi");
       return;
     }
 
+    // Validasi NPWP jika diisi
+    if (formData.npwp && !validateNPWP(formData.npwp)) {
+      toast.error("Format NPWP tidak valid. Gunakan format: XX.XXX.XXX.X-XXX.XXX");
+      return;
+    }
+
+    // Mapping field dari form ke API schema
+    const payload = {
+      kode_supplier: formData.kode_supplier || "",
+      nama_supplier: formData.nama_supplier,
+      pic_name: formData.pic_name || undefined,
+      pic_phone: formData.pic_phone || undefined,
+      email: formData.email || undefined,
+      alamat: formData.alamat || undefined,
+      kota: formData.kota,
+      npwp: formData.npwp || undefined,
+      payment_terms: formData.payment_terms as PaymentTerms,
+      currency: formData.currency as Currency,
+      bank_nama: undefined,
+      bank_rekening: undefined,
+      bank_atas_nama: undefined,
+      kategori: undefined,
+    };
+
     setLoading(true);
     try {
-      await createSupplier(formData);
+      await createSupplier(payload);
       toast.success("Supplier berhasil ditambahkan");
       router.push("/dashboard/purchasing/suppliers");
     } catch (error: any) {
