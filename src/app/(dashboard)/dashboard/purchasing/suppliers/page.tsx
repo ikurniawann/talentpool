@@ -356,38 +356,38 @@ function SuppliersListInner() {
             <Table>
               <TableHeader>
                 <TableRow className="hover:bg-transparent">
-                  <TableHead className="w-12">No</TableHead>
-                  <TableHead>
+                  <TableHead className="w-12 text-gray-900">No</TableHead>
+                  <TableHead className="text-gray-900">
                     <button
                       onClick={() => toggleSort("kode_supplier")}
-                      className="flex items-center gap-1 hover:text-primary"
+                      className="flex items-center gap-1 hover:text-primary text-gray-900 bg-transparent"
                     >
                       Kode
                       <ArrowsUpDownIcon className="w-3 h-3" />
                     </button>
                   </TableHead>
-                  <TableHead>
+                  <TableHead className="text-gray-900">
                     <button
                       onClick={() => toggleSort("nama_supplier")}
-                      className="flex items-center gap-1 hover:text-primary"
+                      className="flex items-center gap-1 hover:text-primary text-gray-900 bg-transparent"
                     >
                       Nama Supplier
                       <ArrowsUpDownIcon className="w-3 h-3" />
                     </button>
                   </TableHead>
-                  <TableHead>
+                  <TableHead className="text-gray-900">
                     <button
                       onClick={() => toggleSort("kota")}
-                      className="flex items-center gap-1 hover:text-primary"
+                      className="flex items-center gap-1 hover:text-primary text-gray-900 bg-transparent"
                     >
                       Kota
                       <ArrowsUpDownIcon className="w-3 h-3" />
                     </button>
                   </TableHead>
-                  <TableHead>PIC + Telepon</TableHead>
-                  <TableHead>Payment Terms</TableHead>
-                  <TableHead className="text-center">Status</TableHead>
-                  {isAdmin && <TableHead className="text-right">Aksi</TableHead>}
+                  <TableHead className="text-gray-900">PIC + Telepon</TableHead>
+                  <TableHead className="text-gray-900">Payment Terms</TableHead>
+                  <TableHead className="text-gray-900 text-center">Status</TableHead>
+                  {isAdmin && <TableHead className="text-gray-900 text-right">Aksi</TableHead>}
                 </TableRow>
               </TableHeader>
               <TableBody>
