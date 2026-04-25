@@ -506,7 +506,7 @@ export default function CandidatesPage() {
 
       {/* Add Candidate Dialog */}
       <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
-        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="w-[90vw] max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-lg font-semibold">Tambah Kandidat Manual</DialogTitle>
             <DialogDescription className="text-sm">
