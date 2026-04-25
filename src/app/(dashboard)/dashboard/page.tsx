@@ -225,7 +225,9 @@ export default function DashboardPage() {
       <div className="flex flex-col sm:flex-row gap-3">
         <Select value={brandFilter} onValueChange={(v) => setBrandFilter(v ?? "all")}>
           <SelectTrigger className="w-full sm:w-48">
-            <SelectValue placeholder="Semua Outlet" />
+            <SelectValue placeholder="Semua Outlet">
+              {brandFilter !== "all" && brands.find(b => b.id === brandFilter)?.name}
+            </SelectValue>
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Semua Outlet</SelectItem>
