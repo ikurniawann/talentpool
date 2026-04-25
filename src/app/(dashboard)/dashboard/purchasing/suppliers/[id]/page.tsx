@@ -105,13 +105,13 @@ function KPICard({ label, value, sub, icon: Icon, color, trend }: {
   trend?: "up" | "down" | "neutral";
 }) {
   return (
-    <Card className="border-0 shadow-sm">
+    <Card className="border-0 shadow-sm bg-white">
       <CardContent className="p-4">
         <div className="flex items-start justify-between gap-3">
-          <div className="space-y-1">
-            <p className="text-xs text-gray-500 font-medium">{label}</p>
-            <p className="text-2xl font-bold text-gray-900">{value}</p>
-            {sub && <p className="text-xs text-gray-400">{sub}</p>}
+          <div className="space-y-1 min-w-0">
+            <p className="text-xs text-gray-500 font-medium truncate">{label}</p>
+            <p className="text-2xl font-bold text-gray-900 truncate">{value}</p>
+            {sub && <p className="text-xs text-gray-400 truncate">{sub}</p>}
           </div>
           <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 ${color}`}>
             <Icon className="w-6 h-6" />
@@ -301,7 +301,7 @@ function SupplierDetailInner() {
           {a.po_aktif_count > 0 && (
             <KPICard
               label="PO Aktif"
-              value={a.po_aktif_count}
+              value={a.po_aktif_count.toString()}
               sub={a.po_aktif_nilai > 0 ? formatCurrency(a.po_aktif_nilai, supplier.currency) : undefined}
               icon={ReceiptPercentIcon}
               color="bg-blue-50 text-blue-600"
@@ -310,7 +310,7 @@ function SupplierDetailInner() {
           {a.jumlah_po_12_bulan > 0 && (
             <KPICard
               label="Transaksi (12B)"
-              value={a.jumlah_po_12_bulan}
+              value={a.jumlah_po_12_bulan.toString()}
               sub={a.total_transaksi_12_bulan > 0 ? formatCurrency(a.total_transaksi_12_bulan, supplier.currency) : undefined}
               icon={ChartBarIcon}
               color="bg-purple-50 text-purple-600"
@@ -328,7 +328,7 @@ function SupplierDetailInner() {
           {supplier.payment_terms && (
             <KPICard
               label="Payment Terms"
-              value={supplier.payment_terms.replace("TOP", "TOP ")}
+              value={supplier.payment_terms.replace("TOP", "TOP ").replace("CBD", "CBD")}
               sub={supplier.currency}
               icon={BanknotesIcon}
               color="bg-amber-50 text-amber-600"
@@ -339,25 +339,25 @@ function SupplierDetailInner() {
 
       {/* Tabs */}
       <Tabs defaultValue="overview" className="w-full">
-        <TabsList className="grid grid-cols-2 md:grid-cols-4 w-full bg-gray-100">
-          <TabsTrigger value="overview" className="text-xs md:text-sm data-[state=active]:bg-white">Overview</TabsTrigger>
-          <TabsTrigger value="contact" className="text-xs md:text-sm data-[state=active]:bg-white">Kontak</TabsTrigger>
-          <TabsTrigger value="transactions" className="text-xs md:text-sm data-[state=active]:bg-white">Transaksi</TabsTrigger>
-          <TabsTrigger value="products" className="text-xs md:text-sm data-[state=active]:bg-white">Produk</TabsTrigger>
+        <TabsList className="grid grid-cols-2 md:grid-cols-4 w-full bg-gray-100 rounded-lg">
+          <TabsTrigger value="overview" className="text-xs md:text-sm data-[state=active]:bg-white data-[state=active]:shadow-sm">Overview</TabsTrigger>
+          <TabsTrigger value="contact" className="text-xs md:text-sm data-[state=active]:bg-white data-[state=active]:shadow-sm">Kontak</TabsTrigger>
+          <TabsTrigger value="transactions" className="text-xs md:text-sm data-[state=active]:bg-white data-[state=active]:shadow-sm">Transaksi</TabsTrigger>
+          <TabsTrigger value="products" className="text-xs md:text-sm data-[state=active]:bg-white data-[state=active]:shadow-sm">Produk</TabsTrigger>
         </TabsList>
 
         {/* Overview Tab */}
         <TabsContent value="overview" className="mt-6 space-y-6">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Company Info */}
-            <Card className="border-0 shadow-sm">
-              <CardHeader className="pb-3">
+            <Card className="border-0 shadow-sm bg-white">
+              <CardHeader className="pb-3 px-6 pt-6">
                 <CardTitle className="text-base flex items-center gap-2">
                   <BuildingOfficeIcon className="w-5 h-5 text-blue-600" />
                   Informasi Perusahaan
                 </CardTitle>
               </CardHeader>
-              <CardContent>
+              <CardContent className="px-6 pb-6">
                 <InfoSection title="Data Legal">
                   <InfoField label="Nama Supplier" value={supplier.nama_supplier} />
                   <InfoField label="Kode Supplier" value={supplier.kode} />
@@ -366,30 +366,30 @@ function SupplierDetailInner() {
                   <InfoField label="Mata Uang" value={supplier.currency} />
                 </InfoSection>
                 
-                <div className="pt-4 mt-4 border-t border-gray-100">
-                  <InfoSection title="Alamat">
-                    {supplier.alamat && (
+                {supplier.alamat && (
+                  <div className="pt-4 mt-4 border-t border-gray-100">
+                    <InfoSection title="Alamat">
                       <div className="flex items-start gap-3 py-2">
                         <MapPinIcon className="w-4 h-4 text-gray-400 mt-0.5 shrink-0" />
                         <div className="text-sm text-gray-900 whitespace-pre-wrap">{supplier.alamat}</div>
                       </div>
-                    )}
-                  </InfoSection>
-                </div>
+                    </InfoSection>
+                  </div>
+                )}
               </CardContent>
             </Card>
 
             {/* Payment & Bank Info */}
-            <Card className="border-0 shadow-sm">
-              <CardHeader className="pb-3">
+            <Card className="border-0 shadow-sm bg-white">
+              <CardHeader className="pb-3 px-6 pt-6">
                 <CardTitle className="text-base flex items-center gap-2">
                   <BanknotesIcon className="w-5 h-5 text-amber-600" />
                   Pembayaran & Bank
                 </CardTitle>
               </CardHeader>
-              <CardContent>
+              <CardContent className="px-6 pb-6">
                 <InfoSection title="Syarat Pembayaran">
-                  <InfoField label="Payment Terms" value={supplier.payment_terms?.replace("TOP", "TOP ")} />
+                  <InfoField label="Payment Terms" value={supplier.payment_terms?.replace("TOP", "TOP ").replace("CBD", "CBD")} />
                 </InfoSection>
                 
                 {(supplier.bank_nama || supplier.bank_rekening || supplier.bank_atas_nama) && (
@@ -408,16 +408,16 @@ function SupplierDetailInner() {
 
         {/* Contact Tab */}
         <TabsContent value="contact" className="mt-6">
-          <Card className="border-0 shadow-sm">
-            <CardHeader className="pb-3">
+          <Card className="border-0 shadow-sm bg-white">
+            <CardHeader className="pb-3 px-6 pt-6">
               <CardTitle className="text-base flex items-center gap-2">
                 <UserCircleIcon className="w-5 h-5 text-blue-600" />
                 Informasi Kontak PIC
               </CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="px-6 pb-6">
               {(supplier.pic_name || supplier.pic_phone || supplier.email) ? (
-                <div className="space-y-4">
+                <div className="space-y-4 max-w-2xl">
                   <InfoField label="Nama PIC" value={supplier.pic_name} icon={UserCircleIcon} />
                   <InfoField label="Jabatan" value={supplier.pic_jabatan} icon={UserCircleIcon} />
                   <InfoField label="Email" value={supplier.email} icon={EnvelopeIcon} />
@@ -435,8 +435,8 @@ function SupplierDetailInner() {
 
         {/* Transactions Tab */}
         <TabsContent value="transactions" className="mt-6">
-          <Card className="border-0 shadow-sm">
-            <CardHeader className="pb-3">
+          <Card className="border-0 shadow-sm bg-white">
+            <CardHeader className="pb-3 px-6 pt-6">
               <CardTitle className="text-base flex items-center gap-2">
                 <ReceiptPercentIcon className="w-5 h-5 text-purple-600" />
                 Riwayat Purchase Order
@@ -461,21 +461,21 @@ function SupplierDetailInner() {
                   <table className="w-full">
                     <thead className="bg-gray-50 border-b border-gray-200">
                       <tr>
-                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">No. PO</th>
-                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Tanggal</th>
-                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Status</th>
-                        <th className="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase">Items</th>
-                        <th className="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase">Total</th>
+                        <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase">No. PO</th>
+                        <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Tanggal</th>
+                        <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Status</th>
+                        <th className="px-6 py-3 text-right text-xs font-semibold text-gray-600 uppercase">Items</th>
+                        <th className="px-6 py-3 text-right text-xs font-semibold text-gray-600 uppercase">Total</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100">
                       {poHistory.map((po) => (
                         <tr key={po.id} className="hover:bg-gray-50 transition-colors">
-                          <td className="px-4 py-3 font-mono text-sm font-medium text-blue-600">{po.po_number}</td>
-                          <td className="px-4 py-3 text-sm text-gray-600">{formatDate(po.tanggal)}</td>
-                          <td className="px-4 py-3"><POStatusBadge status={po.status} /></td>
-                          <td className="px-4 py-3 text-right text-sm text-gray-600">{po.jumlah_item}</td>
-                          <td className="px-4 py-3 text-right font-semibold text-gray-900">
+                          <td className="px-6 py-4 font-mono text-sm font-medium text-blue-600">{po.po_number}</td>
+                          <td className="px-6 py-4 text-sm text-gray-600">{formatDate(po.tanggal)}</td>
+                          <td className="px-6 py-4"><POStatusBadge status={po.status} /></td>
+                          <td className="px-6 py-4 text-right text-sm text-gray-600">{po.jumlah_item}</td>
+                          <td className="px-6 py-4 text-right font-semibold text-gray-900">
                             {formatCurrency(po.total, po.currency)}
                           </td>
                         </tr>
@@ -489,19 +489,19 @@ function SupplierDetailInner() {
         </TabsContent>
 
         {/* Products Tab */}
-        <TabsContent value="products" className="mt-6">
-          <Card className="border-0 shadow-sm">
-            <CardHeader className="pb-3">
+        <TabsContent value="products" className="mt-6 space-y-6">
+          <Card className="border-0 shadow-sm bg-white">
+            <CardHeader className="pb-3 px-6 pt-6">
               <CardTitle className="text-base flex items-center gap-2">
                 <DocumentTextIcon className="w-5 h-5 text-green-600" />
                 Bahan yang Sering Dibeli
               </CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="px-6 pb-6">
               {a.bahan_sering_dibeli && a.bahan_sering_dibeli.length > 0 ? (
                 <div className="flex flex-wrap gap-2">
                   {a.bahan_sering_dibeli.map((bahan, i) => (
-                    <Badge key={i} variant="secondary" className="text-sm px-3 py-1.5 bg-green-50 text-green-700 hover:bg-green-100">
+                    <Badge key={i} variant="secondary" className="text-sm px-3 py-1.5 bg-green-50 text-green-700 hover:bg-green-100 border border-green-200">
                       {bahan}
                     </Badge>
                   ))}
@@ -516,12 +516,10 @@ function SupplierDetailInner() {
           </Card>
 
           {/* Price History Panel */}
-          <div className="mt-6">
-            <SupplierPriceHistoryPanel 
-              supplierId={supplier.id} 
-              supplierName={supplier.nama_supplier}
-            />
-          </div>
+          <SupplierPriceHistoryPanel 
+            supplierId={supplier.id} 
+            supplierName={supplier.nama_supplier}
+          />
         </TabsContent>
       </Tabs>
 
