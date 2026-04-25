@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -65,7 +65,6 @@ const STATUS_COLORS: Record<CandidateStatus, string> = {
 };
 
 export default function CandidatesPage() {
-  const router = useRouter();
   const supabase = createClient();
   const [candidates, setCandidates] = useState<Candidate[]>([]);
   const [brands, setBrands] = useState<Brand[]>([]);
@@ -399,13 +398,11 @@ export default function CandidatesPage() {
                       </TableCell>
                       <TableCell>
                         <div className="flex gap-1">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => router.push(`/dashboard/candidates/${c.id}`)}
-                          >
-                            <User className="w-4 h-4" />
-                          </Button>
+                          <Link href={`/dashboard/candidates/${c.id}`}>
+                            <Button variant="ghost" size="sm" title="Detail">
+                              <User className="w-4 h-4" />
+                            </Button>
+                          </Link>
                           <Button
                             variant="ghost"
                             size="sm"
@@ -453,15 +450,12 @@ export default function CandidatesPage() {
                     <span>{new Date(c.created_at).toLocaleDateString("id-ID")}</span>
                   </div>
                   <div className="mt-2 flex gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="flex-1 text-xs h-8"
-                      onClick={() => router.push(`/dashboard/candidates/${c.id}`)}
-                    >
-                      <User className="w-3.5 h-3.5 mr-1" />
-                      Detail
-                    </Button>
+                    <Link href={`/dashboard/candidates/${c.id}`} className="flex-1">
+                      <Button variant="outline" size="sm" className="w-full text-xs h-8">
+                        <User className="w-3.5 h-3.5 mr-1" />
+                        Detail
+                      </Button>
+                    </Link>
                     <Button
                       variant="outline"
                       size="sm"
