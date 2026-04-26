@@ -488,11 +488,11 @@ export default function CashierPage() {
 
       {/* Customization Modal */}
       <Dialog open={customizingItem !== null} onOpenChange={(open) => !open && setCustomizingItem(null)}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
+        <DialogContent className="max-w-lg max-h-[90vh] flex flex-col">
+          <DialogHeader className="flex-shrink-0">
             <DialogTitle>{customizingItem?.name}</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4 py-4">
+          <div className="space-y-4 py-4 overflow-y-auto flex-1 min-h-0">
             <div>
               <label className="block text-sm font-semibold text-gray-900 mb-2">Jumlah</label>
               <div className="flex items-center gap-3">
@@ -564,7 +564,14 @@ export default function CashierPage() {
               <div className="flex justify-between items-center mt-1"><span className="text-gray-400 text-sm">Total</span><span className="text-2xl font-bold text-white">{formatCurrency(calculateCustomPrice() * customQuantity)}</span></div>
             </div>
           </div>
-          <DialogFooter>
+          <div className="flex-shrink-0 border-t pt-4 mt-4">
+            <div className="flex gap-3">
+              <button onClick={() => setCustomizingItem(null)} className="flex-1 px-4 py-2 text-gray-700 bg-gray-100 rounded-lg font-medium hover:bg-gray-200 transition-colors">Batal</button>
+              <button onClick={addToCart} className="flex-1 px-4 py-2 text-white bg-pink-600 rounded-lg font-medium hover:bg-pink-700 transition-colors flex items-center justify-center gap-2"><Plus className="w-4 h-4" />Tambah</button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
             <button onClick={() => setCustomizingItem(null)} className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg font-medium hover:bg-gray-200 transition-colors">Batal</button>
             <button onClick={addToCart} className="px-4 py-2 text-white bg-pink-600 rounded-lg font-medium hover:bg-pink-700 transition-colors flex items-center gap-2"><Plus className="w-4 h-4" />Tambah</button>
           </DialogFooter>
