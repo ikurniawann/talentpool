@@ -304,76 +304,52 @@ export default function CashierPage() {
           )}
         </div>
 
-        {/* Customer + Products - 2 Column Layout */}
-        <div className="flex-1 grid grid-cols-1 lg:grid-cols-2 gap-4 min-h-0">
-          {/* Customer Section */}
-          <div className="bg-white rounded-xl border border-gray-200 p-4">
-            <div className="flex items-center gap-2 mb-3">
-              <User className="w-4 h-4 text-gray-600" />
-              <span className="text-sm font-semibold text-gray-900">Pelanggan</span>
+        {/* Search Row: Cari Pelanggan + Cari Produk */}
+        <div className="flex gap-4 items-center">
+          {/* Pelanggan Button */}
+          <button onClick={() => setShowCustomerModal(true)} className={`flex items-center gap-2 px-4 py-2 border-2 rounded-lg transition-all ${selectedCustomer ? 'border-pink-200 bg-pink-50 text-pink-700' : 'border-dashed border-gray-300 text-gray-600 hover:border-pink-400 hover:text-pink-600'}`}>
+            <User className="w-4 h-4" /> {selectedCustomer ? selectedCustomer.name : 'Cari Pelanggan'}
+          </button>
+          
+          {/* Selected Customer Badge */}
+          {selectedCustomer && (
+            <div className="flex items-center gap-2 px-3 py-1.5 bg-gray-100 rounded-full">
+              <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${selectedCustomer.tier === 'Platinum' ? 'bg-gray-900 text-white' : selectedCustomer.tier === 'Gold' ? 'bg-yellow-500 text-white' : 'bg-gray-300 text-gray-700'}`}>{selectedCustomer.tier}</span>
+              <Coins className="w-3 h-3 text-gray-500" />
+              <span className="text-xs font-medium text-gray-700">{formatCurrency(selectedCustomer.arkCoin)}</span>
+              <button onClick={() => setSelectedCustomer(null)} className="ml-1 text-gray-400 hover:text-red-600"><X className="w-3 h-3" /></button>
             </div>
-            
-            {selectedCustomer ? (
-              <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-pink-600 flex items-center justify-center text-white font-bold text-sm">{selectedCustomer.name.charAt(0)}</div>
-                  <div>
-                    <div className="font-semibold text-gray-900 text-sm">{selectedCustomer.name}</div>
-                    <div className="flex items-center gap-2 text-xs">
-                      <span className={`px-2 py-0.5 rounded-full font-medium ${selectedCustomer.tier === 'Platinum' ? 'bg-gray-900 text-white' : selectedCustomer.tier === 'Gold' ? 'bg-yellow-500 text-white' : 'bg-gray-200 text-gray-700'}`}>{selectedCustomer.tier}</span>
-                      <span className="text-gray-500">{selectedCustomer.phone}</span>
-                    </div>
-                  </div>
-                </div>
-                <div className="flex items-center gap-4">
-                  <div className="text-right">
-                    <div className="flex items-center gap-1 text-xs text-gray-600"><Coins className="w-3 h-3" /><span className="font-medium">{formatCurrency(selectedCustomer.arkCoin)}</span></div>
-                    <div className="flex items-center gap-1 text-xs text-pink-600"><Star className="w-3 h-3" /><span className="font-medium">{selectedCustomer.xp} XP</span></div>
-                  </div>
-                  <button onClick={() => setSelectedCustomer(null)} className="p-1 text-gray-400 hover:text-gray-700"><X className="w-4 h-4" /></button>
-                </div>
-              </div>
-            ) : (
-              <button onClick={() => setShowCustomerModal(true)} className="w-full py-3 px-4 border-2 border-dashed border-gray-300 rounded-lg text-gray-500 hover:border-pink-400 hover:text-pink-600 transition-all flex items-center justify-center gap-2">
-                <User className="w-4 h-4" /> Pilih Pelanggan
-              </button>
-            )}
-            
-            {selectedCustomer && xpPreview > 0 && (
-              <div className="mt-3 p-2 bg-green-50 rounded-lg border border-green-200 flex items-center gap-2">
-                <Sparkles className="w-4 h-4 text-green-600" />
-                <span className="text-xs text-green-700 font-medium">+{xpPreview} XP earned</span>
-              </div>
-            )}
+          )}
+          
+          {/* Cari Produk */}
+          <div className="flex-1 relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
+            <input type="text" placeholder="Cari produk..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500" />
           </div>
+        </div>
 
-          {/* Products Section */}
-          <div className="bg-white rounded-xl border border-gray-200 p-4 overflow-hidden flex flex-col">
-            <div className="relative mb-3">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
-              <input type="text" placeholder="Cari produk..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500" />
-            </div>
-            <div className="flex gap-2 mb-3 overflow-x-auto pb-2">
-              {categories.map((cat) => (
-                <button key={cat} onClick={() => setSelectedCategory(cat)} className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all ${selectedCategory === cat ? 'bg-pink-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}>{cat}</button>
+        {/* Products Grid */}
+        <div className="flex-1 bg-white rounded-xl border border-gray-200 p-4 overflow-hidden flex flex-col">
+          <div className="flex gap-2 mb-3 overflow-x-auto pb-2">
+            {categories.map((cat) => (
+              <button key={cat} onClick={() => setSelectedCategory(cat)} className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all ${selectedCategory === cat ? 'bg-pink-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}>{cat}</button>
+            ))}
+          </div>
+          <div className="flex-1 overflow-y-auto">
+            <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-5 gap-3">
+              {filteredProducts.map((product) => (
+                <button key={product.id} onClick={() => openCustomization(product)} className="bg-gray-50 p-3 rounded-xl border border-gray-200 hover:border-pink-400 hover:bg-pink-50 transition-all text-left">
+                  <div className="h-14 bg-gray-100 rounded-lg mb-2 flex items-center justify-center">
+                    <Package className="w-7 h-7 text-gray-400" />
+                  </div>
+                  <div className="flex gap-1 mb-1">
+                    {product.hasVariants && <span className="px-1 py-0.5 bg-gray-200 text-gray-700 text-xs rounded font-medium">V</span>}
+                    {product.hasModifiers && <span className="px-1 py-0.5 bg-gray-200 text-gray-700 text-xs rounded font-medium">M</span>}
+                  </div>
+                  <h3 className="font-semibold text-gray-900 text-xs line-clamp-2 mb-1">{product.name}</h3>
+                  <div className="text-pink-600 font-bold text-sm">{formatCurrency(product.price)}</div>
+                </button>
               ))}
-            </div>
-            <div className="flex-1 overflow-y-auto">
-              <div className="grid grid-cols-2 gap-3">
-                {filteredProducts.map((product) => (
-                  <button key={product.id} onClick={() => openCustomization(product)} className="bg-gray-50 p-3 rounded-xl border border-gray-200 hover:border-pink-400 hover:bg-pink-50 transition-all text-left">
-                    <div className="h-12 bg-gray-100 rounded-lg mb-2 flex items-center justify-center">
-                      <Package className="w-6 h-6 text-gray-400" />
-                    </div>
-                    <div className="flex gap-1 mb-1">
-                      {product.hasVariants && <span className="px-1 py-0.5 bg-gray-200 text-gray-700 text-xs rounded font-medium">V</span>}
-                      {product.hasModifiers && <span className="px-1 py-0.5 bg-gray-200 text-gray-700 text-xs rounded font-medium">M</span>}
-                    </div>
-                    <h3 className="font-semibold text-gray-900 text-xs line-clamp-2 mb-1">{product.name}</h3>
-                    <div className="text-pink-600 font-bold text-sm">{formatCurrency(product.price)}</div>
-                  </button>
-                ))}
-              </div>
             </div>
           </div>
         </div>
