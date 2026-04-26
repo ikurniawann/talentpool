@@ -29,6 +29,7 @@ const createSupplierSchema = z.object({
 const queryParamsSchema = z.object({
   search: z.string().optional(),
   is_active: z.coerce.boolean().default(true),
+  status: z.enum(["active", "inactive", "probation", "blocked", "draft"]).optional(),
   payment_terms: z.enum(["CBD", "TOP7", "TOP14", "TOP30", "TOP45", "TOP60"]).optional(),
   page: z.coerce.number().min(1).default(1),
   limit: z.coerce.number().min(1).max(100).default(20),
@@ -70,7 +71,7 @@ export async function GET(request: NextRequest) {
     const url = new URL(request.url);
     const rawParams = Object.fromEntries(url.searchParams);
     const params = queryParamsSchema.parse(rawParams);
-    const { page, limit, search, is_active, payment_terms, sort_by, sort_dir } = params;
+    const { page, limit, search, is_active, status, payment_terms, sort_by, sort_dir } = params;
     const offset = (page - 1) * limit;
 
     const supabase = await createClient();
@@ -85,8 +86,15 @@ export async function GET(request: NextRequest) {
 
     let query = supabase
       .from("suppliers")
-      .select("*", { count: "exact" })
-      .eq("is_active", is_active);
+      .select("*", { count: "exact" });
+
+    // Filter by status if provided (for draft support)
+    if (status) {
+      query = query.eq("status", status);
+    } else {
+      // Default: filter by is_active only when status not specified
+      query = query.eq("is_active", is_active);
+    }
 
     if (payment_terms) {
       query = query.eq("payment_terms", payment_terms);

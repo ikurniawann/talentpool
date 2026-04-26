@@ -43,7 +43,8 @@ export async function listSuppliers(
 ): Promise<PaginatedResponse<Supplier>> {
   const sp = new URLSearchParams();
   if (params.search) sp.set("search", params.search);
-  if (params.is_active !== undefined) sp.set("is_active", String(params.is_active));
+  if (params.status) sp.set("status", params.status);
+  if (params.is_active !== undefined && !params.status) sp.set("is_active", String(params.is_active));
   if (params.payment_terms) sp.set("payment_terms", params.payment_terms);
   if (params.page) sp.set("page", String(params.page));
   if (params.limit) sp.set("limit", String(params.limit));

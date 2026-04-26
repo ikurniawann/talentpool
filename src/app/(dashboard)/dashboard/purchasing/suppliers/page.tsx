@@ -65,7 +65,14 @@ import { toast } from "sonner";
 
 // ─── Status badge ───────────────────────────────────────────────
 
-function StatusBadge({ isActive }: { isActive: boolean }) {
+function StatusBadge({ isActive, status }: { isActive: boolean; status?: SupplierStatus }) {
+  if (status === "draft") {
+    return (
+      <Badge className="bg-yellow-100 text-yellow-800 hover:bg-yellow-100">
+        Draft
+      </Badge>
+    );
+  }
   return isActive ? (
     <Badge className="bg-green-100 text-green-800 hover:bg-green-100">
       Aktif
@@ -121,7 +128,7 @@ function SuppliersListInner() {
 
   // Filters
   const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState<"all" | "active" | "inactive" | "draft">("active");
+  const [statusFilter, setStatusFilter] = useState<"all" | "active" | "inactive" | "draft">("all");
   const [paymentFilter, setPaymentFilter] = useState<PaymentTerms | "all">("all");
 
   // Pagination
@@ -151,7 +158,7 @@ function SuppliersListInner() {
     try {
       const params: SupplierListParams = {
         search: debouncedSearch || undefined,
-        is_active: statusFilter === "all" ? undefined : statusFilter === "active",
+        status: statusFilter === "all" ? undefined : statusFilter,
         payment_terms: paymentFilter === "all" ? undefined : paymentFilter,
         page,
         limit,
@@ -213,7 +220,7 @@ function SuppliersListInner() {
 
   function handleResetFilters() {
     setSearch("");
-    setStatusFilter("active");
+    setStatusFilter("all");
     setPaymentFilter("all");
     setPage(1);
   }
@@ -336,7 +343,7 @@ function SuppliersListInner() {
             </Button>
 
             {/* Reset */}
-            {(search || statusFilter !== "active" || paymentFilter !== "all") && (
+            {(search || statusFilter !== "all" || paymentFilter !== "all") && (
               <Button variant="ghost" onClick={handleResetFilters}>
                 Reset
               </Button>
@@ -442,7 +449,7 @@ function SuppliersListInner() {
                         <Badge variant="outline">{getPaymentTermsLabel(supplier.payment_terms)}</Badge>
                       </TableCell>
                       <TableCell className="text-center">
-                        <StatusBadge isActive={supplier.is_active} />
+                        <StatusBadge isActive={supplier.is_active} status={supplier.status} />
                       </TableCell>
                       {isAdmin && (
                         <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
@@ -452,11 +459,13 @@ function SuppliersListInner() {
                                 <EyeIcon className="w-4 h-4" />
                               </Button>
                             </Link>
-                            <Link href={`/dashboard/purchasing/suppliers/${supplier.id}/edit`}>
-                              <Button variant="ghost" size="sm" title="Edit">
-                                <PencilSquareIcon className="w-4 h-4" />
-                              </Button>
-                            </Link>
+                            {(supplier.is_active || supplier.status === "draft") && (
+                              <Link href={`/dashboard/purchasing/suppliers/${supplier.id}/edit`}>
+                                <Button variant="ghost" size="sm" title="Edit">
+                                  <PencilSquareIcon className="w-4 h-4" />
+                                </Button>
+                              </Link>
+                            )}
                             {supplier.is_active && (
                               <Button
                                 variant="ghost"

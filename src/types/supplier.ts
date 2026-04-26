@@ -68,6 +68,7 @@ export interface SupplierFormData {
 export interface SupplierListParams {
   search?: string;
   is_active?: boolean;
+  status?: SupplierStatus;
   payment_terms?: PaymentTerms;
   page?: number;
   limit?: number;
