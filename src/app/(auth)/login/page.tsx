@@ -46,6 +46,12 @@ export default function LoginPage() {
     await handleLogin(fakeEvent);
   };
 
+  const handleBypassLogin = () => {
+    // Bypass auth for UI testing - set a demo flag in localStorage
+    localStorage.setItem('pos_demo_mode', 'true');
+    router.replace("/dashboard/pos");
+  };
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
       <div className="w-full max-w-md p-8 bg-white rounded-xl shadow-md">
@@ -126,6 +132,19 @@ export default function LoginPage() {
           <p className="text-[10px] text-gray-300 text-center mt-2">
             Default: demo@aapextechnology.com / demo123456
           </p>
+
+          <div className="mt-4 pt-4 border-t border-dashed border-gray-300">
+            <button
+              type="button"
+              onClick={handleBypassLogin}
+              className="w-full py-2 px-3 bg-green-100 hover:bg-green-200 text-green-800 rounded-lg text-xs font-medium transition-colors"
+            >
+              🚀 Demo Mode (No Login) - Langsung ke POS
+            </button>
+            <p className="text-[10px] text-gray-400 text-center mt-2">
+              ⚠️ Hanya untuk testing UI - data tidak tersimpan
+            </p>
+          </div>
         </div>
       </div>
     </div>
