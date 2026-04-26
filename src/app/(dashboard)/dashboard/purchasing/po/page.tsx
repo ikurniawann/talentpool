@@ -339,20 +339,20 @@ export default function PurchaseOrdersPage() {
   return (
     <div className="container mx-auto py-6 space-y-6">
       {/* Header */}
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-2xl font-bold">Purchase Orders</h1>
+          <h1 className="text-xl sm:text-2xl font-bold">Purchase Orders</h1>
           <p className="text-muted-foreground">
             Kelola Purchase Order dari pembuatan hingga penerimaan
           </p>
         </div>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={handleExportCSV} disabled={isExporting}>
+        <div className="flex gap-2 w-full sm:w-auto">
+          <Button variant="outline" onClick={handleExportCSV} disabled={isExporting} className="flex-1 sm:flex-none">
             <Download className="w-4 h-4 mr-2" />
             {isExporting ? "Exporting..." : "Export CSV"}
           </Button>
           <Link href="/dashboard/purchasing/po/new">
-            <Button>
+            <Button className="w-full sm:w-auto">
               <Plus className="w-4 h-4 mr-2" />
               Buat PO Baru
             </Button>
@@ -361,8 +361,8 @@ export default function PurchaseOrdersPage() {
       </div>
 
       {/* Filters */}
-      <div className="flex flex-wrap gap-4">
-        <div className="relative flex-1 min-w-[300px]">
+      <div className="flex flex-col sm:flex-wrap gap-4">
+        <div className="relative w-full">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
             placeholder="Cari nomor PO atau supplier..."
@@ -372,7 +372,7 @@ export default function PurchaseOrdersPage() {
           />
         </div>
         <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as POStatus | "")}>
-          <SelectTrigger className="w-[200px]">
+          <SelectTrigger className="w-full sm:w-[200px]">
             <SelectValue placeholder="Status" />
           </SelectTrigger>
           <SelectContent>

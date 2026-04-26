@@ -108,13 +108,13 @@ export default function PRListPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Purchase Request</h1>
+          <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Purchase Request</h1>
           <p className="text-sm text-gray-500">Kelola permintaan pembelian</p>
         </div>
         <Link href="/dashboard/purchasing/pr/new">
-          <Button>
+          <Button className="w-full sm:w-auto">
             <Plus className="w-4 h-4 mr-2" />
             Buat PR Baru
           </Button>
@@ -124,8 +124,8 @@ export default function PRListPage() {
       {/* Filters */}
       <Card>
         <CardContent className="p-4">
-          <div className="flex flex-col md:flex-row gap-4">
-            <form onSubmit={handleSearch} className="flex-1 flex gap-2">
+          <div className="flex flex-col gap-4">
+            <form onSubmit={handleSearch} className="flex gap-2">
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
                 <Input
@@ -135,7 +135,7 @@ export default function PRListPage() {
                   className="pl-10"
                 />
               </div>
-              <Button type="submit" variant="outline">
+              <Button type="submit" variant="outline" className="flex-shrink-0">
                 Cari
               </Button>
             </form>
@@ -149,7 +149,7 @@ export default function PRListPage() {
                   setPage(1);
                 }}
               >
-                <SelectTrigger className="w-[200px]">
+                <SelectTrigger className="w-full sm:w-[200px]">
                   <SelectValue placeholder="Filter Status" />
                 </SelectTrigger>
                 <SelectContent>
