@@ -108,7 +108,7 @@ const tables = [
 const categories = ['Semua', 'Makanan', 'Minuman', 'Snack'];
 
 type OrderType = 'dine_in' | 'takeaway' | 'delivery' | 'self_order';
-type PaymentMethod = 'cash' | 'qris' | 'debit' | 'split';
+type PaymentMethod = 'cash' | 'qris' | 'member' | 'split';
 type CartItem = {
   id: string; productId: number; name: string; basePrice: number; quantity: number;
   variants: Array<{ name: string; priceAdj: number }>;
@@ -255,6 +255,7 @@ export default function CashierPage() {
   const isPaymentValid = () => {
     if (paymentMethod === 'cash') return parseInt(cashReceived) >= total;
     if (paymentMethod === 'split') return getTotalSplitPaid() >= total;
+    if (paymentMethod === 'member') return selectedCustomer !== null && selectedCustomer.arkCoin >= total;
     return true;
   };
 
@@ -567,13 +568,43 @@ export default function CashierPage() {
             </div>
 
             <div className="flex border-b border-gray-200">
-              {[{ id: 'cash', label: 'Tunai', icon: Banknote }, { id: 'qris', label: 'QRIS', icon: Wallet }, { id: 'debit', label: 'Debit', icon: CreditCard }, { id: 'split', label: 'Split', icon: Coins }].map(method => (
+              {[{ id: 'member', label: 'Kartu Member', icon: CreditCard }, { id: 'cash', label: 'Tunai', icon: Banknote }, { id: 'qris', label: 'QRIS', icon: Wallet }, { id: 'split', label: 'Split', icon: Coins }].map(method => (
                 <button key={method.id} onClick={() => setPaymentMethod(method.id as PaymentMethod)} className={`flex-1 py-2 text-sm font-semibold border-b-2 ${paymentMethod === method.id ? 'border-pink-600 text-pink-600' : 'border-transparent text-gray-500'}`}>
                   <method.icon className="w-4 h-4 mx-auto mb-1" />
                   {method.label}
                 </button>
               ))}
             </div>
+
+            {paymentMethod === 'member' && (
+              <div className="text-center py-8">
+                {selectedCustomer ? (
+                  <div className="space-y-4">
+                    <div className="w-32 h-32 bg-pink-100 rounded-full mx-auto flex items-center justify-center">
+                      <CreditCard className="w-16 h-16 text-pink-600" />
+                    </div>
+                    <div className="text-sm text-gray-500">Tap kartu member pada reader NFC</div>
+                    <div className="p-4 bg-gray-100 rounded-lg">
+                      <div className="text-xs text-gray-500 mb-1">Saldo ARK Terpilih</div>
+                      <div className="text-2xl font-bold text-gray-900">{selectedCustomer.arkCoin / 1000} ARK</div>
+                    </div>
+                    {selectedCustomer.arkCoin / 1000 >= total / 1000 ? (
+                      <div className="p-3 bg-green-50 rounded-lg border border-green-200">
+                        <div className="text-sm text-green-700">ARK cukup untuk pembayaran</div>
+                        <div className="text-lg font-bold text-green-600 mt-1">-{total / 1000} ARK</div>
+                      </div>
+                    ) : (
+                      <div className="p-3 bg-red-50 rounded-lg border border-red-200">
+                        <div className="text-sm text-red-700">Saldo ARK tidak cukup</div>
+                        <div className="text-xs text-red-500 mt-1">Kekurangan: {(total - selectedCustomer.arkCoin) / 1000} ARK</div>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="p-4 bg-yellow-50 rounded-lg border border-yellow-200 text-sm text-yellow-700">Pilih pelanggan terlebih dahulu untuk menggunakan Kartu Member</div>
+                )}
+              </div>
+            )}
 
             {paymentMethod === 'cash' && (
               <div className="space-y-3">
@@ -599,12 +630,6 @@ export default function CashierPage() {
               </div>
             )}
 
-            {paymentMethod === 'debit' && (
-              <div>
-                <label className="block text-sm font-semibold text-gray-900 mb-2">Nomor Kartu</label>
-                <input placeholder="**** **** **** ****" className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500" />
-              </div>
-            )}
 
             {paymentMethod === 'split' && (
               <div className="space-y-3">
@@ -613,7 +638,7 @@ export default function CashierPage() {
                 {splitPayments.map((split) => (
                   <div key={split.id} className="flex gap-2 items-center">
                     <select value={split.method} onChange={(e) => updateSplitPayment(split.id, 'method', e.target.value)} className="px-3 py-2 border border-gray-300 rounded-lg text-sm">
-                      <option value="cash">Tunai</option><option value="qris">QRIS</option><option value="debit">Debit</option><option value="wallet">Wallet</option>
+                      <option value="cash">Tunai</option><option value="qris">QRIS</option><option value="member">Kartu Member</option><option value="wallet">Wallet</option>
                     </select>
                     <input type="number" value={split.amount} onChange={(e) => updateSplitPayment(split.id, 'amount', e.target.value)} className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm" placeholder="Jumlah" />
                     <button onClick={() => removeSplitPayment(split.id)} className="p-2 text-gray-400 hover:text-red-600"><MinusCircle className="w-5 h-5" /></button>
