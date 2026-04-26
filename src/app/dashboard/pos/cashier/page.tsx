@@ -447,7 +447,7 @@ export default function CashierPage() {
 
       {/* Customer Selection Modal */}
       <Dialog open={showCustomerModal} onOpenChange={(open) => !open && setShowCustomerModal(false)}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle>Pilih Pelanggan</DialogTitle>
           </DialogHeader>
@@ -484,7 +484,7 @@ export default function CashierPage() {
 
       {/* Customization Modal */}
       <Dialog open={customizingItem !== null} onOpenChange={(open) => !open && setCustomizingItem(null)}>
-        <DialogContent className="max-w-lg max-h-[90vh] flex flex-col">
+        <DialogContent className="max-w-3xl max-h-[90vh] flex flex-col">
           <DialogHeader className="flex-shrink-0">
             <DialogTitle>{customizingItem?.name}</DialogTitle>
           </DialogHeader>
@@ -571,7 +571,7 @@ export default function CashierPage() {
 
       {/* Payment Modal */}
       <Dialog open={showPaymentModal} onOpenChange={(open) => !open && setShowPaymentModal(false)}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-xl">
           <DialogHeader>
             <DialogTitle>Pembayaran</DialogTitle>
             <div className="flex gap-2 mt-2">
