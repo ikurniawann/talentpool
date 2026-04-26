@@ -81,7 +81,11 @@ export default function PurchasingLayout({ children }: { children: React.ReactNo
             {/* Master Data — dropdown */}
             <div className="relative" ref={masterRef}>
               <button
-                onClick={() => setMasterOpen((v) => !v)}
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setMasterOpen((v) => !v);
+                }}
                 className={clsx(
                   "flex items-center gap-1.5 px-2 sm:px-3 py-2 text-xs sm:text-sm font-medium border-b-2 transition-colors cursor-pointer whitespace-nowrap",
                   isInMasterSection
@@ -132,7 +136,11 @@ export default function PurchasingLayout({ children }: { children: React.ReactNo
             {/* Laporan — dropdown */}
             <div className="relative" ref={reportRef}>
               <button
-                onClick={() => setReportOpen((v) => !v)}
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setReportOpen((v) => !v);
+                }}
                 className={clsx(
                   "flex items-center gap-1.5 px-2 sm:px-3 py-2 text-xs sm:text-sm font-medium border-b-2 transition-colors cursor-pointer whitespace-nowrap",
                   isInReportSection
