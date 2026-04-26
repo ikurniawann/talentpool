@@ -9,14 +9,14 @@ import {
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 const mockProducts = [
-  { id: 1, name: 'Nasi Goreng Special', price: 50000, category: 'Makanan', hasVariants: true, hasModifiers: true },
-  { id: 2, name: 'Ayam Bakar Madu', price: 55000, category: 'Makanan', hasVariants: true, hasModifiers: false },
-  { id: 3, name: 'Mie Goreng Jawa', price: 45000, category: 'Makanan', hasVariants: false, hasModifiers: true },
-  { id: 4, name: 'Es Teh Manis', price: 5000, category: 'Minuman', hasVariants: true, hasModifiers: true },
-  { id: 5, name: 'Kopi Susu Gula Aren', price: 18000, category: 'Minuman', hasVariants: true, hasModifiers: true },
-  { id: 6, name: 'Jus Alpukat', price: 15000, category: 'Minuman', hasVariants: false, hasModifiers: true },
-  { id: 7, name: 'Kentang Goreng', price: 12000, category: 'Snack', hasVariants: false, hasModifiers: true },
-  { id: 8, name: 'Roti Bakar', price: 20000, category: 'Snack', hasVariants: true, hasModifiers: true },
+  { id: 1, name: 'Nasi Goreng Special', price: 50000, category: 'Makanan', hasVariants: true, hasModifiers: true, image: 'nasi-goreng.png' },
+  { id: 2, name: 'Ayam Bakar Madu', price: 55000, category: 'Makanan', hasVariants: true, hasModifiers: false, image: 'ayam-bakar.png' },
+  { id: 3, name: 'Mie Goreng Jawa', price: 45000, category: 'Makanan', hasVariants: false, hasModifiers: true, image: 'mie-goreng.png' },
+  { id: 4, name: 'Es Teh Manis', price: 5000, category: 'Minuman', hasVariants: true, hasModifiers: true, image: 'es-teh.png' },
+  { id: 5, name: 'Kopi Susu Gula Aren', price: 18000, category: 'Minuman', hasVariants: true, hasModifiers: true, image: 'kopi-susu.png' },
+  { id: 6, name: 'Jus Alpukat', price: 15000, category: 'Minuman', hasVariants: false, hasModifiers: true, image: 'jus-alpukat.png' },
+  { id: 7, name: 'Kentang Goreng', price: 12000, category: 'Snack', hasVariants: false, hasModifiers: true, image: 'kentang-goreng.png' },
+  { id: 8, name: 'Roti Bakar', price: 20000, category: 'Snack', hasVariants: true, hasModifiers: true, image: 'roti-bakar.png' },
 ];
 
 const mockVariants: Record<number, Array<{ id: string; name: string; priceAdj: number; type: string }>> = {
@@ -340,16 +340,16 @@ export default function CashierPage() {
           <div className="flex-1 overflow-y-auto">
             <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-5 gap-3">
               {filteredProducts.map((product) => (
-                <button key={product.id} onClick={() => openCustomization(product)} className="bg-gray-50 p-3 rounded-xl border border-gray-200 hover:border-pink-400 hover:bg-pink-50 transition-all text-left">
-                  <div className="h-14 bg-gray-100 rounded-lg mb-2 flex items-center justify-center">
-                    <Package className="w-7 h-7 text-gray-400" />
+                <button key={product.id} onClick={() => openCustomization(product)} className="bg-gray-50 p-2 rounded-xl border border-gray-200 hover:border-pink-400 hover:bg-pink-50 transition-all text-left">
+                  <div className="h-20 bg-gray-100 rounded-lg mb-2 flex items-center justify-center overflow-hidden p-1">
+                    <img src={`/products/${product.image}`} alt={product.name} className="w-full h-full object-cover rounded" />
                   </div>
                   <div className="flex gap-1 mb-1">
                     {product.hasVariants && <span className="px-1 py-0.5 bg-gray-200 text-gray-700 text-xs rounded font-medium">V</span>}
                     {product.hasModifiers && <span className="px-1 py-0.5 bg-gray-200 text-gray-700 text-xs rounded font-medium">M</span>}
                   </div>
-                  <h3 className="font-semibold text-gray-900 text-xs line-clamp-2 mb-1">{product.name}</h3>
-                  <div className="text-pink-600 font-bold text-sm">{formatCurrency(product.price)}</div>
+                  <h3 className="font-semibold text-gray-900 text-xs line-clamp-2 mb-0.5">{product.name}</h3>
+                  <div className="text-pink-600 font-bold text-xs">{formatCurrency(product.price)}</div>
                   <div className="text-xs text-gray-500">{product.price / 1000} ARK</div>
                 </button>
               ))}
