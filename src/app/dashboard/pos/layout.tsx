@@ -35,7 +35,7 @@ export default function POSLayout({ children }: { children: React.ReactNode }) {
         <div className="flex h-14 items-center justify-between px-3 sm:px-4">
           {/* Left - Logo + Navigation tabs */}
           <div className="flex items-center gap-3 flex-1 overflow-x-auto scrollbar-hide">
-            <img src="/logo.png" alt="Prologue Wonderland" className="h-8 w-auto object-contain flex-shrink-0" />
+            <img src="/logo.jpg" alt="Prologue Wonderland" className="h-8 w-auto object-contain flex-shrink-0" />
             {POS_ITEMS.map((item) => {
               const active = pathname === item.href;
               return (
