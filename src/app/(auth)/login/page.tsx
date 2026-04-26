@@ -67,6 +67,20 @@ export default function LoginPage() {
             </div>
           )}
 
+          {/* Demo Mode Bypass - Prominent */}
+          <div className="p-4 bg-green-50 border border-green-200 rounded-lg mb-4">
+            <button
+              type="button"
+              onClick={handleBypassLogin}
+              className="w-full py-3 px-4 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-bold transition-colors flex items-center justify-center gap-2 shadow-sm"
+            >
+              🚀 Coba POS Tanpa Login
+            </button>
+            <p className="text-[10px] text-green-700 text-center mt-2">
+              Mode demo untuk testing UI - data tidak tersimpan
+            </p>
+          </div>
+
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Email
@@ -132,19 +146,6 @@ export default function LoginPage() {
           <p className="text-[10px] text-gray-300 text-center mt-2">
             Default: demo@aapextechnology.com / demo123456
           </p>
-
-          <div className="mt-4 pt-4 border-t border-dashed border-gray-300">
-            <button
-              type="button"
-              onClick={handleBypassLogin}
-              className="w-full py-2 px-3 bg-green-100 hover:bg-green-200 text-green-800 rounded-lg text-xs font-medium transition-colors"
-            >
-              🚀 Demo Mode (No Login) - Langsung ke POS
-            </button>
-            <p className="text-[10px] text-gray-400 text-center mt-2">
-              ⚠️ Hanya untuk testing UI - data tidak tersimpan
-            </p>
-          </div>
         </div>
       </div>
     </div>
