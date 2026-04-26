@@ -137,7 +137,7 @@ export default function CashierPage() {
   const [customModifiers, setCustomModifiers] = useState<Record<string, string[]>>({});
   const [customNotes, setCustomNotes] = useState('');
   const [showPaymentModal, setShowPaymentModal] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('cash');
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('member');
   const [cashReceived, setCashReceived] = useState('');
   const [splitPayments, setSplitPayments] = useState<SplitPayment[]>([]);
   const [showTipInput, setShowTipInput] = useState(false);
