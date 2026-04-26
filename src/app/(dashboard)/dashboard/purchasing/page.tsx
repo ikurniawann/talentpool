@@ -66,9 +66,9 @@ export default function PurchasingDashboardPage() {
     <div className="space-y-6">
       {/* Header */}
       <div className="space-y-4">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Dashboard Purchasing</h1>
+            <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Dashboard Purchasing</h1>
             <p className="text-sm text-gray-500">
               Ringkasan performa procurement & supply chain
             </p>
@@ -86,26 +86,30 @@ export default function PurchasingDashboardPage() {
         {/* Date Range Filter */}
         <Card className="border-0 shadow-sm">
           <CardContent className="p-4">
-            <div className="flex flex-wrap items-end gap-3">
-              <div className="flex-1 min-w-[200px] space-y-1.5">
-                <label className="block text-xs font-medium text-gray-600">
-                  Tanggal Mulai
-                </label>
-                <DatePicker
-                  value={dateRange.start}
-                  onChange={(v) => setDateRange((prev) => ({ ...prev, start: v }))}
-                  placeholder="Dari..."
-                />
-              </div>
-              <div className="flex-1 min-w-[200px] space-y-1.5">
-                <label className="block text-xs font-medium text-gray-600">
-                  Tanggal Akhir
-                </label>
-                <DatePicker
-                  value={dateRange.end}
-                  onChange={(v) => setDateRange((prev) => ({ ...prev, end: v }))}
-                  placeholder="Sampai..."
-                />
+            <div className="flex flex-col gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <label className="block text-xs font-medium text-gray-600">
+                    Tanggal Mulai
+                  </label>
+                  <DatePicker
+                    value={dateRange.start}
+                    onChange={(v) => setDateRange((prev) => ({ ...prev, start: v }))}
+                    placeholder="Dari..."
+                    className="w-full"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="block text-xs font-medium text-gray-600">
+                    Tanggal Akhir
+                  </label>
+                  <DatePicker
+                    value={dateRange.end}
+                    onChange={(v) => setDateRange((prev) => ({ ...prev, end: v }))}
+                    placeholder="Sampai..."
+                    className="w-full"
+                  />
+                </div>
               </div>
               <div className="flex gap-2">
                 <Button
@@ -113,6 +117,7 @@ export default function PurchasingDashboardPage() {
                   size="sm"
                   onClick={() => setDateRange({ start: "", end: "" })}
                   disabled={!dateRange.start && !dateRange.end}
+                  className="flex-1 sm:flex-none"
                 >
                   Reset
                 </Button>
@@ -120,6 +125,7 @@ export default function PurchasingDashboardPage() {
                   size="sm"
                   onClick={() => refetch()}
                   disabled={isFetching}
+                  className="flex-1 sm:flex-none"
                 >
                   {isFetching ? "Loading..." : "Terapkan Filter"}
                 </Button>
