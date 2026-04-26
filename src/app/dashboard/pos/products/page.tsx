@@ -10,7 +10,7 @@ import {
   Filter,
   ChevronDown,
   Eye,
-  Recipe
+  ChefHat
 } from 'lucide-react';
 
 // Mock data
@@ -224,7 +224,7 @@ export default function ProductsPage() {
 
               {/* Recipe Link */}
               <button className="w-full mt-2 flex items-center justify-center gap-2 px-3 py-2 text-xs sm:text-sm text-green-700 bg-green-50 rounded-lg hover:bg-green-100 transition-colors">
-                <Recipe className="w-3 h-3 sm:w-4 sm:h-4" />
+                <ChefHat className="w-3 h-3 sm:w-4 sm:h-4" />
                 Kelola Resep
               </button>
             </div>
