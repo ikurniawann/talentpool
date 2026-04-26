@@ -553,7 +553,7 @@ export default function CashierPage() {
 
       {/* Payment Modal */}
       <Dialog open={showPaymentModal} onOpenChange={(open) => !open && setShowPaymentModal(false)}>
-        <DialogContent className="max-w-5xl">
+        <DialogContent className="w-[95vw] max-w-7xl">
           <DialogHeader>
             <DialogTitle>Pembayaran</DialogTitle>
             <div className="flex gap-2 mt-2">
