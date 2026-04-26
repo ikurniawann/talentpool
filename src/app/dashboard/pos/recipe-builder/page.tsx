@@ -111,7 +111,7 @@ export default function RecipeBuilderPage() {
             Buat dan kelola resep produk dengan bahan baku dari purchasing
           </p>
         </div>
-        <button className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium">
+        <button className="flex items-center gap-2 px-4 py-2 bg-pink-600 text-white rounded-lg hover:bg-pink-700 transition-colors font-medium">
           <Save className="w-5 h-5" />
           Simpan Resep
         </button>
@@ -155,7 +155,7 @@ export default function RecipeBuilderPage() {
               <h2 className="text-base sm:text-lg font-semibold text-gray-900">Bahan-bahan</h2>
               <button
                 onClick={() => setShowMaterialPicker(true)}
-                className="w-full sm:w-auto flex items-center justify-center gap-2 px-3 py-2 text-sm text-green-700 bg-green-50 rounded-lg hover:bg-green-100 transition-colors"
+                className="w-full sm:w-auto flex items-center justify-center gap-2 px-3 py-2 text-sm text-green-700 bg-pink-50 rounded-lg hover:bg-green-100 transition-colors"
               >
                 <Plus className="w-4 h-4" />
                 Tambah Bahan
@@ -255,11 +255,11 @@ export default function RecipeBuilderPage() {
               </div>
               <div className="flex justify-between pt-3 border-t border-gray-100">
                 <span className="font-semibold text-gray-900">Total HPP</span>
-                <span className="font-bold text-green-600">{formatCurrency(totalCost)}</span>
+                <span className="font-bold text-pink-600">{formatCurrency(totalCost)}</span>
               </div>
-              <div className="flex justify-between pt-3 border-t border-gray-100 bg-green-50 -mx-6 px-6 py-3">
+              <div className="flex justify-between pt-3 border-t border-gray-100 bg-pink-50 -mx-6 px-6 py-3">
                 <span className="font-semibold text-gray-900">HPP per Porsi</span>
-                <span className="font-bold text-green-600">{formatCurrency(costPerServing)}</span>
+                <span className="font-bold text-pink-600">{formatCurrency(costPerServing)}</span>
               </div>
             </div>
 
@@ -284,7 +284,7 @@ export default function RecipeBuilderPage() {
                   const material = mockRawMaterials.find(m => m.id === ing.materialId);
                   return !material || material.stock >= ing.quantity;
                 }) && (
-                  <div className="text-sm text-green-600 bg-green-50 p-2 rounded">
+                  <div className="text-sm text-pink-600 bg-pink-50 p-2 rounded">
                     ✅ Semua bahan tersedia dalam jumlah cukup
                   </div>
                 )}
@@ -329,7 +329,7 @@ export default function RecipeBuilderPage() {
                   <button
                     key={material.id}
                     onClick={() => addIngredient(material)}
-                    className="flex items-center justify-between p-3 border border-gray-200 rounded-lg hover:border-green-300 hover:bg-green-50 transition-colors text-left"
+                    className="flex items-center justify-between p-3 border border-gray-200 rounded-lg hover:border-pink-300 hover:bg-pink-50 transition-colors text-left"
                   >
                     <div>
                       <div className="font-medium text-gray-900">{material.name}</div>
@@ -338,7 +338,7 @@ export default function RecipeBuilderPage() {
                       </div>
                     </div>
                     <div className="text-right">
-                      <div className="font-semibold text-green-600">
+                      <div className="font-semibold text-pink-600">
                         {formatCurrency(material.cost)} / {material.unit}
                       </div>
                     </div>

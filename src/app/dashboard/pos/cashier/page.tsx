@@ -134,7 +134,7 @@ export default function CashierPage() {
               onClick={() => setSelectedCategory(cat)}
               className={`px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${
                 selectedCategory === cat
-                  ? 'bg-green-600 text-white'
+                  ? 'bg-pink-600 text-white'
                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
               }`}
             >
@@ -149,15 +149,15 @@ export default function CashierPage() {
             <button
               key={product.id}
               onClick={() => addToCart(product)}
-              className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 hover:shadow-md hover:border-green-300 transition-all text-left group"
+              className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 hover:shadow-md hover:border-pink-300 transition-all text-left group"
             >
-              <div className="h-20 sm:h-24 bg-gray-100 rounded-lg mb-3 flex items-center justify-center group-hover:bg-green-50 transition-colors">
-                <Package className="w-8 h-8 sm:w-10 sm:h-10 text-gray-400 group-hover:text-green-600" />
+              <div className="h-20 sm:h-24 bg-gray-100 rounded-lg mb-3 flex items-center justify-center group-hover:bg-pink-50 transition-colors">
+                <Package className="w-8 h-8 sm:w-10 sm:h-10 text-gray-400 group-hover:text-pink-600" />
               </div>
               <h3 className="font-medium text-gray-900 text-xs sm:text-sm mb-1 line-clamp-2">
                 {product.name}
               </h3>
-              <div className="text-green-600 font-bold text-xs sm:text-base">
+              <div className="text-pink-600 font-bold text-xs sm:text-base">
                 {formatCurrency(product.price)}
               </div>
             </button>
@@ -186,7 +186,7 @@ export default function CashierPage() {
               <div key={item.id} className="flex gap-3 p-3 bg-gray-50 rounded-lg">
                 <div className="flex-1">
                   <h3 className="font-medium text-gray-900 text-sm">{item.name}</h3>
-                  <div className="text-green-600 font-semibold text-sm">
+                  <div className="text-pink-600 font-semibold text-sm">
                     {formatCurrency(item.price)}
                   </div>
                 </div>
@@ -228,7 +228,7 @@ export default function CashierPage() {
           </div>
           <div className="flex justify-between text-lg font-bold pt-2 border-t border-gray-200">
             <span className="text-gray-900">Total</span>
-            <span className="text-green-600">{formatCurrency(total)}</span>
+            <span className="text-pink-600">{formatCurrency(total)}</span>
           </div>
         </div>
 
@@ -237,7 +237,7 @@ export default function CashierPage() {
           <button
             onClick={handleCheckout}
             disabled={cart.length === 0}
-            className="w-full py-3 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
+            className="w-full py-3 bg-pink-600 text-white rounded-lg font-semibold hover:bg-pink-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
           >
             <Send className="w-5 h-5" />
             Bayar ({cart.length} item)
@@ -254,9 +254,9 @@ export default function CashierPage() {
             </div>
             <div className="p-6 space-y-4">
               {/* Total */}
-              <div className="text-center py-4 bg-green-50 rounded-lg">
+              <div className="text-center py-4 bg-pink-50 rounded-lg">
                 <div className="text-sm text-gray-600 mb-1">Total Pembayaran</div>
-                <div className="text-3xl font-bold text-green-600">
+                <div className="text-3xl font-bold text-pink-600">
                   {formatCurrency(total)}
                 </div>
               </div>
@@ -271,33 +271,33 @@ export default function CashierPage() {
                     onClick={() => setPaymentMethod('cash')}
                     className={`p-3 rounded-lg border-2 flex flex-col items-center gap-2 transition-colors ${
                       paymentMethod === 'cash'
-                        ? 'border-green-600 bg-green-50'
+                        ? 'border-green-600 bg-pink-50'
                         : 'border-gray-200 hover:border-gray-300'
                     }`}
                   >
-                    <Banknote className={`w-6 h-6 ${paymentMethod === 'cash' ? 'text-green-600' : 'text-gray-400'}`} />
+                    <Banknote className={`w-6 h-6 ${paymentMethod === 'cash' ? 'text-pink-600' : 'text-gray-400'}`} />
                     <span className="text-sm font-medium">Tunai</span>
                   </button>
                   <button
                     onClick={() => setPaymentMethod('qris')}
                     className={`p-3 rounded-lg border-2 flex flex-col items-center gap-2 transition-colors ${
                       paymentMethod === 'qris'
-                        ? 'border-green-600 bg-green-50'
+                        ? 'border-green-600 bg-pink-50'
                         : 'border-gray-200 hover:border-gray-300'
                     }`}
                   >
-                    <Wallet className={`w-6 h-6 ${paymentMethod === 'qris' ? 'text-green-600' : 'text-gray-400'}`} />
+                    <Wallet className={`w-6 h-6 ${paymentMethod === 'qris' ? 'text-pink-600' : 'text-gray-400'}`} />
                     <span className="text-sm font-medium">QRIS</span>
                   </button>
                   <button
                     onClick={() => setPaymentMethod('debit')}
                     className={`p-3 rounded-lg border-2 flex flex-col items-center gap-2 transition-colors ${
                       paymentMethod === 'debit'
-                        ? 'border-green-600 bg-green-50'
+                        ? 'border-green-600 bg-pink-50'
                         : 'border-gray-200 hover:border-gray-300'
                     }`}
                   >
-                    <CreditCard className={`w-6 h-6 ${paymentMethod === 'debit' ? 'text-green-600' : 'text-gray-400'}`} />
+                    <CreditCard className={`w-6 h-6 ${paymentMethod === 'debit' ? 'text-pink-600' : 'text-gray-400'}`} />
                     <span className="text-sm font-medium">Debit</span>
                   </button>
                 </div>
@@ -318,7 +318,7 @@ export default function CashierPage() {
                     autoFocus
                   />
                   {change >= 0 && (
-                    <div className="mt-2 text-sm text-green-600 font-medium">
+                    <div className="mt-2 text-sm text-pink-600 font-medium">
                       Kembalian: {formatCurrency(change)}
                     </div>
                   )}
@@ -335,7 +335,7 @@ export default function CashierPage() {
               <button
                 onClick={completeOrder}
                 disabled={paymentMethod === 'cash' && (!cashReceived || parseInt(cashReceived) < total)}
-                className="flex-1 px-4 py-2 text-white bg-green-600 rounded-lg hover:bg-green-700 transition-colors font-medium disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                className="flex-1 px-4 py-2 text-white bg-pink-600 rounded-lg hover:bg-pink-700 transition-colors font-medium disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
                 <Printer className="w-5 h-5" />
                 Proses & Cetak

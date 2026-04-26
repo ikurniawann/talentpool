@@ -115,7 +115,7 @@ export default function ProductsPage() {
         </div>
         <button
           onClick={() => setShowAddModal(true)}
-          className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium"
+          className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2 bg-pink-600 text-white rounded-lg hover:bg-pink-700 transition-colors font-medium"
         >
           <Plus className="w-5 h-5" />
           Tambah Produk
@@ -193,7 +193,7 @@ export default function ProductsPage() {
                 </div>
                 <div className="text-right">
                   <div className={`text-xs sm:text-sm font-semibold ${
-                    product.margin >= 50 ? 'text-green-600' : 'text-yellow-600'
+                    product.margin >= 50 ? 'text-pink-600' : 'text-yellow-600'
                   }`}>
                     {product.margin}% margin
                   </div>
@@ -223,7 +223,7 @@ export default function ProductsPage() {
               </div>
 
               {/* Recipe Link */}
-              <button className="w-full mt-2 flex items-center justify-center gap-2 px-3 py-2 text-xs sm:text-sm text-green-700 bg-green-50 rounded-lg hover:bg-green-100 transition-colors">
+              <button className="w-full mt-2 flex items-center justify-center gap-2 px-3 py-2 text-xs sm:text-sm text-green-700 bg-pink-50 rounded-lg hover:bg-green-100 transition-colors">
                 <ChefHat className="w-3 h-3 sm:w-4 sm:h-4" />
                 Kelola Resep
               </button>
@@ -312,7 +312,7 @@ export default function ProductsPage() {
               </button>
               <button
                 onClick={() => setShowAddModal(false)}
-                className="w-full sm:w-auto px-4 py-2 text-white bg-green-600 rounded-lg hover:bg-green-700 transition-colors mt-2 sm:mt-0"
+                className="w-full sm:w-auto px-4 py-2 text-white bg-pink-600 rounded-lg hover:bg-pink-700 transition-colors mt-2 sm:mt-0"
               >
                 Simpan Produk
               </button>
