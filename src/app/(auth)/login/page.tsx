@@ -35,17 +35,6 @@ export default function LoginPage() {
     }
   };
 
-  const handleDemoLogin = async (role: "hrd" | "hiring_manager") => {
-    const demoEmail = role === "hrd" ? DEMO_EMAIL : DEMO_HM_EMAIL;
-    setEmail(demoEmail);
-    setPassword(DEMO_PASSWORD);
-
-    // Wait for React to re-render with new state, then submit
-    await new Promise((r) => setTimeout(r, 50));
-    const fakeEvent = { preventDefault: () => {} } as React.FormEvent;
-    await handleLogin(fakeEvent);
-  };
-
   const handleBypassLogin = () => {
     // Bypass auth for UI testing - set a demo flag in localStorage
     localStorage.setItem('pos_demo_mode', 'true');
@@ -60,26 +49,21 @@ export default function LoginPage() {
           <p className="text-sm text-gray-500">Backoffice System</p>
         </div>
 
-        <form onSubmit={handleLogin} className="space-y-4">
-          {error && (
-            <div className="p-3 text-sm text-red-600 bg-red-50 rounded-lg">
-              {error}
-            </div>
-          )}
+        {/* Demo Mode Bypass - Prominent */}
+        <div className="p-4 bg-green-50 border border-green-200 rounded-lg mb-4">
+          <button
+            type="button"
+            onClick={handleBypassLogin}
+            className="w-full py-3 px-4 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-bold transition-colors flex items-center justify-center gap-2 shadow-sm"
+          >
+            🚀 Coba POS Tanpa Login
+          </button>
+          <p className="text-[10px] text-green-700 text-center mt-2">
+            Mode demo untuk testing UI - data tidak tersimpan
+          </p>
+        </div>
 
-          {/* Demo Mode Bypass - Prominent */}
-          <div className="p-4 bg-green-50 border border-green-200 rounded-lg mb-4">
-            <button
-              type="button"
-              onClick={handleBypassLogin}
-              className="w-full py-3 px-4 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-bold transition-colors flex items-center justify-center gap-2 shadow-sm"
-            >
-              🚀 Coba POS Tanpa Login
-            </button>
-            <p className="text-[10px] text-green-700 text-center mt-2">
-              Mode demo untuk testing UI - data tidak tersimpan
-            </p>
-          </div>
+        <form onSubmit={handleLogin} className="space-y-4">
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -118,35 +102,11 @@ export default function LoginPage() {
           </button>
         </form>
 
-        {/* Demo Login Bypass */}
-        <div className="mt-6 pt-6 border-t border-gray-200">
-          <p className="text-xs text-gray-400 text-center mb-3">
-            Login cepat untuk demo — tidak perlu password
-          </p>
-
-
-
-          <div className="grid grid-cols-2 gap-2">
-            <button
-              type="button"
-              onClick={() => handleDemoLogin("hrd")}
-              className="py-2 px-3 bg-gray-100 hover:bg-gray-200 text-gray-800 rounded-lg text-xs font-medium transition-colors"
-            >
-              Isi Login HRD
-            </button>
-            <button
-              type="button"
-              onClick={() => handleDemoLogin("hiring_manager")}
-              className="py-2 px-3 bg-gray-100 hover:bg-gray-200 text-gray-800 rounded-lg text-xs font-medium transition-colors"
-            >
-              Isi Login Manager
-            </button>
-          </div>
-
-          <p className="text-[10px] text-gray-300 text-center mt-2">
-            Default: demo@aapextechnology.com / demo123456
-          </p>
-        </div>
+          {error && (
+            <div className="p-3 text-sm text-red-600 bg-red-50 rounded-lg">
+              {error}
+            </div>
+          )}
       </div>
     </div>
   );
