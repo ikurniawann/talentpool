@@ -118,6 +118,8 @@ type CartItem = {
 type SplitPayment = { id: string; method: PaymentMethod; amount: number };
 
 const formatCurrency = (value: number) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(value);
+const formatArk = (value: number) => `${value / 1000} ARK`;
+const formatBoth = (value: number) => `${formatCurrency(value)} (${formatArk(value)})`;
 const generateId = () => Math.random().toString(36).substr(2, 9);
 
 export default function CashierPage() {
@@ -394,8 +396,8 @@ export default function CashierPage() {
                       <button onClick={() => updateQuantity(item.id, item.quantity + 1)} className="w-7 h-7 rounded-full bg-white border border-gray-300 flex items-center justify-center hover:bg-gray-100"><Plus className="w-3 h-3" /></button>
                     </div>
                     <div className="text-right">
-                      <div className="text-sm font-bold text-gray-900">{formatCurrency(item.totalPrice)}</div>
-                      <div className="text-xs text-gray-400">{formatCurrency(item.unitPrice)}/item</div>
+                      <div className="text-sm font-bold text-gray-900">{formatBoth(item.totalPrice)}</div>
+                      <div className="text-xs text-gray-400">{formatBoth(item.unitPrice)}/item</div>
                     </div>
                   </div>
                 </div>
@@ -405,11 +407,11 @@ export default function CashierPage() {
         </div>
 
         <div className="p-4 border-t border-gray-200 space-y-2 bg-gray-50">
-          <div className="flex justify-between text-sm"><span className="text-gray-600">Subtotal</span><span className="font-medium text-gray-900">{formatCurrency(subtotal)}</span></div>
-          <div className="flex justify-between text-sm"><span className="text-gray-600">Pajak (10%)</span><span className="font-medium text-gray-900">{formatCurrency(tax)}</span></div>
-          {tip > 0 && <div className="flex justify-between text-sm"><span className="text-gray-600">Tip</span><span className="font-medium text-green-600">+{formatCurrency(tip)}</span></div>}
+          <div className="flex justify-between text-sm"><span className="text-gray-600">Subtotal</span><span className="font-medium text-gray-900">{formatBoth(subtotal)}</span></div>
+          <div className="flex justify-between text-sm"><span className="text-gray-600">Pajak (10%)</span><span className="font-medium text-gray-900">{formatBoth(tax)}</span></div>
+          {tip > 0 && <div className="flex justify-between text-sm"><span className="text-gray-600">Tip</span><span className="font-medium text-green-600">+{formatBoth(tip)}</span></div>}
           {selectedCustomer && xpPreview > 0 && <div className="flex justify-between text-sm"><span className="text-gray-600">XP Earned</span><span className="font-medium text-pink-600">+{xpPreview} XP</span></div>}
-          <div className="flex justify-between text-lg font-bold pt-2 border-t border-gray-300"><span className="text-gray-900">Total</span><span className="text-pink-600">{formatCurrency(total)}</span></div>
+          <div className="flex justify-between text-lg font-bold pt-2 border-t border-gray-300"><span className="text-gray-900">Total</span><span className="text-pink-600">{formatBoth(total)}</span></div>
         </div>
         <div className="p-4 border-t border-gray-200">
           <button onClick={() => setShowPaymentModal(true)} disabled={cart.length === 0} className="w-full py-3 bg-pink-600 text-white rounded-lg font-semibold hover:bg-pink-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors">Bayar ({cart.length} item)</button>
@@ -535,8 +537,8 @@ export default function CashierPage() {
             </div>
 
             <div className="p-4 bg-gray-900 rounded-lg">
-              <div className="flex justify-between items-center"><span className="text-gray-400 text-sm">Harga per item</span><span className="text-lg font-bold text-white">{formatCurrency(calculateCustomPrice())}</span></div>
-              <div className="flex justify-between items-center mt-1"><span className="text-gray-400 text-sm">Total</span><span className="text-2xl font-bold text-white">{formatCurrency(calculateCustomPrice() * customQuantity)}</span></div>
+              <div className="flex justify-between items-center"><span className="text-gray-400 text-sm">Harga per item</span><span className="text-lg font-bold text-white">{formatBoth(calculateCustomPrice())}</span></div>
+              <div className="flex justify-between items-center mt-1"><span className="text-gray-400 text-sm">Total</span><span className="text-2xl font-bold text-white">{formatBoth(calculateCustomPrice() * customQuantity)}</span></div>
             </div>
           </div>
           <div className="flex-shrink-0 border-t pt-4 mt-4">
@@ -561,7 +563,7 @@ export default function CashierPage() {
           <div className="space-y-4 py-4">
             <div className="text-center py-4 bg-gray-900 rounded-lg">
               <div className="text-sm text-gray-400 mb-1">Total Pembayaran</div>
-              <div className="text-3xl font-bold text-white">{formatCurrency(total)}</div>
+              <div className="text-3xl font-bold text-white">{formatBoth(total)}</div>
             </div>
 
             <div className="flex border-b border-gray-200">
@@ -585,7 +587,7 @@ export default function CashierPage() {
                   ))}
                 </div>
                 {parseInt(cashReceived || '0') >= total && (
-                  <div className="p-3 bg-green-50 rounded-lg border border-green-200 flex justify-between"><span className="text-gray-700 font-medium">Kembalian</span><span className="text-lg font-bold text-green-600">{formatCurrency(parseInt(cashReceived) - total)}</span></div>
+                  <div className="p-3 bg-green-50 rounded-lg border border-green-200 flex justify-between"><span className="text-gray-700 font-medium">Kembalian</span><span className="text-lg font-bold text-green-600">{formatBoth(parseInt(cashReceived) - total)}</span></div>
                 )}
               </div>
             )}
