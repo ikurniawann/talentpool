@@ -150,12 +150,12 @@ export default function RecipeBuilderPage() {
           </div>
 
           {/* Ingredients */}
-          <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-lg font-semibold text-gray-900">Bahan-bahan</h2>
+          <div className="bg-white p-4 sm:p-6 rounded-xl shadow-sm border border-gray-100">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-4">
+              <h2 className="text-base sm:text-lg font-semibold text-gray-900">Bahan-bahan</h2>
               <button
                 onClick={() => setShowMaterialPicker(true)}
-                className="flex items-center gap-2 px-3 py-2 text-sm text-green-700 bg-green-50 rounded-lg hover:bg-green-100 transition-colors"
+                className="w-full sm:w-auto flex items-center justify-center gap-2 px-3 py-2 text-sm text-green-700 bg-green-50 rounded-lg hover:bg-green-100 transition-colors"
               >
                 <Plus className="w-4 h-4" />
                 Tambah Bahan
@@ -169,8 +169,8 @@ export default function RecipeBuilderPage() {
                 <p className="text-sm">Klik "Tambah Bahan" untuk memulai</p>
               </div>
             ) : (
-              <div className="space-y-3">
-                <div className="grid grid-cols-12 gap-2 text-sm font-medium text-gray-500 pb-2 border-b">
+              <div className="space-y-3 overflow-x-auto">
+                <div className="min-w-[600px] grid grid-cols-12 gap-2 text-sm font-medium text-gray-500 pb-2 border-b">
                   <div className="col-span-4">Bahan</div>
                   <div className="col-span-2">Jumlah</div>
                   <div className="col-span-2">Satuan</div>
@@ -178,7 +178,7 @@ export default function RecipeBuilderPage() {
                   <div className="col-span-1"></div>
                 </div>
                 {ingredients.map((ingredient, index) => (
-                  <div key={index} className="grid grid-cols-12 gap-2 items-center">
+                  <div key={index} className="min-w-[600px] grid grid-cols-12 gap-2 items-center">
                     <div className="col-span-4">
                       <div className="font-medium text-gray-900">{ingredient.name}</div>
                     </div>
@@ -210,10 +210,10 @@ export default function RecipeBuilderPage() {
           </div>
 
           {/* Waste Percentage */}
-          <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">Waste & Shrinkage</h2>
-            <div className="flex items-center gap-4">
-              <div className="flex-1">
+          <div className="bg-white p-4 sm:p-6 rounded-xl shadow-sm border border-gray-100">
+            <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-4">Waste & Shrinkage</h2>
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+              <div className="w-full sm:flex-1">
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Persentase Waste (%)
                 </label>
@@ -224,7 +224,7 @@ export default function RecipeBuilderPage() {
                   className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
                 />
               </div>
-              <div className="flex-1">
+              <div className="w-full sm:flex-1">
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Estimasi Waste Cost
                 </label>
@@ -241,8 +241,8 @@ export default function RecipeBuilderPage() {
 
         {/* Right: Cost Summary */}
         <div className="space-y-6">
-          <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 sticky top-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">Ringkasan Biaya</h2>
+          <div className="bg-white p-4 sm:p-6 rounded-xl shadow-sm border border-gray-100 sticky top-6">
+            <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-4">Ringkasan Biaya</h2>
             
             <div className="space-y-3">
               <div className="flex justify-between text-sm">
@@ -296,10 +296,10 @@ export default function RecipeBuilderPage() {
 
       {/* Material Picker Modal */}
       {showMaterialPicker && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl max-w-2xl w-full max-h-[80vh] flex flex-col">
-            <div className="p-6 border-b border-gray-100 flex justify-between items-center">
-              <h2 className="text-xl font-bold text-gray-900">Pilih Bahan Baku</h2>
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 overflow-y-auto">
+          <div className="bg-white rounded-xl max-w-2xl w-full my-8 flex flex-col">
+            <div className="p-4 sm:p-6 border-b border-gray-100 flex justify-between items-center">
+              <h2 className="text-lg sm:text-xl font-bold text-gray-900">Pilih Bahan Baku</h2>
               <button
                 onClick={() => {
                   setShowMaterialPicker(false);
@@ -307,7 +307,7 @@ export default function RecipeBuilderPage() {
                 }}
                 className="text-gray-400 hover:text-gray-600"
               >
-                <X className="w-6 h-6" />
+                <X className="w-5 h-5 sm:w-6 sm:h-6" />
               </button>
             </div>
             <div className="p-4 border-b border-gray-100">

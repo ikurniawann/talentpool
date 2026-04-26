@@ -103,9 +103,9 @@ export default function CashierPage() {
   };
 
   return (
-    <div className="flex h-[calc(100vh-4rem)]">
+    <div className="flex flex-col lg:flex-row h-[calc(100vh-4rem)]">
       {/* Left: Products */}
-      <div className="flex-1 p-6 overflow-y-auto">
+      <div className="flex-1 p-4 sm:p-6 overflow-y-auto">
         {/* Header */}
         <div className="mb-6">
           <h1 className="text-2xl font-bold text-gray-900 mb-2">Kasir</h1>
@@ -127,7 +127,7 @@ export default function CashierPage() {
         </div>
 
         {/* Categories */}
-        <div className="flex gap-2 mb-6 overflow-x-auto">
+        <div className="flex gap-2 mb-6 overflow-x-auto pb-2">
           {categories.map((cat) => (
             <button
               key={cat}
@@ -144,20 +144,20 @@ export default function CashierPage() {
         </div>
 
         {/* Products Grid */}
-        <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4">
           {filteredProducts.map((product) => (
             <button
               key={product.id}
               onClick={() => addToCart(product)}
               className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 hover:shadow-md hover:border-green-300 transition-all text-left group"
             >
-              <div className="h-24 bg-gray-100 rounded-lg mb-3 flex items-center justify-center group-hover:bg-green-50 transition-colors">
-                <Package className="w-10 h-10 text-gray-400 group-hover:text-green-600" />
+              <div className="h-20 sm:h-24 bg-gray-100 rounded-lg mb-3 flex items-center justify-center group-hover:bg-green-50 transition-colors">
+                <Package className="w-8 h-8 sm:w-10 sm:h-10 text-gray-400 group-hover:text-green-600" />
               </div>
-              <h3 className="font-medium text-gray-900 text-sm mb-1 line-clamp-2">
+              <h3 className="font-medium text-gray-900 text-xs sm:text-sm mb-1 line-clamp-2">
                 {product.name}
               </h3>
-              <div className="text-green-600 font-bold">
+              <div className="text-green-600 font-bold text-xs sm:text-base">
                 {formatCurrency(product.price)}
               </div>
             </button>
@@ -166,9 +166,9 @@ export default function CashierPage() {
       </div>
 
       {/* Right: Cart */}
-      <div className="w-96 bg-white border-l border-gray-200 flex flex-col">
+      <div className="w-full lg:w-96 bg-white border-t lg:border-t-0 lg:border-l border-gray-200 flex flex-col max-h-[50vh] lg:max-h-none">
         {/* Cart Header */}
-        <div className="p-4 border-b border-gray-200">
+        <div className="p-4 border-b border-gray-200 flex-shrink-0">
           <h2 className="text-lg font-bold text-gray-900">Pesanan</h2>
           <p className="text-sm text-gray-500">{cart.length} item</p>
         </div>
@@ -217,7 +217,7 @@ export default function CashierPage() {
         </div>
 
         {/* Summary */}
-        <div className="p-4 border-t border-gray-200 space-y-2">
+        <div className="p-4 border-t border-gray-200 space-y-2 flex-shrink-0">
           <div className="flex justify-between text-sm">
             <span className="text-gray-500">Subtotal</span>
             <span className="font-medium">{formatCurrency(subtotal)}</span>
@@ -233,7 +233,7 @@ export default function CashierPage() {
         </div>
 
         {/* Checkout Button */}
-        <div className="p-4 border-t border-gray-200">
+        <div className="p-4 border-t border-gray-200 flex-shrink-0">
           <button
             onClick={handleCheckout}
             disabled={cart.length === 0}
