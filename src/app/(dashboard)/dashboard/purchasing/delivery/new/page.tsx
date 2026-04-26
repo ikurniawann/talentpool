@@ -203,7 +203,7 @@ export default function CreateDeliveryPage() {
                       )}
                       <ChevronsUpDown className="ml-auto h-4 w-4 shrink-0 opacity-50" />
                     </PopoverTrigger>
-                    <PopoverContent className="w-[400px] p-0" align="start">
+                    <PopoverContent className="w-[400px] p-0 z-[9999]" align="start">
                       <Command>
                         <CommandInput placeholder="Cari PO atau supplier..." />
                         <CommandList>
