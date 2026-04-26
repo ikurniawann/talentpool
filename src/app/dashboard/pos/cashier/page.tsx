@@ -315,7 +315,7 @@ export default function CashierPage() {
           {selectedCustomer && (
             <div className="flex items-center gap-2 px-3 py-1.5 bg-gray-100 rounded-full">
               <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${selectedCustomer.tier === 'Platinum' ? 'bg-gray-900 text-white' : selectedCustomer.tier === 'Gold' ? 'bg-yellow-500 text-white' : 'bg-gray-300 text-gray-700'}`}>{selectedCustomer.tier}</span>
-              <span className="text-xs font-medium text-gray-700">{selectedCustomer.phone}</span>
+              <span className="text-xs font-medium text-gray-700">ARK : {formatCurrency(selectedCustomer.arkCoin)}</span>
               <button onClick={() => setSelectedCustomer(null)} className="ml-1 text-gray-400 hover:text-red-600"><X className="w-3 h-3" /></button>
             </div>
           )}
