@@ -33,8 +33,9 @@ export default function POSLayout({ children }: { children: React.ReactNode }) {
       {/* Horizontal Navigation Bar */}
       <div className="sticky top-0 z-40 w-full bg-white border-b border-gray-200">
         <div className="flex h-14 items-center justify-between px-3 sm:px-4">
-          {/* Left - Navigation tabs */}
-          <div className="flex flex-wrap items-center gap-1 flex-1 overflow-x-auto scrollbar-hide">
+          {/* Left - Logo + Navigation tabs */}
+          <div className="flex items-center gap-3 flex-1 overflow-x-auto scrollbar-hide">
+            <img src="/logo.png" alt="Prologue Wonderland" className="h-8 w-auto object-contain flex-shrink-0" />
             {POS_ITEMS.map((item) => {
               const active = pathname === item.href;
               return (
@@ -49,8 +50,7 @@ export default function POSLayout({ children }: { children: React.ReactNode }) {
                   )}
                 >
                   <item.icon className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                  <span className="hidden sm:inline">{item.label}</span>
-                  <span className="sm:hidden">{item.label}</span>
+                  <span>{item.label}</span>
                 </Link>
               );
             })}
