@@ -100,7 +100,7 @@ export default function PurchasingLayout({ children }: { children: React.ReactNo
               </button>
 
               {masterOpen && (
-                <div className="absolute left-0 top-full mt-2 bg-white border border-gray-200 rounded-lg shadow-xl z-[100] py-1 min-w-48 overflow-visible">
+                <div className="absolute left-0 top-full mt-2 bg-white border border-gray-200 rounded-lg shadow-xl z-[9999] py-1 min-w-48">
                   {MASTER_ITEMS.map((item) => (
                     <DropdownItem 
                       key={item.href} 
@@ -155,7 +155,7 @@ export default function PurchasingLayout({ children }: { children: React.ReactNo
               </button>
 
               {reportOpen && (
-                <div className="absolute left-0 top-full mt-2 bg-white border border-gray-200 rounded-lg shadow-xl z-[100] py-1 min-w-48">
+                <div className="absolute left-0 top-full mt-2 bg-white border border-gray-200 rounded-lg shadow-xl z-[9999] py-1 min-w-48">
                   <p className="px-3 py-1 text-xs font-semibold text-gray-400 uppercase tracking-wide">Laporan</p>
                   {REPORT_ITEMS.map((item) => (
                     <DropdownItem 
