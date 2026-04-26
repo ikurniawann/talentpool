@@ -6,12 +6,8 @@ import {
   Package, X, Undo2, User, Star, Coins, Check, Utensils,
   ShoppingBag, Truck, Monitor, Table, Sparkles, MinusCircle
 } from 'lucide-react';
-import { Card } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
-// ============== MOCK DATA ==============
 const mockProducts = [
   { id: 1, name: 'Nasi Goreng Special', price: 50000, category: 'Makanan', hasVariants: true, hasModifiers: true },
   { id: 2, name: 'Ayam Bakar Madu', price: 55000, category: 'Makanan', hasVariants: true, hasModifiers: false },
@@ -572,11 +568,6 @@ export default function CashierPage() {
           </div>
         </DialogContent>
       </Dialog>
-            <button onClick={() => setCustomizingItem(null)} className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg font-medium hover:bg-gray-200 transition-colors">Batal</button>
-            <button onClick={addToCart} className="px-4 py-2 text-white bg-pink-600 rounded-lg font-medium hover:bg-pink-700 transition-colors flex items-center gap-2"><Plus className="w-4 h-4" />Tambah</button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       {/* Payment Modal */}
       <Dialog open={showPaymentModal} onOpenChange={(open) => !open && setShowPaymentModal(false)}>
@@ -662,10 +653,10 @@ export default function CashierPage() {
               <button onClick={() => setDigitalReceipt(!digitalReceipt)} className={`px-3 py-1.5 rounded-lg text-sm font-medium ${digitalReceipt ? 'bg-pink-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}>{digitalReceipt ? 'Aktif' : 'Nonaktif'}</button>
             </div>
           </div>
-          <DialogFooter>
-            <button onClick={() => setShowPaymentModal(false)} className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg font-medium hover:bg-gray-200 transition-colors">Batal</button>
-            <button onClick={completeOrder} disabled={!isPaymentValid()} className="px-4 py-2 text-white bg-pink-600 rounded-lg font-medium hover:bg-pink-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors flex items-center gap-2"><Check className="w-4 h-4" />Bayar</button>
-          </DialogFooter>
+          <div className="flex gap-3">
+            <button onClick={() => setShowPaymentModal(false)} className="flex-1 px-4 py-2 text-gray-700 bg-gray-100 rounded-lg font-medium hover:bg-gray-200 transition-colors">Batal</button>
+            <button onClick={completeOrder} disabled={!isPaymentValid()} className="flex-1 px-4 py-2 text-white bg-pink-600 rounded-lg font-medium hover:bg-pink-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors flex items-center gap-2"><Check className="w-4 h-4" />Bayar</button>
+          </div>
         </DialogContent>
       </Dialog>
     </div>
