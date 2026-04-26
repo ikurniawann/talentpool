@@ -1,5 +1,15 @@
 @import "tailwindcss";
 
+/* Hide scrollbar but keep scrollable */
+.scrollbar-hide {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;  /* Chrome, Safari and Opera */
+}
+
 /* Force solid white backgrounds for ALL dropdowns/popovers */
 [data-slot="popover"],
 [data-slot="dropdown-menu"],
