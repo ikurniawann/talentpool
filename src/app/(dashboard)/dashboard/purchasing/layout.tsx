@@ -76,9 +76,9 @@ export default function PurchasingLayout({ children }: { children: React.ReactNo
       <div className="sticky top-0 z-40 w-full bg-white border-b border-gray-200">
         <div className="flex h-14 items-center justify-between px-3 sm:px-4">
           {/* Left - Navigation tabs */}
-          <div className="flex items-center gap-1 flex-1 overflow-x-auto scrollbar-hide">
+          <div className="flex items-center gap-1 flex-1 overflow-x-visible scrollbar-hide">
             {/* Master Data — dropdown */}
-            <div className="relative z-50" ref={masterRef}>
+            <div className="relative z-[9999]" ref={masterRef}>
               <button
                 onMouseDown={(e) => {
                   e.preventDefault();
@@ -133,7 +133,7 @@ export default function PurchasingLayout({ children }: { children: React.ReactNo
             })}
 
             {/* Laporan — dropdown */}
-            <div className="relative z-50" ref={reportRef}>
+            <div className="relative z-[9999]" ref={reportRef}>
               <button
                 onMouseDown={(e) => {
                   e.preventDefault();
