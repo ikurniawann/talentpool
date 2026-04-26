@@ -131,8 +131,8 @@ export default function CashierPage() {
   const [orderType, setOrderType] = useState<OrderType>('dine_in');
   const [selectedTable, setSelectedTable] = useState<string | null>(null);
   const [selectedCustomer, setSelectedCustomer] = useState<typeof mockCustomers[0] | null>(null);
+  const [showCustomerModal, setShowCustomerModal] = useState(false);
   const [customerSearch, setCustomerSearch] = useState('');
-  const [showCustomerDropdown, setShowCustomerDropdown] = useState(false);
   const [customizingItem, setCustomizingItem] = useState<typeof mockProducts[0] | null>(null);
   const [customQuantity, setCustomQuantity] = useState(1);
   const [customVariants, setCustomVariants] = useState<Record<string, string>>({});
@@ -308,7 +308,7 @@ export default function CashierPage() {
           )}
         </div>
 
-        {/* Customer */}
+        {/* Customer Button */}
         <div className="bg-white rounded-xl border border-gray-200 p-4">
           <div className="flex items-center gap-2 mb-3">
             <User className="w-4 h-4 text-gray-600" />
@@ -336,27 +336,9 @@ export default function CashierPage() {
               </div>
             </div>
           ) : (
-            <div className="relative">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
-                <input type="text" placeholder="Cari pelanggan..." value={customerSearch} onChange={(e) => { setCustomerSearch(e.target.value); setShowCustomerDropdown(true); }} onFocus={() => setShowCustomerDropdown(true)} className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500" />
-              </div>
-              {showCustomerDropdown && customerSearch && (
-                <div className="absolute z-20 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
-                  <button onClick={() => { setSelectedCustomer(null); setCustomerSearch(''); setShowCustomerDropdown(false); }} className="w-full px-4 py-2 text-left text-sm text-gray-500 hover:bg-gray-50 flex items-center gap-2"><User className="w-4 h-4" /> Walk-in Customer</button>
-                  {filteredCustomers.map(customer => (
-                    <button key={customer.id} onClick={() => { setSelectedCustomer(customer); setCustomerSearch(''); setShowCustomerDropdown(false); }} className="w-full px-4 py-2 text-left hover:bg-pink-50 flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-700 font-bold text-sm">{customer.name.charAt(0)}</div>
-                      <div className="flex-1">
-                        <div className="text-sm font-medium text-gray-900">{customer.name}</div>
-                        <div className="text-xs text-gray-500">{customer.phone}</div>
-                      </div>
-                      <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${customer.tier === 'Platinum' ? 'bg-gray-900 text-white' : customer.tier === 'Gold' ? 'bg-yellow-500 text-white' : 'bg-gray-200 text-gray-700'}`}>{customer.tier}</span>
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
+            <button onClick={() => setShowCustomerModal(true)} className="w-full py-3 px-4 border-2 border-dashed border-gray-300 rounded-lg text-gray-500 hover:border-pink-400 hover:text-pink-600 transition-all flex items-center justify-center gap-2">
+              <User className="w-4 h-4" /> Pilih Pelanggan
+            </button>
           )}
           
           {selectedCustomer && xpPreview > 0 && (
@@ -466,6 +448,43 @@ export default function CashierPage() {
           <button onClick={undoRemove} className="flex items-center gap-1 text-sm text-pink-400 hover:text-pink-300 font-medium"><Undo2 className="w-4 h-4" />Undo</button>
         </div>
       )}
+
+      {/* Customer Selection Modal */}
+      <Dialog open={showCustomerModal} onOpenChange={(open) => !open && setShowCustomerModal(false)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Pilih Pelanggan</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
+              <input type="text" placeholder="Cari pelanggan..." value={customerSearch} onChange={(e) => setCustomerSearch(e.target.value)} autoFocus className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500" />
+            </div>
+            <div className="space-y-2 max-h-64 overflow-y-auto">
+              <button onClick={() => { setSelectedCustomer(null); setCustomerSearch(''); setShowCustomerModal(false); }} className="w-full px-4 py-3 text-left rounded-lg border border-gray-200 hover:bg-gray-50 flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 font-bold text-sm"><User className="w-5 h-5" /></div>
+                <div>
+                  <div className="text-sm font-semibold text-gray-900">Walk-in Customer</div>
+                  <div className="text-xs text-gray-500">Tanpa membership</div>
+                </div>
+              </button>
+              {filteredCustomers.map(customer => (
+                <button key={customer.id} onClick={() => { setSelectedCustomer(customer); setCustomerSearch(''); setShowCustomerModal(false); }} className="w-full px-4 py-3 text-left rounded-lg border border-gray-200 hover:bg-pink-50 hover:border-pink-200 transition-all flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-pink-100 flex items-center justify-center text-pink-600 font-bold text-sm">{customer.name.charAt(0)}</div>
+                  <div className="flex-1">
+                    <div className="text-sm font-semibold text-gray-900">{customer.name}</div>
+                    <div className="text-xs text-gray-500">{customer.phone}</div>
+                  </div>
+                  <div className="text-right">
+                    <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${customer.tier === 'Platinum' ? 'bg-gray-900 text-white' : customer.tier === 'Gold' ? 'bg-yellow-500 text-white' : customer.tier === 'Silver' ? 'bg-gray-400 text-white' : 'bg-orange-200 text-orange-700'}`}>{customer.tier}</span>
+                    <div className="text-xs text-gray-500 mt-1">{formatCurrency(customer.arkCoin)}</div>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Customization Modal */}
       <Dialog open={customizingItem !== null} onOpenChange={(open) => !open && setCustomizingItem(null)}>
