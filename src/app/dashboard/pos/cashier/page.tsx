@@ -347,6 +347,7 @@ export default function CashierPage() {
                   </div>
                   <h3 className="font-semibold text-gray-900 text-xs line-clamp-2 mb-1">{product.name}</h3>
                   <div className="text-pink-600 font-bold text-sm">{formatCurrency(product.price)}</div>
+                  <div className="text-xs text-gray-500">{product.price / 1000} ARK</div>
                 </button>
               ))}
             </div>
