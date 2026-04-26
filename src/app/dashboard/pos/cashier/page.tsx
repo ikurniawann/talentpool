@@ -553,7 +553,7 @@ export default function CashierPage() {
 
       {/* Payment Modal */}
       <Dialog open={showPaymentModal} onOpenChange={(open) => !open && setShowPaymentModal(false)}>
-        <DialogContent className="max-w-xl">
+        <DialogContent className="max-w-5xl">
           <DialogHeader>
             <DialogTitle>Pembayaran</DialogTitle>
             <div className="flex gap-2 mt-2">
@@ -564,7 +564,7 @@ export default function CashierPage() {
           <div className="space-y-4 py-4">
             <div className="text-center py-4 bg-gray-900 rounded-lg">
               <div className="text-sm text-gray-400 mb-1">Total Pembayaran</div>
-              <div className="text-3xl font-bold text-white">{formatBoth(total)}</div>
+              <div className="text-xl font-bold text-white">{formatBoth(total)}</div>
             </div>
 
             <div className="flex border-b border-gray-200">
