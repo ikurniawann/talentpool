@@ -141,34 +141,34 @@ export async function getOrders(params?: { status?: string; customer_id?: string
   return fetchAPI<{ success: boolean; data: any[] }>(`/orders${queryString ? '?' + queryString : ''}`);
 }
 
-export async function getCustomerFavoriteProducts(customerId: string) {
+export async function getCustomerFavoriteProducts(customerId: string, products: Product[] = []) {
   // Fetch orders for this customer
   const response = await fetchAPI<{ success: boolean; data: any[] }>(`/orders?customer_id=${customerId}&status=completed&limit=100`);
   
   if (!response.success || !response.data) return [];
   
   // Count product occurrences from order items
-  const productCounts: Record<string, { count: number; product: Product }> = {};
+  const productCounts: Record<string, number> = {};
   
   response.data.forEach((order: any) => {
     if (order.items && Array.isArray(order.items)) {
       order.items.forEach((item: any) => {
         if (!productCounts[item.product_id]) {
-          productCounts[item.product_id] = { count: 0, product: null };
+          productCounts[item.product_id] = 0;
         }
-        productCounts[item.product_id].count += item.quantity;
+        productCounts[item.product_id] += item.quantity;
       });
     }
   });
   
   // Sort by count descending and take top 4
-  const sortedProducts = Object.entries(productCounts)
-    .sort(([, a], [, b]) => b.count - a.count)
+  const topProductIds = Object.entries(productCounts)
+    .sort(([, a], [, b]) => b - a)
     .slice(0, 4)
-    .map(([, data]) => data.product)
-    .filter(Boolean);
+    .map(([id]) => id);
   
-  return sortedProducts;
+  // Return actual product objects that match the IDs
+  return products.filter(p => topProductIds.includes(p.id));
 }
 
 export async function updateOrderStatus(

@@ -137,7 +137,7 @@ export default function CashierPageNew() {
       
       try {
         setLoadingFavorites(true);
-        const favorites = await getCustomerFavoriteProducts(selectedCustomer.id);
+        const favorites = await getCustomerFavoriteProducts(selectedCustomer.id, products);
         setCustomerFavorites(favorites);
       } catch (err) {
         console.error('Failed to fetch favorites:', err);
