@@ -46,7 +46,6 @@ export default function LoginPage() {
       <div className="w-full max-w-md p-8 bg-white rounded-xl shadow-md">
         <div className="mb-8 text-center">
           <img src="/logos/logo.png" alt="Prologue in Wounderland" className="w-64 h-auto mx-auto mb-4 bg-transparent" />
-          <p className="text-sm text-gray-500">Backoffice System</p>
         </div>
 
         {/* Demo Mode Bypass - Prominent */}
