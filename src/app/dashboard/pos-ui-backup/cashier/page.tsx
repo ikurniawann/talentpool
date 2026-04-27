@@ -90,11 +90,66 @@ const mockModifierGroups: Record<number, Array<{ id: string; name: string; requi
   ],
 };
 
+type CustomerType = 'regular' | 'premium' | 'owner' | 'vip';
+type Tier = 'silver' | 'gold' | 'platinum';
+
 const mockCustomers = [
-  { id: 'c1', name: 'Ahmad Wijaya', phone: '081234567890', tier: 'Gold', xp: 12500, arkCoin: 250000 },
-  { id: 'c2', name: 'Siti Rahayu', phone: '081234567891', tier: 'Silver', xp: 8500, arkCoin: 85000 },
-  { id: 'c3', name: 'Budi Santoso', phone: '081234567892', tier: 'Platinum', xp: 45000, arkCoin: 1500000 },
+  { id: 'c1', name: 'Ahmad Wijaya', phone: '081234567890', customerType: 'regular' as CustomerType, tier: 'Gold' as Tier, xp: 12500, arkCoin: 250000, discount: 5 },
+  { id: 'c2', name: 'Siti Rahayu', phone: '081234567891', customerType: 'regular' as CustomerType, tier: 'Silver' as Tier, xp: 8500, arkCoin: 85000, discount: 0 },
+  { id: 'c3', name: 'Budi Santoso', phone: '081234567892', customerType: 'vip' as CustomerType, tier: 'Platinum' as Tier, xp: 45000, arkCoin: 1500000, discount: 15 },
+  { id: 'c4', name: 'Warung Kopi Nusantara', phone: '081234567893', customerType: 'premium' as CustomerType, tier: null as Tier | null, xp: 85000, arkCoin: 5000000, discount: 10 },
+  { id: 'c5', name: 'H. Abdullah Trading', phone: '081234567894', customerType: 'owner' as CustomerType, tier: null as Tier | null, xp: 120000, arkCoin: 8500000, discount: 20 },
 ];
+
+// Customer favorite/restaurant preferences (product IDs they usually order)
+const customerFavorites: Record<string, number[]> = {
+  'c1': [1, 4, 5],      // Ahmad: Nasi Goreng, Es Teh, Kopi Susu
+  'c2': [6, 7],         // Siti: Jus Alpukat, Kentang Goreng
+  'c3': [1, 2, 5, 8],   // Budi: Nasi Goreng, Ayam Bakar, Kopi Susu, Roti Bakar
+  'c4': [5, 4, 1, 7],   // Warung Kopi: Kopi Susu, Es Teh, Nasi Goreng, Kentang
+  'c5': [2, 8, 5],      // Abdullah: Ayam Bakar, Roti Bakar, Kopi Susu
+};
+
+// Helper function to get customer type badge styling
+const getCustomerTypeBadge = (type: CustomerType) => {
+  switch (type) {
+    case 'premium':
+      return { label: 'Premium', class: 'bg-purple-100 text-purple-700 border-purple-200' };
+    case 'owner':
+      return { label: 'Owner', class: 'bg-gray-900 text-white border-gray-900' };
+    case 'vip':
+      return { label: 'VIP', class: 'bg-gradient-to-r from-amber-400 to-orange-500 text-white border-amber-300' };
+    default:
+      return { label: 'Member', class: 'bg-blue-100 text-blue-700 border-blue-200' };
+  }
+};
+
+// Helper function to get tier badge styling
+const getTierBadge = (tier: Tier | null) => {
+  if (!tier) return null;
+  switch (tier) {
+    case 'platinum':
+      return { label: 'Platinum', class: 'bg-gradient-to-r from-gray-400 to-gray-600 text-white' };
+    case 'gold':
+      return { label: 'Gold', class: 'bg-gradient-to-r from-yellow-400 to-amber-500 text-white' };
+    case 'silver':
+      return { label: 'Silver', class: 'bg-gradient-to-r from-gray-300 to-gray-500 text-white' };
+    default:
+      return null;
+  }
+};
+
+// Helper function to get discount badge styling
+const getDiscountBadge = (discount: number) => {
+  if (discount <= 0) return null;
+  if (discount >= 15) {
+    return { label: `${discount}% OFF`, class: 'bg-gradient-to-r from-red-500 to-pink-500 text-white border-red-400' };
+  }
+  if (discount >= 10) {
+    return { label: `${discount}% OFF`, class: 'bg-gradient-to-r from-orange-500 to-amber-500 text-white border-orange-400' };
+  }
+  return { label: `${discount}% OFF`, class: 'bg-gradient-to-r from-green-500 to-emerald-500 text-white border-green-400' };
+};
 
 const tables = [
   { id: 't1', name: 'Meja 1', status: 'available' },
@@ -145,6 +200,7 @@ export default function CashierPage() {
   const [digitalReceipt, setDigitalReceipt] = useState(true);
   const [undoItem, setUndoItem] = useState<CartItem | null>(null);
   const [showUndoToast, setShowUndoToast] = useState(false);
+  const [includeTax, setIncludeTax] = useState(false);
 
   const filteredProducts = mockProducts.filter(p => {
     const matchesSearch = p.name.toLowerCase().includes(searchTerm.toLowerCase());
@@ -155,9 +211,11 @@ export default function CashierPage() {
   const filteredCustomers = mockCustomers.filter(c => c.name.toLowerCase().includes(customerSearch.toLowerCase()) || c.phone.includes(customerSearch));
 
   const subtotal = cart.reduce((sum, item) => sum + item.totalPrice, 0);
-  const tax = subtotal * 0.1;
+  const discountAmount = selectedCustomer ? Math.floor(subtotal * selectedCustomer.discount / 100) : 0;
+  const afterDiscount = subtotal - discountAmount;
+  const tax = includeTax ? afterDiscount * 0.1 : 0;
   const tip = showTipInput && tipAmount ? parseInt(tipAmount) || 0 : 0;
-  const total = subtotal + tax + tip;
+  const total = afterDiscount + tax + tip;
   const xpPreview = selectedCustomer ? Math.floor(total / 1000) * 10 : 0;
 
   const openCustomization = (product: typeof mockProducts[0]) => {
@@ -262,7 +320,8 @@ export default function CashierPage() {
   const completeOrder = () => {
     if (!isPaymentValid()) return;
     const orderTypeNames = { dine_in: 'Dine-in', takeaway: 'Takeaway', delivery: 'Delivery', self_order: 'Self-order' };
-    alert(`Order berhasil!\n\nTipe: ${orderTypeNames[orderType]}\n${selectedTable ? `Meja: ${tables.find(t => t.id === selectedTable)?.name}\n` : ''}${selectedCustomer ? `Pelanggan: ${selectedCustomer.name}\n` : ''}Total: ${formatCurrency(total)}\n\nStruk akan ${digitalReceipt ? 'dikirim ke email' : 'dicetak'}.`);
+    const discountInfo = discountAmount > 0 ? `\nDiskon: -${formatCurrency(discountAmount)} (${selectedCustomer?.discount}%)` : '';
+    alert(`Order berhasil!\n\nTipe: ${orderTypeNames[orderType]}\n${selectedTable ? `Meja: ${tables.find(t => t.id === selectedTable)?.name}\n` : ''}${selectedCustomer ? `Pelanggan: ${selectedCustomer.name}${discountInfo}\n` : ''}Total: ${formatCurrency(total)}\n\nStruk akan ${digitalReceipt ? 'dikirim ke email' : 'dicetak'}.`);
     setCart([]); setSelectedTable(null); setSelectedCustomer(null); setPaymentMethod('cash'); setCashReceived(''); setSplitPayments([]); setTipAmount(''); setShowPaymentModal(false);
   };
 
@@ -316,9 +375,37 @@ export default function CashierPage() {
           
           {/* Selected Customer Badge */}
           {selectedCustomer && (
-            <div className="flex items-center gap-2 px-3 py-1.5 bg-gray-100 rounded-full">
-              <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${selectedCustomer.tier === 'Platinum' ? 'bg-gray-900 text-white' : selectedCustomer.tier === 'Gold' ? 'bg-yellow-500 text-white' : 'bg-gray-300 text-gray-700'}`}>{selectedCustomer.tier}</span>
-              <span className="text-xs font-medium text-gray-700">ARK : {(selectedCustomer.arkCoin / 1000)}</span>
+            <div className="flex items-center gap-2 px-3 py-1.5 bg-gray-100 rounded-lg">
+              <div className="flex items-center gap-1.5">
+                {/* Customer Type Badge */}
+                <span className={`px-2 py-0.5 rounded-full text-xs font-semibold border ${getCustomerTypeBadge(selectedCustomer.customerType).class}`}>
+                  {getCustomerTypeBadge(selectedCustomer.customerType).label}
+                </span>
+                {/* Tier Badge (for regular customers) */}
+                {selectedCustomer.customerType === 'regular' && selectedCustomer.tier && (
+                  <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${getTierBadge(selectedCustomer.tier)?.class}`}>
+                    {getTierBadge(selectedCustomer.tier)?.label}
+                  </span>
+                )}
+                {/* Discount Badge */}
+                {selectedCustomer.discount > 0 && (
+                  <span className={`px-2 py-0.5 rounded-full text-xs font-semibold border ${getDiscountBadge(selectedCustomer.discount)?.class}`}>
+                    {getDiscountBadge(selectedCustomer.discount)?.label}
+                  </span>
+                )}
+              </div>
+              <div className="h-4 w-px bg-gray-300" />
+              {/* Wallet Balance */}
+              <div className="flex items-center gap-1">
+                <Coins className="w-3.5 h-3.5 text-amber-500" />
+                <span className="text-xs font-bold text-amber-600">{(selectedCustomer.arkCoin / 1000).toLocaleString('id-ID')} ARK</span>
+              </div>
+              <div className="h-4 w-px bg-gray-300" />
+              {/* XP Balance */}
+              <div className="flex items-center gap-1">
+                <Star className="w-3.5 h-3.5 text-pink-500" />
+                <span className="text-xs font-bold text-pink-600">{selectedCustomer.xp.toLocaleString('id-ID')} XP</span>
+              </div>
               <button onClick={() => setSelectedCustomer(null)} className="ml-1 text-gray-400 hover:text-red-600"><X className="w-3 h-3" /></button>
             </div>
           )}
@@ -330,7 +417,36 @@ export default function CashierPage() {
           </div>
         </div>
 
-        {/* Products Grid */}
+        {/* Customer Favorites Recommendation */}
+        {selectedCustomer && customerFavorites[selectedCustomer.id] && (
+          <div className="bg-gradient-to-r from-amber-50 to-orange-50 rounded-xl p-3 border border-amber-100">
+            <div className="flex items-center gap-2 mb-2">
+              <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+              <span className="text-xs font-semibold text-amber-700">Pilihanan {selectedCustomer.name.split(' ')[0]}</span>
+            </div>
+            <div className="flex gap-2 overflow-x-auto pb-1">
+              {customerFavorites[selectedCustomer.id].map(productId => {
+                const product = mockProducts.find(p => p.id === productId);
+                if (!product) return null;
+                return (
+                  <button
+                    key={product.id}
+                    onClick={() => openCustomization(product)}
+                    className="flex items-center gap-2 px-3 py-2 bg-white rounded-lg border border-amber-200 hover:border-amber-400 hover:bg-amber-50 transition-all flex-shrink-0"
+                  >
+                    <div className="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center overflow-hidden">
+                      <img src={`/products/${product.image}`} alt={product.name} className="w-full h-full object-cover" />
+                    </div>
+                    <div className="text-left">
+                      <div className="text-xs font-medium text-gray-900 line-clamp-1">{product.name}</div>
+                      <div className="text-xs text-pink-600 font-semibold">{formatCurrency(product.price)}</div>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
         <div className="flex-1 bg-white rounded-xl border border-gray-200 p-4 overflow-hidden flex flex-col">
           <div className="flex gap-2 mb-3 overflow-x-auto pb-2">
             {categories.map((cat) => (
@@ -385,7 +501,16 @@ export default function CashierPage() {
                     <div className="flex-1">
                       <h3 className="font-semibold text-gray-900 text-sm">{item.name}</h3>
                       {item.variants.length > 0 && <div className="text-xs text-gray-500 mt-0.5">{item.variants.map(v => v.name).join(', ')}</div>}
-                      {item.modifiers.length > 0 && <div className="text-xs text-green-600 mt-0.5">+ {item.modifiers.map(m => m.name).join(', ')}</div>}
+                      {item.modifiers.length > 0 && (
+                        <div className="flex flex-wrap gap-1 mt-1">
+                          {item.modifiers.map((m, idx) => (
+                            <span key={idx} className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-xs ${m.priceAdj > 0 ? 'bg-amber-50 text-amber-700 border border-amber-200' : 'bg-green-50 text-green-700 border border-green-200'}`}>
+                              {m.priceAdj > 0 ? <><Plus className="w-2.5 h-2.5" />{formatCurrency(m.priceAdj)}</> : 'FREE'}
+                              <span className="ml-0.5">{m.name}</span>
+                            </span>
+                          ))}
+                        </div>
+                      )}
                     </div>
                     <button onClick={() => removeFromCart(item.id)} className="p-1 text-gray-400 hover:text-red-600"><Trash2 className="w-4 h-4" /></button>
                   </div>
@@ -409,7 +534,25 @@ export default function CashierPage() {
 
         <div className="p-4 border-t border-gray-200 space-y-2 bg-gray-50">
           <div className="flex justify-between text-sm"><span className="text-gray-600">Subtotal</span><span className="font-medium text-gray-900">{formatBoth(subtotal)}</span></div>
-          <div className="flex justify-between text-sm"><span className="text-gray-600">Pajak (10%)</span><span className="font-medium text-gray-900">{formatBoth(tax)}</span></div>
+          {discountAmount > 0 && (
+            <div className="flex justify-between text-sm">
+              <span className="text-green-600">Diskon ({selectedCustomer?.discount}%)</span>
+              <span className="font-medium text-green-600">-{formatBoth(discountAmount)}</span>
+            </div>
+          )}
+          {/* Tax Toggle */}
+          <div className="flex items-center justify-between text-sm">
+            <button 
+              onClick={() => setIncludeTax(!includeTax)}
+              className="flex items-center gap-2 text-gray-600 hover:text-gray-900"
+            >
+              <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-all ${includeTax ? 'bg-pink-600 border-pink-600' : 'border-gray-300 hover:border-pink-400'}`}>
+                {includeTax && <Check className="w-3 h-3 text-white" />}
+              </div>
+              <span>Pajak (10%)</span>
+            </button>
+            <span className="font-medium text-gray-900">{formatBoth(tax)}</span>
+          </div>
           {tip > 0 && <div className="flex justify-between text-sm"><span className="text-gray-600">Tip</span><span className="font-medium text-green-600">+{formatBoth(tip)}</span></div>}
           {selectedCustomer && xpPreview > 0 && <div className="flex justify-between text-sm"><span className="text-gray-600">XP Earned</span><span className="font-medium text-pink-600">+{xpPreview} XP</span></div>}
           <div className="flex justify-between text-lg font-bold pt-2 border-t border-gray-300"><span className="text-gray-900">Total</span><span className="text-pink-600">{formatBoth(total)}</span></div>
@@ -449,13 +592,39 @@ export default function CashierPage() {
               {filteredCustomers.map(customer => (
                 <button key={customer.id} onClick={() => { setSelectedCustomer(customer); setCustomerSearch(''); setShowCustomerModal(false); }} className="w-full px-4 py-3 text-left rounded-lg border border-gray-200 hover:bg-pink-50 hover:border-pink-200 transition-all flex items-center gap-3">
                   <div className="w-10 h-10 rounded-full bg-pink-100 flex items-center justify-center text-pink-600 font-bold text-sm">{customer.name.charAt(0)}</div>
-                  <div className="flex-1">
-                    <div className="text-sm font-semibold text-gray-900">{customer.name}</div>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm font-semibold text-gray-900 truncate">{customer.name}</div>
                     <div className="text-xs text-gray-500">{customer.phone}</div>
+                    {/* XP Display */}
+                    <div className="flex items-center gap-1 mt-0.5">
+                      <Star className="w-3 h-3 text-pink-500" />
+                      <span className="text-xs text-pink-600 font-medium">{customer.xp.toLocaleString('id-ID')} XP</span>
+                    </div>
                   </div>
-                  <div className="text-right">
-                    <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${customer.tier === 'Platinum' ? 'bg-gray-900 text-white' : customer.tier === 'Gold' ? 'bg-yellow-500 text-white' : customer.tier === 'Silver' ? 'bg-gray-400 text-white' : 'bg-orange-200 text-orange-700'}`}>{customer.tier}</span>
-                    <div className="text-xs text-gray-500 mt-1">ARK : {customer.arkCoin / 1000}</div>
+                  <div className="text-right flex-shrink-0">
+                    <div className="flex flex-col items-end gap-1">
+                      {/* Customer Type Badge */}
+                      <span className={`px-2 py-0.5 rounded-full text-xs font-semibold border ${getCustomerTypeBadge(customer.customerType).class}`}>
+                        {getCustomerTypeBadge(customer.customerType).label}
+                      </span>
+                      {/* Tier Badge (for regular customers) */}
+                      {customer.customerType === 'regular' && customer.tier && (
+                        <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${getTierBadge(customer.tier)?.class}`}>
+                          {getTierBadge(customer.tier)?.label}
+                        </span>
+                      )}
+                      {/* Discount Badge */}
+                      {customer.discount > 0 && (
+                        <span className={`px-2 py-0.5 rounded-full text-xs font-semibold border ${getDiscountBadge(customer.discount)?.class}`}>
+                          {getDiscountBadge(customer.discount)?.label}
+                        </span>
+                      )}
+                      {/* Wallet Balance */}
+                      <div className="flex items-center gap-1 mt-0.5">
+                        <Coins className="w-3 h-3 text-amber-500" />
+                        <span className="text-xs font-bold text-amber-600">{(customer.arkCoin / 1000).toLocaleString('id-ID')} ARK</span>
+                      </div>
+                    </div>
                   </div>
                 </button>
               ))}
@@ -519,9 +688,13 @@ export default function CashierPage() {
                           const isSelected = customModifiers[group.id]?.includes(modifier.id) || false;
                           const currentCount = customModifiers[group.id]?.length || 0;
                           const canSelect = !isSelected && currentCount < group.maxSelect;
+                          const isFree = modifier.priceAdj === 0;
                           return (
-                            <button key={modifier.id} onClick={() => { if (isSelected) setCustomModifiers(prev => ({ ...prev, [group.id]: prev[group.id].filter(id => id !== modifier.id) })); else if (canSelect) setCustomModifiers(prev => ({ ...prev, [group.id]: [...(prev[group.id] || []), modifier.id] })); }} disabled={!isSelected && !canSelect} className={`px-3 py-1.5 rounded-lg text-sm font-medium border-2 transition-all ${isSelected ? 'border-pink-600 bg-pink-50 text-pink-700' : canSelect ? 'border-gray-200 text-gray-700 hover:border-gray-300' : 'border-gray-100 bg-gray-50 text-gray-300 cursor-not-allowed'}`}>
-                              {modifier.name} {modifier.priceAdj !== 0 && <span className="text-xs opacity-70">+{formatCurrency(modifier.priceAdj)}</span>}
+                            <button key={modifier.id} onClick={() => { if (isSelected) setCustomModifiers(prev => ({ ...prev, [group.id]: prev[group.id].filter(id => id !== modifier.id) })); else if (canSelect) setCustomModifiers(prev => ({ ...prev, [group.id]: [...(prev[group.id] || []), modifier.id] })); }} disabled={!isSelected && !canSelect} className={`px-3 py-1.5 rounded-lg text-sm font-medium border-2 transition-all ${isSelected ? 'border-pink-600 bg-pink-50 text-pink-700' : canSelect ? isFree ? 'border-green-200 text-green-700 hover:border-green-400 hover:bg-green-50' : 'border-amber-200 text-amber-700 hover:border-amber-400 hover:bg-amber-50' : 'border-gray-100 bg-gray-50 text-gray-300 cursor-not-allowed'}`}>
+                              {modifier.name}
+                              <span className={`ml-1 text-xs font-semibold px-1.5 py-0.5 rounded ${isFree ? 'bg-green-100 text-green-600' : 'bg-amber-100 text-amber-600'}`}>
+                                {isFree ? 'FREE' : `+${formatCurrency(modifier.priceAdj)}`}
+                              </span>
                             </button>
                           );
                         })}
@@ -580,23 +753,82 @@ export default function CashierPage() {
               <div className="text-center py-4">
                 {selectedCustomer ? (
                   <div className="space-y-3">
-                    <div className="w-24 h-24 bg-pink-100 rounded-full mx-auto flex items-center justify-center">
-                      <CreditCard className="w-12 h-12 text-pink-600" />
+                    {/* Customer Info Header */}
+                    <div className="flex items-center justify-center gap-3 p-3 bg-gradient-to-r from-pink-50 to-purple-50 rounded-lg border border-pink-100">
+                      <div className="w-14 h-14 bg-pink-100 rounded-full flex items-center justify-center">
+                        <span className="text-pink-600 font-bold text-xl">{selectedCustomer.name.charAt(0)}</span>
+                      </div>
+                      <div className="text-left">
+                        <div className="font-semibold text-gray-900">{selectedCustomer.name}</div>
+                        <div className="flex items-center gap-1.5 mt-0.5">
+                          {/* Customer Type Badge */}
+                          <span className={`px-2 py-0.5 rounded-full text-xs font-semibold border ${getCustomerTypeBadge(selectedCustomer.customerType).class}`}>
+                            {getCustomerTypeBadge(selectedCustomer.customerType).label}
+                          </span>
+                          {/* Tier Badge */}
+                          {selectedCustomer.customerType === 'regular' && selectedCustomer.tier && (
+                            <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${getTierBadge(selectedCustomer.tier)?.class}`}>
+                              {getTierBadge(selectedCustomer.tier)?.label}
+                            </span>
+                          )}
+                          {/* Discount Badge */}
+                          {selectedCustomer.discount > 0 && (
+                            <span className={`px-2 py-0.5 rounded-full text-xs font-semibold border ${getDiscountBadge(selectedCustomer.discount)?.class}`}>
+                              {getDiscountBadge(selectedCustomer.discount)?.label}
+                            </span>
+                          )}
+                        </div>
+                      </div>
                     </div>
+
                     <div className="text-xs text-gray-500">Tap kartu member pada reader NFC</div>
-                    <div className="p-3 bg-gray-100 rounded-lg">
-                      <div className="text-xs text-gray-500 mb-1">Saldo ARK Terpilih</div>
-                      <div className="text-xl font-bold text-gray-900">{selectedCustomer.arkCoin / 1000} ARK</div>
+
+                    {/* Wallet & XP Grid */}
+                    <div className="grid grid-cols-2 gap-3">
+                      {/* ARK Wallet */}
+                      <div className="p-3 bg-amber-50 rounded-lg border border-amber-200">
+                        <div className="flex items-center gap-1.5 mb-1">
+                          <Coins className="w-4 h-4 text-amber-500" />
+                          <span className="text-xs text-amber-600 font-medium">ARK Wallet</span>
+                        </div>
+                        <div className="text-xl font-bold text-amber-700">{(selectedCustomer.arkCoin / 1000).toLocaleString('id-ID')} ARK</div>
+                        <div className="text-xs text-amber-600 mt-0.5">≈ {formatCurrency(selectedCustomer.arkCoin)}</div>
+                      </div>
+                      {/* XP Balance */}
+                      <div className="p-3 bg-pink-50 rounded-lg border border-pink-200">
+                        <div className="flex items-center gap-1.5 mb-1">
+                          <Star className="w-4 h-4 text-pink-500" />
+                          <span className="text-xs text-pink-600 font-medium">XP Balance</span>
+                        </div>
+                        <div className="text-xl font-bold text-pink-700">{selectedCustomer.xp.toLocaleString('id-ID')}</div>
+                        <div className="text-xs text-pink-600 mt-0.5">+{xpPreview} XP earned</div>
+                      </div>
                     </div>
+
+                    {/* Payment Feasibility */}
                     {selectedCustomer.arkCoin / 1000 >= total / 1000 ? (
-                      <div className="p-2 bg-green-50 rounded-lg border border-green-200">
-                        <div className="text-xs text-green-700">ARK cukup untuk pembayaran</div>
-                        <div className="text-base font-bold text-green-600 mt-1">-{total / 1000} ARK</div>
+                      <div className="p-3 bg-green-50 rounded-lg border border-green-200">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <div className="text-xs text-green-700 font-medium">ARK cukup untuk pembayaran</div>
+                            <div className="text-xs text-green-600 mt-0.5">Sisa: {((selectedCustomer.arkCoin / 1000) - (total / 1000)).toLocaleString('id-ID')} ARK</div>
+                          </div>
+                          <div className="text-right">
+                            <div className="text-xs text-green-600">Digunakan</div>
+                            <div className="text-lg font-bold text-green-600">-{Math.ceil(total / 1000).toLocaleString('id-ID')} ARK</div>
+                          </div>
+                        </div>
                       </div>
                     ) : (
-                      <div className="p-2 bg-red-50 rounded-lg border border-red-200">
-                        <div className="text-xs text-red-700">Saldo ARK tidak cukup</div>
-                        <div className="text-xs text-red-500 mt-1">Kekurangan: {(total - selectedCustomer.arkCoin) / 1000} ARK</div>
+                      <div className="p-3 bg-red-50 rounded-lg border border-red-200">
+                        <div className="text-xs text-red-700 font-medium mb-1">Saldo ARK tidak cukup</div>
+                        <div className="flex items-center justify-between">
+                          <div className="text-xs text-red-600">Kekurangan</div>
+                          <div className="text-lg font-bold text-red-600">{((total - selectedCustomer.arkCoin) / 1000).toLocaleString('id-ID')} ARK</div>
+                        </div>
+                        <button className="w-full mt-2 py-1.5 bg-red-100 hover:bg-red-200 text-red-700 text-xs font-medium rounded-lg transition-colors">
+                          Topup ARK Coins
+                        </button>
                       </div>
                     )}
                   </div>

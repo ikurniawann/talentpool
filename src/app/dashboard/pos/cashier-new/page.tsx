@@ -6,7 +6,7 @@ import {
   Table as TableIcon, User, Check, Coins, Sparkles
 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { getProducts, getCustomers, createOrder, type Product, type Customer } from '@/lib/pos-api';
+import { getProducts, getCustomers, createOrder, getCustomerFavoriteProducts, type Product, type Customer } from '@/lib/pos-api';
 
 type OrderType = 'dine_in' | 'takeaway' | 'delivery' | 'self_order';
 type PaymentMethod = 'cash' | 'qris' | 'credit_card' | 'ark_coin';
@@ -123,32 +123,32 @@ export default function CashierPageNew() {
     c.name?.toLowerCase().includes(customerSearch.toLowerCase()) || c.phone.includes(customerSearch)
   );
 
-  // Get customer favorites based on order history (or mock for demo)
-  const getCustomerFavorites = (customerId: string): Product[] => {
-    if (!products.length) return [];
-    
-    // Mock favorites - in real app, fetch from order history
-    // Use first 4 products as demo favorites if no specific mapping
-    const favoriteIds: Record<string, number[]> = {
-      'c1': [0, 3, 4],
-      'c2': [5, 6],
-      'c3': [0, 1, 4, 7],
-      'c4': [4, 3, 0, 6],
-      'c5': [1, 7, 4],
+  // Get customer favorites based on transaction history
+  const [customerFavorites, setCustomerFavorites] = useState<Product[]>([]);
+  const [loadingFavorites, setLoadingFavorites] = useState(false);
+  
+  // Fetch customer favorites when customer is selected
+  useEffect(() => {
+    const fetchFavorites = async () => {
+      if (!selectedCustomer) {
+        setCustomerFavorites([]);
+        return;
+      }
+      
+      try {
+        setLoadingFavorites(true);
+        const favorites = await getCustomerFavoriteProducts(selectedCustomer.id);
+        setCustomerFavorites(favorites);
+      } catch (err) {
+        console.error('Failed to fetch favorites:', err);
+        setCustomerFavorites([]);
+      } finally {
+        setLoadingFavorites(false);
+      }
     };
     
-    const ids = favoriteIds[customerId];
-    
-    // If we have mapped favorites, use them
-    if (ids && ids.length > 0) {
-      return ids.map(id => products[id]).filter(Boolean);
-    }
-    
-    // Fallback: return first 4 products as "favorites" for demo
-    return products.slice(0, Math.min(4, products.length));
-  };
-  
-  const customerFavorites = selectedCustomer ? getCustomerFavorites(selectedCustomer.id) : [];
+    fetchFavorites();
+  }, [selectedCustomer]);
 
   // Cart calculations
   const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
@@ -533,17 +533,26 @@ export default function CashierPageNew() {
             </div>
             
             {/* Customer Favorites */}
-            {customerFavorites.length > 0 && (
+            {(customerFavorites.length > 0 || loadingFavorites) && (
               <div className="bg-gradient-to-r from-amber-50 to-orange-50 rounded-xl p-3 border border-amber-100">
                 <div className="flex items-center gap-2 mb-3">
                   <Sparkles className="w-4 h-4 text-amber-500" />
                   <span className="text-sm font-semibold text-amber-700">
                     Favorit {selectedCustomer.name?.split(' ')[0]}
                   </span>
-                  <span className="text-xs text-amber-600">({customerFavorites.length} menu)</span>
+                  {loadingFavorites ? (
+                    <span className="text-xs text-amber-600">Loading...</span>
+                  ) : (
+                    <span className="text-xs text-amber-600">({customerFavorites.length} menu)</span>
+                  )}
                 </div>
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
-                  {customerFavorites.map(product => (
+                {loadingFavorites ? (
+                  <div className="flex items-center justify-center py-4">
+                    <div className="animate-spin h-6 w-6 border-2 border-amber-500 border-t-transparent rounded-full" />
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
+                    {customerFavorites.map(product => (
                     <button
                       key={product.id}
                       onClick={() => openCustomization(product)}

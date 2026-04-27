@@ -1,0 +1,987 @@
+'use client';
+
+import { useState, useCallback, useEffect } from 'react';
+import { 
+  Search, Plus, Minus, Trash2, CreditCard, Banknote, Wallet,
+  Package, X, Undo2, User, Star, Coins, Check, Utensils,
+  ShoppingBag, Truck, Monitor, Table, Sparkles, MinusCircle
+} from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { getProducts, getCustomers, createOrder, type Product, type Customer } from '@/lib/pos-api';
+
+const mockProducts = [
+  { id: 1, name: 'Nasi Goreng Special', price: 50000, category: 'Makanan', hasVariants: true, hasModifiers: true, image: 'nasi-goreng.png' },
+  { id: 2, name: 'Ayam Bakar Madu', price: 55000, category: 'Makanan', hasVariants: true, hasModifiers: false, image: 'ayam-bakar.png' },
+  { id: 3, name: 'Mie Goreng Jawa', price: 45000, category: 'Makanan', hasVariants: false, hasModifiers: true, image: 'mie-goreng.png' },
+  { id: 4, name: 'Es Teh Manis', price: 5000, category: 'Minuman', hasVariants: true, hasModifiers: true, image: 'es-teh.png' },
+  { id: 5, name: 'Kopi Susu Gula Aren', price: 18000, category: 'Minuman', hasVariants: true, hasModifiers: true, image: 'kopi-susu.png' },
+  { id: 6, name: 'Jus Alpukat', price: 15000, category: 'Minuman', hasVariants: false, hasModifiers: true, image: 'jus-alpukat.png' },
+  { id: 7, name: 'Kentang Goreng', price: 12000, category: 'Snack', hasVariants: false, hasModifiers: true, image: 'kentang-goreng.png' },
+  { id: 8, name: 'Roti Bakar', price: 20000, category: 'Snack', hasVariants: true, hasModifiers: true, image: 'roti-bakar.png' },
+];
+
+const mockVariants: Record<number, Array<{ id: string; name: string; priceAdj: number; type: string }>> = {
+  1: [
+    { id: 'v1-s', name: 'Small', priceAdj: -10000, type: 'size' },
+    { id: 'v1-m', name: 'Medium', priceAdj: 0, type: 'size' },
+    { id: 'v1-l', name: 'Large', priceAdj: 15000, type: 'size' },
+    { id: 'v1-h', name: 'Hot', priceAdj: 0, type: 'temp' },
+    { id: 'v1-i', name: 'Ice', priceAdj: 2000, type: 'temp' },
+  ],
+  2: [
+    { id: 'v2-p', name: 'Paha', priceAdj: 0, type: 'part' },
+    { id: 'v2-d', name: 'Dada', priceAdj: 5000, type: 'part' },
+    { id: 'v2-s', name: 'Sayap', priceAdj: -5000, type: 'part' },
+  ],
+  4: [
+    { id: 'v4-h', name: 'Hot', priceAdj: 0, type: 'temp' },
+    { id: 'v4-i', name: 'Ice', priceAdj: 1000, type: 'temp' },
+  ],
+  5: [
+    { id: 'v5-h', name: 'Hot', priceAdj: 0, type: 'temp' },
+    { id: 'v5-i', name: 'Ice', priceAdj: 2000, type: 'temp' },
+  ],
+  8: [
+    { id: 'v8-s', name: 'Small', priceAdj: -5000, type: 'size' },
+    { id: 'v8-m', name: 'Medium', priceAdj: 0, type: 'size' },
+    { id: 'v8-l', name: 'Large', priceAdj: 8000, type: 'size' },
+  ],
+};
+
+const mockModifierGroups: Record<number, Array<{ id: string; name: string; required: boolean; maxSelect: number; modifiers: Array<{ id: string; name: string; priceAdj: number }> }>> = {
+  1: [
+    { id: 'mg1-s', name: 'Sugar Level', required: true, maxSelect: 1, modifiers: [
+      { id: 'm1-0', name: 'No Sugar', priceAdj: 0 },
+      { id: 'm1-50', name: 'Half Sweet (50%)', priceAdj: 0 },
+      { id: 'm1-100', name: 'Full Sweet (100%)', priceAdj: 0 },
+    ]},
+    { id: 'mg1-t', name: 'Toppings', required: false, maxSelect: 3, modifiers: [
+      { id: 'm1-t1', name: 'Extra Egg', priceAdj: 5000 },
+      { id: 'm1-t2', name: 'Extra Chicken', priceAdj: 10000 },
+      { id: 'm1-t3', name: 'Extra Rice', priceAdj: 5000 },
+    ]},
+  ],
+  4: [
+    { id: 'mg4-s', name: 'Sugar Level', required: true, maxSelect: 1, modifiers: [
+      { id: 'm4-0', name: 'No Sugar', priceAdj: 0 },
+      { id: 'm4-50', name: 'Less Sweet', priceAdj: 0 },
+      { id: 'm4-100', name: 'Normal', priceAdj: 0 },
+    ]},
+  ],
+  5: [
+    { id: 'mg5-s', name: 'Sugar Level', required: true, maxSelect: 1, modifiers: [
+      { id: 'm5-0', name: 'No Sugar', priceAdj: 0 },
+      { id: 'm5-50', name: 'Half Sweet', priceAdj: 0 },
+      { id: 'm5-100', name: 'Full Sweet', priceAdj: 0 },
+    ]},
+  ],
+  6: [
+    { id: 'mg6-t', name: 'Toppings', required: false, maxSelect: 5, modifiers: [
+      { id: 'm6-t1', name: 'Chocolate', priceAdj: 3000 },
+      { id: 'm6-t2', name: 'Caramel', priceAdj: 3000 },
+      { id: 'm6-t3', name: 'Whipped Cream', priceAdj: 5000 },
+    ]},
+  ],
+  8: [
+    { id: 'mg8-s', name: 'Sugar Level', required: true, maxSelect: 1, modifiers: [
+      { id: 'm8-s1', name: 'No Sugar', priceAdj: 0 },
+      { id: 'm8-s2', name: 'Less Sweet', priceAdj: 0 },
+      { id: 'm8-s3', name: 'Normal Sweet', priceAdj: 0 },
+    ]},
+  ],
+};
+
+type CustomerType = 'regular' | 'premium' | 'owner' | 'vip';
+type Tier = 'silver' | 'gold' | 'platinum';
+
+const mockCustomers = [
+  { id: 'c1', name: 'Ahmad Wijaya', phone: '081234567890', customerType: 'regular' as CustomerType, tier: 'Gold' as Tier, xp: 12500, arkCoin: 250000, discount: 5 },
+  { id: 'c2', name: 'Siti Rahayu', phone: '081234567891', customerType: 'regular' as CustomerType, tier: 'Silver' as Tier, xp: 8500, arkCoin: 85000, discount: 0 },
+  { id: 'c3', name: 'Budi Santoso', phone: '081234567892', customerType: 'vip' as CustomerType, tier: 'Platinum' as Tier, xp: 45000, arkCoin: 1500000, discount: 15 },
+  { id: 'c4', name: 'Warung Kopi Nusantara', phone: '081234567893', customerType: 'premium' as CustomerType, tier: null as Tier | null, xp: 85000, arkCoin: 5000000, discount: 10 },
+  { id: 'c5', name: 'H. Abdullah Trading', phone: '081234567894', customerType: 'owner' as CustomerType, tier: null as Tier | null, xp: 120000, arkCoin: 8500000, discount: 20 },
+];
+
+// Customer favorite/restaurant preferences (product IDs they usually order)
+const customerFavorites: Record<string, number[]> = {
+  'c1': [1, 4, 5],      // Ahmad: Nasi Goreng, Es Teh, Kopi Susu
+  'c2': [6, 7],         // Siti: Jus Alpukat, Kentang Goreng
+  'c3': [1, 2, 5, 8],   // Budi: Nasi Goreng, Ayam Bakar, Kopi Susu, Roti Bakar
+  'c4': [5, 4, 1, 7],   // Warung Kopi: Kopi Susu, Es Teh, Nasi Goreng, Kentang
+  'c5': [2, 8, 5],      // Abdullah: Ayam Bakar, Roti Bakar, Kopi Susu
+};
+
+// Helper function to get customer type badge styling
+const getCustomerTypeBadge = (type: CustomerType) => {
+  switch (type) {
+    case 'premium':
+      return { label: 'Premium', class: 'bg-purple-100 text-purple-700 border-purple-200' };
+    case 'owner':
+      return { label: 'Owner', class: 'bg-gray-900 text-white border-gray-900' };
+    case 'vip':
+      return { label: 'VIP', class: 'bg-gradient-to-r from-amber-400 to-orange-500 text-white border-amber-300' };
+    default:
+      return { label: 'Member', class: 'bg-blue-100 text-blue-700 border-blue-200' };
+  }
+};
+
+// Helper function to get tier badge styling
+const getTierBadge = (tier: Tier | null) => {
+  if (!tier) return null;
+  switch (tier) {
+    case 'platinum':
+      return { label: 'Platinum', class: 'bg-gradient-to-r from-gray-400 to-gray-600 text-white' };
+    case 'gold':
+      return { label: 'Gold', class: 'bg-gradient-to-r from-yellow-400 to-amber-500 text-white' };
+    case 'silver':
+      return { label: 'Silver', class: 'bg-gradient-to-r from-gray-300 to-gray-500 text-white' };
+    default:
+      return null;
+  }
+};
+
+// Helper function to get discount badge styling
+const getDiscountBadge = (discount: number) => {
+  if (discount <= 0) return null;
+  if (discount >= 15) {
+    return { label: `${discount}% OFF`, class: 'bg-gradient-to-r from-red-500 to-pink-500 text-white border-red-400' };
+  }
+  if (discount >= 10) {
+    return { label: `${discount}% OFF`, class: 'bg-gradient-to-r from-orange-500 to-amber-500 text-white border-orange-400' };
+  }
+  return { label: `${discount}% OFF`, class: 'bg-gradient-to-r from-green-500 to-emerald-500 text-white border-green-400' };
+};
+
+const tables = [
+  { id: 't1', name: 'Meja 1', status: 'available' },
+  { id: 't2', name: 'Meja 2', status: 'occupied' },
+  { id: 't3', name: 'Meja 3', status: 'available' },
+  { id: 't4', name: 'Meja 4', status: 'reserved' },
+  { id: 't5', name: 'Meja 5', status: 'available' },
+  { id: 't6', name: 'Meja 6', status: 'available' },
+];
+
+const categories = ['Semua', 'Makanan', 'Minuman', 'Snack'];
+
+type OrderType = 'dine_in' | 'takeaway' | 'delivery' | 'self_order';
+type PaymentMethod = 'cash' | 'qris' | 'member' | 'split';
+type CartItem = {
+  id: string; productId: number; name: string; basePrice: number; quantity: number;
+  variants: Array<{ name: string; priceAdj: number }>;
+  modifiers: Array<{ name: string; priceAdj: number }>;
+  notes: string; unitPrice: number; totalPrice: number;
+};
+type SplitPayment = { id: string; method: PaymentMethod; amount: number };
+
+const formatCurrency = (value: number) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(value);
+const formatArk = (value: number) => `${value / 1000} ARK`;
+const formatBoth = (value: number) => `${formatCurrency(value)} (${formatArk(value)})`;
+const generateId = () => Math.random().toString(36).substr(2, 9);
+
+export default function CashierPage() {
+  // API state
+  const [products, setProducts] = useState<Product[]>([]);
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  
+  // UI state
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('Semua');
+  const [cart, setCart] = useState<CartItem[]>([]);
+  const [orderType, setOrderType] = useState<OrderType>('dine_in');
+  const [selectedTable, setSelectedTable] = useState<string | null>(null);
+  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
+  const [showCustomerModal, setShowCustomerModal] = useState(false);
+  const [customerSearch, setCustomerSearch] = useState('');
+  const [customizingItem, setCustomizingItem] = useState<Product | null>(null);
+  const [customQuantity, setCustomQuantity] = useState(1);
+  const [customVariants, setCustomVariants] = useState<Record<string, string>>({});
+  const [customModifiers, setCustomModifiers] = useState<Record<string, string[]>>({});
+  const [customNotes, setCustomNotes] = useState('');
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('member');
+  const [cashReceived, setCashReceived] = useState('');
+  const [splitPayments, setSplitPayments] = useState<SplitPayment[]>([]);
+  const [showTipInput, setShowTipInput] = useState(false);
+  const [tipAmount, setTipAmount] = useState('');
+  const [digitalReceipt, setDigitalReceipt] = useState(true);
+  const [undoItem, setUndoItem] = useState<CartItem | null>(null);
+  const [showUndoToast, setShowUndoToast] = useState(false);
+  const [includeTax, setIncludeTax] = useState(false);
+
+  // Fetch data from API
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        
+        const [productsRes, customersRes] = await Promise.all([
+          getProducts(),
+          getCustomers()
+        ]);
+        
+        setProducts(productsRes.data || []);
+        setCustomers(customersRes.data || []);
+      } catch (err: any) {
+        console.error('Failed to fetch data:', err);
+        setError(err.message || 'Failed to load data');
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchData();
+  }, []);
+
+  // Helper to get discount by tier
+  const getDiscountByTier = (tier: string): number => {
+    switch (tier?.toLowerCase()) {
+      case 'platinum': return 20;
+      case 'gold': return 15;
+      case 'silver': return 5;
+      default: return 0;
+    }
+  };
+
+  // Map API data with UI-friendly fields
+  const productsWithCategory = products.map(p => ({
+    ...p,
+    category: p.category_id ? 'Makanan' : 'Minuman' // Simplified, should use actual category name
+  }));
+
+  const customersWithDiscount = customers.map(c => ({
+    ...c,
+    discount: getDiscountByTier(c.membership_tier)
+  }));
+
+  const filteredProducts = productsWithCategory.filter(p => {
+    const matchesSearch = p.name.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesCategory = selectedCategory === 'Semua' || p.category === selectedCategory;
+    return matchesSearch && matchesCategory;
+  });
+
+  const filteredCustomers = customersWithDiscount.filter(c => 
+    c.name?.toLowerCase().includes(customerSearch.toLowerCase()) || c.phone.includes(customerSearch)
+  );
+
+  const subtotal = cart.reduce((sum, item) => sum + item.totalPrice, 0);
+  const discountAmount = selectedCustomer ? Math.floor(subtotal * selectedCustomer.discount! / 100) : 0;
+  const afterDiscount = subtotal - discountAmount;
+  const tax = includeTax ? afterDiscount * 0.1 : 0;
+  const tip = showTipInput && tipAmount ? parseInt(tipAmount) || 0 : 0;
+  const total = afterDiscount + tax + tip;
+  const xpPreview = selectedCustomer ? Math.floor(total / 1000) * 10 : 0;
+
+  // Extract unique categories from products
+  const categories = ['Semua', ...Array.from(new Set(products.map(p => p.category_id || 'Uncategorized')))];
+
+  const openCustomization = (product: Product) => {
+    setCustomizingItem(product);
+    setCustomQuantity(1);
+    setCustomVariants({});
+    setCustomModifiers({});
+    setCustomNotes('');
+    // TODO: Load modifiers from API based on product_id
+  };
+
+  const calculateCustomPrice = useCallback(() => {
+    if (!customizingItem) return 0;
+    let price = customizingItem.price;
+    Object.entries(customVariants).forEach(([, variantId]) => {
+      const variants = mockVariants[customizingItem.id] || [];
+      const variant = variants.find(v => v.id === variantId);
+      if (variant) price += variant.priceAdj;
+    });
+    Object.entries(customModifiers).forEach(([, modifierIds]) => {
+      const groups = mockModifierGroups[customizingItem.id] || [];
+      modifierIds.forEach(modId => {
+        groups.forEach(g => {
+          const mod = g.modifiers.find(m => m.id === modId);
+          if (mod) price += mod.priceAdj;
+        });
+      });
+    });
+    return price;
+  }, [customizingItem, customVariants, customModifiers]);
+
+  const addToCart = () => {
+    if (!customizingItem) return;
+    const variants = Object.entries(customVariants).map(([, variantId]) => {
+      const allVariants = mockVariants[customizingItem.id] || [];
+      const v = allVariants.find(v => v.id === variantId);
+      return v ? { name: v.name, priceAdj: v.priceAdj } : null;
+    }).filter(Boolean) as Array<{ name: string; priceAdj: number }>;
+    const modifiers = Object.entries(customModifiers).flatMap(([, modifierIds]) => {
+      const groups = mockModifierGroups[customizingItem.id] || [];
+      return modifierIds.map(modId => {
+        for (const g of groups) {
+          const mod = g.modifiers.find(m => m.id === modId);
+          if (mod) return { name: mod.name, priceAdj: mod.priceAdj };
+        }
+        return null;
+      }).filter(Boolean);
+    }).filter(Boolean) as Array<{ name: string; priceAdj: number }>;
+    const unitPrice = calculateCustomPrice();
+    const newItem: CartItem = {
+      id: generateId(), productId: customizingItem.id, name: customizingItem.name,
+      basePrice: customizingItem.price, quantity: customQuantity, variants, modifiers,
+      notes: customNotes, unitPrice, totalPrice: unitPrice * customQuantity,
+    };
+    setCart(prev => [...prev, newItem]);
+    setCustomizingItem(null);
+  };
+
+  const updateQuantity = (id: string, newQty: number) => {
+    if (newQty < 1) return;
+    setCart(prev => prev.map(item => item.id === id ? { ...item, quantity: newQty, totalPrice: item.unitPrice * newQty } : item));
+  };
+
+  const removeFromCart = (id: string) => {
+    const item = cart.find(i => i.id === id);
+    if (!item) return;
+    setUndoItem(item);
+    setShowUndoToast(true);
+    setCart(prev => prev.filter(i => i.id !== id));
+    setTimeout(() => { setShowUndoToast(false); setTimeout(() => setUndoItem(null), 300); }, 3000);
+  };
+
+  const undoRemove = () => {
+    if (undoItem) { setCart(prev => [...prev, undoItem]); setUndoItem(null); setShowUndoToast(false); }
+  };
+
+  const getTotalSplitPaid = () => splitPayments.reduce((sum, p) => sum + p.amount, 0);
+  const remainingSplit = total - getTotalSplitPaid();
+
+  const addSplitPayment = () => {
+    setSplitPayments(prev => [...prev, { id: generateId(), method: 'cash', amount: remainingSplit > 0 ? remainingSplit : 0 }]);
+  };
+
+  const updateSplitPayment = (id: string, field: 'method' | 'amount', value: string | number) => {
+    setSplitPayments(prev => prev.map(p => p.id === id ? { ...p, [field]: field === 'amount' ? Number(value) : value } : p));
+  };
+
+  const removeSplitPayment = (id: string) => {
+    setSplitPayments(prev => prev.filter(p => p.id !== id));
+  };
+
+  const isPaymentValid = () => {
+    if (paymentMethod === 'cash') return parseInt(cashReceived) >= total;
+    if (paymentMethod === 'split') return getTotalSplitPaid() >= total;
+    if (paymentMethod === 'member') return selectedCustomer !== null && selectedCustomer.ark_coin_balance >= total;
+    return true;
+  };
+
+  const completeOrder = async () => {
+    if (!isPaymentValid()) return;
+    
+    try {
+      // Prepare order items for API
+      const orderItems = cart.map(item => ({
+        product_id: item.id,
+        product_name: item.name,
+        product_sku: `SKU-${item.id}`, // Should come from product data
+        variants: item.variants || [],
+        modifiers: item.modifiers || [],
+        quantity: item.quantity,
+        unit_price: item.price,
+        subtotal: item.totalPrice,
+        total_amount: item.totalPrice
+      }));
+
+      // Call API to create order
+      const response = await createOrder({
+        order_type: orderType,
+        customer_id: selectedCustomer?.id,
+        cashier_id: 'cashier-1', // TODO: Get from session/auth
+        server_id: undefined,
+        table_id: selectedTable || undefined,
+        items: orderItems,
+        subtotal,
+        discount_amount: discountAmount,
+        tax_amount: tax,
+        service_charge_amount: 0,
+        total_amount: total,
+        payment_method: paymentMethod === 'qris' ? 'qris' : paymentMethod === 'credit_card' ? 'credit' : 'cash',
+        amount_paid: paymentMethod === 'cash' ? parseFloat(cashReceived) || total : total,
+        notes: customNotes,
+        ark_coins_used: 0
+      });
+
+      if (response.success) {
+        alert(`Order berhasil!\n\nOrder ID: ${response.data.id}\nTotal: ${formatCurrency(total)}`);
+        // Reset cart and close modal
+        setCart([]);
+        setSelectedTable(null);
+        setSelectedCustomer(null);
+        setPaymentMethod('cash');
+        setCashReceived('');
+        setSplitPayments([]);
+        setTipAmount('');
+        setShowPaymentModal(false);
+      } else {
+        alert(`Error: ${response.error || 'Failed to create order'}`);
+      }
+    } catch (err: any) {
+      console.error('Order creation failed:', err);
+      alert(`Error creating order: ${err.message}`);
+    }
+  };
+
+  return (
+    <div className="flex flex-col lg:flex-row h-[calc(100vh-8rem)] gap-4">
+      {loading && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl p-6 flex items-center gap-4">
+            <div className="w-6 h-6 border-2 border-pink-600 border-t-transparent rounded-full animate-spin"></div>
+            <span className="font-medium text-gray-900">Loading products & customers...</span>
+          </div>
+        </div>
+      )}
+      
+      {error && (
+        <div className="fixed top-4 right-4 bg-red-50 border border-red-200 rounded-xl p-4 z-50">
+          <div className="flex items-center gap-2 text-red-700">
+            <X className="w-5 h-5" />
+            <span className="font-medium">Error: {error}</span>
+          </div>
+        </div>
+      )}
+      
+      {/* LEFT PANEL */}
+      <div className="flex-1 flex flex-col gap-4 overflow-hidden">
+        {/* Order Type */}
+        <div className="bg-white rounded-xl border border-gray-200 p-4">
+          <div className="flex items-center gap-2 mb-3">
+            <span className="text-sm font-semibold text-gray-900">Tipe Pesanan</span>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <button onClick={() => setOrderType('dine_in')} className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium border-2 transition-all ${orderType === 'dine_in' ? 'border-pink-600 bg-pink-50 text-pink-700' : 'border-gray-200 text-gray-600 hover:border-gray-300'}`}>
+              <Utensils className="w-4 h-4" /> Dine-in
+            </button>
+            <button onClick={() => { setOrderType('takeaway'); setSelectedTable(null); }} className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium border-2 transition-all ${orderType === 'takeaway' ? 'border-pink-600 bg-pink-50 text-pink-700' : 'border-gray-200 text-gray-600 hover:border-gray-300'}`}>
+              <ShoppingBag className="w-4 h-4" /> Takeaway
+            </button>
+            <button onClick={() => { setOrderType('delivery'); setSelectedTable(null); }} className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium border-2 transition-all ${orderType === 'delivery' ? 'border-pink-600 bg-pink-50 text-pink-700' : 'border-gray-200 text-gray-600 hover:border-gray-300'}`}>
+              <Truck className="w-4 h-4" /> Delivery
+            </button>
+            <button onClick={() => { setOrderType('self_order'); setSelectedTable(null); }} className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium border-2 transition-all ${orderType === 'self_order' ? 'border-pink-600 bg-pink-50 text-pink-700' : 'border-gray-200 text-gray-600 hover:border-gray-300'}`}>
+              <Monitor className="w-4 h-4" /> Self-order
+            </button>
+          </div>
+          
+          {orderType === 'dine_in' && (
+            <div className="mt-4 pt-4 border-t border-gray-200">
+              <div className="flex items-center gap-2 mb-3">
+                <Table className="w-4 h-4 text-gray-600" />
+                <span className="text-sm font-semibold text-gray-900">Pilih Meja</span>
+              </div>
+              <div className="grid grid-cols-6 gap-2">
+                {tables.map(table => (
+                  <button key={table.id} onClick={() => setSelectedTable(table.id)} disabled={table.status === 'occupied'} className={`py-2 px-3 rounded-lg text-xs font-semibold border-2 transition-all ${selectedTable === table.id ? 'border-pink-600 bg-pink-600 text-white' : table.status === 'occupied' ? 'border-gray-200 bg-gray-100 text-gray-400 cursor-not-allowed' : 'border-gray-200 text-gray-700 hover:border-pink-400'}`}>
+                    {table.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Search Row: Cari Pelanggan + Cari Produk */}
+        <div className="flex gap-4 items-center">
+          {/* Pelanggan Button */}
+          <button onClick={() => setShowCustomerModal(true)} className={`flex items-center gap-2 px-4 py-2 border-2 rounded-lg transition-all ${selectedCustomer ? 'border-pink-200 bg-pink-50 text-pink-700' : 'border-dashed border-gray-300 text-gray-600 hover:border-pink-400 hover:text-pink-600'}`}>
+            <User className="w-4 h-4" /> {selectedCustomer ? selectedCustomer.name : 'Cari Pelanggan'}
+          </button>
+          
+          {/* Selected Customer Badge */}
+          {selectedCustomer && (
+            <div className="flex items-center gap-2 px-3 py-1.5 bg-gray-100 rounded-lg">
+              <div className="flex items-center gap-1.5">
+                {/* Customer Type Badge */}
+                <span className={`px-2 py-0.5 rounded-full text-xs font-semibold border ${getCustomerTypeBadge(selectedCustomer.customerType).class}`}>
+                  {getCustomerTypeBadge(selectedCustomer.customerType).label}
+                </span>
+                {/* Tier Badge (for regular customers) */}
+                {selectedCustomer.customerType === 'regular' && selectedCustomer.tier && (
+                  <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${getTierBadge(selectedCustomer.tier)?.class}`}>
+                    {getTierBadge(selectedCustomer.tier)?.label}
+                  </span>
+                )}
+                {/* Discount Badge */}
+                {selectedCustomer.discount > 0 && (
+                  <span className={`px-2 py-0.5 rounded-full text-xs font-semibold border ${getDiscountBadge(selectedCustomer.discount)?.class}`}>
+                    {getDiscountBadge(selectedCustomer.discount)?.label}
+                  </span>
+                )}
+              </div>
+              <div className="h-4 w-px bg-gray-300" />
+              {/* Wallet Balance */}
+              <div className="flex items-center gap-1">
+                <Coins className="w-3.5 h-3.5 text-amber-500" />
+                <span className="text-xs font-bold text-amber-600">{(selectedCustomer.ark_coin_balance / 1000).toLocaleString('id-ID')} ARK</span>
+              </div>
+              <div className="h-4 w-px bg-gray-300" />
+              {/* XP Balance */}
+              <div className="flex items-center gap-1">
+                <Star className="w-3.5 h-3.5 text-pink-500" />
+                <span className="text-xs font-bold text-pink-600">{((selectedCustomer?.total_xp || 0)).toLocaleString('id-ID')} XP</span>
+              </div>
+              <button onClick={() => setSelectedCustomer(null)} className="ml-1 text-gray-400 hover:text-red-600"><X className="w-3 h-3" /></button>
+            </div>
+          )}
+          
+          {/* Cari Produk */}
+          <div className="flex-1 relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
+            <input type="text" placeholder="Cari produk..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500" />
+          </div>
+        </div>
+
+        {/* Customer Favorites Recommendation - TODO: Load from API based on customer order history */}
+        {selectedCustomer && (
+          <div className="bg-gradient-to-r from-amber-50 to-orange-50 rounded-xl p-3 border border-amber-100">
+            <div className="flex items-center gap-2 mb-2">
+              <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+              <span className="text-xs font-semibold text-amber-700">Pelanggan: {selectedCustomer.name?.split(' ')[0]}</span>
+              <span className="text-xs text-amber-600">({selectedCustomer.membership_tier} - Diskon {selectedCustomer.discount}%) </span>
+            </div>
+            <div className="text-xs text-amber-700">
+              💳 Saldo ARK: {formatArk(selectedCustomer.ark_coin_balance)}
+            </div>
+          </div>
+        )}
+        <div className="flex-1 bg-white rounded-xl border border-gray-200 p-4 overflow-hidden flex flex-col">
+          <div className="flex gap-2 mb-3 overflow-x-auto pb-2">
+            {categories.map((cat) => (
+              <button key={cat} onClick={() => setSelectedCategory(cat)} className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all ${selectedCategory === cat ? 'bg-pink-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}>{cat}</button>
+            ))}
+          </div>
+          <div className="flex-1 overflow-y-auto">
+            <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-5 gap-3">
+              {filteredProducts.map((product) => (
+                <button key={product.id} onClick={() => openCustomization(product)} className="bg-gray-50 p-2 rounded-xl border border-gray-200 hover:border-pink-400 hover:bg-pink-50 transition-all text-left">
+                  <div className="h-20 bg-gray-100 rounded-lg mb-2 flex items-center justify-center overflow-hidden p-1">
+                    <img src={product.image_url || '/products/placeholder.png'} alt={product.name} className="w-full h-full object-cover rounded" />
+                  </div>
+                  <div className="flex gap-1 mb-1">
+                    {(product.variants && product.variants.length > 0) && <span className="px-1 py-0.5 bg-gray-200 text-gray-700 text-xs rounded font-medium">V</span>}
+                    {(product.modifiers && product.modifiers.length > 0) && <span className="px-1 py-0.5 bg-gray-200 text-gray-700 text-xs rounded font-medium">M</span>}
+                  </div>
+                  <h3 className="font-semibold text-gray-900 text-xs line-clamp-2 mb-0.5">{product.name}</h3>
+                  <div className="text-pink-600 font-bold text-xs">{formatCurrency(product.base_price)}</div>
+                  <div className="text-xs text-gray-500">{product.base_price / 1000} ARK</div>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* RIGHT PANEL - Cart */}
+      <div className="w-full lg:w-96 bg-white rounded-xl border border-gray-200 flex flex-col max-h-[60vh] lg:max-h-none">
+        <div className="p-4 border-b border-gray-200">
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-bold text-gray-900">Pesanan</h2>
+            <span className="text-sm text-gray-500">{cart.length} item</span>
+          </div>
+          <div className="flex gap-2 mt-2">
+            {orderType !== 'dine_in' && <span className="px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded-full font-medium">{orderType === 'takeaway' ? 'Takeaway' : orderType === 'delivery' ? 'Delivery' : 'Self-order'}</span>}
+            {selectedTable && <span className="px-2 py-1 bg-pink-100 text-pink-700 text-xs rounded-full font-medium">{tables.find(t => t.id === selectedTable)?.name}</span>}
+          </div>
+        </div>
+
+        <div className="flex-1 overflow-y-auto p-4">
+          {cart.length === 0 ? (
+            <div className="text-center py-8 text-gray-400">
+              <Package className="w-12 h-12 mx-auto mb-2 opacity-50" />
+              <p className="text-sm">Belum ada item</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {cart.map((item) => (
+                <div key={item.id} className="p-3 bg-gray-50 rounded-lg border border-gray-200">
+                  <div className="flex items-start justify-between mb-2">
+                    <div className="flex-1">
+                      <h3 className="font-semibold text-gray-900 text-sm">{item.name}</h3>
+                      {item.variants.length > 0 && <div className="text-xs text-gray-500 mt-0.5">{item.variants.map(v => v.name).join(', ')}</div>}
+                      {item.modifiers.length > 0 && (
+                        <div className="flex flex-wrap gap-1 mt-1">
+                          {item.modifiers.map((m, idx) => (
+                            <span key={idx} className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-xs ${m.priceAdj > 0 ? 'bg-amber-50 text-amber-700 border border-amber-200' : 'bg-green-50 text-green-700 border border-green-200'}`}>
+                              {m.priceAdj > 0 ? <><Plus className="w-2.5 h-2.5" />{formatCurrency(m.priceAdj)}</> : 'FREE'}
+                              <span className="ml-0.5">{m.name}</span>
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                    <button onClick={() => removeFromCart(item.id)} className="p-1 text-gray-400 hover:text-red-600"><Trash2 className="w-4 h-4" /></button>
+                  </div>
+                  {item.notes && <div className="text-xs text-gray-500 italic mb-2">📝 {item.notes}</div>}
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1">
+                      <button onClick={() => updateQuantity(item.id, item.quantity - 1)} className="w-7 h-7 rounded-full bg-white border border-gray-300 flex items-center justify-center hover:bg-gray-100"><Minus className="w-3 h-3" /></button>
+                      <input type="number" value={item.quantity} onChange={(e) => updateQuantity(item.id, parseInt(e.target.value) || 1)} className="w-10 text-center text-sm font-medium border border-gray-300 rounded-lg py-1" min="1" />
+                      <button onClick={() => updateQuantity(item.id, item.quantity + 1)} className="w-7 h-7 rounded-full bg-white border border-gray-300 flex items-center justify-center hover:bg-gray-100"><Plus className="w-3 h-3" /></button>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-sm font-bold text-gray-900">{formatBoth(item.totalPrice)}</div>
+                      <div className="text-xs text-gray-400">{formatBoth(item.unitPrice)}/item</div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="p-4 border-t border-gray-200 space-y-2 bg-gray-50">
+          <div className="flex justify-between text-sm"><span className="text-gray-600">Subtotal</span><span className="font-medium text-gray-900">{formatBoth(subtotal)}</span></div>
+          {discountAmount > 0 && (
+            <div className="flex justify-between text-sm">
+              <span className="text-green-600">Diskon ({selectedCustomer?.discount}%)</span>
+              <span className="font-medium text-green-600">-{formatBoth(discountAmount)}</span>
+            </div>
+          )}
+          {/* Tax Toggle */}
+          <div className="flex items-center justify-between text-sm">
+            <button 
+              onClick={() => setIncludeTax(!includeTax)}
+              className="flex items-center gap-2 text-gray-600 hover:text-gray-900"
+            >
+              <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-all ${includeTax ? 'bg-pink-600 border-pink-600' : 'border-gray-300 hover:border-pink-400'}`}>
+                {includeTax && <Check className="w-3 h-3 text-white" />}
+              </div>
+              <span>Pajak (10%)</span>
+            </button>
+            <span className="font-medium text-gray-900">{formatBoth(tax)}</span>
+          </div>
+          {tip > 0 && <div className="flex justify-between text-sm"><span className="text-gray-600">Tip</span><span className="font-medium text-green-600">+{formatBoth(tip)}</span></div>}
+          {selectedCustomer && xpPreview > 0 && <div className="flex justify-between text-sm"><span className="text-gray-600">XP Earned</span><span className="font-medium text-pink-600">+{xpPreview} XP</span></div>}
+          <div className="flex justify-between text-lg font-bold pt-2 border-t border-gray-300"><span className="text-gray-900">Total</span><span className="text-pink-600">{formatBoth(total)}</span></div>
+        </div>
+        <div className="p-4 border-t border-gray-200">
+          <button onClick={() => setShowPaymentModal(true)} disabled={cart.length === 0} className="w-full py-3 bg-pink-600 text-white rounded-lg font-semibold hover:bg-pink-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors">Bayar ({cart.length} item)</button>
+        </div>
+      </div>
+
+      {/* Undo Toast */}
+      {showUndoToast && undoItem && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-gray-900 text-white px-4 py-3 rounded-lg shadow-lg flex items-center gap-4">
+          <span className="text-sm">Item dihapus</span>
+          <button onClick={undoRemove} className="flex items-center gap-1 text-sm text-pink-400 hover:text-pink-300 font-medium"><Undo2 className="w-4 h-4" />Undo</button>
+        </div>
+      )}
+
+      {/* Customer Selection Modal */}
+      <Dialog open={showCustomerModal} onOpenChange={(open) => !open && setShowCustomerModal(false)}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Pilih Pelanggan</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
+              <input type="text" placeholder="Cari pelanggan..." value={customerSearch} onChange={(e) => setCustomerSearch(e.target.value)} autoFocus className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500" />
+            </div>
+            <div className="space-y-2 max-h-64 overflow-y-auto">
+              <button onClick={() => { setSelectedCustomer(null); setCustomerSearch(''); setShowCustomerModal(false); }} className="w-full px-4 py-3 text-left rounded-lg border border-gray-200 hover:bg-gray-50 flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 font-bold text-sm"><User className="w-5 h-5" /></div>
+                <div>
+                  <div className="text-sm font-semibold text-gray-900">Walk-in Customer</div>
+                  <div className="text-xs text-gray-500">Tanpa membership</div>
+                </div>
+              </button>
+              {filteredCustomers.map(customer => (
+                <button key={customer.id} onClick={() => { setSelectedCustomer(customer); setCustomerSearch(''); setShowCustomerModal(false); }} className="w-full px-4 py-3 text-left rounded-lg border border-gray-200 hover:bg-pink-50 hover:border-pink-200 transition-all flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-pink-100 flex items-center justify-center text-pink-600 font-bold text-sm">{customer.name?.charAt(0) || 'C'}</div>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm font-semibold text-gray-900 truncate">{customer.name || 'Customer'}</div>
+                    <div className="text-xs text-gray-500">{customer.phone}</div>
+                    <div className="flex items-center gap-2 mt-1">
+                      <span className="px-2 py-0.5 bg-pink-100 text-pink-700 text-xs rounded-full font-medium capitalize">{customer.membership_tier}</span>
+                      {customer.discount && customer.discount > 0 && (
+                        <span className="text-xs text-green-600 font-medium">Diskon {customer.discount}%</span>
+                      )}
+                    </div>
+                  </div>
+                  <div className="text-right flex-shrink-0">
+                    <div className="text-xs text-gray-500">{customer.visit_count}x visits</div>
+                    <div className="text-xs font-medium text-amber-600">{(customer.ark_coin_balance / 1000).toFixed(0)} ARK</div>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Customization Modal */}
+      <Dialog open={customizingItem !== null} onOpenChange={(open) => !open && setCustomizingItem(null)}>
+        <DialogContent className="max-w-3xl max-h-[90vh] flex flex-col">
+          <DialogHeader className="flex-shrink-0">
+            <DialogTitle>{customizingItem?.name}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4 overflow-y-auto flex-1 min-h-0">
+            <div>
+              <label className="block text-sm font-semibold text-gray-900 mb-2">Jumlah</label>
+              <div className="flex items-center gap-3">
+                <button onClick={() => setCustomQuantity(Math.max(1, customQuantity - 1))} className="w-10 h-10 rounded-lg bg-gray-100 border border-gray-300 flex items-center justify-center hover:bg-gray-200"><Minus className="w-5 h-5" /></button>
+                <input type="number" value={customQuantity} onChange={(e) => setCustomQuantity(Math.max(1, parseInt(e.target.value) || 1))} className="w-16 text-center text-lg font-bold border border-gray-300 rounded-lg py-2" min="1" />
+                <button onClick={() => setCustomQuantity(customQuantity + 1)} className="w-10 h-10 rounded-lg bg-gray-100 border border-gray-300 flex items-center justify-center hover:bg-gray-200"><Plus className="w-5 h-5" /></button>
+              </div>
+            </div>
+
+            {mockVariants[customizingItem?.id || 0] && (
+              <div>
+                <label className="block text-sm font-semibold text-gray-900 mb-2">Varian</label>
+                <div className="space-y-3">
+                  {['size', 'temp', 'part'].map(type => {
+                    const typeVariants = mockVariants[customizingItem?.id || 0]?.filter(v => v.type === type) || [];
+                    if (typeVariants.length === 0) return null;
+                    return (
+                      <div key={type}>
+                        <div className="text-xs text-gray-500 uppercase mb-2">{type === 'size' ? 'Ukuran' : type === 'temp' ? 'Temperatur' : 'Bagian'}</div>
+                        <div className="flex flex-wrap gap-2">
+                          {typeVariants.map(variant => (
+                            <button key={variant.id} onClick={() => setCustomVariants(prev => ({ ...prev, [type]: variant.id }))} className={`px-4 py-2 rounded-lg text-sm font-medium border-2 transition-all ${customVariants[type] === variant.id ? 'border-pink-600 bg-pink-50 text-pink-700' : 'border-gray-200 text-gray-700 hover:border-gray-300'}`}>
+                              {variant.name} {variant.priceAdj !== 0 && <span className="text-xs opacity-70">({variant.priceAdj > 0 ? '+' : ''}{formatCurrency(variant.priceAdj)})</span>}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {mockModifierGroups[customizingItem?.id || 0] && (
+              <div>
+                <label className="block text-sm font-semibold text-gray-900 mb-2">Kustomisasi</label>
+                <div className="space-y-3">
+                  {mockModifierGroups[customizingItem?.id || 0].map(group => (
+                    <div key={group.id} className="border border-gray-200 rounded-lg p-3">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="font-semibold text-gray-900 text-sm">{group.name}</span>
+                        <span className="text-xs text-gray-500">{group.required ? 'Wajib' : `Max ${group.maxSelect}`}</span>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {group.modifiers.map(modifier => {
+                          const isSelected = customModifiers[group.id]?.includes(modifier.id) || false;
+                          const currentCount = customModifiers[group.id]?.length || 0;
+                          const canSelect = !isSelected && currentCount < group.maxSelect;
+                          const isFree = modifier.priceAdj === 0;
+                          return (
+                            <button key={modifier.id} onClick={() => { if (isSelected) setCustomModifiers(prev => ({ ...prev, [group.id]: prev[group.id].filter(id => id !== modifier.id) })); else if (canSelect) setCustomModifiers(prev => ({ ...prev, [group.id]: [...(prev[group.id] || []), modifier.id] })); }} disabled={!isSelected && !canSelect} className={`px-3 py-1.5 rounded-lg text-sm font-medium border-2 transition-all ${isSelected ? 'border-pink-600 bg-pink-50 text-pink-700' : canSelect ? isFree ? 'border-green-200 text-green-700 hover:border-green-400 hover:bg-green-50' : 'border-amber-200 text-amber-700 hover:border-amber-400 hover:bg-amber-50' : 'border-gray-100 bg-gray-50 text-gray-300 cursor-not-allowed'}`}>
+                              {modifier.name}
+                              <span className={`ml-1 text-xs font-semibold px-1.5 py-0.5 rounded ${isFree ? 'bg-green-100 text-green-600' : 'bg-amber-100 text-amber-600'}`}>
+                                {isFree ? 'FREE' : `+${formatCurrency(modifier.priceAdj)}`}
+                              </span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div>
+              <label className="block text-sm font-semibold text-gray-900 mb-2">Catatan Spesial</label>
+              <input value={customNotes} onChange={(e) => setCustomNotes(e.target.value)} placeholder="Contoh: Tanpa bawang, pedas sekali..." className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500" />
+            </div>
+
+            <div className="p-4 bg-gray-900 rounded-lg">
+              <div className="flex justify-between items-center"><span className="text-gray-400 text-sm">Harga per item</span><span className="text-lg font-bold text-white">{formatBoth(calculateCustomPrice())}</span></div>
+              <div className="flex justify-between items-center mt-1"><span className="text-gray-400 text-sm">Total</span><span className="text-2xl font-bold text-white">{formatBoth(calculateCustomPrice() * customQuantity)}</span></div>
+            </div>
+          </div>
+          <div className="flex-shrink-0 border-t pt-4 mt-4">
+            <div className="flex gap-3">
+              <button onClick={() => setCustomizingItem(null)} className="flex-1 px-4 py-2 text-gray-700 bg-gray-100 rounded-lg font-medium hover:bg-gray-200 transition-colors">Batal</button>
+              <button onClick={addToCart} className="flex-1 px-4 py-2 text-white bg-pink-600 rounded-lg font-medium hover:bg-pink-700 transition-colors flex items-center justify-center gap-2"><Plus className="w-4 h-4" />Tambah</button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Payment Modal */}
+      <Dialog open={showPaymentModal} onOpenChange={(open) => !open && setShowPaymentModal(false)}>
+        <DialogContent className="!w-[800px] !max-w-[800px] max-h-[90vh] flex flex-col">
+          <DialogHeader className="flex-shrink-0 pb-2">
+            <DialogTitle>Pembayaran</DialogTitle>
+            <div className="flex gap-2">
+              {orderType === 'dine_in' && selectedTable && <span className="px-2 py-1 bg-pink-100 text-pink-700 text-xs rounded-full font-medium">{tables.find(t => t.id === selectedTable)?.name}</span>}
+              {selectedCustomer && <span className="px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded-full font-medium flex items-center gap-1"><User className="w-3 h-3" />{selectedCustomer.name}</span>}
+            </div>
+          </DialogHeader>
+          <div className="space-y-3 py-2 overflow-y-auto flex-1">
+            <div className="text-center py-3 bg-gray-900 rounded-lg">
+              <div className="text-xs text-gray-400 mb-1">Total Pembayaran</div>
+              <div className="text-lg font-bold text-white">{formatBoth(total)}</div>
+            </div>
+
+            <div className="flex border-b border-gray-200">
+              {[{ id: 'member', label: 'Kartu Member', icon: CreditCard }, { id: 'cash', label: 'Tunai', icon: Banknote }, { id: 'qris', label: 'QRIS', icon: Wallet }, { id: 'split', label: 'Split', icon: Coins }].map(method => (
+                <button key={method.id} onClick={() => setPaymentMethod(method.id as PaymentMethod)} className={`flex-1 py-2 text-xs font-semibold border-b-2 ${paymentMethod === method.id ? 'border-pink-600 text-pink-600' : 'border-transparent text-gray-500'}`}>
+                  <method.icon className="w-4 h-4 mx-auto mb-0.5" />
+                  {method.label}
+                </button>
+              ))}
+            </div>
+
+            {paymentMethod === 'member' && (
+              <div className="text-center py-4">
+                {selectedCustomer ? (
+                  <div className="space-y-3">
+                    {/* Customer Info Header */}
+                    <div className="flex items-center justify-center gap-3 p-3 bg-gradient-to-r from-pink-50 to-purple-50 rounded-lg border border-pink-100">
+                      <div className="w-14 h-14 bg-pink-100 rounded-full flex items-center justify-center">
+                        <span className="text-pink-600 font-bold text-xl">{selectedCustomer.name.charAt(0)}</span>
+                      </div>
+                      <div className="text-left">
+                        <div className="font-semibold text-gray-900">{selectedCustomer.name}</div>
+                        <div className="flex items-center gap-1.5 mt-0.5">
+                          {/* Customer Type Badge */}
+                          <span className={`px-2 py-0.5 rounded-full text-xs font-semibold border ${getCustomerTypeBadge(selectedCustomer.customerType).class}`}>
+                            {getCustomerTypeBadge(selectedCustomer.customerType).label}
+                          </span>
+                          {/* Tier Badge */}
+                          {selectedCustomer.customerType === 'regular' && selectedCustomer.tier && (
+                            <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${getTierBadge(selectedCustomer.tier)?.class}`}>
+                              {getTierBadge(selectedCustomer.tier)?.label}
+                            </span>
+                          )}
+                          {/* Discount Badge */}
+                          {selectedCustomer.discount > 0 && (
+                            <span className={`px-2 py-0.5 rounded-full text-xs font-semibold border ${getDiscountBadge(selectedCustomer.discount)?.class}`}>
+                              {getDiscountBadge(selectedCustomer.discount)?.label}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="text-xs text-gray-500">Tap kartu member pada reader NFC</div>
+
+                    {/* Wallet & XP Grid */}
+                    <div className="grid grid-cols-2 gap-3">
+                      {/* ARK Wallet */}
+                      <div className="p-3 bg-amber-50 rounded-lg border border-amber-200">
+                        <div className="flex items-center gap-1.5 mb-1">
+                          <Coins className="w-4 h-4 text-amber-500" />
+                          <span className="text-xs text-amber-600 font-medium">ARK Wallet</span>
+                        </div>
+                        <div className="text-xl font-bold text-amber-700">{(selectedCustomer.ark_coin_balance / 1000).toLocaleString('id-ID')} ARK</div>
+                        <div className="text-xs text-amber-600 mt-0.5">≈ {formatCurrency(selectedCustomer.ark_coin_balance)}</div>
+                      </div>
+                      {/* XP Balance */}
+                      <div className="p-3 bg-pink-50 rounded-lg border border-pink-200">
+                        <div className="flex items-center gap-1.5 mb-1">
+                          <Star className="w-4 h-4 text-pink-500" />
+                          <span className="text-xs text-pink-600 font-medium">XP Balance</span>
+                        </div>
+                        <div className="text-xl font-bold text-pink-700">{selectedCustomer.total_xp || 0.toLocaleString('id-ID')}</div>
+                        <div className="text-xs text-pink-600 mt-0.5">+{xpPreview} XP earned</div>
+                      </div>
+                    </div>
+
+                    {/* Payment Feasibility */}
+                    {selectedCustomer.ark_coin_balance / 1000 >= total / 1000 ? (
+                      <div className="p-3 bg-green-50 rounded-lg border border-green-200">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <div className="text-xs text-green-700 font-medium">ARK cukup untuk pembayaran</div>
+                            <div className="text-xs text-green-600 mt-0.5">Sisa: {((selectedCustomer.ark_coin_balance / 1000) - (total / 1000)).toLocaleString('id-ID')} ARK</div>
+                          </div>
+                          <div className="text-right">
+                            <div className="text-xs text-green-600">Digunakan</div>
+                            <div className="text-lg font-bold text-green-600">-{Math.ceil(total / 1000).toLocaleString('id-ID')} ARK</div>
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="p-3 bg-red-50 rounded-lg border border-red-200">
+                        <div className="text-xs text-red-700 font-medium mb-1">Saldo ARK tidak cukup</div>
+                        <div className="flex items-center justify-between">
+                          <div className="text-xs text-red-600">Kekurangan</div>
+                          <div className="text-lg font-bold text-red-600">{((total - selectedCustomer.ark_coin_balance) / 1000).toLocaleString('id-ID')} ARK</div>
+                        </div>
+                        <button className="w-full mt-2 py-1.5 bg-red-100 hover:bg-red-200 text-red-700 text-xs font-medium rounded-lg transition-colors">
+                          Topup ARK Coins
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="p-3 bg-yellow-50 rounded-lg border border-yellow-200 text-xs text-yellow-700">Pilih pelanggan terlebih dahulu untuk menggunakan Kartu Member</div>
+                )}
+              </div>
+            )}
+
+            {paymentMethod === 'cash' && (
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-900 mb-2">Uang Diterima</label>
+                  <input type="number" value={cashReceived} onChange={(e) => setCashReceived(e.target.value)} placeholder="0" autoFocus className="w-full px-4 py-3 text-lg border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500" />
+                </div>
+                <div className="grid grid-cols-4 gap-2">
+                  {[50000, 100000, 200000, 500000].map(amount => (
+                    <button key={amount} onClick={() => setCashReceived(String(amount))} className="py-2 bg-gray-100 rounded-lg text-xs font-semibold text-gray-700 hover:bg-gray-200">{formatCurrency(amount)}</button>
+                  ))}
+                </div>
+                {parseInt(cashReceived || '0') >= total && (
+                  <div className="p-3 bg-green-50 rounded-lg border border-green-200 flex justify-between"><span className="text-gray-700 font-medium">Kembalian</span><span className="text-lg font-bold text-green-600">{formatBoth(parseInt(cashReceived) - total)}</span></div>
+                )}
+              </div>
+            )}
+
+            {paymentMethod === 'qris' && (
+              <div className="text-center py-4">
+                <div className="w-40 h-40 bg-gray-100 rounded-lg mx-auto mb-3 flex items-center justify-center border-2 border-dashed border-gray-300"><span className="text-gray-400 text-xs">QR Code</span></div>
+                <p className="text-xs text-gray-500">Scan QRIS untuk membayar</p>
+              </div>
+            )}
+
+
+            {paymentMethod === 'split' && (
+              <div className="space-y-2">
+                <div className="p-2 bg-blue-50 rounded-lg border border-blue-200 flex justify-between"><span className="text-xs text-gray-700 font-medium">Sisa Bayar</span><span className="text-xs font-bold text-blue-600">{formatCurrency(remainingSplit)}</span></div>
+                <div className="w-full bg-gray-200 rounded-full h-1.5"><div className="bg-pink-600 h-1.5 rounded-full transition-all" style={{ width: `${Math.min(100, (getTotalSplitPaid() / total) * 100)}%` }} /></div>
+                {splitPayments.map((split) => (
+                  <div key={split.id} className="flex gap-2 items-center">
+                    <select value={split.method} onChange={(e) => updateSplitPayment(split.id, 'method', e.target.value)} className="px-2 py-1.5 border border-gray-300 rounded-lg text-xs">
+                      <option value="cash">Tunai</option><option value="qris">QRIS</option><option value="member">Kartu Member</option><option value="wallet">Wallet</option>
+                    </select>
+                    <input type="number" value={split.amount} onChange={(e) => updateSplitPayment(split.id, 'amount', e.target.value)} className="flex-1 px-2 py-1.5 border border-gray-300 rounded-lg text-xs" placeholder="Jumlah" />
+                    <button onClick={() => removeSplitPayment(split.id)} className="p-1.5 text-gray-400 hover:text-red-600"><MinusCircle className="w-4 h-4" /></button>
+                  </div>
+                ))}
+                <button onClick={addSplitPayment} disabled={remainingSplit <= 0} className="w-full py-1.5 border-2 border-dashed border-gray-300 rounded-lg text-xs text-gray-500 hover:border-pink-400 hover:text-pink-600 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1"><Plus className="w-3 h-3" />Tambah</button>
+              </div>
+            )}
+
+            <div className="flex items-center justify-between pt-3 border-t border-gray-200">
+              <span className="text-xs font-semibold text-gray-900">Tip</span>
+              <button onClick={() => setShowTipInput(!showTipInput)} className={`px-2 py-1 rounded-lg text-xs font-medium ${showTipInput ? 'bg-pink-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}>{showTipInput ? 'Sembunyikan' : 'Tambah'}</button>
+            </div>
+            {showTipInput && <input type="number" value={tipAmount} onChange={(e) => setTipAmount(e.target.value)} placeholder="Jumlah tip" className="w-full px-2 py-1.5 border border-gray-300 rounded-lg text-xs focus:outline-none focus:ring-1 focus:ring-pink-500 focus:border-pink-500" />}
+
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold text-gray-900">Struk Digital</span>
+              <button onClick={() => setDigitalReceipt(!digitalReceipt)} className={`px-2 py-1 rounded-lg text-xs font-medium ${digitalReceipt ? 'bg-pink-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}>{digitalReceipt ? 'Aktif' : 'Nonaktif'}</button>
+            </div>
+          </div>
+          <div className="flex-shrink-0 flex gap-3 pt-3 border-t">
+            <button onClick={() => setShowPaymentModal(false)} className="flex-1 px-3 py-2 text-gray-700 bg-gray-100 rounded-lg text-sm font-medium hover:bg-gray-200 transition-colors">Batal</button>
+            <button onClick={completeOrder} disabled={!isPaymentValid()} className="flex-1 px-3 py-2 text-white bg-pink-600 rounded-lg text-sm font-medium hover:bg-pink-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors flex items-center gap-2"><Check className="w-4 h-4" />Bayar</button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}

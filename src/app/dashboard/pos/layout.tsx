@@ -11,14 +11,18 @@ import {
   BarChart3Icon,
   ChevronDownIcon,
   UserCircle,
+  Coins,
+  Calendar,
 } from "lucide-react";
 import { ActivityLogBell } from "@/components/layout/ActivityLogBell";
 
 const POS_ITEMS = [
   { href: "/dashboard/pos", label: "Dashboard", icon: LayoutDashboardIcon },
   { href: "/dashboard/pos/products", label: "Produk", icon: PackageIcon },
-  { href: "/dashboard/pos/cashier", label: "Kasir", icon: ShoppingCartIcon },
+  { href: "/dashboard/pos/cashier-new", label: "Kasir", icon: ShoppingCartIcon },
   { href: "/dashboard/pos/orders", label: "Pesanan", icon: ClipboardListIcon },
+  { href: "/dashboard/pos/reservation", label: "Reservasi", icon: Calendar },
+  { href: "/dashboard/pos/topup", label: "Topup", icon: Coins },
 ];
 
 function clsx(...args: (string | boolean | undefined | null)[]) {

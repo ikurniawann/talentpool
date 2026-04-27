@@ -1,338 +1,284 @@
-# POS Module - ARK POS Architecture & Design Brief
+# POS (Point of Sale) Module - Project Brief
 
-## Project Overview
-
-**Project Name:** ARK POS  
-**Type:** Enterprise-grade Hospitality & Retail Platform  
-**Tagline:** Multi-tenant, Offline-first, Real-time Sync  
+## Overview
+POS module for TalentPool restaurant app with cashier UI, product management, customer loyalty, and order types.
 
 ---
 
-## Core Design Principles
-
-1. **Multi-tenant by design** - Satu codebase untuk retail, F&B, MICE
-2. **Modular & Configurable** - Fitur bisa di-enable/disable per merchant
-3. **Offline-first** - POS harus tetap jalan saat internet down
-4. **Real-time sync** - Kitchen display, inventory, CRM sync realtime
-5. **Audit trail** - Setiap transaksi & perubahan kasir harus ter-track
-
----
-
-## Target Markets
-
-- 🍽️ **F&B**: Restaurant, Cafe, Cloud Kitchen
-- 🏪 **Retail**: Minimarket, Boutique, Grocery
-- 🎉 **MICE**: Event venues, Conference halls, Wedding organizers
-- 🏨 **Hospitality**: Hotel F&B, Resort outlets
+## Tech Stack
+- Next.js 16.2.3
+- TypeScript
+- Tailwind CSS 4
+- @base-ui/react components
+- Supabase (database)
+- Vercel (deployment)
 
 ---
 
-## Database Architecture
+## UI Features (Completed)
 
-### 1. Product Architecture (Multi-Variant)
+### Cashier Page (`/dashboard/pos/cashier`)
+- Single row search: "Cari Pelanggan" button + badge + "Cari produk..." input
+- Products grid with thumbnails (square 1:1, white background food photos)
+- All prices shown as: `Rp X (Y ARK)` - 1 ARK = Rp 1000
+- Default payment method: Kartu Member (NFC)
+- Payment modal: scrollable, compact spacing, max-w-[800px]
+- Logo: `/public/logo.png` (Prologue in Wonderland)
 
-```sql
-products
-├── id, name, category_id, base_price, is_active
-├── inventory_tracking: boolean (enable/disable stock deduction)
-├── xp_points: integer (default XP per purchase)
-└── ...
+### Products (`/dashboard/pos/products`)
+- Product management with variants and modifiers
+- Dialog modals for variant/modifier management
 
-product_variants
-├── id, product_id, name (e.g., "Less Ice", "Hot", "Large")
-├── price_adjustment: decimal (+2000, -500, etc.)
-└── ...
+### Orders (`/dashboard/pos/orders`)
+- Order list with status tracking
 
-product_modifiers (for customizations)
-├── id, product_id, modifier_group_id
-└── ...
-
-modifier_groups
-├── id, name (e.g., "Sugar Level", "Temperature")
-├── min_selection: integer (0 = optional, 1 = required)
-├── max_selection: integer (1 = single, >1 = multiple)
-└── ...
-
-recipe_ingredients (Bill of Materials)
-├── id, product_id, raw_material_id (from purchasing module)
-├── quantity_per_unit, unit_of_measure
-└── waste_percentage: decimal (for shrinkage calculation)
-```
-
-### 2. Order Flow (State Machine)
-
-```sql
-orders
-├── id, order_number, outlet_id, table_id (nullable for retail)
-├── order_type: enum ('dine_in', 'takeaway', 'delivery', 'self_order', 'mice')
-├── status: enum ('pending', 'confirmed', 'preparing', 'ready', 'served', 'completed', 'cancelled')
-├── customer_id (nullable for walk-in)
-├── subtotal, discount, tax, service_charge, total
-├── payment_status: enum ('unpaid', 'partial', 'paid', 'refunded')
-├── staff_id (cashier), kitchen_staff_id (optional)
-├── notes, special_requests
-└── ...
-
-order_items
-├── id, order_id, product_id, variant_ids: jsonb
-├── modifiers: jsonb (selected customizations)
-├── quantity, unit_price, total
-├── status: enum ('pending', 'cooking', 'ready', 'served', 'cancelled')
-├── xp_earned: integer
-└── ...
-
-order_status_history (audit trail)
-├── id, order_id, from_status, to_status
-├── changed_by: user_id
-└── changed_at: timestamp
-```
-
-### 3. Payment & Ark Coin Wallet
-
-```sql
-customers
-├── id, name, phone (unique), email
-├── membership_tier: enum ('bronze', 'silver', 'gold', 'platinum')
-├── total_xp: integer, current_xp: integer
-├── ark_coin_balance: decimal
-├── total_spent: decimal, visit_count: integer
-├── last_visit: timestamp
-└── ...
-
-wallet_transactions
-├── id, customer_id, type: enum ('topup', 'payment', 'refund', 'redeem')
-├── amount, ark_coins, balance_before, balance_after
-├── reference_id (order_id, payment_id)
-└── created_at
-```
+### Dashboard (`/dashboard/pos`)
+- KPI cards for daily sales
 
 ---
 
-## Core Modules
+## Schema Design (Planned)
 
-### 1. Merchant & Outlet Management
-- Multi-outlet support
-- Outlet-specific settings (tax, service charge, currency)
-- Business hours & holiday schedules
-- Table management (for F&B)
+### POS-Only Tables
 
-### 2. Product & Menu Catalog
-- Multi-category hierarchy
-- Product variants (size, temperature, customization)
-- Modifier groups (required/optional selections)
-- Dynamic pricing (time-based, happy hour)
-- Product bundling (combo meals)
+#### 1. `pos_customers` - Member/Pelanggan
+| Column | Type | Notes |
+|--------|------|-------|
+| id | uuid | PK |
+| name | varchar | |
+| phone | varchar | unique |
+| email | varchar | nullable |
+| customer_type | enum | regular/premium/owner/vip |
+| tier | enum | platinum/gold/silver (for regular) |
+| xp_balance | bigint | XP points |
+| is_active | boolean | |
+| created_at | timestamp | |
+| updated_at | timestamp | |
 
-### 3. Inventory & Recipe (BOM)
-- Bill of Materials per product
-- Real-time stock deduction on order
-- Waste tracking & shrinkage
-- Low stock alerts → Auto PO suggestions
-- Integration with Purchasing module
+**Customer Types:**
+- `regular` - Member biasa dengan tier (silver/gold/platinum)
+- `premium` - langganan tetap, discount tertentu
+- `owner` - punya privilege discount khusus
+- `vip` - event/campaign specific
 
-### 4. Order Management
-- Multi-channel orders (dine-in, takeaway, delivery, self-order kiosk, MICE events)
-- Order status workflow with audit trail
-- Split bills & merge orders
-- Order modifications (add/remove items)
-- Refund & void management
+#### 2. `pos_cards` - NFC Card Mapping
+| Column | Type | Notes |
+|--------|------|-------|
+| id | uuid | PK |
+| card_uid | varchar | UID dari kartu NFC |
+| customer_id | uuid | FK |
+| is_active | boolean | |
+| created_at | timestamp | |
 
-### 5. Payment & Wallet (Ark Coin)
-- Multiple payment methods: Cash, Card, QRIS, E-wallet, Ark Coin
-- Split payments (partial cash, partial wallet)
-- Tip management
-- Change calculation
-- Payment gateway integration
+#### 3. `pos_wallets` - ARK Coin Wallet
+| Column | Type | Notes |
+|--------|------|-------|
+| id | uuid | PK |
+| customer_id | uuid | FK, unique - 1 wallet per customer |
+| balance | decimal | Current ARK coin balance |
+| created_at | timestamp | |
+| updated_at | timestamp | |
 
-### 6. CRM & Loyalty (XP System)
-- Customer profiles with purchase history
-- Tiered membership (Bronze, Silver, Gold, Platinum)
-- XP points earning & redemption
-- Ark Coin digital wallet
-- Personalized promotions
+#### 4. `pos_wallet_topups` - Topup Transactions
+| Column | Type | Notes |
+|--------|------|-------|
+| id | uuid | PK |
+| wallet_id | uuid | FK |
+| amount | decimal | ARK coins purchased |
+| payment_method | enum | qris/credit_card/debit/cash |
+| payment_reference | varchar | External transaction ID |
+| amount_paid | decimal | Cash/Qris amount paid |
+| rate | decimal | 1 ARK = Rp X |
+| status | enum | pending/completed/failed/refunded |
+| staff_id | uuid | FK, who processed |
+| created_at | timestamp | |
 
-### 7. Staff & Roles
-- Role-based access control (Admin, Manager, Cashier, Kitchen Staff)
-- Staff performance tracking
-- Commission tracking (for upselling)
-- Shift scheduling
+#### 5. `pos_discounts` - Diskon Config
+| Column | Type | Notes |
+|--------|------|-------|
+| id | uuid | PK |
+| name | varchar | |
+| type | enum | percentage/fixed_amount |
+| value | decimal | |
+| min_order | decimal | |
+| max_discount | decimal | cap |
+| is_auto_apply | boolean | langsung apply tanpa pilih |
+| is_active | boolean | |
+| start_date | timestamp | nullable |
+| end_date | timestamp | nullable |
+| created_at | timestamp | |
 
-### 8. Shift & Cash Management
-- Opening/closing cash registers
-- Cash in/out tracking
-- End-of-day reconciliation
-- Cashier shift reports
-- Discrepancy tracking
+#### 6. `pos_customer_discounts` - Privilege per Customer Type
+| Column | Type | Notes |
+|--------|------|-------|
+| id | uuid | PK |
+| customer_type | enum | regular/premium/owner/vip |
+| discount_id | uuid | FK |
+| is_default | boolean | auto-apply untuk semua customer type ini |
+| created_at | timestamp | |
 
-### 9. Kitchen Display System (KDS)
-- Real-time order queue
-- Order prioritization (VIP, rush, normal)
-- Cook time tracking
-- Item availability toggle (86 items)
-- Kitchen staff assignment
+#### 7. `pos_xp_transactions` - XP History
+| Column | Type | Notes |
+|--------|------|-------|
+| id | uuid | PK |
+| customer_id | uuid | FK |
+| order_id | uuid | nullable, FK |
+| amount | bigint | + earned / - redeemed |
+| type | enum | earned/purchase/redeem/refund/expired |
+| source | varchar | pos/partner_api/arkiv/manual |
+| reference_id | varchar | external reference |
+| description | text | |
+| created_at | timestamp | |
 
-### 10. Reservation & MICE
-- Table reservations
-- Event booking (weddings, conferences)
-- Deposit management
-- Guest count tracking
-- Package menus for events
+#### 8. `pos_xp_redemptions` - Redeem XP (Coming Soon)
+| Column | Type | Notes |
+|--------|------|-------|
+| id | uuid | PK |
+| customer_id | uuid | FK |
+| order_id | uuid | nullable, FK |
+| voucher_code | varchar | nullable, untuk voucher |
+| digital_asset_ref | varchar | nullable, untuk Arkiv asset |
+| xp_used | bigint | |
+| status | enum | pending/completed/cancelled/expired |
+| expires_at | timestamp | nullable |
+| created_at | timestamp | |
+
+#### 9. `pos_tables` - Meja (dine-in)
+| Column | Type | Notes |
+|--------|------|-------|
+| id | uuid | PK |
+| name | varchar | |
+| status | enum | available/occupied/reserved |
+| created_at | timestamp | |
+
+#### 10. `pos_orders` - Order Header
+| Column | Type | Notes |
+|--------|------|-------|
+| id | uuid | PK |
+| customer_id | uuid | nullable, FK |
+| table_id | uuid | nullable, FK |
+| staff_id | uuid | nullable, FK ke HRD staff (kasir) |
+| order_type | enum | dine_in/takeaway/delivery/self_order |
+| status | enum | pending/preparing/ready/completed/cancelled |
+| subtotal | decimal | |
+| tax | decimal | 10% |
+| tip | decimal | |
+| discount_id | uuid | nullable, FK |
+| discount_amount | decimal | |
+| total | decimal | |
+| created_at | timestamp | |
+
+#### 11. `pos_order_items` - Item Pesanan
+| Column | Type | Notes |
+|--------|------|-------|
+| id | uuid | PK |
+| order_id | uuid | FK |
+| product_id | uuid | FK ke Purchasing.products |
+| quantity | int | |
+| unit_price | decimal | dari product + variant adj |
+| total_price | decimal | |
+
+#### 12. `pos_order_item_variants` - Varian (BOM-based, impact cost)
+| Column | Type | Notes |
+|--------|------|-------|
+| id | uuid | PK |
+| order_item_id | uuid | FK |
+| variant_id | uuid | FK ke Purchasing.product_variants |
+
+#### 13. `pos_order_item_modifiers` - Modifiers (free add-ons)
+| Column | Type | Notes |
+|--------|------|-------|
+| id | uuid | PK |
+| order_item_id | uuid | FK |
+| modifier_id | uuid | FK ke Purchasing.modifiers (yang free) |
+| price_adjustment | decimal | 0 untuk free, >0 untuk paid add-ons |
+
+#### 14. `pos_order_payments` - Pembayaran
+| Column | Type | Notes |
+|--------|------|-------|
+| id | uuid | PK |
+| order_id | uuid | FK |
+| method | enum | cash/qris/member/wallet/split |
+| amount | decimal | |
+| ark_deducted | decimal | dari wallet |
+| change_amount | decimal | untuk cash |
+| created_at | timestamp | |
+
+#### 15. `pos_split_payments` - Detail Split
+| Column | Type | Notes |
+|--------|------|-------|
+| id | uuid | PK |
+| order_payment_id | uuid | FK |
+| method | enum | cash/qris/member/wallet |
+| amount | decimal | |
+
+#### 16. `pos_receipts` - Struk
+| Column | Type | Notes |
+|--------|------|-------|
+| id | uuid | PK |
+| order_id | uuid | FK |
+| receipt_number | varchar | unique |
+| customer_id | uuid | nullable, FK |
+| subtotal | decimal | |
+| tax | decimal | |
+| tip | decimal | |
+| discount_amount | decimal | |
+| total | decimal | |
+| xp_earned | bigint | |
+| ark_used | decimal | ARK coins used |
+| payment_method | enum | |
+| digital_sent | boolean | |
+| created_at | timestamp | |
+
+#### 17. `pos_api_integrations` - Partner API (Arkiv, etc.)
+| Column | Type | Notes |
+|--------|------|-------|
+| id | uuid | PK |
+| partner_name | varchar | |
+| api_key_hash | varchar | |
+| permissions | jsonb | |
+| is_active | boolean | |
+| created_at | timestamp | |
 
 ---
 
 ## Integration Points
 
-### HRD Module
-- Employee data as POS staff
-- Role synchronization
-- Auto-disable on resignation
-- Shift attendance linked to POS shifts
-- Performance reports
-
-### Purchasing Module
-- Unified inventory (raw materials)
-- Recipe-based stock deduction
-- Low stock → PO auto-suggestion
-- Supplier price lists
-- GRN impact on POS availability
-
-### Inventory Module
-- Real-time stock levels
-- Stock adjustments (waste, spoilage)
-- Transfer between outlets
-- Stock take & reconciliation
-
-### Accounting Module
-- Daily sales journal entries
-- Payment reconciliation
-- Tax reporting
-- Revenue recognition
+| Source | POS Reads | POS Updates |
+|--------|-----------|-------------|
+| **Purchasing.products** | Product list, price, availability | - |
+| **Purchasing.product_variants** | Variant options (BOM-based) | - |
+| **Purchasing.modifiers** | Modifier options (free/paid add-ons) | - |
+| **Purchasing.inventory** | Real-time stock | On order complete (reduce stock) |
+| **HRD.staff** | Staff list (kasir, waiter) | - |
+| **pos_wallets** | Customer ARK balance | On topup/payment |
+| **pos_customers** | Member data, tier, XP | On earn/redeem XP |
 
 ---
 
-## Technical Requirements
+## Key Design Decisions
 
-### Frontend (Next.js)
-- **Framework:** Next.js 16+ with App Router
-- **Styling:** Tailwind CSS 4
-- **State:** React Query + Zustand
-- **Offline:** Service Worker + IndexedDB
-- **Real-time:** WebSocket / Supabase Realtime
+1. **Wallet separate from Customer** - Wallet is 1:1 with customer but stored separately for flexibility
 
-### Backend (Supabase)
-- **Database:** PostgreSQL with Row Level Security
-- **Auth:** Supabase Auth with custom roles
-- **Storage:** Supabase Storage for product images
-- **Functions:** Edge Functions for business logic
-- **Real-time:** Supabase Realtime subscriptions
+2. **Modifiers vs Variants distinction**:
+   - `variants` = Size/Temp yang affect cost → from Purchasing BOM
+   - `modifiers` = Add-ons, some free, some paid → from Purchasing modifiers
 
-### Deployment
-- **Platform:** Vercel (frontend) + Supabase (backend)
-- **CDN:** Vercel Edge Network
-- **Monitoring:** Vercel Analytics + Supabase Logs
+3. **Customer Type untuk Privilege** - Discount berdasarkan customer_type (owner/premium/vip) bukan berdasarkan staff_id
 
----
+4. **Topup flow**:
+   ```
+   Customer Topup → pos_wallet_topups (pending) 
+                    → Payment confirmed 
+                    → pos_wallets.balance += amount
+                    → topup status = completed
+   ```
 
-## Development Phases
-
-### Phase 1: Core POS (Current Sprint)
-- [x] Database schema design
-- [x] UI mockups (static)
-- [ ] Product CRUD with variants
-- [ ] Basic cashier interface
-- [ ] Simple payment flow
-- [ ] Receipt printing
-
-### Phase 2: Advanced Features
-- [ ] Recipe & inventory integration
-- [ ] Customer profiles & loyalty
-- [ ] Multi-payment split
-- [ ] Discount & promotion engine
-- [ ] Tax & service charge config
-
-### Phase 3: Enterprise Features
-- [ ] Multi-outlet management
-- [ ] KDS integration
-- [ ] Reservation system
-- [ ] MICE module
-- [ ] Advanced reporting
-
-### Phase 4: Optimization
-- [ ] Offline mode
-- [ ] Performance tuning
-- [ ] Mobile app (React Native)
-- [ ] Self-order kiosk UI
-- [ ] API for 3rd party integrations
+5. **XP can be redeemed** for vouchers or digital assets (Arkiv) - table prepared, coming soon
 
 ---
 
-## UI/UX Guidelines
-
-### Design System
-- **Colors:** Professional, clean, high contrast for readability
-- **Typography:** Clear, legible fonts (Inter, SF Pro)
-- **Spacing:** Consistent 4px grid system
-- **Icons:** Lucide React for consistency
-
-### Key Screens
-
-#### Cashier Interface
-- **Left Panel:** Product grid with search & filters
-- **Right Panel:** Shopping cart with quick actions
-- **Bottom Bar:** Quick totals & checkout button
-- **Mobile:** Stacked layout, swipeable cart
-
-#### Product Management
-- Grid/List view toggle
-- Quick edit inline
-- Bulk actions (enable/disable, price update)
-- Image upload drag & drop
-
-#### Order Dashboard
-- Kanban board for order status
-- Color-coded by status/type
-- Quick filters (today, pending, completed)
-- Search by order number/customer
-
-#### Reports & Analytics
-- Dashboard with key metrics
-- Custom date range picker
-- Export to CSV/PDF
-- Visual charts (Recharts)
-
----
-
-## Success Metrics
-
-### Performance
-- Page load < 2s
-- Transaction completion < 30s
-- Offline mode: unlimited duration
-- Real-time sync delay < 1s
-
-### Usability
-- New cashier training < 15 minutes
-- Order entry < 3 clicks for repeat orders
-- Zero data loss on network failure
-- 99.9% uptime SLA
-
-### Business
-- Support 100+ concurrent outlets
-- Handle 10,000+ orders/day
-- Multi-currency support (IDR, USD, SGD)
-- Scalable to 1M+ customers
-
----
-
-## Notes
-
-- **Priority:** Stability > Features > Performance
-- **Security:** PCI DSS compliance for payments
-- **Compliance:** Indonesian tax regulations (e-Faktur ready)
-- **Localization:** Bahasa Indonesia first, English second
-
----
-
-**Last Updated:** 2026-04-26  
-**Status:** Architecture approved, Phase 1 in progress  
-**Next Review:** After Phase 1 completion
+## Product Photos
+- Stored in `/public/products/`
+- 8 products: nasi-goreng, ayam-bakar, mie-goreng, es-teh, kopi-susu, jus-alpukat, kentang-goreng, roti-bakar
+- Format: square 1:1, white background
