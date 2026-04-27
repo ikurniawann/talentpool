@@ -252,13 +252,13 @@ export default function OrdersPage() {
                       <td className="py-3">
                         <Dialog>
                           <DialogTrigger asChild>
-                            <Button
-                              variant="outline"
-                              size="sm"
+                            <button
+                              type="button"
                               onClick={() => setSelectedOrder(order)}
+                              className="inline-flex items-center rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
                             >
                               <Eye className="w-4 h-4 mr-1" /> Detail
-                            </Button>
+                            </button>
                           </DialogTrigger>
                           <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
                             <DialogHeader>
