@@ -4,7 +4,6 @@ import { useState, useEffect } from 'react';
 import { Search, Utensils, ShoppingBag, Truck, Monitor, Table as TableIcon, User, X, Sparkles } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { getProducts, getCustomers, createOrder, getCustomerFavoriteProducts, type Product, type Customer } from '@/lib/pos-api';
-import { ProductGrid } from '@/components/pos/ProductPanel';
 import { CartPanel } from '@/components/pos/CartPanel';
 
 type OrderType = 'dine_in' | 'takeaway' | 'delivery' | 'self_order';
@@ -28,6 +27,9 @@ interface CustomizationState {
   quantity: number;
   notes: string;
 }
+
+const DEBUG = false;
+const log = (...args: any[]) => DEBUG && console.log('[POS]', ...args);
 
 const formatCurrency = (value: number) => 
   new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(value);
@@ -122,6 +124,12 @@ export default function CashierPageNew() {
 
   const categories = ['Semua', ...Array.from(new Set(products.map(p => p.category?.name || 'Uncategorized')))];
 
+  const filteredProducts = products.filter(p => {
+    const matchCategory = selectedCategory === 'Semua' || p.category?.name === selectedCategory;
+    const matchSearch = p.name.toLowerCase().includes(searchTerm.toLowerCase());
+    return matchCategory && matchSearch;
+  });
+
   const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
   const discountAmount = selectedCustomer ? Math.floor(subtotal * selectedCustomer.discount! / 100) : 0;
   const afterDiscount = subtotal - discountAmount;
@@ -134,6 +142,8 @@ export default function CashierPageNew() {
   const openCustomization = (product: Product) => {
     const hasVariants = product.variants && product.variants.length > 0;
     const hasModifiers = product.modifiers && product.modifiers.length > 0;
+    
+    log('Opening customization for:', product.name, { hasVariants, hasModifiers });
     
     if (!hasVariants && !hasModifiers) {
       addToCartDirect(product, 1);
@@ -492,18 +502,38 @@ export default function CashierPageNew() {
         )}
 
         {/* Products Grid */}
-        <ProductGrid
-          products={products}
-          searchTerm={searchTerm}
-          selectedCategory={selectedCategory}
-          categories={categories}
-          customerFavorites={customerFavorites}
-          loadingFavorites={loadingFavorites}
-          selectedCustomer={selectedCustomer}
-          openCustomization={openCustomization}
-          formatCurrency={formatCurrency}
-          formatArk={formatArk}
-        />
+        <div className="flex-1 overflow-y-auto">
+          <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-5 gap-3">
+            {filteredProducts.map((product) => (
+              <button
+                key={product.id}
+                onClick={() => openCustomization(product)}
+                className="flex flex-col bg-white rounded-xl border border-gray-200 hover:border-pink-400 hover:shadow-lg transition-all overflow-hidden group"
+              >
+                <div className="aspect-square w-full overflow-hidden bg-gray-100">
+                  <img
+                    src={product.image_url || '/products/placeholder.png'}
+                    alt={product.name}
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                  />
+                </div>
+                <div className="p-2 flex flex-col gap-1">
+                  <div className="text-xs font-medium text-gray-900 line-clamp-2 leading-tight">
+                    {product.name}
+                  </div>
+                  <div className="flex flex-col gap-0.5">
+                    <div className="text-xs font-bold text-pink-600">
+                      {formatCurrency(product.base_price)}
+                    </div>
+                    <div className="text-[10px] text-amber-600 font-medium">
+                      {formatArk(product.base_price)}
+                    </div>
+                  </div>
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
 
       {/* RIGHT PANEL - Cart */}
@@ -680,24 +710,124 @@ export default function CashierPageNew() {
 
       {/* Customization Modal */}
       <Dialog open={customization.isOpen} onOpenChange={(open) => !open && setCustomization({ ...customization, isOpen: false })}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>{customization.product?.name}</DialogTitle>
+            <DialogTitle className="text-xl font-bold">{customization.product?.name}</DialogTitle>
           </DialogHeader>
           {customization.product && (
-            <div className="space-y-4 py-4">
+            <div className="space-y-6 py-4">
+              {/* Product Info */}
               <div className="flex gap-4">
-                <div className="w-24 h-24 bg-gray-100 rounded-lg flex items-center justify-center overflow-hidden">
+                <div className="w-24 h-24 bg-gray-100 rounded-lg flex items-center justify-center overflow-hidden flex-shrink-0">
                   <img src={customization.product.image_url || '/products/placeholder.png'} alt={customization.product.name} className="w-full h-full object-cover" />
                 </div>
                 <div className="flex-1">
-                  <div className="font-semibold text-gray-900">{formatCurrency(customization.product.base_price)}</div>
+                  <div className="text-lg font-bold text-pink-600">{formatCurrency(customization.product.base_price)}</div>
                   <div className="text-sm text-amber-600 font-medium">{formatArk(customization.product.base_price)}</div>
                 </div>
               </div>
 
+              {/* Variant Selection */}
+              {customization.product.variants && customization.product.variants.length > 0 && (
+                <div className="space-y-3">
+                  <label className="text-sm font-semibold text-gray-700 flex items-center gap-2">
+                    <Sparkles className="w-4 h-4 text-pink-600" />
+                    Pilih Varian
+                  </label>
+                  <div className="grid grid-cols-2 gap-2">
+                    {customization.product.variants.map((variant) => {
+                      const isSelected = customization.selectedVariant === variant.id;
+                      const priceText = variant.price_adjustment > 0 
+                        ? `+${formatCurrency(variant.price_adjustment)}` 
+                        : variant.price_adjustment < 0 
+                        ? `${formatCurrency(variant.price_adjustment)}` 
+                        : 'Same price';
+                      
+                      return (
+                        <button
+                          key={variant.id}
+                          type="button"
+                          onClick={() => setCustomization({ ...customization, selectedVariant: variant.id })}
+                          className={`p-3 rounded-lg border-2 text-left transition-all ${
+                            isSelected 
+                              ? 'border-pink-600 bg-pink-50' 
+                              : 'border-gray-200 hover:border-pink-300'
+                          }`}
+                        >
+                          <div className="font-medium text-gray-900">{variant.name}</div>
+                          <div className="text-xs text-gray-600 mt-1">{priceText}</div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Modifier Selection */}
+              {customization.product.modifiers && customization.product.modifiers.map((modifierGroup) => (
+                <div key={modifierGroup.modifier_group.id} className="space-y-3">
+                  <label className="text-sm font-semibold text-gray-700 flex items-center gap-2">
+                    <Utensils className="w-4 h-4 text-pink-600" />
+                    {modifierGroup.modifier_group.name}
+                    {modifierGroup.modifier_group.is_required && (
+                      <span className="text-xs text-red-500">*</span>
+                    )}
+                  </label>
+                  <div className="space-y-2">
+                    {modifierGroup.modifier_group.modifiers.map((modifier) => {
+                      const groupName = modifierGroup.modifier_group.name;
+                      const selectedIds = customization.selectedModifiers[groupName] || [];
+                      const isSelected = selectedIds.includes(modifier.id);
+                      const priceText = modifier.price_adjustment > 0 
+                        ? `+${formatCurrency(modifier.price_adjustment)}` 
+                        : modifier.price_adjustment < 0 
+                        ? `${formatCurrency(modifier.price_adjustment)}` 
+                        : '';
+                      
+                      return (
+                        <button
+                          key={modifier.id}
+                          type="button"
+                          onClick={() => {
+                            const newSelected = isSelected
+                              ? selectedIds.filter(id => id !== modifier.id)
+                              : [...selectedIds, modifier.id];
+                            setCustomization({ 
+                              ...customization, 
+                              selectedModifiers: { ...customization.selectedModifiers, [groupName]: newSelected }
+                            });
+                          }}
+                          className={`w-full p-3 rounded-lg border-2 text-left transition-all flex items-center justify-between ${
+                            isSelected 
+                              ? 'border-pink-600 bg-pink-50' 
+                              : 'border-gray-200 hover:border-pink-300'
+                          }`}
+                        >
+                          <span className="font-medium text-gray-900">{modifier.name}</span>
+                          {priceText && (
+                            <span className="text-sm text-amber-600 font-medium">{priceText}</span>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+
+              {/* Notes */}
+              <div className="space-y-2">
+                <label className="text-sm font-semibold text-gray-700">Catatan Tambahan</label>
+                <textarea
+                  value={customization.notes}
+                  onChange={(e) => setCustomization({ ...customization, notes: e.target.value })}
+                  placeholder="Contoh: Jangan terlalu pedas, kurang manis, dll."
+                  rows={2}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-500"
+                />
+              </div>
+
               {/* Quantity */}
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between pt-4 border-t">
                 <span className="text-sm font-medium text-gray-700">Jumlah</span>
                 <div className="flex items-center gap-3">
                   <button
@@ -717,7 +847,7 @@ export default function CashierPageNew() {
               </div>
 
               {/* Summary */}
-              <div className="pt-2 mt-2 border-t border-pink-200">
+              <div className="pt-4 mt-4 border-t border-pink-200">
                 <div className="flex justify-between items-end">
                   <div>
                     <div className="text-lg font-bold text-gray-900">Total</div>
