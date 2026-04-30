@@ -39,13 +39,6 @@ export async function updateSession(request: NextRequest) {
     pathname.startsWith(route)
   );
 
-  // Check for demo mode bypass (for UI testing without Supabase)
-  const demoMode = request.cookies.get('pos_demo_mode')?.value === 'true';
-  if (demoMode && !isPublicRoute) {
-    // Allow access in demo mode - no auth required
-    return supabaseResponse;
-  }
-
   if (!user && !isPublicRoute) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
