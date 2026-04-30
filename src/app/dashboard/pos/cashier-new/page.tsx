@@ -104,14 +104,6 @@ export default function CashierPageNew() {
     fetchFavorites();
   }, [selectedCustomer, products]);
 
-  useEffect(() => {
-    if (paymentMethod === 'ark_coin') {
-      setArkToUse(maxArkUsable);
-    } else {
-      setArkToUse(0);
-    }
-  }, [paymentMethod, maxArkUsable]);
-
   const getDiscountByTier = (tier: string): number => {
     switch (tier?.toLowerCase()) {
       case 'platinum': return 15;
@@ -146,6 +138,14 @@ export default function CashierPageNew() {
   const maxArkUsable = selectedCustomer ? Math.min(selectedCustomer.ark_coin_balance, total) : 0;
   const arkToUseCapped = Math.min(arkToUse, maxArkUsable);
   const totalAfterArk = total - arkToUseCapped;
+
+  useEffect(() => {
+    if (paymentMethod === 'ark_coin') {
+      setArkToUse(maxArkUsable);
+    } else {
+      setArkToUse(0);
+    }
+  }, [paymentMethod, maxArkUsable]);
 
   const openCustomization = (product: Product) => {
     const hasVariants = product.variants && product.variants.length > 0;
