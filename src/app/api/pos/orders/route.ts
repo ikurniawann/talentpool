@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { getApiUser } from '@/lib/api/auth';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -8,6 +9,11 @@ const supabase = createClient(
 
 // GET /api/pos/orders - List orders with filters
 export async function GET(request: NextRequest) {
+  const apiUser = await getApiUser();
+  if (!apiUser) {
+    return NextResponse.json({ success: false, error: 'Authentication required' }, { status: 401 });
+  }
+
   try {
     const searchParams = request.nextUrl.searchParams;
     const status = searchParams.get('status');
@@ -48,11 +54,13 @@ export async function GET(request: NextRequest) {
 
 // POST /api/pos/orders - Create new order
 export async function POST(request: NextRequest) {
+  const apiUser = await getApiUser();
+  if (!apiUser) {
+    return NextResponse.json({ success: false, error: 'Authentication required' }, { status: 401 });
+  }
+
   try {
     const body = await request.json();
-    console.log('=== API RECEIVED ORDER ===');
-    console.log('Body:', JSON.stringify(body, null, 2));
-    
     const {
       order_type = 'dine_in',
       customer_id,
@@ -81,20 +89,8 @@ export async function POST(request: NextRequest) {
     const numericPaid = Number(amount_paid) || 0;
     const numericArk = Number(ark_coins_used) || 0;
 
-    console.log('=== API ORDER DATA ===');
-    console.log('Subtotal:', numericSubtotal);
-    console.log('Discount:', numericDiscount);
-    console.log('Tax:', numericTax);
-    console.log('Total:', numericTotal);
-    console.log('Paid:', numericPaid);
-    console.log('Change:', numericPaid - numericTotal);
-    console.log('ARK:', numericArk);
-    
-    console.log('Validation:', { cashier_id, items_length: items.length, total_amount: numericTotal });
-
     // Validate required fields (total_amount can be 0 if fully paid with ARK)
     if (!items.length || numericTotal === 0) {
-      console.error('Validation failed:', { items_length: items.length, total_amount });
       return NextResponse.json(
         { success: false, error: 'Items and total amount are required' },
         { status: 400 }
@@ -241,11 +237,16 @@ export async function POST(request: NextRequest) {
 }
 
 // PATCH /api/pos/orders/:id - Update order status
-export async function PATCH(request: NextRequest, { params }: { params: { id: string } }) {
+export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const apiUser = await getApiUser();
+  if (!apiUser) {
+    return NextResponse.json({ success: false, error: 'Authentication required' }, { status: 401 });
+  }
+
   try {
     const body = await request.json();
     const { status, payment_status, payment_method, amount_paid, notes } = body;
-    const orderId = params.id;
+    const { id: orderId } = await params;
 
     // Convert to numbers
     const numericAmountPaid = Number(amount_paid) || 0;

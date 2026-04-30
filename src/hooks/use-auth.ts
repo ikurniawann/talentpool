@@ -20,7 +20,7 @@ interface UseAuthResult {
 
 /**
  * Hook for accessing the current authenticated user.
- * Falls back to a demo user when Supabase is not configured.
+ * Returns null when no active session exists.
  */
 export function useAuth(): UseAuthResult {
   const [user, setUser] = useState<AuthUser | null>(null);
@@ -41,13 +41,7 @@ export function useAuth(): UseAuthResult {
           avatar_url: u.user_metadata?.avatar_url,
         });
       } else {
-        // Fallback demo user for development
-        setUser({
-          id: "demo-user-id",
-          email: "demo@wit.id",
-          role: "purchasing_admin",
-          full_name: "Demo Admin",
-        });
+        setUser(null);
       }
       setLoading(false);
     });

@@ -4,10 +4,6 @@ import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 
-const DEMO_EMAIL = process.env.NEXT_PUBLIC_DEMO_EMAIL ?? "demo@aapextechnology.com";
-const DEMO_HM_EMAIL = process.env.NEXT_PUBLIC_DEMO_HM_EMAIL ?? "demohm@aapextechnology.com";
-const DEMO_PASSWORD = process.env.NEXT_PUBLIC_DEMO_PASSWORD ?? "demo123456";
-
 export default function LoginPage() {
   const router = useRouter();
   const supabase = createClient();
@@ -35,31 +31,11 @@ export default function LoginPage() {
     }
   };
 
-  const handleBypassLogin = () => {
-    // Bypass auth for UI testing - set a demo flag in localStorage
-    localStorage.setItem('pos_demo_mode', 'true');
-    router.replace("/dashboard/pos");
-  };
-
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
       <div className="w-full max-w-md p-8 bg-white rounded-xl shadow-md">
         <div className="mb-8 text-center">
           <img src="/logos/logo.png" alt="Prologue in Wounderland" className="w-64 h-auto mx-auto mb-4 bg-transparent" />
-        </div>
-
-        {/* Demo Mode Bypass - Prominent */}
-        <div className="p-4 bg-green-50 border border-green-200 rounded-lg mb-4">
-          <button
-            type="button"
-            onClick={handleBypassLogin}
-            className="w-full py-3 px-4 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-bold transition-colors flex items-center justify-center gap-2 shadow-sm"
-          >
-            🚀 Coba POS Tanpa Login
-          </button>
-          <p className="text-[10px] text-green-700 text-center mt-2">
-            Mode demo untuk testing UI - data tidak tersimpan
-          </p>
         </div>
 
         <form onSubmit={handleLogin} className="space-y-4">

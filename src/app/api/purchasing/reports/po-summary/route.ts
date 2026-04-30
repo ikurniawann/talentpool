@@ -20,15 +20,12 @@ const querySchema = z.object({
 
 export async function GET(request: NextRequest) {
   try {
-    // Skip auth for now - will add back after testing
-    // const user = await requireApiRole(["purchasing_admin", "purchasing_manager", "purchasing_staff"]);
+    await requireApiRole(["purchasing_admin", "purchasing_manager", "purchasing_staff"]);
     const supabase = await createClient();
 
     const { searchParams } = new URL(request.url);
     const params = querySchema.parse(Object.fromEntries(searchParams));
     const { date_from, date_to, vendor_id, status, export: exportFormat } = params;
-
-    console.log("PO Summary params:", params);
 
     let query = supabase
       .from("v_purchase_orders")
@@ -46,12 +43,7 @@ export async function GET(request: NextRequest) {
 
     const { data: pos, error } = await query;
 
-    if (error) {
-      console.error("Supabase error:", error);
-      throw error;
-    }
-
-    console.log("PO data loaded:", pos?.length || 0);
+    if (error) throw error;
 
     // Group by status
     const byStatus: Record<string, { count: number; total: number }> = {};
@@ -111,14 +103,10 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (error: any) {
+    if (error instanceof ApiError) return error.toResponse();
     console.error("Error generating PO summary:", error);
-    console.error("Error details:", JSON.stringify(error, null, 2));
     return NextResponse.json(
-      {
-        success: false,
-        message: error.message || "Failed to generate report",
-        error: error.toString(),
-      },
+      { success: false, message: error.message || "Failed to generate report" },
       { status: 500 }
     );
   }

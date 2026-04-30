@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { getApiUser } from '@/lib/api/auth';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -8,6 +9,11 @@ const supabase = createClient(
 
 // GET /api/pos/topup/history - Get customer topup history
 export async function GET(request: NextRequest) {
+  const apiUser = await getApiUser();
+  if (!apiUser) {
+    return NextResponse.json({ success: false, error: 'Authentication required' }, { status: 401 });
+  }
+
   try {
     const searchParams = request.nextUrl.searchParams;
     const customerId = searchParams.get('customer_id');
@@ -43,6 +49,11 @@ export async function GET(request: NextRequest) {
 
 // POST /api/pos/topup - Process Ark Coin topup
 export async function POST(request: NextRequest) {
+  const apiUser = await getApiUser();
+  if (!apiUser) {
+    return NextResponse.json({ success: false, error: 'Authentication required' }, { status: 401 });
+  }
+
   try {
     const body = await request.json();
     const {
@@ -63,14 +74,14 @@ export async function POST(request: NextRequest) {
     // Calculate Ark Coin amount (1 ARK = 1000 IDR)
     const arkCoins = amount / 1000;
 
-    // Get current customer balance
-    const { data: customer } = await supabase
+    // Get current customer balance and total_spent
+    const { data: customer, error: customerError } = await supabase
       .from('pos_customers')
-      .select('ark_coin_balance')
+      .select('ark_coin_balance, total_spent')
       .eq('id', customer_id)
       .single();
 
-    if (!customer) {
+    if (customerError || !customer) {
       return NextResponse.json(
         { success: false, error: 'Customer not found' },
         { status: 404 }
@@ -79,6 +90,7 @@ export async function POST(request: NextRequest) {
 
     const balanceBefore = Number(customer.ark_coin_balance) || 0;
     const balanceAfter = balanceBefore + arkCoins;
+    const totalSpentAfter = Number(customer.total_spent || 0) + amount;
 
     // Start transaction
     // 1. Update customer balance
@@ -86,7 +98,7 @@ export async function POST(request: NextRequest) {
       .from('pos_customers')
       .update({
         ark_coin_balance: balanceAfter,
-        total_spent: supabase.raw(`total_spent + ${amount}`),
+        total_spent: totalSpentAfter,
         updated_at: new Date().toISOString()
       })
       .eq('id', customer_id);
