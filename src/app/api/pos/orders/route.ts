@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { getApiUser } from '@/lib/api/auth';
+import { getPosSession } from '@/lib/api/auth';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -9,8 +9,8 @@ const supabase = createClient(
 
 // GET /api/pos/orders - List orders with filters
 export async function GET(request: NextRequest) {
-  const apiUser = await getApiUser();
-  if (!apiUser) {
+  const sessionUserId = await getPosSession();
+  if (!sessionUserId) {
     return NextResponse.json({ success: false, error: 'Authentication required' }, { status: 401 });
   }
 
@@ -54,8 +54,8 @@ export async function GET(request: NextRequest) {
 
 // POST /api/pos/orders - Create new order
 export async function POST(request: NextRequest) {
-  const apiUser = await getApiUser();
-  if (!apiUser) {
+  const sessionUserId = await getPosSession();
+  if (!sessionUserId) {
     return NextResponse.json({ success: false, error: 'Authentication required' }, { status: 401 });
   }
 
@@ -238,8 +238,8 @@ export async function POST(request: NextRequest) {
 
 // PATCH /api/pos/orders/:id - Update order status
 export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const apiUser = await getApiUser();
-  if (!apiUser) {
+  const sessionUserId = await getPosSession();
+  if (!sessionUserId) {
     return NextResponse.json({ success: false, error: 'Authentication required' }, { status: 401 });
   }
 

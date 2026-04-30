@@ -37,6 +37,16 @@ export async function getApiUser(): Promise<ApiUser | null> {
 }
 
 /**
+ * Lightweight session check for POS routes.
+ * Only verifies JWT is valid — does not require a users table record.
+ */
+export async function getPosSession(): Promise<string | null> {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  return user?.id ?? null;
+}
+
+/**
  * Require authenticated user, returns 401 if not authenticated
  */
 export async function requireApiUser(): Promise<ApiUser> {
