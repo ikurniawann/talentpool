@@ -42,7 +42,9 @@ export default function LoginPage() {
         "finance_staff",
       ];
 
-      if (profile && purchasingRoles.includes(profile.role)) {
+      if (profile?.role === "pos") {
+        router.replace("/dashboard/pos/cashier-new");
+      } else if (profile && purchasingRoles.includes(profile.role)) {
         router.replace("/dashboard/purchasing");
       } else {
         router.replace("/dashboard");

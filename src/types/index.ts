@@ -3,7 +3,7 @@
 // ============================================================
 
 // --- Enums ---
-export type UserRole = "hrd" | "hiring_manager" | "direksi" | "purchasing_admin" | "purchasing_manager" | "purchasing_staff" | "finance_staff" | "warehouse_staff";
+export type UserRole = "hrd" | "hiring_manager" | "direksi" | "purchasing_admin" | "purchasing_manager" | "purchasing_staff" | "finance_staff" | "warehouse_staff" | "pos";
 export type CandidateSource =
   | "portal"
   | "internal"

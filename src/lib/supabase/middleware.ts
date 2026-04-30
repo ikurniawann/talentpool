@@ -62,10 +62,13 @@ export async function updateSession(request: NextRequest) {
     ];
 
     const url = request.nextUrl.clone();
-    url.pathname =
-      profile && purchasingRoles.includes(profile.role)
-        ? "/dashboard/purchasing"
-        : "/dashboard";
+    if (profile?.role === "pos") {
+      url.pathname = "/dashboard/pos/cashier-new";
+    } else if (profile && purchasingRoles.includes(profile.role)) {
+      url.pathname = "/dashboard/purchasing";
+    } else {
+      url.pathname = "/dashboard";
+    }
     return NextResponse.redirect(url);
   }
 
