@@ -10,8 +10,8 @@ import { Badge } from '@/components/ui/badge';
 import { getOrders, updateOrderStatus, getCustomers } from '@/lib/pos-api';
 import type { Order, Customer } from '@/lib/pos-api';
 
-const ARK_RATE = 1000; // 1 ARK = Rp 1.000
-const formatArk = (value: number) => `${value.toLocaleString('id-ID')} ARK`;
+const ARK_RATE = 1000; // 1 ARK = Rp 1.000 — balance & ark_coins_used disimpan dalam Rupiah
+const formatArk = (value: number) => `${(value / ARK_RATE).toLocaleString('id-ID')} ARK`;
 
 const formatCurrency = (value: number) => {
   // Ensure value is positive and format with Rp prefix
@@ -184,8 +184,7 @@ export default function OrdersPage() {
         alert('❌ Tap kartu ARK Coin dulu!');
         return;
       }
-      const totalInArk = selectedOrder.total_amount! / ARK_RATE;
-      if (arkCoinCustomer.ark_coin_balance < totalInArk) {
+      if (arkCoinCustomer.ark_coin_balance < selectedOrder.total_amount!) {
         alert('❌ Saldo ARK Coin tidak mencukupi!');
         return;
       }
@@ -196,9 +195,9 @@ export default function OrdersPage() {
       let amountPaidValue = 0;
       
       if (paymentMethod === 'ark_coin' && arkCoinCustomer) {
-        const totalInArk = selectedOrder.total_amount! / ARK_RATE;
-        arkUsed = Math.min(arkCoinCustomer.ark_coin_balance, totalInArk);
-        amountPaidValue = arkUsed * ARK_RATE; // konversi ARK → Rupiah untuk amount_paid
+        // balance & total keduanya dalam Rupiah, tidak perlu konversi
+        arkUsed = Math.min(arkCoinCustomer.ark_coin_balance, selectedOrder.total_amount!);
+        amountPaidValue = arkUsed;
       } else if (paymentMethod === 'cash') {
         amountPaidValue = parseFloat(amountPaid) || selectedOrder.total_amount!;
       } else {
@@ -252,8 +251,8 @@ export default function OrdersPage() {
         
         if (customer.ark_coin_balance <= 0) {
           alert('⚠️ Saldo ARK Coin pelanggan kosong!');
-        } else if (customer.ark_coin_balance < (selectedOrder?.total_amount || 0) / ARK_RATE) {
-          alert(`⚠️ Saldo ARK Coin tidak cukup.\nSaldo: ${formatArk(customer.ark_coin_balance)}\nTotal: ${formatArk((selectedOrder?.total_amount || 0) / ARK_RATE)}`);
+        } else if (customer.ark_coin_balance < (selectedOrder?.total_amount || 0)) {
+          alert(`⚠️ Saldo ARK Coin tidak cukup.\nSaldo: ${formatArk(customer.ark_coin_balance)}\nTotal: ${formatArk(selectedOrder?.total_amount || 0)}`);
         }
       } else {
         alert('❌ Pelanggan tidak ditemukan!');
@@ -557,18 +556,18 @@ export default function OrdersPage() {
                       </div>
                       <div className="flex justify-between text-sm">
                         <span className="text-gray-600">Total tagihan</span>
-                        <span className="font-semibold text-gray-900">{formatArk(selectedOrder!.total_amount! / ARK_RATE)}</span>
+                        <span className="font-semibold text-gray-900">{formatArk(selectedOrder!.total_amount!)}</span>
                       </div>
                       <div className="flex justify-between text-sm">
                         <span className="text-gray-600">Sisa saldo</span>
                         <span className="font-semibold text-gray-700">
-                          {formatArk(Math.max(0, arkCoinCustomer.ark_coin_balance - selectedOrder!.total_amount! / ARK_RATE))}
+                          {formatArk(Math.max(0, arkCoinCustomer.ark_coin_balance - selectedOrder!.total_amount!))}
                         </span>
                       </div>
-                      <div className={`text-sm font-medium ${arkCoinCustomer.ark_coin_balance >= selectedOrder!.total_amount! / ARK_RATE ? 'text-green-600' : 'text-red-500'}`}>
-                        {arkCoinCustomer.ark_coin_balance >= selectedOrder!.total_amount! / ARK_RATE
+                      <div className={`text-sm font-medium ${arkCoinCustomer.ark_coin_balance >= selectedOrder!.total_amount! ? 'text-green-600' : 'text-red-500'}`}>
+                        {arkCoinCustomer.ark_coin_balance >= selectedOrder!.total_amount!
                           ? '✓ Saldo cukup untuk membayar penuh'
-                          : `Saldo kurang ${formatArk(selectedOrder!.total_amount! / ARK_RATE - arkCoinCustomer.ark_coin_balance)}`}
+                          : `Saldo kurang ${formatArk(selectedOrder!.total_amount! - arkCoinCustomer.ark_coin_balance)}`}
                       </div>
                     </div>
                   )}
@@ -774,7 +773,7 @@ function OrderDetail({ order }: { order: Order }) {
             {order.ark_coins_used! > 0 && (
               <div className="flex justify-between text-amber-600">
                 <span>ARK Coins Used</span>
-                <span>-{order.ark_coins_used} ARK</span>
+                <span>-{formatArk(order.ark_coins_used!)}</span>
               </div>
             )}
             <div className="flex justify-between text-lg font-bold pt-2 border-t">
