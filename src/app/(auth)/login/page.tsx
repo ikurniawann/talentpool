@@ -18,7 +18,7 @@ export default function LoginPage() {
     setLoading(true);
     setError("");
 
-    const { error } = await supabase.auth.signInWithPassword({
+    const { data: authData, error } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
@@ -27,7 +27,26 @@ export default function LoginPage() {
       setError(error.message);
       setLoading(false);
     } else {
-      router.replace("/dashboard/purchasing");
+      const { data: profile } = await supabase
+        .from("users")
+        .select("role")
+        .eq("id", authData.user.id)
+        .single();
+
+      const purchasingRoles = [
+        "purchasing_manager",
+        "purchasing_staff",
+        "purchasing_admin",
+        "warehouse_staff",
+        "qc_staff",
+        "finance_staff",
+      ];
+
+      if (profile && purchasingRoles.includes(profile.role)) {
+        router.replace("/dashboard/purchasing");
+      } else {
+        router.replace("/dashboard");
+      }
     }
   };
 

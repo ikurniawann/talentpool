@@ -46,8 +46,26 @@ export async function updateSession(request: NextRequest) {
   }
 
   if (user && pathname === "/login") {
+    const { data: profile } = await supabase
+      .from("users")
+      .select("role")
+      .eq("id", user.id)
+      .single();
+
+    const purchasingRoles = [
+      "purchasing_manager",
+      "purchasing_staff",
+      "purchasing_admin",
+      "warehouse_staff",
+      "qc_staff",
+      "finance_staff",
+    ];
+
     const url = request.nextUrl.clone();
-    url.pathname = "/dashboard";
+    url.pathname =
+      profile && purchasingRoles.includes(profile.role)
+        ? "/dashboard/purchasing"
+        : "/dashboard";
     return NextResponse.redirect(url);
   }
 
