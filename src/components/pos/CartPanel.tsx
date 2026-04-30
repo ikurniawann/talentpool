@@ -174,7 +174,7 @@ export function CartPanel({
           <div className="text-center pt-3 border-t border-gray-300">
             <div className="text-lg font-bold text-gray-900 mb-1">Total Pembayaran</div>
             <div className="text-4xl font-bold text-amber-600">{formatArk(totalAfterArk)}</div>
-            <div className="text-xs text-gray-500 mt-1">≈ {formatCurrency(totalAfterArk * 1000)}</div>
+            <div className="text-xs text-gray-500 mt-1">≈ {formatCurrency(totalAfterArk)}</div>
           </div>
         ) : (
           <div className="flex justify-between items-end pt-3 border-t border-gray-300">
