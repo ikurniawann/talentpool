@@ -1,14 +1,17 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Clock, CheckCircle, XCircle, ChefHat, Truck, Search, Filter, Eye, User, CreditCard, Coins, Calendar } from 'lucide-react';
+import { Clock, CheckCircle, XCircle, ChefHat, Truck, Search, Filter, Eye, User, CreditCard, Coins, Calendar, DollarSign, ScanQrCode } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
-import { getOrders } from '@/lib/pos-api';
-import type { Order } from '@/lib/pos-api';
+import { getOrders, updateOrderStatus, getCustomers } from '@/lib/pos-api';
+import type { Order, Customer } from '@/lib/pos-api';
+
+const ARK_RATE = 1000; // 1 ARK = Rp 1.000
+const formatArk = (value: number) => `${value.toLocaleString('id-ID')} ARK`;
 
 const formatCurrency = (value: number) => {
   // Ensure value is positive and format with Rp prefix
@@ -84,6 +87,69 @@ export default function OrdersPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState('cash');
+  const [amountPaid, setAmountPaid] = useState('');
+  const [printReceipt, setPrintReceipt] = useState(true);
+  const [arkCoinCustomer, setArkCoinCustomer] = useState<Customer | null>(null);
+  const [arkToUse, setArkToUse] = useState<number>(0);
+  const [scanningArk, setScanningArk] = useState(false);
+
+  const printReceiptPreview = (order: Order) => {
+    printReceiptWindow(order, order.payment_method || 'CASH', order.ark_coins_used || 0);
+  };
+
+  const printReceiptWindow = (order: Order, paymentMethod: string, arkUsed: number = 0) => {
+    const printWindow = window.open('', '_blank');
+    if (printWindow) {
+      printWindow.document.write(`
+        <html>
+          <head>
+            <title>Receipt - ${order.order_number}</title>
+            <style>
+              body { font-family: monospace; width: 58mm; padding: 10px; margin: 0; }
+              .header { text-align: center; margin-bottom: 10px; }
+              .divider { border-bottom: 1px dashed #000; margin: 5px 0; }
+              .row { display: flex; justify-content: space-between; margin: 3px 0; }
+              .total { font-weight: bold; font-size: 1.2em; }
+              @media print { @page { margin: 0; } body { -webkit-print-color-adjust: exact; } }
+            </style>
+          </head>
+          <body>
+            <div class="header">
+              <h3>TalentPool POS</h3>
+              <p>${order.order_number}</p>
+              <p>${new Date(order.ordered_at!).toLocaleString('id-ID')}</p>
+            </div>
+            <div class="divider"></div>
+            ${order.items?.map((item: any) => `
+              <div class="row">
+                <span>${item.product_name} x${item.quantity}</span>
+                <span>Rp ${item.total_amount.toLocaleString('id-ID')}</span>
+              </div>
+            `).join('') || ''}
+            <div class="divider"></div>
+            <div class="row total">
+              <span>Total</span>
+              <span>Rp ${order.total_amount?.toLocaleString('id-ID')}</span>
+            </div>
+            <div class="row">
+              <span>Payment</span>
+              <span>${paymentMethod.toUpperCase()}${arkUsed > 0 ? ` (${arkUsed} ARK)` : ''}</span>
+            </div>
+            <div class="divider"></div>
+            <p style="text-align: center; font-size: 0.8em;">Terima kasih!</p>
+          </body>
+        </html>
+      `);
+      printWindow.document.close();
+      printWindow.focus();
+      setTimeout(() => {
+        printWindow.print();
+        printWindow.close();
+      }, 250);
+    }
+  };
 
   useEffect(() => {
     loadOrders();
@@ -100,6 +166,103 @@ export default function OrdersPage() {
       console.error('Failed to load orders:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handlePayment = async () => {
+    if (!selectedOrder) return;
+    
+    // Validate payment based on method
+    if (paymentMethod === 'cash') {
+      const paid = parseFloat(amountPaid) || 0;
+      if (paid < selectedOrder.total_amount!) {
+        alert('❌ Uang pembayaran kurang!');
+        return;
+      }
+    } else if (paymentMethod === 'ark_coin') {
+      if (!arkCoinCustomer) {
+        alert('❌ Tap kartu ARK Coin dulu!');
+        return;
+      }
+      const totalInArk = selectedOrder.total_amount! / ARK_RATE;
+      if (arkCoinCustomer.ark_coin_balance < totalInArk) {
+        alert('❌ Saldo ARK Coin tidak mencukupi!');
+        return;
+      }
+    }
+    
+    try {
+      let arkUsed = 0;
+      let amountPaidValue = 0;
+      
+      if (paymentMethod === 'ark_coin' && arkCoinCustomer) {
+        const totalInArk = selectedOrder.total_amount! / ARK_RATE;
+        arkUsed = Math.min(arkCoinCustomer.ark_coin_balance, totalInArk);
+        amountPaidValue = arkUsed * ARK_RATE; // konversi ARK → Rupiah untuk amount_paid
+      } else if (paymentMethod === 'cash') {
+        amountPaidValue = parseFloat(amountPaid) || selectedOrder.total_amount!;
+      } else {
+        amountPaidValue = selectedOrder.total_amount!;
+      }
+      
+      const response = await updateOrderStatus(selectedOrder.id, 'completed', {
+        payment_status: 'paid',
+        payment_method: paymentMethod === 'ark_coin' ? 'ark_coin' : paymentMethod,
+        amount_paid: amountPaidValue,
+        ark_coins_used: arkUsed
+      });
+      
+      if (response.success) {
+        // Print receipt if checked
+        if (printReceipt) {
+          printReceiptWindow(selectedOrder, paymentMethod, arkUsed);
+        }
+        
+        alert(`✅ Pembayaran berhasil!\n\nOrder ${selectedOrder.order_number} telah lunas.${arkUsed > 0 ? `\nARK Coin digunakan: ${arkUsed}` : ''}`);
+        setShowPaymentModal(false);
+        setSelectedOrder(null);
+        setAmountPaid('');
+        setPrintReceipt(true);
+        setArkCoinCustomer(null);
+        setArkToUse(0);
+        loadOrders(); // Reload orders
+      } else {
+        alert(`❌ Error: ${response.error || 'Failed to update order'}`);
+      }
+    } catch (err: any) {
+      alert(`❌ Error: ${err.message}`);
+    }
+  };
+
+  const handleTapArkCard = async () => {
+    setScanningArk(true);
+    try {
+      // Simulate tapping card - in production, this would read from RFID/NFC reader
+      // For now, show customer search modal
+      const customerPhone = prompt('Masukkan nomor telepon pelanggan (atau tap kartu):');
+      if (!customerPhone) {
+        setScanningArk(false);
+        return;
+      }
+      
+      const customers = await getCustomers({ phone: customerPhone });
+      if (customers.success && customers.data && customers.data.length > 0) {
+        const customer = customers.data[0];
+        setArkCoinCustomer(customer);
+        
+        if (customer.ark_coin_balance <= 0) {
+          alert('⚠️ Saldo ARK Coin pelanggan kosong!');
+        } else if (customer.ark_coin_balance < (selectedOrder?.total_amount || 0) / ARK_RATE) {
+          alert(`⚠️ Saldo ARK Coin tidak cukup.\nSaldo: ${formatArk(customer.ark_coin_balance)}\nTotal: ${formatArk((selectedOrder?.total_amount || 0) / ARK_RATE)}`);
+        }
+      } else {
+        alert('❌ Pelanggan tidak ditemukan!');
+      }
+    } catch (error: any) {
+      console.error('Error tapping ARK card:', error);
+      alert('❌ Gagal membaca kartu: ' + error.message);
+    } finally {
+      setScanningArk(false);
     }
   };
 
@@ -250,23 +413,37 @@ export default function OrdersPage() {
                       <td className="py-3 font-semibold text-gray-900">{formatCurrency(order.total_amount || 0)}</td>
                       <td className="py-3">{getStatusBadge(order.status!)}</td>
                       <td className="py-3">
-                        <Dialog>
-                          <DialogTrigger asChild>
+                        <div className="flex gap-2">
+                          {order.status === 'pending' && (
                             <button
                               type="button"
-                              onClick={() => setSelectedOrder(order)}
-                              className="inline-flex items-center rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              onClick={() => {
+                                setSelectedOrder(order);
+                                setShowPaymentModal(true);
+                              }}
+                              className="inline-flex items-center rounded-md bg-amber-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-amber-700 focus:outline-none focus:ring-2 focus:ring-amber-500"
                             >
-                              <Eye className="w-4 h-4 mr-1" /> Detail
+                              <DollarSign className="w-4 h-4 mr-1" /> Bayar
                             </button>
-                          </DialogTrigger>
-                          <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
-                            <DialogHeader>
-                              <DialogTitle>Detail Pesanan</DialogTitle>
-                            </DialogHeader>
-                            {selectedOrder && <OrderDetail order={selectedOrder} />}
-                          </DialogContent>
-                        </Dialog>
+                          )}
+                          <Dialog>
+                            <DialogTrigger asChild>
+                              <button
+                                type="button"
+                                onClick={() => setSelectedOrder(order)}
+                                className="inline-flex items-center rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              >
+                                <Eye className="w-4 h-4 mr-1" /> Detail
+                              </button>
+                            </DialogTrigger>
+                            <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
+                              <DialogHeader>
+                                <DialogTitle>Detail Pesanan</DialogTitle>
+                              </DialogHeader>
+                              {selectedOrder && <OrderDetail order={selectedOrder} />}
+                            </DialogContent>
+                          </Dialog>
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -276,6 +453,191 @@ export default function OrdersPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Payment Modal for Pending Orders */}
+      <Dialog open={showPaymentModal} onOpenChange={(open) => {
+        if (!open) {
+          setShowPaymentModal(false);
+          setAmountPaid('');
+          setArkCoinCustomer(null);
+          setArkToUse(0);
+        }
+      }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Bayar Order Pending</DialogTitle>
+          </DialogHeader>
+          {selectedOrder && (
+            <div className="space-y-4 py-4">
+              {/* Order Info */}
+              <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                <div className="text-sm font-semibold text-amber-800">{selectedOrder.order_number}</div>
+                <div className="text-xs text-amber-700 mt-1">Total: {formatCurrency(selectedOrder.total_amount || 0)}</div>
+              </div>
+
+              {/* Payment Method */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-700">Metode Pembayaran</label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    onClick={() => setPaymentMethod('cash')}
+                    className={`p-3 rounded-lg border-2 text-left transition-all ${paymentMethod === 'cash' ? 'border-pink-600 bg-pink-50' : 'border-gray-200 hover:border-gray-300'}`}
+                  >
+                    <div className="text-sm font-semibold">Cash</div>
+                    <div className="text-xs text-gray-500">Uang tunai</div>
+                  </button>
+                  <button
+                    onClick={() => setPaymentMethod('qris')}
+                    className={`p-3 rounded-lg border-2 text-left transition-all ${paymentMethod === 'qris' ? 'border-pink-600 bg-pink-50' : 'border-gray-200 hover:border-gray-300'}`}
+                  >
+                    <div className="text-sm font-semibold">QRIS</div>
+                    <div className="text-xs text-gray-500">Scan QR</div>
+                  </button>
+                  <button
+                    onClick={() => setPaymentMethod('credit_card')}
+                    className={`p-3 rounded-lg border-2 text-left transition-all ${paymentMethod === 'credit_card' ? 'border-pink-600 bg-pink-50' : 'border-gray-200 hover:border-gray-300'}`}
+                  >
+                    <div className="text-sm font-semibold">Credit Card</div>
+                    <div className="text-xs text-gray-500">Kartu kredit</div>
+                  </button>
+                  <button
+                    onClick={() => setPaymentMethod('ark_coin')}
+                    className={`p-3 rounded-lg border-2 text-left transition-all ${paymentMethod === 'ark_coin' ? 'border-pink-600 bg-pink-50' : 'border-gray-200 hover:border-gray-300'}`}
+                  >
+                    <div className="text-sm font-semibold">ARK Coin</div>
+                    <div className="text-xs text-gray-500">Crypto</div>
+                  </button>
+                </div>
+              </div>
+
+              {/* ARK Coin Tap Card */}
+              {paymentMethod === 'ark_coin' && (
+                <div className="space-y-3">
+                  <button
+                    type="button"
+                    onClick={handleTapArkCard}
+                    disabled={scanningArk}
+                    className={`w-full py-4 rounded-lg border-2 transition-all flex items-center justify-center gap-3 ${
+                      scanningArk
+                        ? 'border-gray-300 bg-gray-100'
+                        : arkCoinCustomer
+                        ? 'border-green-600 bg-green-50 hover:bg-green-100'
+                        : 'border-amber-600 bg-amber-50 hover:bg-amber-100'
+                    }`}
+                  >
+                    {scanningArk ? (
+                      <>
+                        <div className="w-5 h-5 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
+                        <span className="font-medium">Scanning...</span>
+                      </>
+                    ) : arkCoinCustomer ? (
+                      <>
+                        <CheckCircle className="w-6 h-6 text-green-600" />
+                        <div className="text-left">
+                          <div className="font-semibold text-green-800">{arkCoinCustomer.name || 'Member'}</div>
+                          <div className="text-xs text-green-700">Saldo: {formatArk(arkCoinCustomer.ark_coin_balance)}</div>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <ScanQrCode className="w-6 h-6 text-amber-600" />
+                        <div className="text-left">
+                          <div className="font-semibold text-amber-800">Tap Kartu Member</div>
+                          <div className="text-xs text-amber-700">Sentuh kartu untuk membaca saldo</div>
+                        </div>
+                      </>
+                    )}
+                  </button>
+
+                  {arkCoinCustomer && arkCoinCustomer.ark_coin_balance > 0 && (
+                    <div className="space-y-2 p-3 bg-amber-50 rounded-lg border border-amber-200">
+                      <div className="flex justify-between text-sm">
+                        <span className="text-gray-600">Saldo ARK</span>
+                        <span className="font-semibold text-amber-600">{formatArk(arkCoinCustomer.ark_coin_balance)}</span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-gray-600">Total tagihan</span>
+                        <span className="font-semibold text-gray-900">{formatArk(selectedOrder!.total_amount! / ARK_RATE)}</span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-gray-600">Sisa saldo</span>
+                        <span className="font-semibold text-gray-700">
+                          {formatArk(Math.max(0, arkCoinCustomer.ark_coin_balance - selectedOrder!.total_amount! / ARK_RATE))}
+                        </span>
+                      </div>
+                      <div className={`text-sm font-medium ${arkCoinCustomer.ark_coin_balance >= selectedOrder!.total_amount! / ARK_RATE ? 'text-green-600' : 'text-red-500'}`}>
+                        {arkCoinCustomer.ark_coin_balance >= selectedOrder!.total_amount! / ARK_RATE
+                          ? '✓ Saldo cukup untuk membayar penuh'
+                          : `Saldo kurang ${formatArk(selectedOrder!.total_amount! / ARK_RATE - arkCoinCustomer.ark_coin_balance)}`}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Cash Input */}
+              {paymentMethod === 'cash' && (
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-gray-700">Jumlah Uang Diterima</label>
+                  <input
+                    type="number"
+                    placeholder="0"
+                    value={amountPaid}
+                    onChange={(e) => setAmountPaid(e.target.value)}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500"
+                  />
+                  <div className="text-sm text-gray-500">
+                    Kembalian: {formatCurrency((parseFloat(amountPaid) || 0) - (selectedOrder.total_amount || 0))}
+                  </div>
+                </div>
+              )}
+
+              {/* Print Receipt Checkbox */}
+              <div className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg">
+                <input
+                  type="checkbox"
+                  id="printReceipt"
+                  checked={printReceipt}
+                  onChange={(e) => setPrintReceipt(e.target.checked)}
+                  className="w-4 h-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500"
+                />
+                <label htmlFor="printReceipt" className="text-sm font-medium text-gray-700 flex items-center gap-2">
+                  🖨️ Auto Print Struk
+                  <span className="text-xs text-gray-500">(Setelah bayar)</span>
+                </label>
+              </div>
+
+              {/* Preview Print Button */}
+              <button
+                type="button"
+                onClick={() => printReceiptPreview(selectedOrder!)}
+                className="w-full py-2.5 bg-gray-100 text-gray-700 rounded-lg font-medium hover:bg-gray-200 flex items-center justify-center gap-2"
+              >
+                🖨️ Preview & Print Struk
+              </button>
+
+              {/* Action Buttons */}
+              <div className="flex gap-3 pt-4 border-t">
+                <button
+                  onClick={() => {
+                    setShowPaymentModal(false);
+                    setAmountPaid('');
+                  }}
+                  className="flex-1 py-2.5 bg-gray-100 text-gray-700 rounded-lg font-medium hover:bg-gray-200"
+                >
+                  Batal
+                </button>
+                <button
+                  onClick={handlePayment}
+                  className="flex-1 py-2.5 bg-pink-600 text-white rounded-lg font-medium hover:bg-pink-700"
+                >
+                  Konfirmasi Pembayaran
+                </button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
@@ -442,6 +804,16 @@ function OrderDetail({ order }: { order: Order }) {
           </CardContent>
         </Card>
       )}
+
+      {/* Print Button */}
+      <div className="flex gap-3 pt-4 border-t">
+        <button
+          onClick={() => printReceiptPreview(order)}
+          className="flex-1 py-2.5 bg-gray-100 text-gray-700 rounded-lg font-medium hover:bg-gray-200 flex items-center justify-center gap-2"
+        >
+          🖨️ Print Struk
+        </button>
+      </div>
     </div>
   );
 }

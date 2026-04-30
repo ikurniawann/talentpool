@@ -139,6 +139,14 @@ export default function CashierPageNew() {
   const arkToUseCapped = Math.min(arkToUse, maxArkUsable);
   const totalAfterArk = total - arkToUseCapped;
 
+  useEffect(() => {
+    if (paymentMethod === 'ark_coin') {
+      setArkToUse(maxArkUsable);
+    } else {
+      setArkToUse(0);
+    }
+  }, [paymentMethod, maxArkUsable]);
+
   const openCustomization = (product: Product) => {
     const hasVariants = product.variants && product.variants.length > 0;
     const hasModifiers = product.modifiers && product.modifiers.length > 0;
@@ -327,7 +335,7 @@ export default function CashierPageNew() {
         payment_method: paymentMethod === 'qris' ? 'qris' : paymentMethod === 'credit_card' ? 'credit' : paymentMethod === 'ark_coin' ? 'ark_coin' : 'cash',
         amount_paid: paymentMethod === 'cash' ? Number(parseFloat(cashReceived) || cartTotal) : Number(cartTotal),
         notes: notes || undefined,
-        ark_coins_used: 0
+        ark_coins_used: paymentMethod === 'ark_coin' ? arkToUseCapped : 0
       };
       
       const response = await createOrder(payload);
@@ -675,18 +683,19 @@ export default function CashierPageNew() {
             )}
 
             {paymentMethod === 'ark_coin' && selectedCustomer && (
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-gray-700">Gunakan ARK Coin</label>
-                <input
-                  type="range"
-                  min={0}
-                  max={maxArkUsable}
-                  value={arkToUse}
-                  onChange={(e) => setArkToUse(Number(e.target.value))}
-                  className="w-full"
-                />
-                <div className="text-sm text-gray-500">
-                  Menggunakan: {formatArk(arkToUse)} (Max: {formatArk(maxArkUsable)})
+              <div className="space-y-2 p-3 bg-amber-50 rounded-lg border border-amber-200">
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-600">Saldo ARK</span>
+                  <span className="font-semibold text-amber-600">{formatArk(selectedCustomer.ark_coin_balance)}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-600">Total tagihan</span>
+                  <span className="font-semibold text-gray-900">{formatArk(total)}</span>
+                </div>
+                <div className={`text-sm font-medium ${selectedCustomer.ark_coin_balance >= total ? 'text-green-600' : 'text-red-500'}`}>
+                  {selectedCustomer.ark_coin_balance >= total
+                    ? '✓ Saldo cukup untuk membayar penuh'
+                    : `Saldo kurang ${formatArk(total - selectedCustomer.ark_coin_balance)}`}
                 </div>
               </div>
             )}

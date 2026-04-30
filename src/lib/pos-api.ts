@@ -176,10 +176,21 @@ export async function updateOrderStatus(
   status: string,
   additionalData?: { payment_status?: string; payment_method?: string; amount_paid?: number; cancelled_reason?: string }
 ) {
-  return fetchAPI<{ success: boolean; data: any }>(`/orders/${orderId}`, {
+  const response = await fetch(`/api/pos/orders/${orderId}`, {
     method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+    },
     body: JSON.stringify({ status, ...additionalData }),
   });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.error || `API error: ${response.status}`);
+  }
+
+  return data;
 }
 
 // ============ DASHBOARD ============

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { getPosSession } from '@/lib/api/auth';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -8,6 +9,11 @@ const supabase = createClient(
 
 // GET /api/pos/customers - List customers with search
 export async function GET(request: NextRequest) {
+  const sessionUserId = await getPosSession();
+  if (!sessionUserId) {
+    return NextResponse.json({ success: false, error: 'Authentication required' }, { status: 401 });
+  }
+
   try {
     const searchParams = request.nextUrl.searchParams;
     const search = searchParams.get('search');
@@ -48,6 +54,11 @@ export async function GET(request: NextRequest) {
 
 // POST /api/pos/customers - Create or update customer
 export async function POST(request: NextRequest) {
+  const sessionUserId = await getPosSession();
+  if (!sessionUserId) {
+    return NextResponse.json({ success: false, error: 'Authentication required' }, { status: 401 });
+  }
+
   try {
     const body = await request.json();
     const {
@@ -71,7 +82,7 @@ export async function POST(request: NextRequest) {
       .from('pos_customers')
       .select('*')
       .eq('phone', phone)
-      .single();
+      .maybeSingle();
 
     if (existingCustomer) {
       // Update existing customer

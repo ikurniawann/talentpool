@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { getPosSession } from '@/lib/api/auth';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -8,6 +9,11 @@ const supabase = createClient(
 
 // GET /api/pos/dashboard/stats - Get dashboard statistics
 export async function GET(request: NextRequest) {
+  const sessionUserId = await getPosSession();
+  if (!sessionUserId) {
+    return NextResponse.json({ success: false, error: 'Authentication required' }, { status: 401 });
+  }
+
   try {
     const searchParams = request.nextUrl.searchParams;
     const period = searchParams.get('period') || 'today';
