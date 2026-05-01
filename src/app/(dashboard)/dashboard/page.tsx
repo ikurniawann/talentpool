@@ -50,7 +50,9 @@ export default function DashboardPage() {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
         const { data: profile } = await supabase.from("users").select("role").eq("id", user.id).single();
-        if (profile && ["purchasing_manager", "purchasing_staff", "purchasing_admin", "warehouse_staff", "qc_staff"].includes(profile.role)) {
+        if (profile?.role === "pos") {
+          router.replace("/dashboard/pos/cashier-new");
+        } else if (profile && ["purchasing_manager", "purchasing_staff", "purchasing_admin", "warehouse_staff", "qc_staff"].includes(profile.role)) {
           router.replace("/dashboard/purchasing");
         }
       }
