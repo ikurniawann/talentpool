@@ -861,18 +861,24 @@ export default function CashierPageNew() {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-3 gap-2">
                     <button
                       onClick={() => handlePrint('KITCHEN', paymentResult)}
-                      className="flex items-center justify-center gap-2 py-2.5 border-2 border-orange-400 text-orange-600 rounded-lg text-sm font-semibold hover:bg-orange-50"
+                      className="flex items-center justify-center gap-1.5 py-2.5 border-2 border-orange-400 text-orange-600 rounded-lg text-sm font-semibold hover:bg-orange-50"
                     >
                       <Printer className="w-4 h-4" /> Kitchen
                     </button>
                     <button
                       onClick={() => handlePrint('BAR', paymentResult)}
-                      className="flex items-center justify-center gap-2 py-2.5 border-2 border-blue-400 text-blue-600 rounded-lg text-sm font-semibold hover:bg-blue-50"
+                      className="flex items-center justify-center gap-1.5 py-2.5 border-2 border-blue-400 text-blue-600 rounded-lg text-sm font-semibold hover:bg-blue-50"
                     >
                       <Printer className="w-4 h-4" /> Bar
+                    </button>
+                    <button
+                      onClick={() => { handlePrint('KITCHEN', paymentResult); setTimeout(() => handlePrint('BAR', paymentResult), 500); }}
+                      className="flex items-center justify-center gap-1.5 py-2.5 border-2 border-purple-400 text-purple-600 rounded-lg text-sm font-semibold hover:bg-purple-50"
+                    >
+                      <Printer className="w-4 h-4" /> Semua
                     </button>
                   </div>
 
