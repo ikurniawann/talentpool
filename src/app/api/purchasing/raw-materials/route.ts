@@ -19,6 +19,7 @@ const materialSchema = z.object({
   stok_maximum: z.number().min(0).default(0),
   shelf_life_days: z.number().min(0).optional().nullable(),
   storage_condition: z.enum(["SUHU_RUANG", "DINGIN", "BEKU", "KHUSUS"]).optional().nullable(),
+  coa: z.enum(["PRODUCTION", "RND", "ASSET"]).optional().nullable(),
 });
 
 // GET /api/purchasing/raw-materials

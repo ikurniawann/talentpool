@@ -10,6 +10,14 @@ export const KATEGORI_OPTIONS = [
   "LAINNYA",
 ] as const;
 
+export const COA_OPTIONS = [
+  { value: "PRODUCTION", label: "Produksi" },
+  { value: "RND", label: "R&D" },
+  { value: "ASSET", label: "Asset Perusahaan" },
+] as const;
+
+export type COA = "PRODUCTION" | "RND" | "ASSET";
+
 export type Kategori = (typeof KATEGORI_OPTIONS)[number];
 
 export const STOK_STATUS = {
@@ -109,6 +117,7 @@ export interface RawMaterial {
   kode: string;
   nama: string;
   kategori: Kategori | null;
+  coa: COA | null;
   minimum_stock: number;
   maximum_stock: number | null;
   konversi_factor: number;
@@ -158,6 +167,7 @@ export interface CreateRawMaterialInput {
   kode_bahan: string;
   nama_bahan: string;
   kategori?: Kategori;
+  coa?: COA;
   satuan_besar_id: string;
   satuan_kecil_id?: string;
   konversi_factor?: number;
