@@ -1,14 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+import { createServiceClient } from '@/lib/supabase/service-client';
 
 // PATCH /api/pos/orders/:id - Update order status and payment
 export async function PATCH(request: NextRequest, { params }: { params: { id: string } }) {
   try {
+    const supabase = createServiceClient();
     const body = await request.json();
     const { status, payment_status, payment_method, amount_paid, ark_coins_used, notes } = body;
     const orderId = params.id;
@@ -75,6 +71,7 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
 // GET /api/pos/orders/:id - Get single order details
 export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
   try {
+    const supabase = createServiceClient();
     const orderId = params.id;
 
     const { data, error } = await supabase

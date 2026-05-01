@@ -1,11 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { createServiceClient } from '@/lib/supabase/service-client';
 import { getPosSession } from '@/lib/api/auth';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
 
 // GET /api/pos/customers - List customers with search
 export async function GET(request: NextRequest) {
@@ -15,6 +10,7 @@ export async function GET(request: NextRequest) {
   }
 
   try {
+    const supabase = createServiceClient();
     const searchParams = request.nextUrl.searchParams;
     const search = searchParams.get('search');
     const phone = searchParams.get('phone');
@@ -61,6 +57,7 @@ export async function POST(request: NextRequest) {
   }
 
   try {
+    const supabase = createServiceClient();
     const body = await request.json();
     const {
       phone,

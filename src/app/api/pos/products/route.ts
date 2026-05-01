@@ -1,15 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { createServiceClient } from '@/lib/supabase/service-client';
 
 // Initialize Supabase client (service role for admin access)
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
-
 // GET /api/pos/products - List all active products
 export async function GET(request: NextRequest) {
   try {
+    const supabase = createServiceClient();
     const searchParams = request.nextUrl.searchParams;
     const category = searchParams.get('category');
     const search = searchParams.get('search');
@@ -56,6 +52,7 @@ export async function GET(request: NextRequest) {
 // POST /api/pos/products - Create new product
 export async function POST(request: NextRequest) {
   try {
+    const supabase = createServiceClient();
     const body = await request.json();
     const {
       sku,
