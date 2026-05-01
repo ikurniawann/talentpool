@@ -13,8 +13,10 @@ import {
   UserCircle,
   Coins,
   Calendar,
+  LogOut,
 } from "lucide-react";
 import { ActivityLogBell } from "@/components/layout/ActivityLogBell";
+import { createClient } from "@/lib/supabase/client";
 
 const POS_ITEMS = [
   { href: "/dashboard/pos", label: "Dashboard", icon: LayoutDashboardIcon },
@@ -31,6 +33,12 @@ function clsx(...args: (string | boolean | undefined | null)[]) {
 
 export default function POSLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const supabase = createClient();
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    window.location.href = "/login";
+  };
 
   return (
     <div>
@@ -60,13 +68,21 @@ export default function POSLayout({ children }: { children: React.ReactNode }) {
             })}
           </div>
 
-          {/* Right - Bell icon and user profile */}
+          {/* Right - Bell icon, user profile, logout */}
           <div className="flex items-center gap-2 sm:gap-4 pl-2 sm:pl-4 border-l border-gray-200 flex-shrink-0">
             <ActivityLogBell />
             <div className="flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm text-gray-900">
               <UserCircle className="w-4 h-4 sm:w-5 sm:h-5 text-gray-900" />
               <span className="hidden md:inline-block font-medium">User</span>
             </div>
+            <button
+              onClick={handleLogout}
+              className="flex items-center gap-1.5 px-2 sm:px-3 py-1.5 text-xs sm:text-sm font-medium text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+              title="Keluar"
+            >
+              <LogOut className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+              <span className="hidden md:inline-block">Keluar</span>
+            </button>
           </div>
         </div>
       </div>
