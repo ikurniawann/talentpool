@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -41,7 +41,7 @@ const SOURCE_COLORS = ["#6366f1", "#22c55e", "#f59e0b", "#ef4444", "#8b5cf6", "#
 
 export default function DashboardPage() {
   const router = useRouter();
-  const supabase = createClient();
+  const supabase = useMemo(() => createClient(), []);
   const { toasts, toast, dismiss } = useToast();
 
   // Redirect purchasing users to /dashboard/purchasing
@@ -58,7 +58,7 @@ export default function DashboardPage() {
       }
     };
     checkRole();
-  }, [router, supabase]);
+  }, [router]);
 
   const [loading, setLoading] = useState(true);
   const [brandFilter, setBrandFilter] = useState("all");
@@ -92,18 +92,16 @@ export default function DashboardPage() {
     setLoading(true);
     const brandParam = brandFilter !== "all" ? `&brand_id=${brandFilter}` : "";
 
-    // Load brands
-    const brandsRes = await supabase.from("brands").select("*").eq("is_active", true).order("name");
-    setBrands(brandsRes.data || []);
-
-    // Fetch all dashboard data from API routes in parallel
-    const [statsRes, weeklyRes, sourcesRes, funnelRes, attentionRes] = await Promise.all([
+    // Fetch brands + all dashboard API routes in parallel
+    const [brandsRes, statsRes, weeklyRes, sourcesRes, funnelRes, attentionRes] = await Promise.all([
+      supabase.from("brands").select("id, name").eq("is_active", true).order("name"),
       fetch(`/api/dashboard/stats?${brandParam.slice(1)}`),
       fetch(`/api/dashboard/weekly?period=${period}${brandParam}`),
       fetch(`/api/dashboard/sources?${brandParam.slice(1)}`),
       fetch(`/api/dashboard/funnel?${brandParam.slice(1)}`),
       fetch(`/api/dashboard/attention?${brandParam.slice(1)}`),
     ]);
+    setBrands(brandsRes.data || []);
 
     // Parse stats
     const statsData = await statsRes.json();
@@ -131,7 +129,7 @@ export default function DashboardPage() {
     setNeedsAttention(attentionData.data || []);
 
     setLoading(false);
-  }, [period, brandFilter, supabase]);
+  }, [period, brandFilter]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
 

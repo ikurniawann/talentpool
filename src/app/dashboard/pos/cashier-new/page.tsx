@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { Search, Utensils, ShoppingBag, Truck, Monitor, Table as TableIcon, User, X, Sparkles, Printer, CheckCircle, AlertCircle, Wifi } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { getProducts, getCustomers, createOrder, getCustomerFavoriteProducts, type Product, type Customer } from '@/lib/pos-api';
@@ -145,22 +145,24 @@ export default function CashierPageNew() {
     }
   };
 
-  const customersWithDiscount = customers.map(c => ({
+  const customersWithDiscount = useMemo(() => customers.map(c => ({
     ...c,
     discount: getDiscountByTier(c.membership_tier)
-  }));
+  })), [customers]);
 
-  const filteredCustomers = customersWithDiscount.filter(c =>
+  const filteredCustomers = useMemo(() => customersWithDiscount.filter(c =>
     c.name?.toLowerCase().includes(customerSearch.toLowerCase()) || c.phone.includes(customerSearch)
-  );
+  ), [customersWithDiscount, customerSearch]);
 
-  const categories = ['Semua', ...Array.from(new Set(products.map(p => p.category?.name || 'Uncategorized')))];
+  const categories = useMemo(() =>
+    ['Semua', ...Array.from(new Set(products.map(p => p.category?.name || 'Uncategorized')))],
+  [products]);
 
-  const filteredProducts = products.filter(p => {
+  const filteredProducts = useMemo(() => products.filter(p => {
     const matchCategory = selectedCategory === 'Semua' || p.category?.name === selectedCategory;
     const matchSearch = p.name.toLowerCase().includes(searchTerm.toLowerCase());
     return matchCategory && matchSearch;
-  });
+  }), [products, selectedCategory, searchTerm]);
 
   const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
   const discountAmount = selectedCustomer ? Math.floor(subtotal * selectedCustomer.discount! / 100) : 0;

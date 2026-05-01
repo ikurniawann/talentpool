@@ -22,9 +22,10 @@ export async function GET(request: NextRequest) {
 
     let query = supabase
       .from('pos_customers')
-      .select('*')
+      .select('id, name, phone, email, membership_tier, ark_coin_balance, total_xp, current_xp, visit_count, is_active')
       .eq('is_active', true)
-      .order('name');
+      .order('name')
+      .limit(phone ? 1 : 500);
 
     if (search) {
       query = query.or(`name.ilike.%${search}%,email.ilike.%${search}%`);

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { createClient } from "@/lib/supabase/client";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -66,7 +66,7 @@ const STATUS_COLORS: Record<CandidateStatus, string> = {
 };
 
 export default function CandidatesPage() {
-  const supabase = createClient();
+  const supabase = useMemo(() => createClient(), []);
   const [candidates, setCandidates] = useState<Candidate[]>([]);
   const [brands, setBrands] = useState<Brand[]>([]);
   const [loading, setLoading] = useState(true);
@@ -86,6 +86,7 @@ export default function CandidatesPage() {
     date_from: "",
     date_to: "",
   });
+  const [searchInput, setSearchInput] = useState("");
   const [page, setPage] = useState(1);
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [deleteCandidate, setDeleteCandidate] = useState<Candidate | null>(null);
@@ -111,11 +112,19 @@ export default function CandidatesPage() {
     defaultValues: { status: "new", source: "walk_in" },
   });
 
+  useEffect(() => {
+    const t = setTimeout(() => {
+      setFilter(f => ({ ...f, search: searchInput }));
+      setPage(1);
+    }, 400);
+    return () => clearTimeout(t);
+  }, [searchInput]);
+
   const fetchCandidates = useCallback(async () => {
     setLoading(true);
     let query = supabase
       .from("candidates")
-      .select("*, brands(name), positions(title)", { count: "exact" })
+      .select("id, full_name, email, phone, domicile, status, source, created_at, updated_at, brand_id, position_id, brands(name), positions(title)", { count: "exact" })
       .order("created_at", { ascending: false })
       .range((page - 1) * perPage, page * perPage - 1);
 
@@ -291,8 +300,8 @@ export default function CandidatesPage() {
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
               <Input
                 placeholder="Cari nama, email, telepon..."
-                value={filter.search}
-                onChange={(e) => { setFilter((f) => ({ ...f, search: e.target.value })); setPage(1); }}
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
                 className="pl-9"
               />
             </div>

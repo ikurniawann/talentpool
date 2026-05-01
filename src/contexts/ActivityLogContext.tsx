@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import React, { createContext, useContext, useState, useEffect, useMemo, ReactNode } from "react";
 import { ActivityLog, ActivityLogState } from "@/types/activity-log";
 
 const STORAGE_KEY = "talentpool_activity_logs";
@@ -69,7 +69,7 @@ export function ActivityLogProvider({ children }: { children: ReactNode }) {
     );
   };
 
-  const unreadCount = logs.filter((log) => !log.isRead).length;
+  const unreadCount = useMemo(() => logs.filter((log) => !log.isRead).length, [logs]);
 
   return (
     <ActivityLogContext.Provider

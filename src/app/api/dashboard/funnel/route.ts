@@ -33,7 +33,8 @@ export async function GET(request: Request) {
   let query = supabase
     .from("candidates")
     .select("status")
-    .gte("created_at", startDate.toISOString());
+    .gte("created_at", startDate.toISOString())
+    .limit(5000);
 
   if (brand_id) {
     query = query.eq("brand_id", brand_id);

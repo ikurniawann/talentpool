@@ -42,57 +42,53 @@ export async function GET(request: Request) {
           return d;
         })();
 
-    // Use v_purchase_orders view which has total
-    const { data: currentMonthPOs, error: poError } = await supabase
-      .from("v_purchase_orders")
-      .select("id, total, created_at")
-      .gte("created_at", startOfMonth.toISOString())
-      .lte("created_at", endOfMonth.toISOString());
+    const prevMonthStart = new Date(startOfMonth);
+    prevMonthStart.setMonth(prevMonthStart.getMonth() - 1);
+    const prevMonthEnd = new Date(endOfMonth);
+    prevMonthEnd.setMonth(prevMonthEnd.getMonth() - 1);
+
+    const [
+      { data: currentMonthPOs, error: poError },
+      { data: prevMonthPOs },
+      { count: lowStockCount },
+      { count: pendingApprovalCount },
+    ] = await Promise.all([
+      supabase
+        .from("v_purchase_orders")
+        .select("id, total, created_at")
+        .gte("created_at", startOfMonth.toISOString())
+        .lte("created_at", endOfMonth.toISOString()),
+      supabase
+        .from("v_purchase_orders")
+        .select("id, total, created_at")
+        .gte("created_at", prevMonthStart.toISOString())
+        .lte("created_at", prevMonthEnd.toISOString()),
+      supabase
+        .from("raw_materials")
+        .select("id", { count: "exact", head: true })
+        .filter("qty_on_hand", "lt", "minimum_stok"),
+      supabase
+        .from("v_purchase_orders")
+        .select("id", { count: "exact", head: true })
+        .eq("status", "waiting_approval"),
+    ]);
 
     if (poError) {
       console.error("Current month PO error:", poError);
       throw poError;
     }
 
-    // Previous month for comparison (same period in previous month)
-    const prevMonthStart = new Date(startOfMonth);
-    prevMonthStart.setMonth(prevMonthStart.getMonth() - 1);
-    const prevMonthEnd = new Date(endOfMonth);
-    prevMonthEnd.setMonth(prevMonthEnd.getMonth() - 1);
-
-    const { data: prevMonthPOs } = await supabase
-      .from("v_purchase_orders")
-      .select("id, total, created_at")
-      .gte("created_at", prevMonthStart.toISOString())
-      .lte("created_at", prevMonthEnd.toISOString());
-
     const totalPOCount = currentMonthPOs?.length ?? 0;
     const prevPOCount = prevMonthPOs?.length ?? 0;
-    const totalPOCountChange = prevPOCount > 0 
-      ? ((totalPOCount - prevPOCount) / prevPOCount) * 100 
+    const totalPOCountChange = prevPOCount > 0
+      ? ((totalPOCount - prevPOCount) / prevPOCount) * 100
       : 0;
 
     const totalPOValue = currentMonthPOs?.reduce((sum, po) => sum + (po.total || 0), 0) ?? 0;
     const prevPOValue = prevMonthPOs?.reduce((sum, po) => sum + (po.total || 0), 0) ?? 0;
-    const totalPOValueChange = prevPOValue > 0 
-      ? ((totalPOValue - prevPOValue) / prevPOValue) * 100 
+    const totalPOValueChange = prevPOValue > 0
+      ? ((totalPOValue - prevPOValue) / prevPOValue) * 100
       : 0;
-
-    // Low Stock Count - use inventory view or raw_materials
-    const { data: lowStockItems } = await supabase
-      .from("raw_materials")
-      .select("id, qty_on_hand, minimum_stok")
-      .filter("qty_on_hand", "lt", "minimum_stok");
-
-    const lowStockCount = lowStockItems?.length ?? 0;
-
-    // Pending Approval Count
-    const { data: pendingPOs } = await supabase
-      .from("v_purchase_orders")
-      .select("id")
-      .eq("status", "waiting_approval");
-
-    const pendingApprovalCount = pendingPOs?.length ?? 0;
 
     // ── Action POs (Overdue & Pending) ────────────────────────────────────
 
@@ -124,26 +120,15 @@ export async function GET(request: Request) {
 
     // ── Stock Alerts ───────────────────────────────────────────────────────
 
-    const { data: stockAlertsData } = await supabase
-      .from("raw_materials")
-      .select(`
-        id,
-        name,
-        category,
-        qty_on_hand,
-        minimum_stok,
-        unit_id
-      `)
-      .filter("qty_on_hand", "lt", "minimum_stok")
-      .order("qty_on_hand", { ascending: true })
-      .limit(10);
-
-    // Get units
-    const unitIds = stockAlertsData?.map(item => item.unit_id).filter(Boolean) || [];
-    const { data: units } = await supabase
-      .from("units")
-      .select("id, name")
-      .in("id", unitIds);
+    const [{ data: stockAlertsData }, { data: units }] = await Promise.all([
+      supabase
+        .from("raw_materials")
+        .select("id, name, category, qty_on_hand, minimum_stok, unit_id")
+        .filter("qty_on_hand", "lt", "minimum_stok")
+        .order("qty_on_hand", { ascending: true })
+        .limit(10),
+      supabase.from("units").select("id, name"),
+    ]);
 
     const unitMap = new Map(units?.map(u => [u.id, u.name]) || []);
 
