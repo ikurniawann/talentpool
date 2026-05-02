@@ -56,8 +56,8 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen flex">
-      {/* Left Panel - Red Background */}
-      <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-red-700 to-red-900 relative overflow-hidden">
+      {/* Left Panel - Pink/Black Background */}
+      <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-pink-600 via-pink-800 to-black relative overflow-hidden">
         {/* Pattern Overlay */}
         <div className="absolute inset-0 opacity-10">
           <div className="absolute inset-0" style={{
@@ -69,44 +69,47 @@ export default function LoginPage() {
           {/* Logo */}
           <div>
             <div className="flex items-center gap-2 text-white">
-              <span className="text-4xl font-bold">Talent</span>
-              <span className="text-2xl font-light opacity-80">Pool</span>
+              <span className="text-4xl font-bold">Arkiv</span>
+              <span className="text-2xl font-light opacity-80">OS</span>
             </div>
           </div>
 
           {/* Main Content */}
           <div className="space-y-8">
             <div>
-              <h1 className="text-4xl font-bold text-white mb-4">
-                Visitor Management System
+              <h1 className="text-4xl font-bold text-white mb-2">
+                Arkiv Operating System
               </h1>
-              <p className="text-red-100 text-lg leading-relaxed max-w-md">
-                Kelola kunjungan dan networking dengan mudah — dari tracking visitor, 
-                manajemen member, hingga laporan meeting real-time.
+              <p className="text-pink-200 text-lg font-medium mb-6">
+                HR System · Purchasing Control · Point of Sales
+              </p>
+              <p className="text-pink-100 text-base leading-relaxed max-w-md">
+                Platform terintegrasi untuk mengelola sumber daya manusia, 
+                kontrol pembelian, dan penjualan retail dalam satu sistem.
               </p>
             </div>
 
             {/* Stats */}
             <div className="grid grid-cols-3 gap-8">
               <div>
-                <div className="text-3xl font-bold text-white">90+</div>
-                <div className="text-red-200 text-sm mt-1">Active Members</div>
+                <div className="text-3xl font-bold text-white">HR</div>
+                <div className="text-pink-200 text-sm mt-1">Human Resources</div>
               </div>
               <div>
-                <div className="text-3xl font-bold text-white">Weekly</div>
-                <div className="text-red-200 text-sm mt-1">Meetings</div>
+                <div className="text-3xl font-bold text-white">POS</div>
+                <div className="text-pink-200 text-sm mt-1">Point of Sales</div>
               </div>
               <div>
-                <div className="text-3xl font-bold text-white">Real-time</div>
-                <div className="text-red-200 text-sm mt-1">Tracking</div>
+                <div className="text-3xl font-bold text-white">QC</div>
+                <div className="text-pink-200 text-sm mt-1">Quality Control</div>
               </div>
             </div>
           </div>
 
           {/* Footer */}
           <div>
-            <p className="text-red-200 text-sm">
-              © 2026 TalentPool. All rights reserved.
+            <p className="text-pink-200 text-sm">
+              © 2026 Arkiv Operating System by WIT.ID. All rights reserved.
             </p>
           </div>
         </div>
@@ -139,7 +142,7 @@ export default function LoginPage() {
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="w-full pl-10 pr-10 py-3 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all"
+                    className="w-full pl-10 pr-10 py-3 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-transparent transition-all"
                     placeholder="Masukkan email"
                     required
                   />
@@ -159,7 +162,7 @@ export default function LoginPage() {
                     type={showPassword ? "text" : "password"}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="w-full pl-10 pr-10 py-3 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all"
+                    className="w-full pl-10 pr-10 py-3 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-transparent transition-all"
                     placeholder="••••••••"
                     required
                   />
@@ -181,7 +184,7 @@ export default function LoginPage() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full py-3 px-4 bg-red-700 text-white rounded-lg text-sm font-medium hover:bg-red-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-md hover:shadow-lg"
+                className="w-full py-3 px-4 bg-pink-600 text-white rounded-lg text-sm font-medium hover:bg-pink-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-md hover:shadow-lg"
               >
                 {loading ? "Memproses..." : "Masuk ke Akun"}
               </button>
@@ -189,7 +192,7 @@ export default function LoginPage() {
 
             {/* Error Message */}
             {error && (
-              <div className="mt-4 p-3 text-sm text-red-600 bg-red-50 rounded-lg border border-red-100">
+              <div className="mt-4 p-3 text-sm text-pink-600 bg-pink-50 rounded-lg border border-pink-100">
                 {error}
               </div>
             )}
@@ -197,11 +200,11 @@ export default function LoginPage() {
             {/* Terms */}
             <p className="mt-6 text-xs text-gray-500 text-center leading-relaxed">
               Dengan masuk, Anda menyetujui{" "}
-              <a href="#" className="text-red-600 hover:underline">
+              <a href="#" className="text-pink-600 hover:underline">
                 kebijakan privasi
               </a>{" "}
               dan{" "}
-              <a href="#" className="text-red-600 hover:underline">
+              <a href="#" className="text-pink-600 hover:underline">
                 syarat ketentuan
               </a>
             </p>
@@ -211,7 +214,7 @@ export default function LoginPage() {
           <div className="mt-8 text-center">
             <p className="text-sm text-gray-500">
               Powered by{" "}
-              <a href="https://wit.id" target="_blank" rel="noopener noreferrer" className="text-red-600 hover:underline font-medium">
+              <a href="https://wit.id" target="_blank" rel="noopener noreferrer" className="text-pink-600 hover:underline font-medium">
                 WIT.ID
               </a>
             </p>
