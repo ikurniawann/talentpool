@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Employee, PaginatedResponse } from '@/types';
+import { Employee, PaginatedResponse } from '@/../types';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -23,7 +23,7 @@ import { Input } from '@/components/ui/input';
 import {
   EMPLOYMENT_STATUS_LABELS,
   EMPLOYMENT_STATUS_COLORS,
-} from '@/types/hris';
+} from '@/../types/hris';
 
 interface EmployeeTableProps {
   initialData?: PaginatedResponse<Employee>;

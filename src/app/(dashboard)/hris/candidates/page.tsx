@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { UserPlus, Briefcase, Mail, Phone, MapPin } from "lucide-react";
-import { PromoteCandidateButton } from "@/components/hris/PromoteCandidateButton";
+import { PromoteCandidateButton } from "@/../components/hris/PromoteCandidateButton";
 
 interface Candidate {
   id: string;

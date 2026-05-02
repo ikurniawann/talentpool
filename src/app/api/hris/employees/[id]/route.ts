@@ -57,7 +57,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
           job_title,
           photo_url
         )
-      )
+      `)
       .eq('id', id)
       .single();
 
@@ -156,13 +156,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
       .from('employees')
       .update(updateData)
       .eq('id', id)
-      .select(`
-        *,
-        department:departments(id, name, code),
-        section:sections(id, name),
-        job_title:positions(id, title),
-        manager:employees!reporting_to(id, full_name, nip)
-      `)
+      .select('*, department:departments(id, name, code), section:sections(id, name), job_title:positions(id, title), manager:employees!reporting_to(id, full_name, nip)')
       .single();
 
     if (error) {
