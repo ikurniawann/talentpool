@@ -41,6 +41,105 @@ const createQCSchema = z.object({
 // - Update GRN and PO status
 // ============================================================
 
+// ============================================================
+// GET /api/purchasing/qc - List QC inspections
+// GET /api/purchasing/qc/:id - Get single QC inspection
+// ============================================================
+
+export async function GET(request: NextRequest) {
+  try {
+    await requireApiRole(["purchasing_admin", "purchasing_staff", "warehouse_staff"]);
+    const supabase = await createClient();
+
+    const url = new URL(request.url);
+    const pathname = url.pathname;
+
+    // Check if this is a detail request (/api/purchasing/qc/:id)
+    const pathParts = pathname.split("/").filter(Boolean);
+    const qcId = pathParts[pathParts.length - 1];
+
+    if (qcId && qcId !== "qc") {
+      // Detail request
+      const { data, error } = await supabase
+        .from("qc_inspections")
+        .select(
+          `
+          *,
+          bahan_baku:bahan_baku_id(id, kode, nama),
+          inspector:inspector_id(id, name, email),
+          goods_receipt:goods_receipt_id(nomor_grn)
+        `
+        )
+        .eq("id", qcId)
+        .single();
+
+      if (error || !data) {
+        throw ApiError.notFound("QC inspection tidak ditemukan");
+      }
+
+      // Calculate status and rekomendasi
+      let status: "APPROVED" | "REJECTED" | "PARTIAL" = "PARTIAL";
+      let rekomendasi: "ACCEPT" | "REJECT" | "REWORK" = "REWORK";
+
+      if (data.jumlah_ditolak === 0 && data.jumlah_diterima > 0) {
+        status = "APPROVED";
+        rekomendasi = "ACCEPT";
+      } else if (data.jumlah_diterima === 0 && data.jumlah_ditolak > 0) {
+        status = "REJECTED";
+        rekomendasi = "REJECT";
+      } else if (data.jumlah_diterima > 0 && data.jumlah_ditolak > 0) {
+        status = "PARTIAL";
+        rekomendasi = "REWORK";
+      }
+
+      return successResponse({
+        ...data,
+        status,
+        rekomendasi,
+        grn_number: (data.goods_receipt as any)?.nomor_grn,
+      });
+    }
+
+    // List request with pagination
+    const page = parseInt(url.searchParams.get("page") || "1");
+    const limit = parseInt(url.searchParams.get("limit") || "15");
+    const search = url.searchParams.get("search") || "";
+    const offset = (page - 1) * limit;
+
+    let query = supabase
+      .from("qc_inspections")
+      .select(
+        `
+        *,
+        bahan_baku:bahan_baku_id(id, kode, nama),
+        goods_receipt:goods_receipt_id(nomor_grn)
+      `,
+        { count: "exact" }
+      )
+      .order("tanggal_inspeksi", { ascending: false });
+
+    if (search) {
+      query = query.or(
+        `qc_number.ilike.%${search}%,bahan_baku.nama.ilike.%${search}%,goods_receipt.nomor_grn.ilike.%${search}%`
+      );
+    }
+
+    const { data, error, count } = await query.range(offset, offset + limit - 1);
+
+    if (error) throw error;
+
+    return successResponse(
+      data || [],
+      undefined,
+      { page, limit, total: count || 0 }
+    );
+  } catch (error) {
+    if (error instanceof ApiError) return error.toResponse();
+    console.error("Error fetching QC:", error);
+    return ApiError.server("Failed to fetch QC inspections").toResponse();
+  }
+}
+
 export async function POST(request: NextRequest) {
   try {
     const user = await requireApiRole(["purchasing_admin", "purchasing_staff", "warehouse_staff"]);

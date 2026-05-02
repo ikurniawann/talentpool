@@ -2,16 +2,18 @@
 
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { BreadcrumbNav } from "@/modules/purchasing/components/breadcrumb/BreadcrumbNav";
 import {
   UsersIcon,
-  PrinterIcon,
   DocumentArrowDownIcon,
   StarIcon,
 } from "@heroicons/react/24/outline";
 import { formatRupiah } from "@/lib/purchasing/utils";
+import { toast } from "sonner";
 
 interface SupplierPerfRow {
   id: string;
@@ -29,24 +31,59 @@ interface SupplierPerfRow {
 export default function SupplierPerformancePage() {
   const [items, setItems] = useState<SupplierPerfRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
 
   useEffect(() => {
     fetchData();
-  }, []);
+  }, [dateFrom, dateTo]);
 
   const fetchData = async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/purchasing/reports/supplier-performance");
+      const params = new URLSearchParams();
+      if (dateFrom) params.set("date_from", dateFrom);
+      if (dateTo) params.set("date_to", dateTo);
+      const res = await fetch(`/api/purchasing/reports/supplier-performance?${params.toString()}`);
       if (res.ok) {
         const data = await res.json();
-        setItems(data.items || []);
+        // Handle both data.data.vendors and data.items response shapes
+        const vendors = data.data?.vendors ?? data.data?.summary ?? data.items ?? [];
+        setItems(vendors);
       }
     } catch {
-      // fallback
+      toast.error("Gagal memuat data performa supplier");
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleExportCSV = () => {
+    const headers = ["Supplier", "Total PO", "On-Time", "Terlambat", "Reject Rate (%)", "Lead Time (Hari)", "Total Nilai", "Rating"];
+    const rows = items.map((item) => [
+      item.supplier_name || "",
+      String(item.total_po || 0),
+      String(item.on_time_count || 0),
+      String(item.late_count || 0),
+      item.reject_rate != null ? item.reject_rate.toFixed(1) : "",
+      item.avg_lead_time_days != null ? item.avg_lead_time_days.toFixed(1) : "",
+      String(item.total_value || 0),
+      item.rating != null ? item.rating.toFixed(1) : "",
+    ]);
+
+    const csvContent = [
+      headers.map(h => `"${h}"`).join(","),
+      ...rows.map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(",")),
+    ].join("\n");
+
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `supplier-performance-${new Date().toISOString().split("T")[0]}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success("CSV berhasil diexport");
   };
 
   return (
@@ -62,15 +99,27 @@ export default function SupplierPerformancePage() {
           <h1 className="text-2xl font-bold">Performa Supplier</h1>
           <p className="text-sm text-gray-500">Evaluasi supplier berdasarkan pengiriman</p>
         </div>
-        <div className="flex gap-2">
-          <Button variant="outline" size="sm">
-            <PrinterIcon className="w-4 h-4 mr-1" />Cetak
-          </Button>
-          <Button variant="outline" size="sm">
-            <DocumentArrowDownIcon className="w-4 h-4 mr-1" />Export
-          </Button>
-        </div>
+        <Button variant="outline" size="sm" onClick={handleExportCSV}>
+          <DocumentArrowDownIcon className="w-4 h-4 mr-1" />
+          Export CSV
+        </Button>
       </div>
+
+      {/* Date Filters */}
+      <Card className="mb-6">
+        <CardContent className="pt-4">
+          <div className="flex flex-col sm:flex-row gap-4">
+            <div className="space-y-1.5">
+              <Label className="text-xs">Dari Tanggal</Label>
+              <Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="h-9 text-sm w-44" />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Sampai Tanggal</Label>
+              <Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="h-9 text-sm w-44" />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       <Card>
         <CardContent className="p-0">

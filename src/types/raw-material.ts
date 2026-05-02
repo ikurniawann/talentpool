@@ -127,6 +127,10 @@ export interface RawMaterial {
   created_at: string;
   satuan_besar: Satuan;
   satuan_kecil: Satuan | null;
+  // COA fields
+  coa_production?: string;
+  coa_rnd?: string;
+  coa_asset?: string;
   // Enriched fields
   qty_onhand: number;
   avg_cost: number;
@@ -175,6 +179,9 @@ export interface CreateRawMaterialInput {
   stok_maximum?: number;
   shelf_life_days?: number;
   storage_condition?: string;
+  coa_production?: string;
+  coa_rnd?: string;
+  coa_asset?: string;
 }
 
 export interface UpdateRawMaterialInput {
@@ -187,6 +194,9 @@ export interface UpdateRawMaterialInput {
   stok_maximum?: number | null;
   shelf_life_days?: number;
   storage_condition?: string;
+  coa_production?: string;
+  coa_rnd?: string;
+  coa_asset?: string;
 }
 
 // ─── Raw Material with Stock (for combobox) ─────────────────────────────────

@@ -229,6 +229,7 @@ export default function RawMaterialsPage() {
               </TableHead>
               <TableHead>Nama Bahan</TableHead>
               <TableHead>Kategori</TableHead>
+              <TableHead>COA</TableHead>
               <TableHead className="text-right">Stok Tersedia</TableHead>
               <TableHead className="text-right">Min. Stok</TableHead>
               <TableHead className="text-right">Harga Rata-rata</TableHead>
@@ -239,13 +240,13 @@ export default function RawMaterialsPage() {
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={8} className="text-center py-8">
+                <TableCell colSpan={9} className="text-center py-8">
                   Memuat data...
                 </TableCell>
               </TableRow>
             ) : materials.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={8} className="text-center py-8">
+                <TableCell colSpan={9} className="text-center py-8">
                   Tidak ada data bahan baku
                 </TableCell>
               </TableRow>
@@ -264,6 +265,22 @@ export default function RawMaterialsPage() {
                     </Link>
                   </TableCell>
                   <TableCell>{getCategoryLabel(material.kategori)}</TableCell>
+                  <TableCell>
+                    <div className="flex flex-wrap gap-1">
+                      {(material as any).coa_production && (
+                        <Badge className="bg-amber-100 text-amber-800 hover:bg-amber-100 text-xs">Prod</Badge>
+                      )}
+                      {(material as any).coa_rnd && (
+                        <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-100 text-xs">RnD</Badge>
+                      )}
+                      {(material as any).coa_asset && (
+                        <Badge className="bg-green-100 text-green-800 hover:bg-green-100 text-xs">Asset</Badge>
+                      )}
+                      {!(material as any).coa_production && !(material as any).coa_rnd && !(material as any).coa_asset && (
+                        <span className="text-gray-400 text-sm">-</span>
+                      )}
+                    </div>
+                  </TableCell>
                   <TableCell className="text-right">
                     <span
                       className={

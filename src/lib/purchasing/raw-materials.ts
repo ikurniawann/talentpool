@@ -90,6 +90,9 @@ export interface CreateRawMaterialInput {
   stok_maximum?: number;
   shelf_life_days?: number;
   storage_condition?: string;
+  coa_production?: string;
+  coa_rnd?: string;
+  coa_asset?: string;
 }
 
 export async function createRawMaterial(
@@ -113,6 +116,9 @@ export interface UpdateRawMaterialInput {
   stok_maximum?: number | null;
   shelf_life_days?: number;
   storage_condition?: string;
+  coa_production?: string;
+  coa_rnd?: string;
+  coa_asset?: string;
 }
 
 export async function updateRawMaterial(

@@ -23,6 +23,9 @@ const createMaterialSchema = z.object({
   current_stock: z.number().min(0).default(0),
   lokasi_rak: z.string().optional(),
   lead_time_days: z.number().min(0).default(0).refine(v => Number.isInteger(v)),
+  coa_production: z.string().max(50).optional(),
+  coa_rnd: z.string().max(50).optional(),
+  coa_asset: z.string().max(50).optional(),
 });
 
 const updateMaterialSchema = createMaterialSchema.omit({ kode: true }).partial();
