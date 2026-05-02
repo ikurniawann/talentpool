@@ -107,8 +107,8 @@ export default function LoginPage() {
                 <div className="text-sm mt-1" style={{ color: '#fbcfe8' }}>Point of Sales</div>
               </div>
               <div>
-                <div className="text-3xl font-bold" style={{ color: '#ffffff' }}>QC</div>
-                <div className="text-sm mt-1" style={{ color: '#fbcfe8' }}>Quality Control</div>
+                <div className="text-3xl font-bold" style={{ color: '#ffffff' }}>Purchasing</div>
+                <div className="text-sm mt-1" style={{ color: '#fbcfe8' }}>Purchasing Control</div>
               </div>
             </div>
           </div>
