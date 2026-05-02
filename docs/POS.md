@@ -1,7 +1,7 @@
 # POS (Point of Sale) Module - Project Brief
 
 ## Overview
-POS module for TalentPool restaurant app with cashier UI, product management, customer loyalty, and order types.
+POS module for Arkiv OS restaurant app with cashier UI, product management, customer loyalty, and order types.
 
 ---
 

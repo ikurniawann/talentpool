@@ -117,7 +117,7 @@ export default function OrdersPage() {
           </head>
           <body>
             <div class="header">
-              <h3>TalentPool POS</h3>
+              <h3>Arkiv OS POS</h3>
               <p>${order.order_number}</p>
               <p>${new Date(order.ordered_at!).toLocaleString('id-ID')}</p>
             </div>

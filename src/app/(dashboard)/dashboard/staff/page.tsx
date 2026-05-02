@@ -306,7 +306,9 @@ export default function StaffPage() {
         </div>
         <Select value={brandFilter} onValueChange={(v) => setBrandFilter(v ?? "all")}>
           <SelectTrigger className="w-full sm:w-44">
-            <SelectValue placeholder="Semua Outlet" />
+            <SelectValue placeholder="Semua Outlet">
+              {brandFilter !== "all" ? (brands.find(b => String(b.id) === brandFilter)?.name ?? '') : undefined}
+            </SelectValue>
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Semua Outlet</SelectItem>
@@ -481,7 +483,9 @@ export default function StaffPage() {
                 <label className="text-xs font-medium text-gray-600">Outlet *</label>
                 <Select value={form.brand_id || ""} onValueChange={(v) => setForm((f) => ({ ...f, brand_id: v ?? "", position_id: "" }))}>
                   <SelectTrigger>
-                    <SelectValue placeholder="Pilih Outlet" />
+                    <SelectValue placeholder="Pilih Outlet">
+                      {form.brand_id ? (brands.find(b => String(b.id) === form.brand_id)?.name ?? '') : undefined}
+                    </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
                     {brands.map((b) => (
@@ -494,7 +498,9 @@ export default function StaffPage() {
                 <label className="text-xs font-medium text-gray-600">Posisi</label>
                 <Select value={form.position_id || ""} onValueChange={(v) => setForm((f) => ({ ...f, position_id: v ?? "" }))}>
                   <SelectTrigger>
-                    <SelectValue placeholder="Pilih Posisi" />
+                    <SelectValue placeholder="Pilih Posisi">
+                      {form.position_id ? (positions.find(p => String(p.id) === form.position_id)?.title ?? '') : undefined}
+                    </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="">-</SelectItem>

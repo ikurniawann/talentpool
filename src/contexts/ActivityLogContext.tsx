@@ -3,7 +3,7 @@
 import React, { createContext, useContext, useState, useEffect, useMemo, ReactNode } from "react";
 import { ActivityLog, ActivityLogState } from "@/types/activity-log";
 
-const STORAGE_KEY = "talentpool_activity_logs";
+const STORAGE_KEY = "arkivos_activity_logs";
 const MAX_LOGS = 100; // Keep max 100 logs
 
 const ActivityLogContext = createContext<ActivityLogState | undefined>(undefined);

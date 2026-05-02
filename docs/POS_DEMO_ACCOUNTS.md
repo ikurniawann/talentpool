@@ -21,7 +21,7 @@ Demo accounts untuk testing POS module.
 
 ## Login URL
 
-- **Production:** https://talentpool-murex.vercel.app/login
+- **Production:** https://arkiv-os.vercel.app/login
 - **Local:** http://localhost:3001/login
 
 Setelah login, akses POS di:

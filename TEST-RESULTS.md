@@ -1,4 +1,4 @@
-# 🧪 Inventory Test Results - TalentPool
+# 🧪 Inventory Test Results - Arkiv OS
 
 **Date:** April 23, 2026  
 **Tester:** OpenClaw Agent (with Bang Ilham)  

@@ -1,8 +1,8 @@
-# ARK POS - Integration Guide with TalentPool
+# ARK POS - Integration Guide with Arkiv OS
 
 ## Overview
 
-This document describes how ARK POS integrates with existing TalentPool modules (HRD & Purchasing).
+This document describes how ARK POS integrates with existing Arkiv OS modules (HRD & Purchasing).
 
 ---
 

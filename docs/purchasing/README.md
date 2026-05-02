@@ -1,6 +1,6 @@
-# TalentPool — Purchasing Module
+# Arkiv OS — Purchasing Module
 
-Dokumentasi untuk modul Purchasing / Procurement pada TalentPool ERP.
+Dokumentasi untuk modul Purchasing / Procurement pada Arkiv OS ERP.
 
 ## Business Flow
 
@@ -31,7 +31,7 @@ Approval Thresholds:
 ### 1. Clone & Install Dependencies
 
 ```bash
-cd ~/Desktop/talentpool
+cd ~/Desktop/arkiv-os
 npm install
 ```
 
@@ -188,8 +188,8 @@ Raw spec: `/api/purchasing/docs/spec`
 Import file berikut ke Postman:
 
 ```
-docs/purchasing/postman/TalentPool-Purchasing.postman_collection.json
-docs/purchasing/postman/TalentPool-Purchasing.postman_environment.json
+docs/purchasing/postman/ArkivOS-Purchasing.postman_collection.json
+docs/purchasing/postman/ArkivOS-Purchasing.postman_environment.json
 ```
 
 Set `{{baseUrl}}` ke URL Supabase Edge Function atau localhost.

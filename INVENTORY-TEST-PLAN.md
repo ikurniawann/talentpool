@@ -1,4 +1,4 @@
-# 🧪 Inventory Testing Plan - TalentPool
+# 🧪 Inventory Testing Plan - Arkiv OS
 
 **Date:** April 23, 2026  
 **Tester:** OpenClaw Agent (Claw 🐾)  

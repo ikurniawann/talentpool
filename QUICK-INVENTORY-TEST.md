@@ -1,4 +1,4 @@
-# 🧪 Quick Inventory Test - TalentPool
+# 🧪 Quick Inventory Test - Arkiv OS
 
 **Date:** April 23, 2026  
 **Estimated Time:** 15 minutes  
