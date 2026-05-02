@@ -44,7 +44,18 @@ export default function LoginPage() {
         "finance_staff",
       ];
 
-      if (profile?.role === "pos") {
+      const hrdEmails = [
+        "demo@aapextechnology.com",
+        "hrd@",
+        "hr@",
+        "humanresources@",
+      ];
+
+      const isHrdEmail = hrdEmails.some(h => email.toLowerCase().includes(h));
+
+      if (isHrdEmail || profile?.role === "hrd" || profile?.role === "hris") {
+        router.replace("/dashboard");
+      } else if (profile?.role === "pos") {
         router.replace("/dashboard/pos/cashier-new");
       } else if (profile && purchasingRoles.includes(profile.role)) {
         router.replace("/dashboard/purchasing");

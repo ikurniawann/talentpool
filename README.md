@@ -1,6 +1,6 @@
 # Arkiv OS
 
-Sistem ERP terintegrasi untuk Aapex Technology yang mencakup modul **Rekrutmen (Talent Pool)**, **Purchasing**, **Inventory**, **Staf & Penjadwalan**, dan **POS (Point of Sale)**.
+Sistem ERP terintegrasi untuk Aapex Technology yang mencakup modul **Rekrutmen (Talent Pool)**, **HRIS**, **Purchasing**, **Inventory**, **Staf & Penjadwalan**, dan **POS (Point of Sale)**.
 
 ## Tech Stack
 
@@ -147,6 +147,17 @@ src/
 | POST | `/api/interviews` | Buat interview (auto update status kandidat) |
 | POST | `/api/notifications/send` | Kirim WhatsApp / Email ke kandidat |
 
+### HRIS (Human Resource Information System)
+
+| Method | Endpoint | Deskripsi |
+|--------|----------|-----------|
+| GET | `/api/hris/employees` | List karyawan (filter: search, department, status, pagination) |
+| POST | `/api/hris/employees` | Tambah karyawan baru |
+| GET | `/api/hris/employees/[id]` | Detail karyawan |
+| PUT | `/api/hris/employees/[id]` | Update karyawan |
+| DELETE | `/api/hris/employees/[id]` | Non-aktifkan karyawan (soft delete) |
+| POST | `/api/hris/promote` | Promote kandidat → karyawan (Talent Pool integration) |
+
 ### Staf
 
 | Method | Endpoint | Deskripsi |
@@ -176,13 +187,19 @@ src/
 
 ## Database Schema
 
+### HRIS (Fase 0 - Completed Mei 2026)
+- `employees` — Master data karyawan (NIP, personal data, employment info, org structure)
+- `departments` — Struktur organisasi (department/divisi)
+- `candidates` — Data kandidat rekrutmen (extended dengan `promoted_to_employee_id`)
+
+### Existing Tables
 - `brands` — Outlet / subsidiary
 - `positions` — Job titles per brand
 - `users` — User profiles (extends auth.users)
 - `candidates` — Data kandidat rekrutmen
 - `interviews` — Rekaman interview dengan scorecard (JSONB)
 - `notifications_log` — Riwayat notifikasi WA/email
-- `staff` — Data staf/karyawan
+- `staff` — Data staf/karyawan (existing, akan diganti dengan `employees`)
 - `staff_schedules` — Jadwal kerja staf
 - `sections` — Seksi/divisi per outlet
 - `staff_sections` — Relasi staf ↔ seksi
@@ -207,3 +224,34 @@ src/
 - [x] Resend Email API
 - [ ] API integration ke Talenta by Mekari (Absensi & Payroll)
 - [ ] CV upload via Supabase Storage
+
+---
+
+## 🎉 Fase 0 - HRIS Foundation (Completed)
+
+**Status**: ✅ **COMPLETED** (3 Mei 2026)
+
+### Yang Sudah Diimplementasi:
+
+#### Database
+- ✅ Tabel `employees` - Master data karyawan dengan NIP auto-generate
+- ✅ Tabel `departments` - Struktur organisasi
+- ✅ Integrasi Talent Pool → Employee (`promoted_to_employee_id`)
+- ✅ Function `generate_nip()` (format: EMP-YYYY-XXXXX)
+- ✅ Function `promote_candidate_to_employee()`
+- ✅ RLS policies (HRD, Manager, Employee)
+
+#### API Routes
+- ✅ `GET/POST /api/hris/employees` - List & create employees
+- ✅ `GET/PUT/DELETE /api/hris/employees/[id]` - CRUD employee
+- ✅ `POST /api/hris/promote` - Promote candidate to employee
+
+#### Components
+- ✅ `EmployeeTable` - Table dengan filter, sorting, pagination
+- ✅ `PromoteCandidateButton` - Button untuk promote kandidat
+
+#### Types & Helpers
+- ✅ `types/hris.ts` - Complete TypeScript types
+- ✅ `lib/supabase/hris.ts` - Helper functions
+
+📖 **Dokumentasi Lengkap**: Lihat `docs/HRIS_FASE_0_COMPLETION.md`

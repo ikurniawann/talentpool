@@ -179,3 +179,9 @@ export interface Session {
   user: User;
   brand?: Brand;
 }
+
+// ============================================================
+// HRIS MODULE (Fase 0)
+// ============================================================
+// Re-export semua types dari hris.ts
+export * from './hris';
