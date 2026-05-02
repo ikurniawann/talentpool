@@ -123,7 +123,7 @@ export default function SidebarClient({ user, navItems, children }: SidebarClien
       {/* Sidebar */}
       <aside
         className={`
-          fixed inset-y-0 left-0 z-40 bg-gradient-to-br from-[#303b64] to-[#425aad] flex flex-col
+          fixed inset-y-0 left-0 z-40 bg-gradient-to-b from-[#0f172a] to-[#1e1b4b] flex flex-col
           transform transition-all duration-200 ease-in-out shadow-xl
           lg:relative lg:translate-x-0 lg:z-0 lg:flex
           ${mobileOpen ? "translate-x-0" : "-translate-x-full"}
@@ -135,10 +135,10 @@ export default function SidebarClient({ user, navItems, children }: SidebarClien
           <img src="/logos/logo.png" alt="Prologue in Wounderland" className={`${collapsed ? 'w-12 h-12' : 'w-32 h-auto'} object-contain mb-3 transition-all`} />
           {!collapsed && (
             <div className="px-4 pb-3 w-full">
-              <p className="text-xs text-white/60 px-2 mb-2 text-center">Backoffice</p>
-              <div className="mt-3 p-2.5 bg-white/10 backdrop-blur-sm rounded-lg text-center">
-                <p className="text-xs font-medium text-white">{user.full_name}</p>
-                <p className="text-xs text-white/60 capitalize">{user.role.replace("_", " ")}</p>
+              <p className="text-xs text-white/50 px-2 mb-2 text-center">Backoffice</p>
+              <div className="mt-3 p-2.5 bg-white/[0.08] backdrop-blur-sm rounded-lg text-center border border-white/10">
+                <p className="text-xs font-semibold text-white">{user.full_name}</p>
+                <p className="text-xs text-pink-300 capitalize">{user.role.replace("_", " ")}</p>
               </div>
             </div>
           )}
@@ -160,8 +160,8 @@ export default function SidebarClient({ user, navItems, children }: SidebarClien
                       className={`
                         w-full flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg transition-colors
                         ${itemActive
-                          ? "bg-white/20 text-white font-medium"
-                          : "text-white/80 hover:bg-white/10"
+                          ? "bg-pink-500/20 text-pink-100 font-semibold border-l-2 border-pink-400"
+                          : "text-white hover:bg-white/[0.07]"
                         }
                         ${collapsed ? 'justify-center' : 'justify-between'}
                         cursor-pointer
@@ -192,8 +192,8 @@ export default function SidebarClient({ user, navItems, children }: SidebarClien
                               className={`
                                 block px-3 py-1.5 text-sm rounded-lg transition-colors
                                 ${childActive
-                                  ? 'bg-white/20 text-white font-medium'
-                                  : 'text-white/60 hover:text-white hover:bg-white/10'
+                                  ? 'bg-pink-500/20 text-pink-100 font-semibold border-l-2 border-pink-400'
+                                  : 'text-white/80 hover:text-white hover:bg-white/[0.07]'
                                 }
                               `}
                             >
@@ -211,8 +211,8 @@ export default function SidebarClient({ user, navItems, children }: SidebarClien
                     className={`
                       flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg transition-colors w-full
                       ${itemActive
-                        ? "bg-white/20 text-white font-medium"
-                        : "text-white/80 hover:bg-white/10"
+                        ? "bg-pink-500/20 text-pink-100 font-semibold border-l-2 border-pink-400"
+                        : "text-white hover:bg-white/[0.07]"
                       }
                       ${collapsed ? 'justify-center' : ''}
                     `}
@@ -239,7 +239,7 @@ export default function SidebarClient({ user, navItems, children }: SidebarClien
           </button>
           <button
             onClick={() => setCollapsed(!collapsed)}
-            className="w-full flex items-center justify-center gap-3 px-3 py-2.5 text-sm text-white/80 rounded-lg hover:bg-white/10 transition-colors"
+            className="w-full flex items-center justify-center gap-3 px-3 py-2.5 text-sm text-white/70 rounded-lg hover:bg-white/[0.07] transition-colors"
             title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
           >
             {collapsed ? (

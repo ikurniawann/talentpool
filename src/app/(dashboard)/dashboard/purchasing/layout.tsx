@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { useState, useRef, useEffect } from "react";
 import { Toaster } from "sonner";
 import { ActivityLogBell } from "@/components/layout/ActivityLogBell";
-import { UserCircle } from "lucide-react";
+import { UserCircle, LogOut } from "lucide-react";
 import {
   BuildingOfficeIcon,
   CubeIcon,
@@ -51,8 +51,17 @@ export default function PurchasingLayout({ children }: { children: React.ReactNo
   const pathname = usePathname();
   const [masterOpen, setMasterOpen] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
+  const [userOpen, setUserOpen] = useState(false);
   const masterRef = useRef<HTMLDivElement>(null);
   const reportRef = useRef<HTMLDivElement>(null);
+  const userRef = useRef<HTMLDivElement>(null);
+
+  const handleLogout = async () => {
+    const { createClient } = await import("@/lib/supabase/client");
+    const sb = createClient();
+    await sb.auth.signOut();
+    window.location.href = "/login";
+  };
 
   useEffect(() => {
     function handleClick(e: MouseEvent) {
@@ -61,6 +70,9 @@ export default function PurchasingLayout({ children }: { children: React.ReactNo
       }
       if (reportRef.current && !reportRef.current.contains(e.target as Node)) {
         setReportOpen(false);
+      }
+      if (userRef.current && !userRef.current.contains(e.target as Node)) {
+        setUserOpen(false);
       }
     }
     document.addEventListener("mousedown", handleClick);
@@ -173,9 +185,25 @@ export default function PurchasingLayout({ children }: { children: React.ReactNo
           {/* Right - Bell icon and user profile */}
           <div className="flex items-center gap-2 sm:gap-4 pl-2 sm:pl-4 flex-shrink-0" style={{ borderLeft: "1px solid rgba(209,213,219,0.4)" }}>
             <ActivityLogBell />
-            <div className="flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm text-gray-900">
-              <UserCircle className="w-4 h-4 sm:w-5 sm:h-5 text-gray-900" />
-              <span className="hidden md:inline-block font-medium">User</span>
+            <div className="relative z-[9999]" ref={userRef}>
+              <button
+                onMouseDown={(e) => { e.preventDefault(); setUserOpen(v => !v); }}
+                className="flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm text-gray-700 hover:text-gray-900 px-2 py-1.5 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer"
+              >
+                <UserCircle className="w-4 h-4 sm:w-5 sm:h-5" />
+                <span className="hidden md:inline-block font-medium">Akun</span>
+              </button>
+              {userOpen && (
+                <div className="absolute right-0 top-full mt-2 rounded-xl shadow-xl z-[9999] py-1 min-w-40" style={{ background: "rgba(255,255,255,0.92)", backdropFilter: "blur(20px) saturate(1.8)", WebkitBackdropFilter: "blur(20px) saturate(1.8)", border: "1px solid rgba(209,213,219,0.35)" }}>
+                  <button
+                    onClick={handleLogout}
+                    className="flex items-center gap-2 w-full px-3 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors"
+                  >
+                    <LogOut className="w-4 h-4" />
+                    Keluar
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </div>
