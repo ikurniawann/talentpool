@@ -158,10 +158,10 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
       .eq('id', id)
       .select(`
         *,
-        department:departments (id, name, code),
-        section:sections (id, name),
-        job_title:positions (id, title),
-        manager:employees!reporting_to (id, full_name, nip)
+        department:departments(id, name, code),
+        section:sections(id, name),
+        job_title:positions(id, title),
+        manager:employees!reporting_to(id, full_name, nip)
       `)
       .single();
 
