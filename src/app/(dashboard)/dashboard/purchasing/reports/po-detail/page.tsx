@@ -74,17 +74,17 @@ export default function PODetailReportPage() {
       if (statusFilter) params.set("status", statusFilter);
       if (supplierFilter) params.set("vendor_id", supplierFilter);
 
-      const response = await fetch(`/api/purchasing/reports/po-summary?${params.toString()}`);
+      const response = await fetch(`/api/purchasing/reports/po-detail?${params.toString()}`);
       const result = await response.json();
 
       if (result.success) {
-        // Map summary rows to our PODetail shape; items come from the summary array
+        // Map detailed PO rows to our PODetail shape
         const mapped: PODetail[] = (result.data.summary || []).map((po: any) => ({
-          id: po.id || po.po_number,
+          id: po.po_number,
           no_po: po.po_number,
           tanggal_po: po.tanggal_po,
           supplier: po.vendor,
-          supplier_id: po.vendor_id,
+          supplier_id: po.supplier_id,
           status: po.status,
           total: po.total_amount,
           items: (po.items || []).map((item: any) => ({
