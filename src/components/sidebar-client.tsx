@@ -123,7 +123,7 @@ export default function SidebarClient({ user, navItems, children }: SidebarClien
       {/* Sidebar */}
       <aside
         className={`
-          fixed inset-y-0 left-0 z-40 bg-[#1c1c1e] flex flex-col
+          fixed inset-y-0 left-0 z-40 bg-gradient-to-br from-pink-50 to-white flex flex-col
           transform transition-all duration-200 ease-in-out shadow-xl
           lg:relative lg:translate-x-0 lg:z-0 lg:flex
           ${mobileOpen ? "translate-x-0" : "-translate-x-full"}
@@ -131,14 +131,14 @@ export default function SidebarClient({ user, navItems, children }: SidebarClien
         `}
       >
         {/* Logo / Brand */}
-        <div className={`p-4 border-b border-white/10 flex flex-col items-center ${collapsed ? 'px-2' : ''}`}>
+        <div className={`p-4 border-b border-pink-200 flex flex-col items-center ${collapsed ? 'px-2' : ''}`}>
           <img src="/logos/logo.png" alt="Prologue in Wounderland" className={`${collapsed ? 'w-12 h-12' : 'w-32 h-auto'} object-contain mb-3 transition-all`} />
           {!collapsed && (
             <div className="px-4 pb-3 w-full">
-              <p className="text-xs text-white/50 px-2 mb-2 text-center">Backoffice</p>
-              <div className="mt-3 p-2.5 bg-white/[0.08] backdrop-blur-sm rounded-lg text-center border border-white/10">
-                <p className="text-xs font-semibold text-white">{user.full_name}</p>
-                <p className="text-xs text-pink-300 capitalize">{user.role.replace("_", " ")}</p>
+              <p className="text-xs text-gray-500 px-2 mb-2 text-center">Backoffice</p>
+              <div className="mt-3 p-2.5 bg-pink-100 backdrop-blur-sm rounded-lg text-center border border-pink-200">
+                <p className="text-xs font-semibold text-gray-900">{user.full_name}</p>
+                <p className="text-xs text-pink-600 capitalize">{user.role.replace("_", " ")}</p>
               </div>
             </div>
           )}
@@ -160,8 +160,8 @@ export default function SidebarClient({ user, navItems, children }: SidebarClien
                       className={`
                         w-full flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg transition-colors
                         ${itemActive
-                          ? "bg-pink-500/20 text-pink-100 font-semibold border-l-2 border-pink-400"
-                          : "text-white hover:bg-white/[0.07]"
+                          ? "bg-pink-600 text-white font-semibold"
+                          : "text-gray-900 hover:bg-pink-100"
                         }
                         ${collapsed ? 'justify-center' : 'justify-between'}
                         cursor-pointer
@@ -192,8 +192,8 @@ export default function SidebarClient({ user, navItems, children }: SidebarClien
                               className={`
                                 block px-3 py-1.5 text-sm rounded-lg transition-colors
                                 ${childActive
-                                  ? 'bg-pink-500/20 text-pink-100 font-semibold border-l-2 border-pink-400'
-                                  : 'text-white/80 hover:text-white hover:bg-white/[0.07]'
+                                  ? 'bg-pink-600 text-white font-semibold'
+                                  : 'text-gray-900 hover:bg-pink-100 hover:text-gray-900'
                                 }
                               `}
                             >
@@ -211,8 +211,8 @@ export default function SidebarClient({ user, navItems, children }: SidebarClien
                     className={`
                       flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg transition-colors w-full
                       ${itemActive
-                        ? "bg-pink-500/20 text-pink-100 font-semibold border-l-2 border-pink-400"
-                        : "text-white hover:bg-white/[0.07]"
+                        ? "bg-pink-600 text-white font-semibold"
+                        : "text-gray-900 hover:bg-pink-100"
                       }
                       ${collapsed ? 'justify-center' : ''}
                     `}
@@ -228,10 +228,10 @@ export default function SidebarClient({ user, navItems, children }: SidebarClien
         </nav>
 
         {/* Logout & Collapse Toggle */}
-        <div className="p-3 border-t border-white/10 space-y-2">
+        <div className="p-3 border-t border-pink-200 space-y-2">
           <button
             onClick={handleLogout}
-            className={`w-full flex items-center gap-3 px-3 py-2.5 text-sm text-red-300 rounded-lg hover:bg-red-500/20 transition-colors ${collapsed ? 'justify-center' : ''}`}
+            className={`w-full flex items-center gap-3 px-3 py-2.5 text-sm text-red-600 rounded-lg hover:bg-red-50 transition-colors ${collapsed ? 'justify-center' : ''}`}
             title={collapsed ? 'Keluar' : ''}
           >
             <NavIcon name="logout" className="w-5 h-5" isActive={false} />
@@ -239,7 +239,7 @@ export default function SidebarClient({ user, navItems, children }: SidebarClien
           </button>
           <button
             onClick={() => setCollapsed(!collapsed)}
-            className="w-full flex items-center justify-center gap-3 px-3 py-2.5 text-sm text-white/70 rounded-lg hover:bg-white/[0.07] transition-colors"
+            className="w-full flex items-center justify-center gap-3 px-3 py-2.5 text-sm text-gray-700 rounded-lg hover:bg-pink-100 transition-colors"
             title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
           >
             {collapsed ? (
