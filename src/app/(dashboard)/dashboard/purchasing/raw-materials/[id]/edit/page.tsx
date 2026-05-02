@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowLeft, Save, Package, AlertCircle } from "lucide-react";
+import { ArrowLeft, Save, Package, AlertCircle, BookOpen } from "lucide-react";
 import { toast } from "sonner";
 import { Combobox } from "@/components/ui/combobox";
 import { RawMaterialWithStock, Unit, MaterialCategory } from "@/types/purchasing";
@@ -51,6 +51,9 @@ export default function EditRawMaterialPage() {
     stok_maximum: 0,
     shelf_life_days: undefined as number | undefined,
     storage_condition: undefined as string | undefined,
+    coa_production: "",
+    coa_rnd: "",
+    coa_asset: "",
   });
 
   useEffect(() => {
@@ -73,6 +76,9 @@ export default function EditRawMaterialPage() {
         stok_maximum: data.stok_maximum || 0,
         shelf_life_days: data.shelf_life_days || undefined,
         storage_condition: data.storage_condition || undefined,
+        coa_production: (data as any).coa_production || "",
+        coa_rnd: (data as any).coa_rnd || "",
+        coa_asset: (data as any).coa_asset || "",
       });
     } catch (error) {
       console.error("Failed to load material:", error);
@@ -104,7 +110,12 @@ export default function EditRawMaterialPage() {
 
     setIsSubmitting(true);
     try {
-      await updateRawMaterial(materialId, formData);
+      await updateRawMaterial(materialId, {
+        ...formData,
+        coa_production: formData.coa_production || undefined,
+        coa_rnd: formData.coa_rnd || undefined,
+        coa_asset: formData.coa_asset || undefined,
+      });
       toast.success("Bahan baku berhasil diupdate");
       router.push(`/dashboard/purchasing/raw-materials/${materialId}`);
     } catch (error: any) {
@@ -334,6 +345,58 @@ export default function EditRawMaterialPage() {
             </CardContent>
           </Card>
 
+        </div>
+
+        {/* COA Card */}
+        <div className="mt-6">
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2">
+                <BookOpen className="w-4 h-4" />
+                COA (Chart of Accounts)
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="space-y-1.5">
+                  <Label htmlFor="coa_production" className="text-xs">COA Produksi</Label>
+                  <Input
+                    id="coa_production"
+                    value={formData.coa_production}
+                    onChange={(e) => setFormData({ ...formData, coa_production: e.target.value })}
+                    placeholder="Contoh: 5-1001"
+                    maxLength={50}
+                    className="h-9 text-sm"
+                  />
+                  <p className="text-xs text-gray-500">Kode akun untuk pemakaian produksi</p>
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="coa_rnd" className="text-xs">COA R&D</Label>
+                  <Input
+                    id="coa_rnd"
+                    value={formData.coa_rnd}
+                    onChange={(e) => setFormData({ ...formData, coa_rnd: e.target.value })}
+                    placeholder="Contoh: 5-2001"
+                    maxLength={50}
+                    className="h-9 text-sm"
+                  />
+                  <p className="text-xs text-gray-500">Kode akun untuk pemakaian R&D</p>
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="coa_asset" className="text-xs">COA Aset</Label>
+                  <Input
+                    id="coa_asset"
+                    value={formData.coa_asset}
+                    onChange={(e) => setFormData({ ...formData, coa_asset: e.target.value })}
+                    placeholder="Contoh: 1-3001"
+                    maxLength={50}
+                    className="h-9 text-sm"
+                  />
+                  <p className="text-xs text-gray-500">Kode akun untuk pencatatan aset</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         </div>
 
         {/* Action Buttons */}

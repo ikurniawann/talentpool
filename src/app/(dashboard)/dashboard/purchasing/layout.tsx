@@ -43,7 +43,7 @@ const TRANSAKSI_ITEMS = [
 const REPORT_ITEMS = [
   { href: "/dashboard/purchasing/reports/inventory-valuation", label: "Valuasi Inventori", icon: ArchiveBoxIcon },
   { href: "/dashboard/purchasing/reports/po-summary", label: "Ringkasan PO", icon: ShoppingCartIcon },
-  { href: "/dashboard/purchasing/reports/hpp-breakdown", label: "Detail HPP", icon: DocumentChartBarIcon },
+  { href: "/dashboard/purchasing/reports/po-detail", label: "Detail PO", icon: DocumentChartBarIcon },
   { href: "/dashboard/purchasing/reports/supplier-performance", label: "Performa Supplier", icon: BuildingOfficeIcon },
 ];
 

@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -10,12 +11,12 @@ import { BreadcrumbNav } from "@/modules/purchasing/components/breadcrumb/Breadc
 import {
   ClipboardDocumentListIcon,
   MagnifyingGlassIcon,
-  PrinterIcon,
   DocumentArrowDownIcon,
   ExclamationTriangleIcon,
   CubeIcon,
 } from "@heroicons/react/24/outline";
 import { formatRupiah } from "@/lib/purchasing/utils";
+import { toast } from "sonner";
 
 type StockStatus = "normal" | "warning" | "critical" | "empty";
 
@@ -51,25 +52,28 @@ export default function InventoryValuationPage() {
   const [items, setItems] = useState<InventoryRow[]>([]);
   const [search, setSearch] = useState("");
   const [kategori, setKategori] = useState("all");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     fetchData();
-  }, []);
+  }, [dateFrom, dateTo]);
 
   const fetchData = async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/purchasing/reports/inventory-valuation");
+      const params = new URLSearchParams();
+      if (dateFrom) params.set("date_from", dateFrom);
+      if (dateTo) params.set("date_to", dateTo);
+      const res = await fetch(`/api/purchasing/reports/inventory-valuation?${params.toString()}`);
       if (res.ok) {
         const result = await res.json();
-        // Map API response to expected format
         const mappedItems = (result.data || []).map((item: any) => {
           let stockStatus: StockStatus = "normal";
           if (!item.qty_onhand || item.qty_onhand === 0) stockStatus = "empty";
           else if (item.qty_onhand <= (item.min_stock || 0) * 0.25) stockStatus = "critical";
           else if (item.qty_onhand <= (item.min_stock || 0)) stockStatus = "warning";
-          
           return {
             id: item.id || item.raw_material_id,
             kode: item.kode,
@@ -88,6 +92,7 @@ export default function InventoryValuationPage() {
       }
     } catch (error) {
       console.error("Error fetching inventory valuation:", error);
+      toast.error("Gagal memuat data valuasi inventori");
     } finally {
       setLoading(false);
     }
@@ -108,6 +113,49 @@ export default function InventoryValuationPage() {
   const warningCount = items.filter(i => i.stock_status === "warning").length;
   const criticalCount = items.filter(i => i.stock_status === "critical" || i.stock_status === "empty").length;
 
+  // Category breakdown
+  const categoryBreakdown = filtered.reduce<Record<string, { count: number; nilai: number }>>((acc, item) => {
+    const cat = item.kategori || "Lainnya";
+    if (!acc[cat]) acc[cat] = { count: 0, nilai: 0 };
+    acc[cat].count += 1;
+    acc[cat].nilai += item.qty_in_stock * (item.avg_unit_cost || 0);
+    return acc;
+  }, {});
+
+  const categoryEntries = Object.entries(categoryBreakdown).sort((a, b) => b[1].nilai - a[1].nilai);
+  const maxNilai = categoryEntries.length > 0 ? Math.max(...categoryEntries.map(([, v]) => v.nilai)) : 1;
+
+  const handleExportCSV = () => {
+    const headers = ["Kode", "Nama", "Kategori", "Lokasi", "Stok", "Satuan", "Min", "Max", "Unit Cost", "Nilai Total", "Status"];
+    const rows = filtered.map((item) => [
+      item.kode || "",
+      item.nama || "",
+      item.kategori || "",
+      item.lokasi_rak || "",
+      String(item.qty_in_stock),
+      item.satuan || "",
+      String(item.minimum_stock ?? ""),
+      String(item.maximum_stock ?? ""),
+      String(item.avg_unit_cost ?? 0),
+      String(item.qty_in_stock * (item.avg_unit_cost || 0)),
+      STATUS_LABELS[item.stock_status],
+    ]);
+
+    const csvContent = [
+      headers.map(h => `"${h}"`).join(","),
+      ...rows.map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(",")),
+    ].join("\n");
+
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `inventory-valuation-${new Date().toISOString().split("T")[0]}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success("CSV berhasil diexport");
+  };
+
   return (
     <div className="p-6">
       <BreadcrumbNav items={[
@@ -121,17 +169,27 @@ export default function InventoryValuationPage() {
           <h1 className="text-2xl font-bold">Valuasi Inventori</h1>
           <p className="text-sm text-gray-500">Nilai stock per kategori bahan baku</p>
         </div>
-        <div className="flex gap-2">
-          <Button variant="outline" size="sm">
-            <PrinterIcon className="w-4 h-4 mr-1" />
-            Cetak
-          </Button>
-          <Button variant="outline" size="sm">
-            <DocumentArrowDownIcon className="w-4 h-4 mr-1" />
-            Export
-          </Button>
-        </div>
+        <Button variant="outline" size="sm" onClick={handleExportCSV}>
+          <DocumentArrowDownIcon className="w-4 h-4 mr-1" />
+          Export CSV
+        </Button>
       </div>
+
+      {/* Date Filters */}
+      <Card className="mb-6">
+        <CardContent className="pt-4">
+          <div className="flex flex-col sm:flex-row gap-4">
+            <div className="space-y-1.5">
+              <Label className="text-xs">Dari Tanggal</Label>
+              <Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="h-9 text-sm w-44" />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Sampai Tanggal</Label>
+              <Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="h-9 text-sm w-44" />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
@@ -184,6 +242,46 @@ export default function InventoryValuationPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Category Breakdown Chart */}
+      {categoryEntries.length > 0 && (
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2">
+              <ClipboardDocumentListIcon className="w-4 h-4 text-pink-600" />
+              Breakdown per Kategori
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {categoryEntries.map(([cat, { count, nilai }]) => {
+                const pct = totalNilai > 0 ? (nilai / totalNilai) * 100 : 0;
+                const barPct = maxNilai > 0 ? (nilai / maxNilai) * 100 : 0;
+                return (
+                  <div key={cat} className="flex items-center gap-3">
+                    <div className="w-32 text-sm text-gray-600 truncate flex-shrink-0">{cat}</div>
+                    <div className="flex-1 bg-gray-100 rounded-full h-4 overflow-hidden">
+                      <div
+                        className="bg-pink-400 h-4 rounded-full transition-all"
+                        style={{ width: `${barPct}%` }}
+                      />
+                    </div>
+                    <div className="w-24 text-right text-xs text-gray-500 flex-shrink-0">
+                      {pct.toFixed(1)}%
+                    </div>
+                    <div className="w-32 text-right text-sm font-medium flex-shrink-0">
+                      {formatRupiah(nilai)}
+                    </div>
+                    <div className="w-16 text-right text-xs text-gray-400 flex-shrink-0">
+                      {count} item
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Filters */}
       <Card className="mb-4">

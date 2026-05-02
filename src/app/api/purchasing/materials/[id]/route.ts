@@ -19,6 +19,9 @@ const updateMaterialSchema = z.object({
   current_stock: z.number().min(0).optional(),
   lokasi_rak: z.string().optional(),
   lead_time_days: z.number().min(0).optional().refine(v => v === undefined || Number.isInteger(v)),
+  coa_production: z.string().max(50).optional(),
+  coa_rnd: z.string().max(50).optional(),
+  coa_asset: z.string().max(50).optional(),
 });
 
 // GET /api/purchasing/materials/:id
