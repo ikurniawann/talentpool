@@ -73,7 +73,7 @@ export default function PurchasingLayout({ children }: { children: React.ReactNo
   return (
     <div>
       {/* Single navigation bar with bell icon - ALL IN ONE ROW */}
-      <div className="sticky top-0 z-40 w-full bg-white border-b border-gray-200">
+      <div className="sticky top-0 z-40 w-full" style={{ background: "rgba(255,255,255,0.75)", backdropFilter: "blur(20px) saturate(1.8)", WebkitBackdropFilter: "blur(20px) saturate(1.8)", borderBottom: "1px solid rgba(209,213,219,0.35)" }}>
         <div className="flex h-14 items-center justify-between px-3 sm:px-4">
           {/* Left - Navigation tabs */}
           <div className="flex items-center gap-1 flex-1 overflow-x-visible scrollbar-hide">
@@ -99,7 +99,7 @@ export default function PurchasingLayout({ children }: { children: React.ReactNo
               </button>
 
               {masterOpen && (
-                <div className="absolute left-0 top-full mt-2 bg-white border border-gray-200 rounded-lg shadow-xl z-[9999] py-1 min-w-48">
+                <div className="absolute left-0 top-full mt-2 rounded-xl shadow-xl z-[9999] py-1 min-w-48" style={{ background: "rgba(255,255,255,0.85)", backdropFilter: "blur(20px) saturate(1.8)", WebkitBackdropFilter: "blur(20px) saturate(1.8)", border: "1px solid rgba(209,213,219,0.35)" }}>
                   {MASTER_ITEMS.map((item) => (
                     <DropdownItem 
                       key={item.href} 
@@ -154,7 +154,7 @@ export default function PurchasingLayout({ children }: { children: React.ReactNo
               </button>
 
               {reportOpen && (
-                <div className="absolute left-0 top-full mt-2 bg-white border border-gray-200 rounded-lg shadow-xl z-[9999] py-1 min-w-48">
+                <div className="absolute left-0 top-full mt-2 rounded-xl shadow-xl z-[9999] py-1 min-w-48" style={{ background: "rgba(255,255,255,0.85)", backdropFilter: "blur(20px) saturate(1.8)", WebkitBackdropFilter: "blur(20px) saturate(1.8)", border: "1px solid rgba(209,213,219,0.35)" }}>
                   <p className="px-3 py-1 text-xs font-semibold text-gray-400 uppercase tracking-wide">Laporan</p>
                   {REPORT_ITEMS.map((item) => (
                     <DropdownItem 
@@ -171,7 +171,7 @@ export default function PurchasingLayout({ children }: { children: React.ReactNo
           </div>
           
           {/* Right - Bell icon and user profile */}
-          <div className="flex items-center gap-2 sm:gap-4 pl-2 sm:pl-4 border-l border-gray-200 flex-shrink-0">
+          <div className="flex items-center gap-2 sm:gap-4 pl-2 sm:pl-4 flex-shrink-0" style={{ borderLeft: "1px solid rgba(209,213,219,0.4)" }}>
             <ActivityLogBell />
             <div className="flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm text-gray-900">
               <UserCircle className="w-4 h-4 sm:w-5 sm:h-5 text-gray-900" />

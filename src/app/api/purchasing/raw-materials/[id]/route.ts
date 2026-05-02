@@ -186,6 +186,14 @@ export async function PUT(
   }
 }
 
+// PATCH /api/purchasing/raw-materials/:id
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  return PUT(request, { params });
+}
+
 // DELETE /api/purchasing/raw-materials/:id
 export async function DELETE(
   request: NextRequest,

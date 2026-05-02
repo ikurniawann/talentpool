@@ -1,5 +1,66 @@
 @import "tailwindcss";
 
+/* ── Liquid Glass Theme ── */
+
+/* Page background — soft pastel gradient mesh that shows through glass */
+.lg\:relative {
+  background: linear-gradient(135deg, #eef2ff 0%, #faf5ff 40%, #f0f9ff 75%, #fef3ff 100%);
+}
+
+/* Main content wrapper background */
+.flex.min-h-screen {
+  background: linear-gradient(135deg, #eef2ff 0%, #faf5ff 40%, #f0f9ff 75%, #fef3ff 100%) !important;
+}
+
+/* ── Liquid glass cards ── */
+[data-slot="card"] {
+  background: rgba(255, 255, 255, 0.70) !important;
+  backdrop-filter: blur(24px) saturate(1.8) !important;
+  -webkit-backdrop-filter: blur(24px) saturate(1.8) !important;
+  border: 1px solid rgba(209, 213, 219, 0.35) !important;
+  box-shadow:
+    0 2px 20px rgba(0, 0, 0, 0.04),
+    0 1px 4px rgba(0, 0, 0, 0.03),
+    inset 0 1px 0 rgba(255, 255, 255, 0.85) !important;
+}
+
+/* Card footer — match glass */
+[data-slot="card-footer"] {
+  background: rgba(248, 250, 252, 0.6) !important;
+  border-top: 1px solid rgba(209, 213, 219, 0.3) !important;
+}
+
+/* ── All component borders: very light thin gray ── */
+
+/* Table rows & header */
+[role="rowgroup"] [role="row"],
+thead tr,
+tbody tr {
+  border-color: rgba(229, 231, 235, 0.5) !important;
+}
+
+th, td {
+  border-color: rgba(229, 231, 235, 0.4) !important;
+}
+
+/* Inputs, textareas, selects — light border */
+input:not([type="checkbox"]):not([type="radio"]),
+textarea,
+select,
+[data-slot="input"],
+[data-slot="select-trigger"],
+[data-slot="textarea"] {
+  border-color: rgba(209, 213, 219, 0.6) !important;
+  background: rgba(255, 255, 255, 0.7) !important;
+}
+
+/* Separator / dividers */
+[data-slot="separator"],
+hr {
+  border-color: rgba(229, 231, 235, 0.35) !important;
+  background-color: rgba(229, 231, 235, 0.35) !important;
+}
+
 /* Hide scrollbar but keep scrollable */
 .scrollbar-hide {
   -ms-overflow-style: none;  /* IE and Edge */
@@ -19,11 +80,6 @@
 [role="listbox"] {
   background-color: #ffffff !important;
   background: white !important;
-}
-
-/* Soft gray borders for cards */
-[data-slot="card"] {
-  border-color: #e5e7eb !important; /* gray-200 - soft gray */
 }
 
 /* Custom react-datepicker styles */

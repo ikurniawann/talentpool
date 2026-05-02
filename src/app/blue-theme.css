@@ -1,20 +1,14 @@
-/* Pure Black Theme with Pink Accent */
+/* Liquid Glass — Dark Sidebar */
 
-/* Sidebar Background - PURE BLACK */
-aside[class*="sidebar"],
-[data-slot="sidebar"],
-.lg\:translate-x-0 {
-  background: #000000 !important; /* Pure black, no compromise */
-}
-
-/* Minimal overlay for subtle depth */
+/* Sidebar — the gradient is defined inline in sidebar-client.tsx, this adds the glass layer */
 aside[class*="sidebar"]::before {
   content: '';
   position: absolute;
   inset: 0;
-  background: rgba(255, 255, 255, 0.03);
-  backdrop-filter: blur(3px);
+  background: rgba(255, 255, 255, 0.04);
+  backdrop-filter: blur(4px);
   pointer-events: none;
+  z-index: 0;
 }
 
 /* Logo/Brand Text - HOT PINK! */

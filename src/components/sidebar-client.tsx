@@ -111,7 +111,7 @@ export default function SidebarClient({ user, navItems, children }: SidebarClien
   const closeMobile = () => setMobileOpen(false);
 
   return (
-    <div className="flex min-h-screen bg-gray-50">
+    <div className="flex min-h-screen" style={{ background: "linear-gradient(135deg, #eef2ff 0%, #faf5ff 40%, #f0f9ff 75%, #fef3ff 100%)" }}>
       {/* Mobile overlay */}
       {mobileOpen && (
         <div
@@ -257,12 +257,12 @@ export default function SidebarClient({ user, navItems, children }: SidebarClien
       {/* Main content area */}
       <div className="flex-1 flex flex-col min-w-0">
         {/* Mobile top bar */}
-        <div className="lg:hidden flex items-center justify-center p-4 bg-[#1e1e1e] border-b border-[#303b64] sticky top-0 z-20">
+        <div className="lg:hidden flex items-center justify-center p-4 sticky top-0 z-20" style={{ background: "rgba(255,255,255,0.72)", backdropFilter: "blur(20px) saturate(1.8)", WebkitBackdropFilter: "blur(20px) saturate(1.8)", borderBottom: "1px solid rgba(209,213,219,0.35)" }}>
           <button
             onClick={() => setMobileOpen(true)}
-            className="p-2 rounded-lg hover:bg-white/10 absolute left-4"
+            className="p-2 rounded-lg hover:bg-gray-100 absolute left-4"
           >
-            <Bars3Icon className="w-5 h-5 text-white" />
+            <Bars3Icon className="w-5 h-5 text-gray-700" />
           </button>
           <img src="/logos/logo.png" alt="Prologue in Wounderland" className="h-10 w-auto object-contain" />
         </div>
