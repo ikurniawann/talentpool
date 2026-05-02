@@ -1,6 +1,6 @@
 # 📐 Project Standards & Best Practices
 
-**Project:** TalentPool - Purchasing Module  
+**Project:** Arkiv OS - Purchasing Module  
 **Last Updated:** 2026-04-24  
 **Status:** Active Standards
 
@@ -358,7 +358,7 @@ cp PROJECT_STANDARDS.md [new-project]/
 
 ```bash
 npm install lucide-react sonner
-# Already in talentpool: shadcn/ui components
+# Already in arkiv-os: shadcn/ui components
 ```
 
 ### 3. Create First Page
@@ -403,5 +403,5 @@ Consistency is key! Apply same patterns everywhere.
 
 **Created:** 2026-04-24  
 **By:** OpenClaw Agent  
-**Project:** TalentPool - Purchasing Module  
+**Project:** Arkiv OS - Purchasing Module  
 **Status:** Active Standards

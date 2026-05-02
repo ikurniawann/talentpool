@@ -75,7 +75,7 @@ export default function SidebarNav({ navItems, userName, userRole }: SidebarNavP
   return (
     <aside className="w-64 bg-gradient-to-br from-[#303b64] to-[#425aad] flex flex-col shadow-xl">
       <div className="p-6 border-b border-white/10 flex flex-col items-center">
-        <img src="/logos/logo.png" alt="Prologue in Wounderland" className="w-40 h-auto object-contain mb-4" />
+        <img src="/logos/logo.png" alt="Arkiv OS" className="w-40 h-auto object-contain mb-4" />
         <div className="mt-2 p-2.5 bg-white/10 backdrop-blur-sm rounded-lg text-center">
           <p className="text-xs font-medium text-white">{userName}</p>
           <p className="text-xs text-white/60 capitalize">{userRole.replace("_", " ")}</p>

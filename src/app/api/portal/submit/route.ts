@@ -174,7 +174,7 @@ export async function POST(request: NextRequest) {
                 ${notes ? `<tr><td style="padding: 8px 0; color: #555;">Catatan</td><td style="padding: 8px 0; color: #1a1a1a;">${notes}</td></tr>` : ""}
               </table>
               <div style="margin-top: 24px;">
-                <a href="${process.env.NEXT_PUBLIC_APP_URL ?? "https://talentpool-murex.vercel.app"}/dashboard/candidates/${candidate.id}" style="background: #2563eb; color: #fff; padding: 10px 20px; border-radius: 6px; text-decoration: none; font-size: 14px; font-weight: 600;">Lihat di Dashboard</a>
+                <a href="${process.env.NEXT_PUBLIC_APP_URL ?? "https://arkiv-os.vercel.app"}/dashboard/candidates/${candidate.id}" style="background: #2563eb; color: #fff; padding: 10px 20px; border-radius: 6px; text-decoration: none; font-size: 14px; font-weight: 600;">Lihat di Dashboard</a>
               </div>
               <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;" />
               <p style="color: #888; font-size: 12px;">Pesan ini dikirim otomatis dari sistem Talent Pool.</p>

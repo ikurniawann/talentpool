@@ -11,7 +11,7 @@ import { ErrorBoundary } from "@/components/error-boundary";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Prologue in Wounderland - Backoffice",
+  title: "Arkiv OS",
   description: "Sistem ERP Terintegrasi: Talent Pool, Purchasing & Inventory Management",
   icons: {
     icon: '/favicon.svg',

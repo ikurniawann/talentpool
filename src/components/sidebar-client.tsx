@@ -132,7 +132,7 @@ export default function SidebarClient({ user, navItems, children }: SidebarClien
       >
         {/* Logo / Brand */}
         <div className={`p-4 border-b border-pink-200 flex flex-col items-center ${collapsed ? 'px-2' : ''}`}>
-          <img src="/logos/logo.png" alt="Prologue in Wounderland" className={`${collapsed ? 'w-12 h-12' : 'w-32 h-auto'} object-contain mb-3 transition-all`} />
+          <img src="/logos/logo.png" alt="Arkiv OS" className={`${collapsed ? 'w-12 h-12' : 'w-32 h-auto'} object-contain mb-3 transition-all`} />
           {!collapsed && (
             <div className="px-4 pb-3 w-full">
               <p className="text-xs text-gray-500 px-2 mb-2 text-center">Backoffice</p>
@@ -264,7 +264,7 @@ export default function SidebarClient({ user, navItems, children }: SidebarClien
           >
             <Bars3Icon className="w-5 h-5 text-gray-700" />
           </button>
-          <img src="/logos/logo.png" alt="Prologue in Wounderland" className="h-10 w-auto object-contain" />
+          <img src="/logos/logo.png" alt="Arkiv OS" className="h-10 w-auto object-contain" />
         </div>
 
         {/* Page content */}

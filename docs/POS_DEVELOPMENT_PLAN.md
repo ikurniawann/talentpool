@@ -7,7 +7,7 @@
 **Timeline**: 6-8 weeks  
 **Target**: Single outlet, ready for SaaS multi-tenant scaling
 
-## 🔗 Integration with TalentPool Modules
+## 🔗 Integration with Arkiv OS Modules
 
 ### HRD Module Integration
 - **Staff Management**: POS uses `hrd.employees` for cashier/server references

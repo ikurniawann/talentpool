@@ -44,7 +44,7 @@ The `/api/inventory` route requires authentication via `requireApiRole()`, but:
 ### **Option A: Refresh Login Session** (Quick Fix)
 
 **Steps:**
-1. Logout from TalentPool
+1. Logout from Arkiv OS
 2. Clear browser cache/cookies
 3. Login again
 4. Go to inventory page
