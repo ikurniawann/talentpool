@@ -37,6 +37,7 @@ export interface Product {
   is_active: boolean;
   is_available: boolean;
   image_url?: string;
+  xp?: number; // XP points for this product
   variants?: ProductVariant[];
   modifiers?: ProductModifier[];
 }
