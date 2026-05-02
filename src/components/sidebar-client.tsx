@@ -123,7 +123,7 @@ export default function SidebarClient({ user, navItems, children }: SidebarClien
       {/* Sidebar */}
       <aside
         className={`
-          fixed inset-y-0 left-0 z-40 bg-gradient-to-b from-[#0f172a] to-[#1e1b4b] flex flex-col
+          fixed inset-y-0 left-0 z-40 bg-[#1c1c1e] flex flex-col
           transform transition-all duration-200 ease-in-out shadow-xl
           lg:relative lg:translate-x-0 lg:z-0 lg:flex
           ${mobileOpen ? "translate-x-0" : "-translate-x-full"}

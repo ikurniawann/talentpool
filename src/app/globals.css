@@ -32,15 +32,12 @@
 
 /* ── All component borders: very light thin gray ── */
 
-/* Table rows & header */
-[role="rowgroup"] [role="row"],
-thead tr,
-tbody tr {
-  border-color: rgba(229, 231, 235, 0.5) !important;
-}
-
-th, td {
-  border-color: rgba(229, 231, 235, 0.4) !important;
+/* Table — override any stray dark borders */
+[data-slot="table-header"] tr,
+[data-slot="table-body"] tr,
+[data-slot="table-row"],
+[data-slot="table-footer"] {
+  border-color: rgba(209, 213, 219, 0.5) !important;
 }
 
 /* Inputs, textareas, selects — light border */
