@@ -356,7 +356,9 @@ export default function SectionStaffPage() {
               <label className="text-xs font-medium text-gray-600">Outlet *</label>
               <Select value={newSection.brand_id || ""} onValueChange={(v) => setNewSection((s) => ({ ...s, brand_id: v ?? "" }))}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Pilih Outlet" />
+                  <SelectValue placeholder="Pilih Outlet">
+                    {newSection.brand_id ? (brands.find(b => String(b.id) === newSection.brand_id)?.name ?? '') : undefined}
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   {brands.map((b) => (
@@ -404,7 +406,9 @@ export default function SectionStaffPage() {
             <label className="text-xs font-medium text-gray-600">Pilih Section</label>
             <Select value={assignSection || ""} onValueChange={(v) => setAssignSection(v ?? "")}>
               <SelectTrigger>
-                <SelectValue placeholder="Pilih Section" />
+                <SelectValue placeholder="Pilih Section">
+                  {assignSection ? (sections.find(sec => String(sec.id) === assignSection) ? `${sections.find(sec => String(sec.id) === assignSection)!.name} (${sections.find(sec => String(sec.id) === assignSection)!.code})` : '') : undefined}
+                </SelectValue>
               </SelectTrigger>
               <SelectContent>
                 {sections

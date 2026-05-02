@@ -326,7 +326,9 @@ export default function CandidatesPage() {
                 onValueChange={(v) => { setFilter((f) => ({ ...f, brand_id: v === "all" ? "" : (v as string) })); setPage(1); }}
               >
                 <SelectTrigger className="w-[140px] flex-shrink-0">
-                  <SelectValue placeholder="Outlet" />
+                  <SelectValue placeholder="Outlet">
+                    {filter.brand_id && filter.brand_id !== "all" ? (brands.find(b => String(b.id) === filter.brand_id)?.name ?? '') : undefined}
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Semua Outlet</SelectItem>
@@ -598,7 +600,9 @@ export default function CandidatesPage() {
                         disabled={brands.length === 0}
                       >
                         <SelectTrigger className="h-9 text-sm">
-                          <SelectValue placeholder={brands.length === 0 ? "Loading..." : "Pilih Outlet"} />
+                          <SelectValue placeholder={brands.length === 0 ? "Loading..." : "Pilih Outlet"}>
+                            {field.value ? (brands.find(b => String(b.id) === field.value)?.name ?? '') : undefined}
+                          </SelectValue>
                         </SelectTrigger>
                         <SelectContent>
                           {brands.map((b) => (
