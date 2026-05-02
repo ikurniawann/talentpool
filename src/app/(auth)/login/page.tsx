@@ -107,8 +107,8 @@ export default function LoginPage() {
                 <div className="text-sm mt-1" style={{ color: '#fbcfe8' }}>Point of Sales</div>
               </div>
               <div>
-                <div className="text-3xl font-bold" style={{ color: '#ffffff' }}>QC</div>
-                <div className="text-sm mt-1" style={{ color: '#fbcfe8' }}>Quality Control</div>
+                <div className="text-3xl font-bold" style={{ color: '#ffffff' }}>Purchasing</div>
+                <div className="text-sm mt-1" style={{ color: '#fbcfe8' }}>Purchasing Control</div>
               </div>
             </div>
           </div>
@@ -116,7 +116,7 @@ export default function LoginPage() {
           {/* Footer */}
           <div>
             <p className="text-sm" style={{ color: '#fbcfe8' }}>
-              © 2026 Arkiv Operating System by WIT.ID. All rights reserved.
+              © 2026 Arkiv Operating System by ARKIV. All rights reserved.
             </p>
           </div>
         </div>
@@ -221,8 +221,8 @@ export default function LoginPage() {
           <div className="mt-8 text-center">
             <p className="text-sm text-gray-500">
               Powered by{" "}
-              <a href="https://wit.id" target="_blank" rel="noopener noreferrer" className="text-pink-600 hover:underline font-medium">
-                WIT.ID
+              <a href="https://arkiv.id" target="_blank" rel="noopener noreferrer" className="text-pink-600 hover:underline font-medium">
+                ARKIV
               </a>
             </p>
           </div>

@@ -597,24 +597,32 @@ export default function CashierPageNew() {
         {/* Products Grid */}
         <div className="flex-1 overflow-y-auto">
           <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-5 gap-3">
-            {filteredProducts.map((product) => (
-              <button
-                key={product.id}
-                onClick={() => openCustomization(product)}
-                className="flex flex-col bg-white rounded-xl border border-gray-200 hover:border-pink-400 hover:shadow-lg transition-all overflow-hidden group"
-              >
-                <div className="aspect-square w-full overflow-hidden bg-gray-100">
-                  <img src={product.image_url || '/products/placeholder.png'} alt={product.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
-                </div>
-                <div className="p-2 flex flex-col gap-1">
-                  <div className="text-xs font-medium text-gray-900 line-clamp-2 leading-tight">{product.name}</div>
-                  <div className="flex flex-col gap-0.5">
-                    <div className="text-xs font-bold text-pink-600">{formatCurrency(product.base_price)}</div>
-                    <div className="text-[10px] text-amber-600 font-medium">{formatArk(product.base_price)}</div>
+            {filteredProducts.map((product) => {
+              // Random XP between 1-100 for each product (deterministic based on product id)
+              const xp = product.xp ?? (Math.abs(product.id.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0)) % 100) + 1;
+              return (
+                <button
+                  key={product.id}
+                  onClick={() => openCustomization(product)}
+                  className="flex flex-col bg-white rounded-xl border border-gray-200 hover:border-pink-400 hover:shadow-lg transition-all overflow-hidden group"
+                >
+                  <div className="aspect-square w-full overflow-hidden bg-gray-100">
+                    <img src={product.image_url || '/products/placeholder.png'} alt={product.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
                   </div>
-                </div>
-              </button>
-            ))}
+                  <div className="p-2 flex flex-col gap-1">
+                    <div className="text-xs font-medium text-gray-900 line-clamp-2 leading-tight">{product.name}</div>
+                    <div className="flex flex-col gap-0.5">
+                      <div className="text-xs font-bold text-pink-600">{formatCurrency(product.base_price)}</div>
+                      <div className="text-[10px] text-amber-600 font-medium">{formatArk(product.base_price)}</div>
+                      <div className="flex items-center gap-1 mt-0.5">
+                        <Sparkles className="w-3 h-3 text-purple-500" />
+                        <span className="text-[10px] text-purple-600 font-semibold">+{xp} XP</span>
+                      </div>
+                    </div>
+                  </div>
+                </button>
+              );
+            })}
           </div>
         </div>
       </div>
