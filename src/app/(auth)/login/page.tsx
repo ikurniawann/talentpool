@@ -57,33 +57,40 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen flex">
       {/* Left Panel - Pink/Black Background */}
-      <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-pink-600 via-pink-800 to-black relative overflow-hidden">
+      <div 
+        className="hidden lg:flex lg:w-1/2 relative overflow-hidden"
+        style={{
+          background: 'linear-gradient(135deg, #db2777 0%, #be185d 50%, #000000 100%)',
+        }}
+      >
         {/* Pattern Overlay */}
-        <div className="absolute inset-0 opacity-10">
-          <div className="absolute inset-0" style={{
+        <div 
+          className="absolute inset-0 opacity-10"
+          style={{
             backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
-          }} />
-        </div>
+            backgroundSize: '60px 60px',
+          }}
+        />
 
         <div className="relative z-10 flex flex-col justify-between p-12 w-full">
           {/* Logo */}
           <div>
-            <div className="flex items-center gap-2 text-white">
+            <div className="flex items-center gap-2" style={{ color: '#ffffff' }}>
               <span className="text-4xl font-bold">Arkiv</span>
-              <span className="text-2xl font-light opacity-80">OS</span>
+              <span className="text-2xl font-light" style={{ opacity: 0.8 }}>OS</span>
             </div>
           </div>
 
           {/* Main Content */}
           <div className="space-y-8">
             <div>
-              <h1 className="text-4xl font-bold text-white mb-2">
+              <h1 className="text-4xl font-bold mb-2" style={{ color: '#ffffff' }}>
                 Arkiv Operating System
               </h1>
-              <p className="text-pink-200 text-lg font-medium mb-6">
+              <p className="text-lg font-medium mb-6" style={{ color: '#fbcfe8' }}>
                 HR System · Purchasing Control · Point of Sales
               </p>
-              <p className="text-pink-100 text-base leading-relaxed max-w-md">
+              <p className="text-base leading-relaxed max-w-md" style={{ color: '#fce7f3' }}>
                 Platform terintegrasi untuk mengelola sumber daya manusia, 
                 kontrol pembelian, dan penjualan retail dalam satu sistem.
               </p>
@@ -92,23 +99,23 @@ export default function LoginPage() {
             {/* Stats */}
             <div className="grid grid-cols-3 gap-8">
               <div>
-                <div className="text-3xl font-bold text-white">HR</div>
-                <div className="text-pink-200 text-sm mt-1">Human Resources</div>
+                <div className="text-3xl font-bold" style={{ color: '#ffffff' }}>HR</div>
+                <div className="text-sm mt-1" style={{ color: '#fbcfe8' }}>Human Resources</div>
               </div>
               <div>
-                <div className="text-3xl font-bold text-white">POS</div>
-                <div className="text-pink-200 text-sm mt-1">Point of Sales</div>
+                <div className="text-3xl font-bold" style={{ color: '#ffffff' }}>POS</div>
+                <div className="text-sm mt-1" style={{ color: '#fbcfe8' }}>Point of Sales</div>
               </div>
               <div>
-                <div className="text-3xl font-bold text-white">QC</div>
-                <div className="text-pink-200 text-sm mt-1">Quality Control</div>
+                <div className="text-3xl font-bold" style={{ color: '#ffffff' }}>QC</div>
+                <div className="text-sm mt-1" style={{ color: '#fbcfe8' }}>Quality Control</div>
               </div>
             </div>
           </div>
 
           {/* Footer */}
           <div>
-            <p className="text-pink-200 text-sm">
+            <p className="text-sm" style={{ color: '#fbcfe8' }}>
               © 2026 Arkiv Operating System by WIT.ID. All rights reserved.
             </p>
           </div>
