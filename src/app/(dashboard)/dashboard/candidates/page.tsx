@@ -326,14 +326,12 @@ export default function CandidatesPage() {
                 onValueChange={(v) => { setFilter((f) => ({ ...f, brand_id: v === "all" ? "" : (v as string) })); setPage(1); }}
               >
                 <SelectTrigger className="w-[140px] flex-shrink-0">
-                  <SelectValue placeholder="Outlet">
-                    {filter.brand_id && filter.brand_id !== "all" && brands.find(b => b.id === filter.brand_id)?.name}
-                  </SelectValue>
+                  <SelectValue placeholder="Outlet" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Semua Outlet</SelectItem>
                   {brands.map((b) => (
-                    <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
+                    <SelectItem key={b.id} value={String(b.id)}>{b.name}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -593,21 +591,18 @@ export default function CandidatesPage() {
                   name="brand_id"
                   control={addForm.control}
                   render={({ field }) => {
-                    const selectedBrand = brands.find(b => b.id === field.value);
-                    return (
-                      <Select 
-                        value={field.value} 
+                      return (
+                      <Select
+                        value={field.value}
                         onValueChange={field.onChange}
                         disabled={brands.length === 0}
                       >
                         <SelectTrigger className="h-9 text-sm">
-                          <SelectValue placeholder={brands.length === 0 ? "Loading..." : "Pilih Outlet"}>
-                            {selectedBrand?.name}
-                          </SelectValue>
+                          <SelectValue placeholder={brands.length === 0 ? "Loading..." : "Pilih Outlet"} />
                         </SelectTrigger>
                         <SelectContent>
                           {brands.map((b) => (
-                            <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
+                            <SelectItem key={b.id} value={String(b.id)}>{b.name}</SelectItem>
                           ))}
                         </SelectContent>
                       </Select>

@@ -276,14 +276,12 @@ export default function TalentPoolPage() {
         </div>
         <Select value={selectedBrand} onValueChange={(v) => setSelectedBrand(v ?? "all")}>
           <SelectTrigger className="w-full sm:w-48">
-            <SelectValue placeholder="Semua Outlet">
-              {selectedBrand !== "all" && brands.find(b => b.id === selectedBrand)?.name}
-            </SelectValue>
+            <SelectValue placeholder="Semua Outlet" />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Semua Outlet</SelectItem>
             {brands.map((b) => (
-              <SelectItem key={b.id} value={b.id}>
+              <SelectItem key={b.id} value={String(b.id)}>
                 {b.name}
               </SelectItem>
             ))}

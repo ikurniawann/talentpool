@@ -225,13 +225,11 @@ export default function DashboardPage() {
       <div className="flex flex-col sm:flex-row gap-3">
         <Select value={brandFilter} onValueChange={(v) => setBrandFilter(v ?? "all")}>
           <SelectTrigger className="w-full sm:w-48">
-            <SelectValue placeholder="Semua Outlet">
-              {brandFilter !== "all" && brands.find(b => b.id === brandFilter)?.name}
-            </SelectValue>
+            <SelectValue placeholder="Semua Outlet" />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Semua Outlet</SelectItem>
-            {brands.map((b) => <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>)}
+            {brands.map((b) => <SelectItem key={b.id} value={String(b.id)}>{b.name}</SelectItem>)}
           </SelectContent>
         </Select>
         <Select value={period} onValueChange={(v) => setPeriod(v ?? "month")}>

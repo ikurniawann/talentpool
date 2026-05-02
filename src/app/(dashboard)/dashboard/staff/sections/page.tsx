@@ -236,7 +236,7 @@ export default function SectionStaffPage() {
           <SelectContent>
             <SelectItem value="all">Semua Outlet</SelectItem>
             {brands.map((b) => (
-              <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
+              <SelectItem key={b.id} value={String(b.id)}>{b.name}</SelectItem>
             ))}
           </SelectContent>
         </Select>
@@ -356,14 +356,11 @@ export default function SectionStaffPage() {
               <label className="text-xs font-medium text-gray-600">Outlet *</label>
               <Select value={newSection.brand_id || ""} onValueChange={(v) => setNewSection((s) => ({ ...s, brand_id: v ?? "" }))}>
                 <SelectTrigger>
-                  <SelectValue placeholder={(() => {
-                    const found = brands.find(b => String(b.id) === String(newSection.brand_id));
-                    return found ? found.name : "Pilih Outlet";
-                  })()} />
+                  <SelectValue placeholder="Pilih Outlet" />
                 </SelectTrigger>
                 <SelectContent>
                   {brands.map((b) => (
-                    <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
+                    <SelectItem key={b.id} value={String(b.id)}>{b.name}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -407,16 +404,13 @@ export default function SectionStaffPage() {
             <label className="text-xs font-medium text-gray-600">Pilih Section</label>
             <Select value={assignSection || ""} onValueChange={(v) => setAssignSection(v ?? "")}>
               <SelectTrigger>
-                <SelectValue placeholder={(() => {
-                  const found = sections.find(sec => String(sec.id) === String(assignSection));
-                  return found ? `${found.name} (${found.code})` : "Pilih Section";
-                })()} />
+                <SelectValue placeholder="Pilih Section" />
               </SelectTrigger>
               <SelectContent>
                 {sections
                   .filter((sec) => !sectionDialog || sec.brand_id === sectionDialog.brand_id)
                   .map((sec) => (
-                    <SelectItem key={sec.id} value={sec.id}>
+                    <SelectItem key={sec.id} value={String(sec.id)}>
                       <span className="flex items-center gap-2">
                         <span
                           className="w-3 h-3 rounded-full"
