@@ -414,7 +414,7 @@ export default function CandidatesPage() {
                       </TableCell>
                       <TableCell>
                         <div className="flex gap-1">
-                          <Link href={`/dashboard/candidates/${c.id}`}>
+                          <Link href={`/dashboard/hris/candidates/${c.id}`}>
                             <Button variant="ghost" size="sm" title="Detail">
                               <User className="w-4 h-4" />
                             </Button>
@@ -466,7 +466,7 @@ export default function CandidatesPage() {
                     <span>{new Date(c.created_at).toLocaleDateString("id-ID")}</span>
                   </div>
                   <div className="mt-2 flex gap-2">
-                    <Link href={`/dashboard/candidates/${c.id}`} className="flex-1">
+                    <Link href={`/dashboard/hris/candidates/${c.id}`} className="flex-1">
                       <Button variant="outline" size="sm" className="w-full text-xs h-8">
                         <User className="w-3.5 h-3.5 mr-1" />
                         Detail
