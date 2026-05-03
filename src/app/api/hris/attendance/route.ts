@@ -4,7 +4,7 @@ import { z } from 'zod';
 
 // Validation schemas
 const clockInSchema = z.object({
-  employee_id: z.string().uuid(),
+  employee_id: z.string().uuid().optional(),
   date: z.string().optional(), // defaults to today
   clock_in_location: z.object({
     latitude: z.number(),
