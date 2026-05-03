@@ -54,7 +54,7 @@ export default function LoginPage() {
       const isHrdEmail = hrdEmails.some(h => email.toLowerCase().includes(h));
 
       if (isHrdEmail || profile?.role === "hrd" || profile?.role === "hris") {
-        router.replace("/dashboard");
+        router.replace("/dashboard/hris");
       } else if (profile?.role === "pos") {
         router.replace("/dashboard/pos/cashier-new");
       } else if (profile && purchasingRoles.includes(profile.role)) {
