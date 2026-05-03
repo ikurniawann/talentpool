@@ -2,7 +2,7 @@
 
 **Date Completed:** 2026-05-03  
 **Status:** Production Ready  
-**Deployed:** https://talentpool-murex.vercel.app
+**Deployed:** https://arkivworld.com
 
 ---
 
