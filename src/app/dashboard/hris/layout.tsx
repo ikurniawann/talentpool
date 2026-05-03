@@ -17,9 +17,18 @@ import { ActivityLogBell } from "@/components/layout/ActivityLogBell";
 import { createClient } from "@/lib/supabase/client";
 
 const HRIS_ITEMS = [
+  // Core HRIS Modules
   { href: "/dashboard/hris/candidates", label: "Kandidat", icon: UserPlusIcon },
-  { href: "/dashboard/hris/employees", label: "Karyawan", icon: UsersIcon },
+  { href: "/dashboard/hris/pipeline", label: "Pipeline", icon: UsersIcon },
+  { href: "/dashboard/hris/talent-pool", label: "Talent Pool", icon: BriefcaseIcon },
+  { href: "/dashboard/hris/staff", label: "Staff", icon: UsersIcon },
+  
+  // NEW HRIS Features (Fase 1)
   { href: "/dashboard/hris/attendance", label: "Absensi", icon: CalendarIcon },
+  { href: "/dashboard/hris/leaves", label: "Cuti", icon: FileTextIcon },
+  { href: "/dashboard/hris/employees", label: "Karyawan", icon: UsersIcon },
+  
+  // Future Modules
   { href: "/dashboard/hris/payroll", label: "Penggajian", icon: DollarSignIcon },
   { href: "/dashboard/hris/documents", label: "Dokumen", icon: FileTextIcon },
 ];

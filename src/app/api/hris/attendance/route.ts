@@ -50,14 +50,28 @@ export async function GET(request: NextRequest) {
     let query = supabase
       .from('attendance')
       .select(`
-        *,
-        employee:employees(
+        id,
+        employee_id,
+        date,
+        clock_in,
+        clock_out,
+        clock_in_location,
+        clock_out_location,
+        work_hours,
+        break_minutes,
+        status,
+        is_late,
+        late_minutes,
+        notes,
+        created_at,
+        updated_at,
+        employee:employees!attendance_employee_id_fkey(
           id,
           full_name,
           nip,
           photo_url,
-          department:departments(name),
-          job_title:positions(title)
+          department_id,
+          job_title_id
         )
       `, { count: 'exact' });
 

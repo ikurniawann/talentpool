@@ -15,19 +15,19 @@ export default async function DashboardGroupLayout({
         user.role === "hrd"
           ? [
               { href: "/dashboard", label: "Beranda", icon: "home" },
-              { href: "/dashboard/candidates", label: "Kandidat", icon: "users" },
-              { href: "/dashboard/pipeline", label: "Pipeline", icon: "clipboard" },
-              { href: "/dashboard/talent-pool", label: "Talent Pool", icon: "star" },
-              { href: "/dashboard/staff", label: "Staff", icon: "briefcase" },
-              { href: "/dashboard/analytics", label: "Analytics", icon: "chart" },
+              { href: "/dashboard/hris/candidates", label: "Kandidat", icon: "users" },
+              { href: "/dashboard/hris/pipeline", label: "Pipeline", icon: "clipboard" },
+              { href: "/dashboard/hris/talent-pool", label: "Talent Pool", icon: "star" },
+              { href: "/dashboard/hris/staff", label: "Staff", icon: "briefcase" },
+              { href: "/dashboard/hris/analytics", label: "Analytics", icon: "chart" },
               { href: "/dashboard/settings", label: "Pengaturan", icon: "settings" },
             ]
           : user.role === "hiring_manager"
             ? [
                 { href: "/dashboard", label: "Beranda", icon: "home" },
-                { href: "/dashboard/candidates", label: "Kandidat", icon: "users" },
-                { href: "/dashboard/pipeline", label: "Pipeline", icon: "clipboard" },
-                { href: "/dashboard/analytics", label: "Analytics", icon: "chart" },
+                { href: "/dashboard/hris/candidates", label: "Kandidat", icon: "users" },
+                { href: "/dashboard/hris/pipeline", label: "Pipeline", icon: "clipboard" },
+                { href: "/dashboard/hris/analytics", label: "Analytics", icon: "chart" },
               ]
             : user.role === "purchasing_manager" ||
               user.role === "purchasing_staff" ||

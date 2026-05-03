@@ -18,19 +18,14 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       .from('attendance')
       .select(`
         *,
-        employee:employees(
+        employee:employees!inner(
           id,
           full_name,
           nip,
           photo_url,
           email,
-          department:departments(name),
-          job_title:positions(title)
-        ),
-        validator:employees!attendance_validated_by_fkey(
-          id,
-          full_name,
-          nip
+          department_id,
+          job_title_id
         )
       `)
       .eq('id', id)
