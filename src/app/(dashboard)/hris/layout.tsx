@@ -20,6 +20,7 @@ const HRIS_ITEMS = [
   { href: "/dashboard/hris/candidates", label: "Kandidat", icon: UserPlusIcon },
   { href: "/dashboard/hris/employees", label: "Karyawan", icon: UsersIcon },
   { href: "/dashboard/hris/attendance", label: "Absensi", icon: CalendarIcon },
+  { href: "/dashboard/hris/leaves", label: "Cuti", icon: BriefcaseIcon },
   { href: "/dashboard/hris/payroll", label: "Penggajian", icon: DollarSignIcon },
   { href: "/dashboard/hris/documents", label: "Dokumen", icon: FileTextIcon },
 ];
