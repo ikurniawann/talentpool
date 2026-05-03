@@ -15,19 +15,37 @@ export default async function DashboardGroupLayout({
         user.role === "hrd"
           ? [
               { href: "/dashboard", label: "Beranda", icon: "home" },
-              { href: "/dashboard/hris/candidates", label: "Kandidat", icon: "users" },
-              { href: "/dashboard/hris/pipeline", label: "Pipeline", icon: "clipboard" },
-              { href: "/dashboard/hris/talent-pool", label: "Talent Pool", icon: "star" },
-              { href: "/dashboard/hris/staff", label: "Staff", icon: "briefcase" },
-              { href: "/dashboard/hris/analytics", label: "Analytics", icon: "chart" },
+              {
+                href: "/dashboard/hris",
+                label: "HRIS Modules",
+                icon: "users",
+                children: [
+                  { href: "/dashboard/hris/candidates", label: "Kandidat", icon: "user-plus" },
+                  { href: "/dashboard/hris/pipeline", label: "Pipeline", icon: "clipboard" },
+                  { href: "/dashboard/hris/talent-pool", label: "Talent Pool", icon: "star" },
+                  { href: "/dashboard/hris/staff", label: "Staff", icon: "briefcase" },
+                  { href: "/dashboard/hris/analytics", label: "Analytics", icon: "chart" },
+                  { href: "/dashboard/hris/attendance", label: "Absensi", icon: "calendar" },
+                  { href: "/dashboard/hris/leaves", label: "Cuti & Izin", icon: "file-text" },
+                  { href: "/dashboard/hris/employees", label: "Karyawan", icon: "users" },
+                  { href: "/dashboard/hris/payroll", label: "Penggajian", icon: "dollar-sign" },
+                ],
+              },
               { href: "/dashboard/settings", label: "Pengaturan", icon: "settings" },
             ]
           : user.role === "hiring_manager"
             ? [
                 { href: "/dashboard", label: "Beranda", icon: "home" },
-                { href: "/dashboard/hris/candidates", label: "Kandidat", icon: "users" },
-                { href: "/dashboard/hris/pipeline", label: "Pipeline", icon: "clipboard" },
-                { href: "/dashboard/hris/analytics", label: "Analytics", icon: "chart" },
+                {
+                  href: "/dashboard/hris",
+                  label: "HRIS Modules",
+                  icon: "users",
+                  children: [
+                    { href: "/dashboard/hris/candidates", label: "Kandidat", icon: "user-plus" },
+                    { href: "/dashboard/hris/pipeline", label: "Pipeline", icon: "clipboard" },
+                    { href: "/dashboard/hris/analytics", label: "Analytics", icon: "chart" },
+                  ],
+                },
               ]
             : user.role === "purchasing_manager" ||
               user.role === "purchasing_staff" ||
