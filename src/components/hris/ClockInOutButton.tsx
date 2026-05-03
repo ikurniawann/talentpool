@@ -148,7 +148,6 @@ export function ClockInOutButton({
     }
 
     setShowLocationDialog(false);
-    setPendingAction(null);
   };
 
   const confirmLocation = () => {
@@ -191,7 +190,7 @@ export function ClockInOutButton({
           variant="outline"
           className={sizeClasses}
         >
-          {isLoading && pendingAction === "clock-out" ? (
+          {isLoading ? (
             <Loader2 className="w-4 h-4 mr-2 animate-spin" />
           ) : (
             <Clock className="w-4 h-4 mr-2" />
