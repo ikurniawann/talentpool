@@ -429,7 +429,7 @@ export default function PipelinePage() {
 
                 <div className="pt-4">
                   <Link
-                    href={`/dashboard/candidates/${selectedCandidate.id}`}
+                    href={`/dashboard/hris/candidates/${selectedCandidate.id}`}
                     className="flex items-center justify-center gap-2 w-full bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium py-2.5 px-4 rounded-lg transition-colors"
                   >
                     Lihat Detail

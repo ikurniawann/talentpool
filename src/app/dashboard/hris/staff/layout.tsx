@@ -5,9 +5,9 @@ import { usePathname } from "next/navigation";
 import { UsersIcon, CalendarDaysIcon, Squares2X2Icon } from "@heroicons/react/24/outline";
 
 const tabs = [
-  { href: "/dashboard/staff", label: "Staff List", icon: UsersIcon },
-  { href: "/dashboard/staff/schedules", label: "Jadwal", icon: CalendarDaysIcon },
-  { href: "/dashboard/staff/sections", label: "Section", icon: Squares2X2Icon },
+  { href: "/dashboard/hris/staff", label: "Staff List", icon: UsersIcon },
+  { href: "/dashboard/hris/staff/schedules", label: "Jadwal", icon: CalendarDaysIcon },
+  { href: "/dashboard/hris/staff/sections", label: "Section", icon: Squares2X2Icon },
 ];
 
 export default function StaffLayout({ children }: { children: React.ReactNode }) {
