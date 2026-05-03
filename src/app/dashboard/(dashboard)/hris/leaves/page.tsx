@@ -135,17 +135,18 @@ export default function LeavesPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Manajemen Cuti & Izin</h1>
-          <p className="text-gray-500 mt-1">Kelola pengajuan cuti karyawan dengan approval workflow</p>
+          <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Manajemen Cuti & Izin</h1>
+          <p className="text-sm text-gray-500 mt-1">Kelola pengajuan cuti karyawan dengan approval workflow</p>
         </div>
 
         <Dialog open={showNewDialog} onOpenChange={setShowNewDialog}>
           <DialogTrigger asChild>
-            <Button className="bg-green-600 hover:bg-green-700">
-              <Plus className="w-4 h-4 mr-2" />
-              Ajukan Cuti
+            <Button size="sm" className="bg-green-600 hover:bg-green-700">
+              <Plus className="w-3.5 h-3.5 mr-1.5" />
+              <span className="hidden sm:inline">Ajukan Cuti</span>
+              <span className="sm:hidden">Cuti</span>
             </Button>
           </DialogTrigger>
           <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">

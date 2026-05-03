@@ -39,20 +39,25 @@ export default function AttendancePage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Absensi & Timesheet</h1>
-          <p className="text-gray-500 mt-1">Kelola absensi karyawan dengan GPS tracking</p>
+          <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Absensi & Timesheet</h1>
+          <p className="text-sm text-gray-500 mt-1">Kelola absensi karyawan dengan GPS tracking</p>
         </div>
         
         <div className="flex gap-2">
-          <Button variant="outline" size="sm">
-            <Download className="w-4 h-4 mr-2" />
-            Export
+          <Button variant="outline" size="sm" className="hidden sm:inline-flex">
+            <Download className="w-3.5 h-3.5 mr-1.5" />
+            <span className="hidden lg:inline">Export CSV</span>
+            <span className="lg:hidden">CSV</span>
+          </Button>
+          <Button variant="outline" size="sm" className="sm:hidden">
+            <Filter className="w-3.5 h-3.5" />
           </Button>
           <Button variant="outline" size="sm">
-            <Filter className="w-4 h-4 mr-2" />
-            Filter
+            <Filter className="w-3.5 h-3.5 mr-1.5" />
+            <span className="hidden lg:inline">Filter</span>
+            <span className="lg:hidden">Filter</span>
           </Button>
         </div>
       </div>
@@ -60,26 +65,26 @@ export default function AttendancePage() {
       {/* Clock In/Out Section */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Clock className="w-5 h-5" />
+          <CardTitle className="flex items-center gap-2 text-base font-semibold">
+            <Clock className="w-4 h-4" />
             Clock In / Clock Out
           </CardTitle>
         </CardHeader>
         <CardContent>
           <ClockInOutButton
-            variant="large"
+            variant="default"
             onClockInSuccess={handleClockInSuccess}
             onClockOutSuccess={handleClockOutSuccess}
           />
           
           <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
             <div className="flex items-start gap-3">
-              <MapPin className="w-5 h-5 text-blue-600 mt-0.5" />
+              <MapPin className="w-4 h-4 text-blue-600 mt-0.5" />
               <div>
-                <p className="text-sm font-medium text-blue-800">
+                <p className="text-xs font-medium text-blue-800">
                   📍 GPS Location Tracking Aktif
                 </p>
-                <p className="text-sm text-blue-700 mt-1">
+                <p className="text-xs text-blue-700 mt-1">
                   Lokasi Anda akan dicatat saat clock-in untuk validasi kehadiran. 
                   Pastikan GPS device Anda aktif.
                 </p>
@@ -92,13 +97,13 @@ export default function AttendancePage() {
       {/* Filters */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Filter className="w-5 h-5" />
+          <CardTitle className="flex items-center gap-2 text-base font-semibold">
+            <Filter className="w-4 h-4" />
             Filter
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div>
               <label className="text-sm font-medium text-gray-700 mb-2 block">
                 Karyawan
