@@ -339,7 +339,7 @@ export default function CandidateDetailPage() {
             <User className="w-16 h-16 text-gray-300 mx-auto mb-4" />
             <h2 className="text-xl font-semibold text-gray-900 mb-2">Kandidat Tidak Ditemukan</h2>
             <p className="text-gray-500 mb-4">Kandidat yang Anda cari tidak ada atau sudah dihapus.</p>
-            <Link href="/dashboard/candidates">
+            <Link href="/dashboard/hris/candidates">
               <Button>Kembali ke Daftar Kandidat</Button>
             </Link>
           </CardContent>
@@ -353,7 +353,7 @@ export default function CandidateDetailPage() {
       {/* Header */}
       <div className="flex items-start justify-between">
         <div className="flex items-center gap-4">
-          <Link href="/dashboard/candidates">
+          <Link href="/dashboard/hris/candidates">
             <Button variant="ghost" size="icon">
               <ArrowLeft className="w-5 h-5" />
             </Button>
