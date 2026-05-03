@@ -46,7 +46,6 @@ export function ClockInOutButton({
 }: ClockInOutButtonProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [showLocationDialog, setShowLocationDialog] = useState(false);
-  const [pendingAction, setPendingAction] = useState<"clock-in" | "clock-out" | null>(null);
   const [location, setLocation] = useState<LocationData | null>(null);
   const [lastAttendanceId, setLastAttendanceId] = useState<string | null>(null);
   const { toast } = useToast();
@@ -87,11 +86,13 @@ export function ClockInOutButton({
       let locationData: LocationData | null = null;
       if (action === "clock-in") {
         locationData = await getLocation();
+        setLocation(locationData);
+        // Store action in a ref or directly call from dialog
         if (locationData) {
-          setLocation(locationData);
-          setPendingAction(action);
           setShowLocationDialog(true);
-          return; // Continue in dialog
+          // Store the action to be used by confirmLocation
+          (window as any).__pendingClockAction = action;
+          return;
         }
       }
 
@@ -151,15 +152,17 @@ export function ClockInOutButton({
   };
 
   const confirmLocation = () => {
-    if (pendingAction) {
-      performClockAction(pendingAction, location);
+    const action = (window as any).__pendingClockAction as "clock-in" | "clock-out";
+    if (action) {
+      performClockAction(action, location);
+      delete (window as any).__pendingClockAction;
     }
   };
 
   const cancelLocation = () => {
     setShowLocationDialog(false);
-    setPendingAction(null);
     setLocation(null);
+    delete (window as any).__pendingClockAction;
   };
 
   const sizeClasses = variant === "large" 
@@ -174,7 +177,7 @@ export function ClockInOutButton({
           disabled={isLoading}
           className={`${sizeClasses} bg-green-600 hover:bg-green-700`}
         >
-          {isLoading && pendingAction === "clock-in" ? (
+          {isLoading ? (
             <Loader2 className="w-4 h-4 mr-2 animate-spin" />
           ) : (
             <Clock className="w-4 h-4 mr-2" />
