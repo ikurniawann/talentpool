@@ -26,8 +26,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Sheet,
+  SheetContent,
+  SheetTrigger,
+} from "@/components/ui/sheet";
 import { useForm, Controller } from "react-hook-form";
-import { Loader2, Plus, Download, Search, User, Trash2, Upload, FileText } from "lucide-react";
+import { Loader2, Plus, Download, Search, User, Trash2, Upload, FileText, Menu, X } from "lucide-react";
 import type { Candidate, CandidateStatus, Brand } from "@/types";
 
 const STATUS_LABELS: Record<CandidateStatus, string> = {
@@ -92,6 +97,7 @@ export default function CandidatesPage() {
   const [deleteCandidate, setDeleteCandidate] = useState<Candidate | null>(null);
   const [cvFile, setCvFile] = useState<File | null>(null);
   const [uploadingCv, setUploadingCv] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const cvFileRef = useRef<HTMLInputElement>(null);
   const perPage = 20;
 
@@ -269,8 +275,93 @@ export default function CandidatesPage() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      {/* Mobile Header with Hamburger Menu */}
+      <div className="lg:hidden sticky top-0 z-50 bg-white border-b border-gray-200">
+        <div className="flex items-center justify-between h-14 px-4">
+          {/* Left - Logo + Title */}
+          <div className="flex items-center gap-3">
+            <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
+              <SheetTrigger asChild>
+                <Button variant="ghost" size="icon" className="lg:hidden">
+                  <Menu className="w-5 h-5" />
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="left" className="w-[280px] p-0">
+                <div className="border-b border-gray-200 p-4">
+                  <h2 className="font-semibold text-lg">HRIS Menu</h2>
+                </div>
+                <nav className="p-4 space-y-2">
+                  <Link
+                    href="/dashboard/hris/candidates"
+                    className="block px-4 py-2 text-sm font-medium rounded-lg bg-green-50 text-green-700"
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    👤 Kandidat
+                  </Link>
+                  <Link
+                    href="/dashboard/hris/pipeline"
+                    className="block px-4 py-2 text-sm font-medium rounded-lg hover:bg-gray-50"
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    📋 Pipeline
+                  </Link>
+                  <Link
+                    href="/dashboard/hris/talent-pool"
+                    className="block px-4 py-2 text-sm font-medium rounded-lg hover:bg-gray-50"
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    ⭐ Talent Pool
+                  </Link>
+                  <Link
+                    href="/dashboard/hris/staff"
+                    className="block px-4 py-2 text-sm font-medium rounded-lg hover:bg-gray-50"
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    💼 Staff
+                  </Link>
+                  <Link
+                    href="/dashboard/hris/attendance"
+                    className="block px-4 py-2 text-sm font-medium rounded-lg hover:bg-gray-50"
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    📅 Absensi
+                  </Link>
+                  <Link
+                    href="/dashboard/hris/leaves"
+                    className="block px-4 py-2 text-sm font-medium rounded-lg hover:bg-gray-50"
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    📄 Cuti & Izin
+                  </Link>
+                  <Link
+                    href="/dashboard/hris/employees"
+                    className="block px-4 py-2 text-sm font-medium rounded-lg hover:bg-gray-50"
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    👨‍👩‍‍👦 Karyawan
+                  </Link>
+                </nav>
+              </SheetContent>
+            </Sheet>
+            <div>
+              <h1 className="text-lg font-bold text-gray-900">Kandidat</h1>
+              <p className="text-xs text-gray-500">{totalCount} kandidat</p>
+            </div>
+          </div>
+
+          {/* Right - Action Buttons */}
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={handleExportCSV} className="hidden sm:flex">
+              <Download className="w-4 h-4" />
+            </Button>
+            <Button size="sm" onClick={() => setShowAddDialog(true)}>
+              <Plus className="w-4 h-4" />
+            </Button>
+          </div>
+        </div>
+      </div>
+      {/* Desktop Header - Hidden on Mobile */}
+      <div className="hidden lg:flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Kandidat</h1>
           <p className="text-gray-500 text-sm mt-1">
