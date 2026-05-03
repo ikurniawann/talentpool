@@ -282,9 +282,13 @@ export default function CandidatesPage() {
           <div className="flex items-center gap-3">
             <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
               <SheetTrigger asChild>
-                <Button variant="ghost" size="icon" className="lg:hidden">
+                <button
+                  onClick={() => setMobileMenuOpen(true)}
+                  className="lg:hidden p-2 hover:bg-gray-100 rounded-lg"
+                  aria-label="Open menu"
+                >
                   <Menu className="w-5 h-5" />
-                </Button>
+                </button>
               </SheetTrigger>
               <SheetContent side="left" className="w-[280px] p-0">
                 <div className="border-b border-gray-200 p-4">
@@ -351,9 +355,13 @@ export default function CandidatesPage() {
 
           {/* Right - Action Buttons */}
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" onClick={handleExportCSV} className="hidden sm:flex">
+            <button
+              onClick={handleExportCSV}
+              className="hidden sm:flex items-center justify-center p-2 hover:bg-gray-100 rounded-lg"
+              aria-label="Export CSV"
+            >
               <Download className="w-4 h-4" />
-            </Button>
+            </button>
             <Button size="sm" onClick={() => setShowAddDialog(true)}>
               <Plus className="w-4 h-4" />
             </Button>
