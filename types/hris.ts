@@ -325,6 +325,272 @@ export const MARITAL_STATUS_LABELS: Record<MaritalStatusType, string> = {
   widowed: 'Cerai Mati',
 };
 
+// ============================================================
+// FASE 1 - CORE HR OPERATIONS TYPES
+// ============================================================
+
+// Attendance Types
+export type AttendanceStatus = 'present' | 'late' | 'absent' | 'half-day' | 'remote';
+
+export interface AttendanceLocation {
+  latitude: number;
+  longitude: number;
+  accuracy?: number;
+  address?: string;
+  ip_address?: string;
+  user_agent?: string;
+}
+
+export interface Attendance {
+  id: string;
+  employee_id: string;
+  date: string;
+  clock_in: string | null;
+  clock_out: string | null;
+  clock_in_location: AttendanceLocation | null;
+  clock_out_location: AttendanceLocation | null;
+  work_hours: number | null;
+  break_minutes: number;
+  status: AttendanceStatus;
+  is_late: boolean;
+  late_minutes: number;
+  is_overtime: boolean;
+  overtime_hours: number;
+  validated_by: string | null;
+  validated_at: string | null;
+  validation_notes: string | null;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AttendanceWithEmployee extends Attendance {
+  employee?: Employee;
+}
+
+// Leave Types
+export type LeaveType = 
+  | 'annual'
+  | 'sick'
+  | 'maternity'
+  | 'paternity'
+  | 'unpaid'
+  | 'emergency'
+  | 'pilgrimage'
+  | 'menstrual';
+
+export type LeaveStatus = 'pending' | 'approved' | 'rejected' | 'cancelled';
+
+export interface Leave {
+  id: string;
+  employee_id: string;
+  leave_type: LeaveType;
+  start_date: string;
+  end_date: string;
+  total_days: number;
+  reason: string;
+  attachment_url: string | null;
+  status: LeaveStatus;
+  approved_by: string | null;
+  approved_at: string | null;
+  rejection_reason: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface LeaveWithEmployee extends Leave {
+  employee?: Employee;
+  approver?: Employee;
+}
+
+// Leave Balance Types
+export interface LeaveBalance {
+  id: string;
+  employee_id: string;
+  year: number;
+  annual_leave_total: number;
+  annual_leave_used: number;
+  annual_leave_remaining: number;
+  sick_leave_used: number;
+  unpaid_leave_used: number;
+  maternity_leave_used: number;
+  paternity_leave_used: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface LeaveBalanceWithEmployee extends LeaveBalance {
+  employee?: Employee;
+}
+
+// Onboarding Types
+export type OnboardingCategory = 'admin' | 'it' | 'hr' | 'manager' | 'general';
+
+export interface OnboardingTask {
+  id: string;
+  employee_id: string;
+  task_name: string;
+  category: OnboardingCategory;
+  description: string | null;
+  priority: number; // 1=high, 2=medium, 3=low
+  due_date: string | null;
+  due_days_after_join: number;
+  completed: boolean;
+  completed_at: string | null;
+  completed_by: string | null;
+  completion_notes: string | null;
+  assigned_to: string | null;
+  created_at: string;
+}
+
+export interface OnboardingTaskWithEmployee extends OnboardingTask {
+  employee?: Employee;
+  assignee?: Employee;
+}
+
+// Offboarding Types
+export type ResignationType = 'voluntary' | 'termination' | 'layoff' | 'end_of_contract';
+export type OffboardingStatus = 'submitted' | 'notice_period' | 'exit_interview' | 'completed';
+
+export interface OffboardingChecklist {
+  id: string;
+  employee_id: string;
+  resignation_type: ResignationType;
+  resignation_date: string;
+  last_working_day: string;
+  reason: string | null;
+  status: OffboardingStatus;
+  exit_interview_date: string | null;
+  exit_interview_conducted_by: string | null;
+  exit_interview_notes: string | null;
+  final_payroll_date: string | null;
+  final_payroll_amount: number | null;
+  final_payroll_notes: string | null;
+  asset_return_status: Record<string, boolean>; // {laptop: true, id_card: false}
+  clearance_hrd: boolean;
+  clearance_hrd_notes: string | null;
+  clearance_it: boolean;
+  clearance_it_notes: string | null;
+  clearance_finance: boolean;
+  clearance_finance_notes: string | null;
+  clearance_manager: boolean;
+  clearance_manager_notes: string | null;
+  completed_at: string | null;
+  completed_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface OffboardingChecklistWithEmployee extends OffboardingChecklist {
+  employee?: Employee;
+  interviewer?: Employee;
+}
+
+// Employee Schedule Types
+export type ShiftType = 'morning' | 'afternoon' | 'night' | 'flexible' | 'custom';
+
+export interface EmployeeSchedule {
+  id: string;
+  employee_id: string;
+  day_of_week: number; // 0=Sunday, 6=Saturday
+  start_time: string; // TIME
+  end_time: string; // TIME
+  shift_type: ShiftType;
+  break_minutes: number;
+  is_off: boolean;
+  overtime_allowed: boolean;
+  max_overtime_hours: number;
+  effective_from: string;
+  effective_to: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface EmployeeScheduleWithEmployee extends EmployeeSchedule {
+  employee?: Employee;
+}
+
+// ============================================================
+// LABELS & COLORS FOR FASE 1
+// ============================================================
+
+export const ATTENDANCE_STATUS_LABELS: Record<AttendanceStatus, string> = {
+  present: 'Hadir',
+  late: 'Terlambat',
+  absent: 'Alpha',
+  'half-day': 'Setengah Hari',
+  remote: 'Remote',
+};
+
+export const ATTENDANCE_STATUS_COLORS: Record<AttendanceStatus, string> = {
+  present: 'bg-green-100 text-green-800',
+  late: 'bg-yellow-100 text-yellow-800',
+  absent: 'bg-red-100 text-red-800',
+  'half-day': 'bg-blue-100 text-blue-800',
+  remote: 'bg-purple-100 text-purple-800',
+};
+
+export const LEAVE_TYPE_LABELS: Record<LeaveType, string> = {
+  annual: 'Cuti Tahunan',
+  sick: 'Sakit',
+  maternity: 'Melahirkan',
+  paternity: 'Cuti Ayah',
+  unpaid: 'Cuti Tanpa Upah',
+  emergency: 'Cuti Darurat',
+  pilgrimage: 'Cuti Haji/Umrah',
+  menstrual: 'Cuti Haid',
+};
+
+export const LEAVE_STATUS_LABELS: Record<LeaveStatus, string> = {
+  pending: 'Menunggu Persetujuan',
+  approved: 'Disetujui',
+  rejected: 'Ditolak',
+  cancelled: 'Dibatalkan',
+};
+
+export const LEAVE_STATUS_COLORS: Record<LeaveStatus, string> = {
+  pending: 'bg-yellow-100 text-yellow-800',
+  approved: 'bg-green-100 text-green-800',
+  rejected: 'bg-red-100 text-red-800',
+  cancelled: 'bg-gray-100 text-gray-800',
+};
+
+export const ONBOARDING_CATEGORY_LABELS: Record<OnboardingCategory, string> = {
+  admin: 'Administrasi',
+  it: 'IT & Equipment',
+  hr: 'HRD',
+  manager: 'Manager',
+  general: 'Umum',
+};
+
+export const ONBOARDING_PRIORITY_LABELS: Record<number, string> = {
+  1: 'Tinggi',
+  2: 'Sedang',
+  3: 'Rendah',
+};
+
+export const RESIGNATION_TYPE_LABELS: Record<ResignationType, string> = {
+  voluntary: 'Mengundurkan Diri',
+  termination: 'PHK',
+  layoff: 'Layoff',
+  'end_of_contract': 'Akhir Kontrak',
+};
+
+export const OFFBOARDING_STATUS_LABELS: Record<OffboardingStatus, string> = {
+  submitted: 'Diajukan',
+  notice_period: 'Masa Pemberitahuan',
+  exit_interview: 'Exit Interview',
+  completed: 'Selesai',
+};
+
+export const SHIFT_TYPE_LABELS: Record<ShiftType, string> = {
+  morning: 'Pagi',
+  afternoon: 'Siang',
+  night: 'Malam',
+  flexible: 'Fleksibel',
+  custom: 'Custom',
+};
+
 // Helper function untuk format NIP display
 export const formatNIP = (nip: string): string => {
   // EMP-2026-00001 → EMP-2026-00001 (already formatted)
@@ -345,4 +611,47 @@ export const calculateTenure = (joinDate: string): string => {
   } else {
     return 'Baru bergabung';
   }
+};
+
+// Helper function untuk calculate leave days (exclude weekends)
+export const calculateLeaveDays = (startDate: string, endDate: string): number => {
+  const start = new Date(startDate);
+  const end = new Date(endDate);
+  let days = 0;
+  
+  for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+    const dayOfWeek = d.getDay();
+    if (dayOfWeek !== 0 && dayOfWeek !== 6) { // Exclude Sunday and Saturday
+      days++;
+    }
+  }
+  
+  return Math.max(1, days);
+};
+
+// Helper function untuk get GPS location
+export const getCurrentLocation = async (): Promise<AttendanceLocation | null> => {
+  if (!navigator.geolocation) {
+    return null;
+  }
+  
+  return new Promise((resolve) => {
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        resolve({
+          latitude: position.coords.latitude,
+          longitude: position.coords.longitude,
+          accuracy: position.coords.accuracy,
+        });
+      },
+      () => {
+        resolve(null); // Permission denied or error
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 0,
+      }
+    );
+  });
 };
