@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -68,6 +68,7 @@ function calculateTenure(joinDate: string) {
 
 export default function EmployeesPage() {
   const router = useRouter();
+  const pathname = usePathname();
   const supabase = createClient();
 
   const [employees, setEmployees] = useState<any[]>([]);
@@ -137,6 +138,48 @@ export default function EmployeesPage() {
         <Button onClick={() => router.push("/dashboard/hris/employees/new")} className="gap-2">
           <PlusIcon className="w-4 h-4" /> Tambah Karyawan
         </Button>
+      </div>
+
+      {/* Tabs */}
+      <div className="border-b border-gray-200">
+        <nav className="-mb-px flex space-x-6 overflow-x-auto">
+          <button
+            onClick={() => router.push("/dashboard/hris/employees")}
+            className={`
+              whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm
+              ${pathname === "/dashboard/hris/employees"
+                ? 'border-pink-500 text-pink-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }
+            `}
+          >
+            Semua Karyawan
+          </button>
+          <button
+            onClick={() => router.push("/dashboard/hris/schedules")}
+            className={`
+              whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm
+              ${pathname.startsWith("/dashboard/hris/schedules")
+                ? 'border-pink-500 text-pink-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }
+            `}
+          >
+            Schedules
+          </button>
+          <button
+            onClick={() => router.push("/dashboard/hris/sections")}
+            className={`
+              whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm
+              ${pathname.startsWith("/dashboard/hris/sections")
+                ? 'border-pink-500 text-pink-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }
+            `}
+          >
+            Sections
+          </button>
+        </nav>
       </div>
 
       {/* Summary Cards */}
