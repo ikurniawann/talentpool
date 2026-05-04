@@ -117,10 +117,12 @@ export default function NewEmployeePage() {
     try {
       const payload: Record<string, any> = {};
       for (const [k, v] of Object.entries(form)) {
-        // Skip nip - let database trigger auto-generate
+        // Skip nip - let API generate
         if (k === 'nip') continue;
         payload[k] = v === "" ? null : v;
       }
+
+      console.log('Submitting payload:', JSON.stringify(payload, null, 2));
 
       const res = await fetch("/api/hris/employees", {
         method: "POST",
