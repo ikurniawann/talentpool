@@ -9,7 +9,7 @@ import {
   ArrowLeftIcon,
   BanknotesIcon,
   DocumentTextIcon,
-  DownloadIcon,
+  ArrowDownTrayIcon,
 } from "@heroicons/react/24/outline";
 import { useToast, ToastContainer } from "@/components/ui/toast";
 
@@ -181,7 +181,7 @@ export default function PayrollDetailPage({ params }: PayrollPageProps) {
           </p>
         </div>
         <Button onClick={handleExportCSV} variant="outline">
-          <DownloadIcon className="w-4 h-4 mr-2" />
+          <ArrowDownTrayIcon className="w-4 h-4 mr-2" />
           Export CSV
         </Button>
       </div>
