@@ -78,6 +78,14 @@ export default function EmployeesPage() {
   const [page, setPage] = useState(1);
   const perPage = 15;
 
+  // Summary stats
+  const [stats, setStats] = useState({
+    total: 0,
+    active: 0,
+    inactive: 0,
+    departments: 0,
+  });
+
   // Filters
   const [search, setSearch] = useState("");
   const [departmentFilter, setDepartmentFilter] = useState("all");
@@ -108,6 +116,34 @@ export default function EmployeesPage() {
     fetchEmployees();
   }, [fetchEmployees]);
 
+  // Fetch summary stats
+  useEffect(() => {
+    async function fetchStats() {
+      const { data: allEmployees } = await supabase
+        .from('employees')
+        .select('id, is_active, department_id', { count: 'exact', head: false });
+      
+      const { data: depts } = await supabase
+        .from('departments')
+        .select('id', { count: 'exact' });
+      
+      if (allEmployees) {
+        const active = allEmployees.filter(e => e.is_active).length;
+        const inactive = allEmployees.length - active;
+        const deptCount = new Set(allEmployees.map(e => e.department_id).filter(Boolean)).size;
+        
+        setStats({
+          total: allEmployees.length,
+          active,
+          inactive,
+          departments: depts?.length || 0,
+        });
+      }
+    }
+    
+    fetchStats();
+  }, []);
+
   useEffect(() => {
     supabase
       .from("departments")
@@ -127,6 +163,65 @@ export default function EmployeesPage() {
 
   return (
     <div className="space-y-6">
+      {/* Summary Cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-blue-100 rounded-lg">
+                <UserGroupIcon className="w-5 h-5 text-blue-600" />
+              </div>
+              <div>
+                <p className="text-xs text-gray-500">Total Karyawan</p>
+                <p className="text-xl font-bold text-gray-900">{stats.total}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-green-100 rounded-lg">
+                <UserGroupIcon className="w-5 h-5 text-green-600" />
+              </div>
+              <div>
+                <p className="text-xs text-gray-500">Aktif</p>
+                <p className="text-xl font-bold text-green-600">{stats.active}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-red-100 rounded-lg">
+                <UserGroupIcon className="w-5 h-5 text-red-600" />
+              </div>
+              <div>
+                <p className="text-xs text-gray-500">Nonaktif</p>
+                <p className="text-xl font-bold text-red-600">{stats.inactive}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-purple-100 rounded-lg">
+                <BuildingOfficeIcon className="w-5 h-5 text-purple-600" />
+              </div>
+              <div>
+                <p className="text-xs text-gray-500">Departemen</p>
+                <p className="text-xl font-bold text-gray-900">{stats.departments}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
