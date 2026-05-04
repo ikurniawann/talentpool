@@ -282,13 +282,15 @@ export default function CandidatesPage() {
           <div className="flex items-center gap-3">
             <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
               <SheetTrigger asChild>
-                <button
+                <Button
+                  variant="ghost"
+                  size="icon"
                   onClick={() => setMobileMenuOpen(true)}
-                  className="lg:hidden p-2 hover:bg-gray-100 rounded-lg"
+                  className="lg:hidden"
                   aria-label="Open menu"
                 >
                   <Menu className="w-5 h-5" />
-                </button>
+                </Button>
               </SheetTrigger>
               <SheetContent side="left" className="w-[280px] p-0">
                 <div className="border-b border-gray-200 p-4">
