@@ -135,7 +135,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if NIP already exists (if provided manually)
-    if (body.nip) {
+    if (body.nip && body.nip.trim() !== '') {
       const { data: existing } = await supabase
         .from('employees')
         .select('id')
@@ -148,6 +148,11 @@ export async function POST(request: NextRequest) {
           { status: 400 }
         );
       }
+    }
+
+    // Set NIP to null if empty to let trigger auto-generate
+    if (!body.nip || body.nip.trim() === '') {
+      body.nip = null;
     }
 
     // Check if email already exists
@@ -207,6 +212,30 @@ export async function POST(request: NextRequest) {
 
     if (error) {
       console.error('Error creating employee:', error);
+      
+      // Handle unique constraint violations
+      if (error.code === '23505') {
+        // Check which field caused the duplicate
+        if (error.constraint?.includes('nip')) {
+          return NextResponse.json(
+            { error: 'NIP sudah digunakan, silakan gunakan NIP lain atau kosongkan untuk auto-generate' },
+            { status: 400 }
+          );
+        }
+        if (error.constraint?.includes('email')) {
+          return NextResponse.json(
+            { error: 'Email sudah terdaftar' },
+            { status: 400 }
+          );
+        }
+        if (error.constraint?.includes('ktp')) {
+          return NextResponse.json(
+            { error: 'NIK/KTP sudah terdaftar' },
+            { status: 400 }
+          );
+        }
+      }
+      
       return NextResponse.json(
         { error: 'Gagal membuat data karyawan', details: error.message },
         { status: 500 }
