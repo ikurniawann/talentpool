@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, use } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -51,6 +51,7 @@ const MARITAL_OPTIONS = [
 export default function EditEmployeePage({ params }: EditEmployeePageProps) {
   const { id } = use(params);
   const router = useRouter();
+  const pathname = usePathname();
   const { toasts, showToast, removeToast } = useToast();
 
   const [loading, setLoading] = useState(true);
@@ -205,6 +206,19 @@ export default function EditEmployeePage({ params }: EditEmployeePageProps) {
   return (
     <div className="max-w-4xl mx-auto space-y-6 pb-12">
       <ToastContainer toasts={toasts} removeToast={removeToast} />
+
+      {/* Breadcrumb */}
+      <div className="flex items-center gap-2 text-sm text-gray-500">
+        <button onClick={() => router.push("/dashboard/hris/employees")} className="hover:text-gray-900">
+          Direktori Karyawan
+        </button>
+        <span>/</span>
+        <button onClick={() => router.push(`/dashboard/hris/employees/${id}`)} className="hover:text-gray-900">
+          Detail Karyawan
+        </button>
+        <span>/</span>
+        <span className="text-gray-900 font-medium">Edit</span>
+      </div>
 
       {/* Header */}
       <div className="flex items-center gap-4">

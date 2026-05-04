@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, use } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -112,6 +112,7 @@ type Tab = "info" | "employment" | "documents" | "attendance" | "leave";
 export default function EmployeeProfilePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const router = useRouter();
+  const pathname = usePathname();
   const { toasts, toast, dismiss } = useToast();
 
   const [employee, setEmployee] = useState<any>(null);
@@ -247,6 +248,15 @@ export default function EmployeeProfilePage({ params }: { params: Promise<{ id: 
 
   return (
     <div className="space-y-6">
+      {/* Breadcrumb */}
+      <div className="flex items-center gap-2 text-sm text-gray-500">
+        <button onClick={() => router.push("/dashboard/hris/employees")} className="hover:text-gray-900">
+          Direktori Karyawan
+        </button>
+        <span>/</span>
+        <span className="text-gray-900 font-medium">{employee?.full_name || "Detail Karyawan"}</span>
+      </div>
+
       {/* Back + Header */}
       <div className="flex items-center gap-4">
         <Button variant="ghost" size="sm" onClick={() => router.back()} className="gap-1">
