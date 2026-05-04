@@ -231,21 +231,6 @@ export default function SidebarClient({ user, navItems, children }: SidebarClien
           })}
         </nav>
 
-        {/* Notifications (desktop) */}
-        {!collapsed && (
-          <div className="px-3 pb-2">
-            <div className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-pink-100 transition-colors">
-              <NotificationBell />
-              <span className="text-sm text-gray-700">Notifikasi</span>
-            </div>
-          </div>
-        )}
-        {collapsed && (
-          <div className="px-3 pb-2 flex justify-center">
-            <NotificationBell />
-          </div>
-        )}
-
         {/* Logout & Collapse Toggle */}
         <div className="p-3 border-t border-pink-200 space-y-2">
           <button
@@ -275,18 +260,21 @@ export default function SidebarClient({ user, navItems, children }: SidebarClien
 
       {/* Main content area */}
       <div className="flex-1 flex flex-col min-w-0">
-        {/* Mobile top bar */}
-        <div className="lg:hidden flex items-center justify-center p-4 sticky top-0 z-20" style={{ background: "rgba(255,255,255,0.72)", backdropFilter: "blur(20px) saturate(1.8)", WebkitBackdropFilter: "blur(20px) saturate(1.8)", borderBottom: "1px solid rgba(209,213,219,0.35)" }}>
+        {/* Top bar (mobile + desktop) */}
+        <div className="flex items-center justify-between p-3 sticky top-0 z-20" style={{ background: "rgba(255,255,255,0.72)", backdropFilter: "blur(20px) saturate(1.8)", WebkitBackdropFilter: "blur(20px) saturate(1.8)", borderBottom: "1px solid rgba(209,213,219,0.35)" }}>
+          {/* Mobile: hamburger */}
           <button
             onClick={() => setMobileOpen(true)}
-            className="p-2 rounded-lg hover:bg-gray-100 absolute left-4"
+            className="p-2 rounded-lg hover:bg-gray-100 lg:hidden"
           >
             <Bars3Icon className="w-5 h-5 text-gray-700" />
           </button>
-          <img src="/logos/logo.png" alt="Arkiv OS" className="h-10 w-auto object-contain" />
-          <div className="absolute right-4">
-            <NotificationBell />
-          </div>
+          {/* Mobile: logo center */}
+          <img src="/logos/logo.png" alt="Arkiv OS" className="h-9 w-auto object-contain lg:hidden" />
+          {/* Desktop: empty spacer */}
+          <div className="hidden lg:block" />
+          {/* Bell — always right */}
+          <NotificationBell />
         </div>
 
         {/* Page content */}
