@@ -20,9 +20,11 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Clock, MapPin, Loader2, CheckCircle2, XCircle } from "lucide-react";
+import { Clock, MapPin, Loader2, CheckCircle2, XCircle, Keyboard } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 interface ClockInOutButtonProps {
   employeeId?: string;
@@ -48,10 +50,23 @@ export function ClockInOutButton({
   const [showLocationDialog, setShowLocationDialog] = useState(false);
   const [location, setLocation] = useState<LocationData | null>(null);
   const [lastAttendanceId, setLastAttendanceId] = useState<string | null>(null);
+  const [useManualLocation, setUseManualLocation] = useState(false);
+  const [manualLat, setManualLat] = useState("");
+  const [manualLng, setManualLng] = useState("");
   const { toast } = useToast();
 
-  const getLocation = useCallback((): Promise<LocationData | null> => {
+  const getLocation = useCallback((useManual: boolean = false): Promise<LocationData | null> => {
     return new Promise((resolve) => {
+      if (useManual && manualLat && manualLng) {
+        // Use manual coordinates
+        resolve({
+          latitude: parseFloat(manualLat),
+          longitude: parseFloat(manualLng),
+          accuracy: 0,
+        });
+        return;
+      }
+
       if (!navigator.geolocation) {
         resolve(null);
         return;
@@ -76,7 +91,7 @@ export function ClockInOutButton({
         }
       );
     });
-  }, []);
+  }, [manualLat, manualLng]);
 
   const handleClockAction = async (action: "clock-in" | "clock-out") => {
     try {
@@ -209,6 +224,106 @@ export function ClockInOutButton({
             </DialogDescription>
           </DialogHeader>
 
+          {!location && !useManualLocation && (
+            <div className="space-y-4">
+              <div className="bg-yellow-50 border border-yellow-200 p-4 rounded-lg">
+                <div className="flex items-start gap-2">
+                  <XCircle className="w-5 h-5 text-yellow-600 mt-0.5" />
+                  <div>
+                    <p className="text-sm font-medium text-yellow-800">
+                      Lokasi tidak tersedia
+                    </p>
+                    <p className="text-sm text-yellow-700 mt-1">
+                      GPS tidak dapat diakses. Silakan gunakan lokasi manual atau coba lagi.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <Button
+                variant="outline"
+                onClick={() => setUseManualLocation(true)}
+                className="w-full"
+              >
+                <Keyboard className="w-4 h-4 mr-2" />
+                Input Lokasi Manual
+              </Button>
+            </div>
+          )}
+
+          {useManualLocation && (
+            <div className="space-y-4">
+              <div className="bg-blue-50 border border-blue-200 p-4 rounded-lg">
+                <div className="flex items-start gap-2">
+                  <MapPin className="w-5 h-5 text-blue-600 mt-0.5" />
+                  <div>
+                    <p className="text-sm font-medium text-blue-800">
+                      Input Lokasi Manual
+                    </p>
+                    <p className="text-sm text-blue-700 mt-1">
+                      Masukkan koordinat GPS secara manual. Contoh: -6.2088, 106.8456 (Jakarta)
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="latitude">Latitude</Label>
+                  <Input
+                    id="latitude"
+                    type="number"
+                    step="any"
+                    placeholder="-6.2088"
+                    value={manualLat}
+                    onChange={(e) => setManualLat(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="longitude">Longitude</Label>
+                  <Input
+                    id="longitude"
+                    type="number"
+                    step="any"
+                    placeholder="106.8456"
+                    value={manualLng}
+                    onChange={(e) => setManualLng(e.target.value)}
+                  />
+                </div>
+              </div>
+
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setUseManualLocation(false);
+                    setManualLat("");
+                    setManualLng("");
+                  }}
+                  className="flex-1"
+                >
+                  Batal
+                </Button>
+                <Button
+                  onClick={() => {
+                    if (manualLat && manualLng) {
+                      setLocation({
+                        latitude: parseFloat(manualLat),
+                        longitude: parseFloat(manualLng),
+                        accuracy: 0,
+                      });
+                      setUseManualLocation(false);
+                    }
+                  }}
+                  className="flex-1 bg-green-600 hover:bg-green-700"
+                  disabled={!manualLat || !manualLng}
+                >
+                  Gunakan Lokasi Ini
+                </Button>
+              </div>
+            </div>
+          )}
+
           {location && (
             <div className="bg-muted p-4 rounded-lg space-y-2">
               <div className="flex items-center gap-2">
@@ -218,23 +333,7 @@ export function ClockInOutButton({
               <div className="text-sm text-muted-foreground ml-6">
                 <p>Latitude: {location.latitude.toFixed(6)}</p>
                 <p>Longitude: {location.longitude.toFixed(6)}</p>
-                <p>Akurasi: ±{Math.round(location.accuracy)} meter</p>
-              </div>
-            </div>
-          )}
-
-          {!location && (
-            <div className="bg-yellow-50 border border-yellow-200 p-4 rounded-lg">
-              <div className="flex items-start gap-2">
-                <XCircle className="w-5 h-5 text-yellow-600 mt-0.5" />
-                <div>
-                  <p className="text-sm font-medium text-yellow-800">
-                    Lokasi tidak tersedia
-                  </p>
-                  <p className="text-sm text-yellow-700 mt-1">
-                    GPS tidak dapat diakses. Clock-in tetap dapat dilakukan tanpa lokasi.
-                  </p>
-                </div>
+                <p>Akurasi: {location.accuracy > 0 ? `±${Math.round(location.accuracy)} meter` : 'Manual'}</p>
               </div>
             </div>
           )}
