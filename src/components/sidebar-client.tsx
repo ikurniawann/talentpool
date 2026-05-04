@@ -82,7 +82,7 @@ interface SidebarClientProps {
 export default function SidebarClient({ user, navItems, children }: SidebarClientProps) {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [expandedMenus, setExpandedMenus] = useState<string[]>([]);
+  const [expandedMenus, setExpandedMenus] = useState<string[]>(["HRIS Modules"]);
   const [collapsed, setCollapsed] = useState(false);
 
   const isActive = (href: string, isChildItem = false) => {
