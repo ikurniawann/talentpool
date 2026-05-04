@@ -24,6 +24,7 @@ import {
   ChevronRightIcon,
   BuildingOffice2Icon,
 } from "@heroicons/react/24/outline";
+import { NotificationBell } from "./hris/NotificationBell";
 import {
   HomeIcon as HomeIconSolid,
   UsersIcon as UsersIconSolid,
@@ -230,6 +231,21 @@ export default function SidebarClient({ user, navItems, children }: SidebarClien
           })}
         </nav>
 
+        {/* Notifications (desktop) */}
+        {!collapsed && (
+          <div className="px-3 pb-2">
+            <div className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-pink-100 transition-colors">
+              <NotificationBell />
+              <span className="text-sm text-gray-700">Notifikasi</span>
+            </div>
+          </div>
+        )}
+        {collapsed && (
+          <div className="px-3 pb-2 flex justify-center">
+            <NotificationBell />
+          </div>
+        )}
+
         {/* Logout & Collapse Toggle */}
         <div className="p-3 border-t border-pink-200 space-y-2">
           <button
@@ -268,6 +284,9 @@ export default function SidebarClient({ user, navItems, children }: SidebarClien
             <Bars3Icon className="w-5 h-5 text-gray-700" />
           </button>
           <img src="/logos/logo.png" alt="Arkiv OS" className="h-10 w-auto object-contain" />
+          <div className="absolute right-4">
+            <NotificationBell />
+          </div>
         </div>
 
         {/* Page content */}
