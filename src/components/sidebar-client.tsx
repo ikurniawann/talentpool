@@ -257,7 +257,7 @@ export default function SidebarClient({ user, navItems, children }: SidebarClien
       </aside>
 
       <div className="flex-1 flex flex-col min-w-0">
-        <div className="flex items-center justify-between p-3 sticky top-0 z-20 bg-gray-50 border-b border-gray-200">
+        <div className="flex items-center justify-between p-3 sticky top-0 z-20" style={{ background: "linear-gradient(135deg, #eef2ff 0%, #faf5ff 40%, #f0f9ff 75%, #fef3ff 100%)", borderBottom: "1px solid rgba(209,213,219,0.35)" }}>
           <button onClick={() => setMobileOpen(true)} className="p-2 rounded-lg hover:bg-gray-100 lg:hidden">
             <Bars3Icon className="w-5 h-5 text-gray-700" />
           </button>
