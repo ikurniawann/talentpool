@@ -95,7 +95,7 @@ export async function GET(request: NextRequest) {
     if (error) {
       console.error('Error fetching employees:', error);
       return NextResponse.json(
-        { error: 'Gagal mengambil data karyawan' },
+        { error: 'Gagal mengambil data karyawan', details: error.message, hint: error.hint, code: error.code },
         { status: 500 }
       );
     }
@@ -135,7 +135,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if NIP already exists (if provided manually)
-    if (body.nip) {
+    if (body.nip && body.nip.trim() !== '') {
       const { data: existing } = await supabase
         .from('employees')
         .select('id')
@@ -148,6 +148,32 @@ export async function POST(request: NextRequest) {
           { status: 400 }
         );
       }
+    }
+
+    // Auto-generate NIP if not provided
+    if (!body.nip || body.nip.trim() === '') {
+      const year = new Date().getFullYear();
+      let nip = '';
+      let exists = true;
+      let seq = 1;
+
+      while (exists) {
+        nip = `EMP-${year}-${String(seq).padStart(5, '0')}`;
+        const { data: existing } = await supabase
+          .from('employees')
+          .select('id')
+          .eq('nip', nip)
+          .single();
+        exists = !!existing;
+        seq++;
+        if (seq > 99999) {
+          return NextResponse.json(
+            { error: 'Tidak dapat generate NIP unik' },
+            { status: 500 }
+          );
+        }
+      }
+      body.nip = nip;
     }
 
     // Check if email already exists
@@ -168,6 +194,7 @@ export async function POST(request: NextRequest) {
     const { data, error } = await supabase
       .from('employees')
       .insert({
+        nip: body.nip,
         full_name: body.full_name,
         email: body.email,
         phone: body.phone || '',
