@@ -126,6 +126,9 @@ export async function POST(request: NextRequest) {
     const supabase = await createClient();
     const body: EmployeeCreateData = await request.json();
 
+    console.log('API received body:', JSON.stringify(body, null, 2));
+    console.log('employment_status value:', body.employment_status);
+
     // Validate required fields
     if (!body.full_name || !body.email || !body.join_date || !body.employment_status) {
       return NextResponse.json(
