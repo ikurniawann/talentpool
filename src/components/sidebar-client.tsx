@@ -89,11 +89,9 @@ export default function SidebarClient({ user, navItems, children }: SidebarClien
     if (href === "/dashboard") {
       return pathname === "/dashboard";
     }
-    // For child items, use exact match
     if (isChildItem) {
       return pathname === href;
     }
-    // For parent items, use startsWith
     return pathname.startsWith(href);
   };
 
@@ -116,25 +114,17 @@ export default function SidebarClient({ user, navItems, children }: SidebarClien
 
   return (
     <div className="flex min-h-screen" style={{ background: "linear-gradient(135deg, #eef2ff 0%, #faf5ff 40%, #f0f9ff 75%, #fef3ff 100%)" }}>
-      {/* Mobile overlay */}
       {mobileOpen && (
-        <div
-          className="fixed inset-0 bg-black/40 z-30 lg:hidden"
-          onClick={closeMobile}
-        />
+        <div className="fixed inset-0 bg-black/40 z-30 lg:hidden" onClick={closeMobile} />
       )}
 
-      {/* Sidebar */}
-      <aside
-        className={`
+      <aside className={`
           fixed inset-y-0 left-0 z-40 bg-gradient-to-br from-pink-50 to-white flex flex-col
           transform transition-all duration-200 ease-in-out shadow-xl
           lg:relative lg:translate-x-0 lg:z-0 lg:flex
           ${mobileOpen ? "translate-x-0" : "-translate-x-full"}
           ${collapsed ? "lg:w-20" : "lg:w-64"}
-        `}
-      >
-        {/* Logo / Brand */}
+        `}>
         <div className={`p-4 border-b border-pink-200 flex flex-col items-center ${collapsed ? 'px-2' : ''}`}>
           <img src="/logos/logo.png" alt="Arkiv OS" className={`${collapsed ? 'w-12 h-12' : 'w-32 h-auto'} object-contain mb-3 transition-all`} />
           {!collapsed && (
@@ -148,7 +138,6 @@ export default function SidebarClient({ user, navItems, children }: SidebarClien
           )}
         </div>
 
-        {/* Navigation */}
         <nav className="flex-1 p-3 space-y-0.5 overflow-y-auto">
           {navItems.map((item) => {
             const hasChildren = item.children && item.children.length > 0;
@@ -159,35 +148,45 @@ export default function SidebarClient({ user, navItems, children }: SidebarClien
               <div key={`${item.href}-${item.label}`}>
                 {hasChildren ? (
                   <>
-                    <button
-                      onClick={() => !collapsed && toggleMenu(item.label)}
-                      className={`
+                    <div className={`
                         w-full flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg transition-colors
                         ${itemActive
                           ? "bg-pink-600 text-white font-semibold"
                           : "text-gray-900 hover:bg-pink-100"
                         }
                         ${collapsed ? 'justify-center' : 'justify-between'}
-                        cursor-pointer
                       `}
                       title={collapsed ? item.label : ''}
                     >
-                      <div className="flex items-center gap-3">
+                      <Link
+                        href={item.href}
+                        onClick={closeMobile}
+                        className="flex-1 flex items-center gap-3"
+                      >
                         <NavIcon name={item.icon} isActive={itemActive} />
                         {!collapsed && item.label}
-                      </div>
+                      </Link>
                       {!collapsed && (
-                        <ChevronDownIcon
-                          className={`w-4 h-4 transition-transform ${
-                            isExpanded ? 'rotate-180' : ''
-                          }`}
-                        />
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            toggleMenu(item.label);
+                          }}
+                          className="p-1 hover:bg-black/10 rounded"
+                          title={isExpanded ? "Collapse" : "Expand"}
+                        >
+                          <ChevronDownIcon
+                            className={`w-4 h-4 transition-transform ${
+                              isExpanded ? 'rotate-180' : ''
+                            }`}
+                          />
+                        </button>
                       )}
-                    </button>
+                    </div>
                     {isExpanded && !collapsed && (
                       <div className="ml-9 mt-1 space-y-0.5">
                         {item.children!.map((child) => {
-                          const childActive = isActive(child.href, true); // exact match for child
+                          const childActive = isActive(child.href, true);
                           return (
                             <Link
                               key={child.href}
@@ -231,7 +230,6 @@ export default function SidebarClient({ user, navItems, children }: SidebarClien
           })}
         </nav>
 
-        {/* Logout & Collapse Toggle */}
         <div className="p-3 border-t border-pink-200 space-y-2">
           <button
             onClick={handleLogout}
@@ -258,26 +256,16 @@ export default function SidebarClient({ user, navItems, children }: SidebarClien
         </div>
       </aside>
 
-      {/* Main content area */}
       <div className="flex-1 flex flex-col min-w-0">
-        {/* Top bar (mobile + desktop) */}
         <div className="flex items-center justify-between p-3 sticky top-0 z-20" style={{ background: "rgba(255,255,255,0.72)", backdropFilter: "blur(20px) saturate(1.8)", WebkitBackdropFilter: "blur(20px) saturate(1.8)", borderBottom: "1px solid rgba(209,213,219,0.35)" }}>
-          {/* Mobile: hamburger */}
-          <button
-            onClick={() => setMobileOpen(true)}
-            className="p-2 rounded-lg hover:bg-gray-100 lg:hidden"
-          >
+          <button onClick={() => setMobileOpen(true)} className="p-2 rounded-lg hover:bg-gray-100 lg:hidden">
             <Bars3Icon className="w-5 h-5 text-gray-700" />
           </button>
-          {/* Mobile: logo center */}
           <img src="/logos/logo.png" alt="Arkiv OS" className="h-9 w-auto object-contain lg:hidden" />
-          {/* Desktop: empty spacer */}
           <div className="hidden lg:block" />
-          {/* Bell — always right */}
           <NotificationBell />
         </div>
 
-        {/* Page content */}
         <main className="flex-1 overflow-auto p-4 sm:p-6 lg:p-8">
           {children}
         </main>
