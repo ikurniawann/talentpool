@@ -524,7 +524,10 @@ USING (
   EXISTS (
     SELECT 1 FROM employees e
     WHERE e.id = auth.uid()
-    AND (e.job_title ILIKE '%HRD%' OR e.job_title ILIKE '%Finance%' OR e.job_title ILIKE '%HR%')
+    AND EXISTS (
+      SELECT 1 FROM positions p WHERE p.id = e.job_title_id
+      AND (p.title ILIKE '%HRD%' OR p.title ILIKE '%Finance%' OR p.title ILIKE '%HR%')
+    )
   )
 );
 
@@ -540,7 +543,10 @@ USING (
   EXISTS (
     SELECT 1 FROM employees e
     WHERE e.id = auth.uid()
-    AND (e.job_title ILIKE '%HRD%' OR e.job_title ILIKE '%Finance%' OR e.job_title ILIKE '%HR%')
+    AND EXISTS (
+      SELECT 1 FROM positions p WHERE p.id = e.job_title_id
+      AND (p.title ILIKE '%HRD%' OR p.title ILIKE '%Finance%' OR p.title ILIKE '%HR%')
+    )
   )
 );
 
@@ -551,14 +557,20 @@ USING (
   EXISTS (
     SELECT 1 FROM employees e
     WHERE e.id = auth.uid()
-    AND (e.job_title ILIKE '%HRD%' OR e.job_title ILIKE '%Finance%' OR e.job_title ILIKE '%HR%')
+    AND EXISTS (
+      SELECT 1 FROM positions p WHERE p.id = e.job_title_id
+      AND (p.title ILIKE '%HRD%' OR p.title ILIKE '%Finance%' OR p.title ILIKE '%HR%')
+    )
   )
 )
 WITH CHECK (
   EXISTS (
     SELECT 1 FROM employees e
     WHERE e.id = auth.uid()
-    AND (e.job_title ILIKE '%HRD%' OR e.job_title ILIKE '%Finance%' OR e.job_title ILIKE '%HR%')
+    AND EXISTS (
+      SELECT 1 FROM positions p WHERE p.id = e.job_title_id
+      AND (p.title ILIKE '%HRD%' OR p.title ILIKE '%Finance%' OR p.title ILIKE '%HR%')
+    )
   )
 );
 
@@ -570,7 +582,10 @@ USING (
   EXISTS (
     SELECT 1 FROM employees e
     WHERE e.id = auth.uid()
-    AND (e.job_title ILIKE '%HRD%' OR e.job_title ILIKE '%Finance%' OR e.job_title ILIKE '%HR%')
+    AND EXISTS (
+      SELECT 1 FROM positions p WHERE p.id = e.job_title_id
+      AND (p.title ILIKE '%HRD%' OR p.title ILIKE '%Finance%' OR p.title ILIKE '%HR%')
+    )
   )
 );
 
@@ -581,14 +596,20 @@ USING (
   EXISTS (
     SELECT 1 FROM employees e
     WHERE e.id = auth.uid()
-    AND (e.job_title ILIKE '%HRD%' OR e.job_title ILIKE '%Finance%' OR e.job_title ILIKE '%HR%')
+    AND EXISTS (
+      SELECT 1 FROM positions p WHERE p.id = e.job_title_id
+      AND (p.title ILIKE '%HRD%' OR p.title ILIKE '%Finance%' OR p.title ILIKE '%HR%')
+    )
   )
 )
 WITH CHECK (
   EXISTS (
     SELECT 1 FROM employees e
     WHERE e.id = auth.uid()
-    AND (e.job_title ILIKE '%HRD%' OR e.job_title ILIKE '%Finance%' OR e.job_title ILIKE '%HR%')
+    AND EXISTS (
+      SELECT 1 FROM positions p WHERE p.id = e.job_title_id
+      AND (p.title ILIKE '%HRD%' OR p.title ILIKE '%Finance%' OR p.title ILIKE '%HR%')
+    )
   )
 );
 
@@ -604,7 +625,10 @@ USING (
   EXISTS (
     SELECT 1 FROM employees e
     WHERE e.id = auth.uid()
-    AND (e.job_title ILIKE '%HRD%' OR e.job_title ILIKE '%Finance%' OR e.job_title ILIKE '%HR%')
+    AND EXISTS (
+      SELECT 1 FROM positions p WHERE p.id = e.job_title_id
+      AND (p.title ILIKE '%HRD%' OR p.title ILIKE '%Finance%' OR p.title ILIKE '%HR%')
+    )
   )
 );
 
@@ -615,14 +639,20 @@ USING (
   EXISTS (
     SELECT 1 FROM employees e
     WHERE e.id = auth.uid()
-    AND (e.job_title ILIKE '%HRD%' OR e.job_title ILIKE '%Finance%' OR e.job_title ILIKE '%HR%')
+    AND EXISTS (
+      SELECT 1 FROM positions p WHERE p.id = e.job_title_id
+      AND (p.title ILIKE '%HRD%' OR p.title ILIKE '%Finance%' OR p.title ILIKE '%HR%')
+    )
   )
 )
 WITH CHECK (
   EXISTS (
     SELECT 1 FROM employees e
     WHERE e.id = auth.uid()
-    AND (e.job_title ILIKE '%HRD%' OR e.job_title ILIKE '%Finance%' OR e.job_title ILIKE '%HR%')
+    AND EXISTS (
+      SELECT 1 FROM positions p WHERE p.id = e.job_title_id
+      AND (p.title ILIKE '%HRD%' OR p.title ILIKE '%Finance%' OR p.title ILIKE '%HR%')
+    )
   )
 );
 
@@ -639,14 +669,20 @@ USING (
   EXISTS (
     SELECT 1 FROM employees e
     WHERE e.id = auth.uid()
-    AND (e.job_title ILIKE '%HRD%' OR e.job_title ILIKE '%Finance%' OR e.job_title ILIKE '%HR%')
+    AND EXISTS (
+      SELECT 1 FROM positions p WHERE p.id = e.job_title_id
+      AND (p.title ILIKE '%HRD%' OR p.title ILIKE '%Finance%' OR p.title ILIKE '%HR%')
+    )
   )
 )
 WITH CHECK (
   EXISTS (
     SELECT 1 FROM employees e
     WHERE e.id = auth.uid()
-    AND (e.job_title ILIKE '%HRD%' OR e.job_title ILIKE '%Finance%' OR e.job_title ILIKE '%HR%')
+    AND EXISTS (
+      SELECT 1 FROM positions p WHERE p.id = e.job_title_id
+      AND (p.title ILIKE '%HRD%' OR p.title ILIKE '%Finance%' OR p.title ILIKE '%HR%')
+    )
   )
 );
 
@@ -662,7 +698,10 @@ USING (
   EXISTS (
     SELECT 1 FROM employees e
     WHERE e.id = auth.uid()
-    AND (e.job_title ILIKE '%HRD%' OR e.job_title ILIKE '%Finance%' OR e.job_title ILIKE '%HR%')
+    AND EXISTS (
+      SELECT 1 FROM positions p WHERE p.id = e.job_title_id
+      AND (p.title ILIKE '%HRD%' OR p.title ILIKE '%Finance%' OR p.title ILIKE '%HR%')
+    )
   )
 );
 
@@ -673,14 +712,20 @@ USING (
   EXISTS (
     SELECT 1 FROM employees e
     WHERE e.id = auth.uid()
-    AND (e.job_title ILIKE '%HRD%' OR e.job_title ILIKE '%Finance%' OR e.job_title ILIKE '%HR%')
+    AND EXISTS (
+      SELECT 1 FROM positions p WHERE p.id = e.job_title_id
+      AND (p.title ILIKE '%HRD%' OR p.title ILIKE '%Finance%' OR p.title ILIKE '%HR%')
+    )
   )
 )
 WITH CHECK (
   EXISTS (
     SELECT 1 FROM employees e
     WHERE e.id = auth.uid()
-    AND (e.job_title ILIKE '%HRD%' OR e.job_title ILIKE '%Finance%' OR e.job_title ILIKE '%HR%')
+    AND EXISTS (
+      SELECT 1 FROM positions p WHERE p.id = e.job_title_id
+      AND (p.title ILIKE '%HRD%' OR p.title ILIKE '%Finance%' OR p.title ILIKE '%HR%')
+    )
   )
 );
 
@@ -696,7 +741,10 @@ USING (
   EXISTS (
     SELECT 1 FROM employees e
     WHERE e.id = auth.uid()
-    AND (e.job_title ILIKE '%HRD%' OR e.job_title ILIKE '%Finance%' OR e.job_title ILIKE '%HR%')
+    AND EXISTS (
+      SELECT 1 FROM positions p WHERE p.id = e.job_title_id
+      AND (p.title ILIKE '%HRD%' OR p.title ILIKE '%Finance%' OR p.title ILIKE '%HR%')
+    )
   )
 );
 
@@ -716,14 +764,20 @@ USING (
   EXISTS (
     SELECT 1 FROM employees e
     WHERE e.id = auth.uid()
-    AND (e.job_title ILIKE '%HRD%' OR e.job_title ILIKE '%Finance%' OR e.job_title ILIKE '%HR%')
+    AND EXISTS (
+      SELECT 1 FROM positions p WHERE p.id = e.job_title_id
+      AND (p.title ILIKE '%HRD%' OR p.title ILIKE '%Finance%' OR p.title ILIKE '%HR%')
+    )
   )
 )
 WITH CHECK (
   EXISTS (
     SELECT 1 FROM employees e
     WHERE e.id = auth.uid()
-    AND (e.job_title ILIKE '%HRD%' OR e.job_title ILIKE '%Finance%' OR e.job_title ILIKE '%HR%')
+    AND EXISTS (
+      SELECT 1 FROM positions p WHERE p.id = e.job_title_id
+      AND (p.title ILIKE '%HRD%' OR p.title ILIKE '%Finance%' OR p.title ILIKE '%HR%')
+    )
   )
 );
 
@@ -735,7 +789,10 @@ USING (
   EXISTS (
     SELECT 1 FROM employees e
     WHERE e.id = auth.uid()
-    AND (e.job_title ILIKE '%HRD%' OR e.job_title ILIKE '%Finance%' OR e.job_title ILIKE '%HR%')
+    AND EXISTS (
+      SELECT 1 FROM positions p WHERE p.id = e.job_title_id
+      AND (p.title ILIKE '%HRD%' OR p.title ILIKE '%Finance%' OR p.title ILIKE '%HR%')
+    )
   )
 );
 
@@ -746,14 +803,20 @@ USING (
   EXISTS (
     SELECT 1 FROM employees e
     WHERE e.id = auth.uid()
-    AND (e.job_title ILIKE '%HRD%' OR e.job_title ILIKE '%Finance%' OR e.job_title ILIKE '%HR%')
+    AND EXISTS (
+      SELECT 1 FROM positions p WHERE p.id = e.job_title_id
+      AND (p.title ILIKE '%HRD%' OR p.title ILIKE '%Finance%' OR p.title ILIKE '%HR%')
+    )
   )
 )
 WITH CHECK (
   EXISTS (
     SELECT 1 FROM employees e
     WHERE e.id = auth.uid()
-    AND (e.job_title ILIKE '%HRD%' OR e.job_title ILIKE '%Finance%' OR e.job_title ILIKE '%HR%')
+    AND EXISTS (
+      SELECT 1 FROM positions p WHERE p.id = e.job_title_id
+      AND (p.title ILIKE '%HRD%' OR p.title ILIKE '%Finance%' OR p.title ILIKE '%HR%')
+    )
   )
 );
 
