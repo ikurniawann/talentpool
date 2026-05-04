@@ -143,9 +143,10 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
       }
     }
 
-    // Update employee
+    // Update employee — keep phone as '' if null to satisfy NOT NULL constraint
     const updateData: EmployeeUpdateData = {
       ...body,
+      phone: body.phone || '',
       updated_at: new Date().toISOString()
     };
 
