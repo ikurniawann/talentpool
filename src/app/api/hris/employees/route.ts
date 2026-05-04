@@ -16,7 +16,7 @@ import { Employee, EmployeeCreateData, ApiResponse, PaginatedResponse } from '@/
 export async function GET(request: NextRequest) {
   try {
     const supabase = await createClient();
-    
+
     // Parse query params
     const searchParams = request.nextUrl.searchParams;
     const search = searchParams.get('search');
@@ -95,7 +95,7 @@ export async function GET(request: NextRequest) {
     if (error) {
       console.error('Error fetching employees:', error);
       return NextResponse.json(
-        { error: 'Gagal mengambil data karyawan', details: error.message, hint: (error as any).hint, code: (error as any).code },
+        { error: 'Gagal mengambil data karyawan', details: error.message, hint: error.hint, code: error.code },
         { status: 500 }
       );
     }
@@ -126,9 +126,6 @@ export async function POST(request: NextRequest) {
     const supabase = await createClient();
     const body: EmployeeCreateData = await request.json();
 
-    console.log('API received body:', JSON.stringify(body, null, 2));
-    console.log('employment_status value:', body.employment_status);
-
     // Validate required fields
     if (!body.full_name || !body.email || !body.join_date || !body.employment_status) {
       return NextResponse.json(
@@ -153,14 +150,13 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Set NIP to null if empty to let trigger auto-generate
+    // Auto-generate NIP if not provided
     if (!body.nip || body.nip.trim() === '') {
-      // Generate unique NIP manually to avoid trigger race condition
       const year = new Date().getFullYear();
       let nip = '';
       let exists = true;
       let seq = 1;
-      
+
       while (exists) {
         nip = `EMP-${year}-${String(seq).padStart(5, '0')}`;
         const { data: existing } = await supabase
@@ -178,7 +174,6 @@ export async function POST(request: NextRequest) {
         }
       }
       body.nip = nip;
-      console.log('Generated NIP:', nip);
     }
 
     // Check if email already exists
@@ -199,12 +194,12 @@ export async function POST(request: NextRequest) {
     let insertResult;
     let retryCount = 0;
     const maxRetries = 3;
-    
+
     while (retryCount < maxRetries) {
       insertResult = await supabase
         .from('employees')
         .insert({
-          nip: body.nip, // Include generated NIP
+          nip: body.nip,
           full_name: body.full_name,
           email: body.email,
           phone: body.phone || '',
@@ -241,46 +236,42 @@ export async function POST(request: NextRequest) {
           manager:employees!reporting_to (id, full_name, nip)
         `)
         .single();
-      
-      // If duplicate NIP error, retry (trigger will generate new NIP)
-      if (insertResult.error?.code === '23505' && insertResult.error?.constraint?.includes('nip')) {
+
+      if (insertResult.error?.code === '23505' && insertResult.error?.message?.includes('nip')) {
         retryCount++;
-        console.warn(`NIP collision detected, retrying... (${retryCount}/${maxRetries})`);
-        await new Promise(resolve => setTimeout(resolve, 100 * retryCount)); // Exponential backoff
+        await new Promise(resolve => setTimeout(resolve, 100 * retryCount));
         continue;
       }
-      
+
       break;
     }
 
-    const { data, error } = insertResult;
+    const { data, error } = insertResult!;
 
     if (error) {
       console.error('Error creating employee:', error);
-      
-      // Handle unique constraint violations
+
       if (error.code === '23505') {
-        // Check which field caused the duplicate
-        if (error.constraint?.includes('nip')) {
+        if (error.message?.includes('nip')) {
           return NextResponse.json(
             { error: 'NIP sudah digunakan, silakan coba lagi atau gunakan NIP lain' },
             { status: 400 }
           );
         }
-        if (error.constraint?.includes('email')) {
+        if (error.message?.includes('email')) {
           return NextResponse.json(
             { error: 'Email sudah terdaftar' },
             { status: 400 }
           );
         }
-        if (error.constraint?.includes('ktp')) {
+        if (error.message?.includes('ktp')) {
           return NextResponse.json(
             { error: 'NIK/KTP sudah terdaftar' },
             { status: 400 }
           );
         }
       }
-      
+
       return NextResponse.json(
         { error: 'Gagal membuat data karyawan', details: error.message },
         { status: 500 }
