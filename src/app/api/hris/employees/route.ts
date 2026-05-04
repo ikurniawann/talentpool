@@ -152,7 +152,30 @@ export async function POST(request: NextRequest) {
 
     // Set NIP to null if empty to let trigger auto-generate
     if (!body.nip || body.nip.trim() === '') {
-      body.nip = null;
+      // Generate unique NIP manually to avoid trigger race condition
+      const year = new Date().getFullYear();
+      let nip = '';
+      let exists = true;
+      let seq = 1;
+      
+      while (exists) {
+        nip = `EMP-${year}-${String(seq).padStart(5, '0')}`;
+        const { data: existing } = await supabase
+          .from('employees')
+          .select('id')
+          .eq('nip', nip)
+          .single();
+        exists = !!existing;
+        seq++;
+        if (seq > 99999) {
+          return NextResponse.json(
+            { error: 'Tidak dapat generate NIP unik' },
+            { status: 500 }
+          );
+        }
+      }
+      body.nip = nip;
+      console.log('Generated NIP:', nip);
     }
 
     // Check if email already exists
