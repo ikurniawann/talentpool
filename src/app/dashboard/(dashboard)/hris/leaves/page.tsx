@@ -194,9 +194,6 @@ export default function LeavesPage() {
       </Dialog>
 
       {/* Filters */}
-      </div>
-
-      {/* Filters */}
       <Card>
         <CardContent className="pt-6">
           <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
