@@ -83,9 +83,12 @@ export async function POST(request: NextRequest) {
     const { notification_id, mark_all } = body;
 
     if (mark_all) {
-      // Mark all as read
-      const { error } = await supabase.rpc('mark_all_notifications_read');
-      
+      const { error } = await supabase
+        .from('notifications')
+        .update({ is_read: true, read_at: new Date().toISOString() })
+        .eq('user_id', user.id)
+        .eq('is_read', false);
+
       if (error) {
         console.error('Error marking all notifications read:', error);
         return NextResponse.json(
@@ -94,14 +97,14 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      return NextResponse.json({
-        message: 'All notifications marked as read',
-      });
+      return NextResponse.json({ message: 'All notifications marked as read' });
+
     } else if (notification_id) {
-      // Mark single notification as read
-      const { error } = await supabase.rpc('mark_notification_read', {
-        p_notification_id: notification_id,
-      });
+      const { error } = await supabase
+        .from('notifications')
+        .update({ is_read: true, read_at: new Date().toISOString() })
+        .eq('id', notification_id)
+        .eq('user_id', user.id);
 
       if (error) {
         console.error('Error marking notification read:', error);
@@ -111,9 +114,7 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      return NextResponse.json({
-        message: 'Notification marked as read',
-      });
+      return NextResponse.json({ message: 'Notification marked as read' });
     }
 
     return NextResponse.json(
