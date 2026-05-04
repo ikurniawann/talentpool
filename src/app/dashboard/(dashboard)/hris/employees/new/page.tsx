@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { createClient } from "@/lib/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,7 +13,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ArrowLeftIcon, UserCircleIcon, BriefcaseIcon, BanknotesIcon, PhoneIcon } from "@heroicons/react/24/outline";
+import {
+  ArrowLeftIcon,
+  UserCircleIcon,
+  BriefcaseIcon,
+  BanknotesIcon,
+  PhoneIcon,
+} from "@heroicons/react/24/outline";
 import { useToast, ToastContainer } from "@/components/ui/toast";
 
 const EMPLOYMENT_STATUS_OPTIONS = [
@@ -36,17 +43,21 @@ const MARITAL_OPTIONS = [
 
 export default function NewEmployeePage() {
   const router = useRouter();
-  const { toasts, showToast, removeToast } = useToast();
+  const { toasts, toast, dismiss } = useToast();
 
   const [saving, setSaving] = useState(false);
   const [departments, setDepartments] = useState<any[]>([]);
   const [sections, setSections] = useState<any[]>([]);
   const [positions, setPositions] = useState<any[]>([]);
+  const [managers, setManagers] = useState<any[]>([]);
 
   const [form, setForm] = useState({
-    // Personal
+    // Personal — required
     full_name: "",
     email: "",
+    join_date: "",
+    employment_status: "",
+    // Personal — optional
     phone: "",
     ktp: "",
     npwp: "",
@@ -57,36 +68,48 @@ export default function NewEmployeePage() {
     city: "",
     province: "",
     postal_code: "",
-    // Employment
-    nip: "",
-    join_date: new Date().toISOString().split("T")[0],
-    end_date: "",
-    employment_status: "probation",
-    is_active: true,
+    // Employment — optional
     department_id: "",
     section_id: "",
     job_title_id: "",
     reporting_to: "",
-    // Bank & BPJS
+    // Bank & BPJS — optional
     bank_name: "",
     bank_account: "",
     bpjs_tk: "",
     bpjs_kesehatan: "",
-    // Emergency
+    // Emergency — optional
     emergency_contact_name: "",
     emergency_contact_phone: "",
     emergency_contact_relationship: "",
-    // Notes
     notes: "",
   });
+
+  useEffect(() => {
+    fetchLookups();
+  }, []);
+
+  async function fetchLookups() {
+    const supabase = createClient();
+    const [depts, sects, pos, emps] = await Promise.all([
+      supabase.from("departments").select("id, name").order("name"),
+      supabase.from("sections").select("id, name").order("name"),
+      supabase.from("positions").select("id, title").order("title"),
+      supabase.from("employees").select("id, full_name, nip").eq("is_active", true).order("full_name"),
+    ]);
+    setDepartments(depts.data || []);
+    setSections(sects.data || []);
+    setPositions(pos.data || []);
+    setManagers(emps.data || []);
+  }
 
   function setField(key: string, value: any) {
     setForm((prev) => ({ ...prev, [key]: value }));
   }
 
   async function handleSave() {
-    if (!form.full_name || !form.email || !form.employment_status) {
-      showToast("Nama, email, dan status kepegawaian wajib diisi", "error");
+    if (!form.full_name || !form.email || !form.join_date || !form.employment_status) {
+      toast("Nama, email, tanggal bergabung, dan status kepegawaian wajib diisi", "error");
       return;
     }
 
@@ -94,11 +117,7 @@ export default function NewEmployeePage() {
     try {
       const payload: Record<string, any> = {};
       for (const [k, v] of Object.entries(form)) {
-        if (v === "" || v === null) {
-          payload[k] = null;
-        } else {
-          payload[k] = v;
-        }
+        payload[k] = v === "" ? null : v;
       }
 
       const res = await fetch("/api/hris/employees", {
@@ -106,18 +125,20 @@ export default function NewEmployeePage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
-
       const json = await res.json();
+
       if (!res.ok) {
-        showToast(json.error || "Gagal membuat karyawan baru", "error");
+        toast(json.error || "Gagal menyimpan data karyawan", "error");
         return;
       }
 
-      showToast("Karyawan berhasil ditambahkan", "success");
-      setTimeout(() => router.push(`/dashboard/hris/employees/${json.data.id}`), 1200);
-    } catch (error) {
-      console.error("Error creating employee:", error);
-      showToast("Terjadi kesalahan", "error");
+      toast("Karyawan berhasil ditambahkan", "success");
+      const newId = json.data?.id;
+      setTimeout(() => {
+        router.push(newId ? `/dashboard/hris/employees/${newId}` : "/dashboard/hris/employees");
+      }, 1200);
+    } catch {
+      toast("Terjadi kesalahan, coba lagi", "error");
     } finally {
       setSaving(false);
     }
@@ -125,16 +146,7 @@ export default function NewEmployeePage() {
 
   return (
     <div className="max-w-4xl mx-auto space-y-6 pb-12">
-      <ToastContainer toasts={toasts} removeToast={removeToast} />
-
-      {/* Breadcrumb */}
-      <div className="flex items-center gap-2 text-sm text-gray-500">
-        <button onClick={() => router.push("/dashboard/hris/employees")} className="hover:text-gray-900">
-          Direktori Karyawan
-        </button>
-        <span>/</span>
-        <span className="text-gray-900 font-medium">Tambah Karyawan Baru</span>
-      </div>
+      <ToastContainer toasts={toasts} onDismiss={dismiss} />
 
       {/* Header */}
       <div className="flex items-center gap-4">
@@ -143,8 +155,8 @@ export default function NewEmployeePage() {
           Kembali
         </Button>
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Tambah Karyawan Baru</h1>
-          <p className="text-sm text-gray-500">Input data karyawan baru</p>
+          <h1 className="text-2xl font-bold text-gray-900">Tambah Karyawan</h1>
+          <p className="text-sm text-gray-500">Isi data minimal: nama, email, tanggal bergabung, dan status. Sisanya bisa diisi nanti.</p>
         </div>
       </div>
 
@@ -158,28 +170,58 @@ export default function NewEmployeePage() {
         </CardHeader>
         <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="md:col-span-2">
-            <label className="block text-sm font-medium text-gray-700 mb-1">Nama Lengkap <span className="text-red-500">*</span></label>
-            <Input value={form.full_name} onChange={(e) => setField("full_name", e.target.value)} placeholder="Nama lengkap" />
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Nama Lengkap <span className="text-red-500">*</span>
+            </label>
+            <Input
+              value={form.full_name}
+              onChange={(e) => setField("full_name", e.target.value)}
+              placeholder="Nama lengkap sesuai KTP"
+            />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Email <span className="text-red-500">*</span></label>
-            <Input type="email" value={form.email} onChange={(e) => setField("email", e.target.value)} placeholder="email@perusahaan.com" />
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Email <span className="text-red-500">*</span>
+            </label>
+            <Input
+              type="email"
+              value={form.email}
+              onChange={(e) => setField("email", e.target.value)}
+              placeholder="email@perusahaan.com"
+            />
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">No. Telepon</label>
-            <Input value={form.phone} onChange={(e) => setField("phone", e.target.value)} placeholder="08xx-xxxx-xxxx" />
+            <Input
+              value={form.phone}
+              onChange={(e) => setField("phone", e.target.value)}
+              placeholder="08xx-xxxx-xxxx"
+            />
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">NIK / KTP</label>
-            <Input value={form.ktp} onChange={(e) => setField("ktp", e.target.value)} placeholder="16 digit NIK" maxLength={16} />
+            <Input
+              value={form.ktp}
+              onChange={(e) => setField("ktp", e.target.value)}
+              placeholder="16 digit NIK"
+              maxLength={16}
+            />
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">NPWP</label>
-            <Input value={form.npwp} onChange={(e) => setField("npwp", e.target.value)} placeholder="xx.xxx.xxx.x-xxx.xxx" />
+            <Input
+              value={form.npwp}
+              onChange={(e) => setField("npwp", e.target.value)}
+              placeholder="xx.xxx.xxx.x-xxx.xxx"
+            />
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Tanggal Lahir</label>
-            <Input type="date" value={form.birth_date} onChange={(e) => setField("birth_date", e.target.value)} />
+            <Input
+              type="date"
+              value={form.birth_date}
+              onChange={(e) => setField("birth_date", e.target.value)}
+            />
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Jenis Kelamin</label>
@@ -205,19 +247,36 @@ export default function NewEmployeePage() {
           </div>
           <div className="md:col-span-2">
             <label className="block text-sm font-medium text-gray-700 mb-1">Alamat</label>
-            <Input value={form.address} onChange={(e) => setField("address", e.target.value)} placeholder="Alamat lengkap" />
+            <Input
+              value={form.address}
+              onChange={(e) => setField("address", e.target.value)}
+              placeholder="Alamat lengkap"
+            />
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Kota</label>
-            <Input value={form.city} onChange={(e) => setField("city", e.target.value)} placeholder="Jakarta" />
+            <Input
+              value={form.city}
+              onChange={(e) => setField("city", e.target.value)}
+              placeholder="Jakarta"
+            />
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Provinsi</label>
-            <Input value={form.province} onChange={(e) => setField("province", e.target.value)} placeholder="DKI Jakarta" />
+            <Input
+              value={form.province}
+              onChange={(e) => setField("province", e.target.value)}
+              placeholder="DKI Jakarta"
+            />
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Kode Pos</label>
-            <Input value={form.postal_code} onChange={(e) => setField("postal_code", e.target.value)} placeholder="12345" maxLength={5} />
+            <Input
+              value={form.postal_code}
+              onChange={(e) => setField("postal_code", e.target.value)}
+              placeholder="12345"
+              maxLength={5}
+            />
           </div>
         </CardContent>
       </Card>
@@ -232,11 +291,19 @@ export default function NewEmployeePage() {
         </CardHeader>
         <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">NIP</label>
-            <Input value={form.nip} onChange={(e) => setField("nip", e.target.value)} placeholder="Nomor Induk Pegawai" />
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Tanggal Bergabung <span className="text-red-500">*</span>
+            </label>
+            <Input
+              type="date"
+              value={form.join_date}
+              onChange={(e) => setField("join_date", e.target.value)}
+            />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Status Kepegawaian <span className="text-red-500">*</span></label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Status Kepegawaian <span className="text-red-500">*</span>
+            </label>
             <Select value={form.employment_status} onValueChange={(v) => setField("employment_status", v)}>
               <SelectTrigger><SelectValue placeholder="Pilih status" /></SelectTrigger>
               <SelectContent>
@@ -245,14 +312,6 @@ export default function NewEmployeePage() {
                 ))}
               </SelectContent>
             </Select>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Tanggal Bergabung</label>
-            <Input type="date" value={form.join_date} onChange={(e) => setField("join_date", e.target.value)} />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Tanggal Berakhir</label>
-            <Input type="date" value={form.end_date} onChange={(e) => setField("end_date", e.target.value)} />
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Departemen</label>
@@ -292,20 +351,11 @@ export default function NewEmployeePage() {
             <Select value={form.reporting_to} onValueChange={(v) => setField("reporting_to", v)}>
               <SelectTrigger><SelectValue placeholder="Pilih atasan" /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Tidak ada</SelectItem>
-                {/* Would need to fetch employees list */}
+                {managers.map((m) => (
+                  <SelectItem key={m.id} value={m.id}>{m.full_name} ({m.nip})</SelectItem>
+                ))}
               </SelectContent>
             </Select>
-          </div>
-          <div className="md:col-span-2 flex items-center gap-3">
-            <input
-              type="checkbox"
-              id="is_active"
-              checked={form.is_active}
-              onChange={(e) => setField("is_active", e.target.checked)}
-              className="w-4 h-4 accent-pink-600"
-            />
-            <label htmlFor="is_active" className="text-sm font-medium text-gray-700">Karyawan aktif</label>
           </div>
         </CardContent>
       </Card>
@@ -315,25 +365,41 @@ export default function NewEmployeePage() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base">
             <BanknotesIcon className="w-5 h-5 text-pink-500" />
-            Bank & BPJS
+            Bank & BPJS <span className="text-xs font-normal text-gray-400 ml-1">(opsional)</span>
           </CardTitle>
         </CardHeader>
         <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Nama Bank</label>
-            <Input value={form.bank_name} onChange={(e) => setField("bank_name", e.target.value)} placeholder="BCA / Mandiri / BRI ..." />
+            <Input
+              value={form.bank_name}
+              onChange={(e) => setField("bank_name", e.target.value)}
+              placeholder="BCA / Mandiri / BRI ..."
+            />
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">No. Rekening</label>
-            <Input value={form.bank_account} onChange={(e) => setField("bank_account", e.target.value)} placeholder="Nomor rekening" />
+            <Input
+              value={form.bank_account}
+              onChange={(e) => setField("bank_account", e.target.value)}
+              placeholder="Nomor rekening"
+            />
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">No. BPJS Ketenagakerjaan</label>
-            <Input value={form.bpjs_tk} onChange={(e) => setField("bpjs_tk", e.target.value)} placeholder="No. BPJS TK" />
+            <Input
+              value={form.bpjs_tk}
+              onChange={(e) => setField("bpjs_tk", e.target.value)}
+              placeholder="No. BPJS TK"
+            />
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">No. BPJS Kesehatan</label>
-            <Input value={form.bpjs_kesehatan} onChange={(e) => setField("bpjs_kesehatan", e.target.value)} placeholder="No. BPJS Kesehatan" />
+            <Input
+              value={form.bpjs_kesehatan}
+              onChange={(e) => setField("bpjs_kesehatan", e.target.value)}
+              placeholder="No. BPJS Kesehatan"
+            />
           </div>
         </CardContent>
       </Card>
@@ -343,21 +409,33 @@ export default function NewEmployeePage() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base">
             <PhoneIcon className="w-5 h-5 text-pink-500" />
-            Kontak Darurat
+            Kontak Darurat <span className="text-xs font-normal text-gray-400 ml-1">(opsional)</span>
           </CardTitle>
         </CardHeader>
         <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Nama</label>
-            <Input value={form.emergency_contact_name} onChange={(e) => setField("emergency_contact_name", e.target.value)} placeholder="Nama kontak darurat" />
+            <Input
+              value={form.emergency_contact_name}
+              onChange={(e) => setField("emergency_contact_name", e.target.value)}
+              placeholder="Nama kontak darurat"
+            />
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">No. Telepon</label>
-            <Input value={form.emergency_contact_phone} onChange={(e) => setField("emergency_contact_phone", e.target.value)} placeholder="08xx-xxxx-xxxx" />
+            <Input
+              value={form.emergency_contact_phone}
+              onChange={(e) => setField("emergency_contact_phone", e.target.value)}
+              placeholder="08xx-xxxx-xxxx"
+            />
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Hubungan</label>
-            <Input value={form.emergency_contact_relationship} onChange={(e) => setField("emergency_contact_relationship", e.target.value)} placeholder="Orang Tua / Suami / Istri ..." />
+            <Input
+              value={form.emergency_contact_relationship}
+              onChange={(e) => setField("emergency_contact_relationship", e.target.value)}
+              placeholder="Orang Tua / Suami / Istri ..."
+            />
           </div>
         </CardContent>
       </Card>
@@ -365,7 +443,9 @@ export default function NewEmployeePage() {
       {/* Section 5: Notes */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Catatan</CardTitle>
+          <CardTitle className="text-base">
+            Catatan <span className="text-xs font-normal text-gray-400">(opsional)</span>
+          </CardTitle>
         </CardHeader>
         <CardContent>
           <textarea
@@ -388,7 +468,7 @@ export default function NewEmployeePage() {
           disabled={saving}
           className="bg-pink-600 hover:bg-pink-700 text-white"
         >
-          {saving ? "Menyimpan..." : "Simpan Karyawan"}
+          {saving ? "Menyimpan..." : "Tambah Karyawan"}
         </Button>
       </div>
     </div>

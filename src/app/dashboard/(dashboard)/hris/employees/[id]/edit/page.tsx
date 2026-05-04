@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, use } from "react";
-import { useRouter, usePathname } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -51,8 +51,7 @@ const MARITAL_OPTIONS = [
 export default function EditEmployeePage({ params }: EditEmployeePageProps) {
   const { id } = use(params);
   const router = useRouter();
-  const pathname = usePathname();
-  const { toasts, showToast, removeToast } = useToast();
+  const { toasts, toast, dismiss } = useToast();
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -163,7 +162,7 @@ export default function EditEmployeePage({ params }: EditEmployeePageProps) {
 
   async function handleSave() {
     if (!form.full_name || !form.email || !form.employment_status) {
-      showToast("Nama, email, dan status kepegawaian wajib diisi", "error");
+      toast("Nama, email, dan status kepegawaian wajib diisi", "error");
       return;
     }
 
@@ -185,10 +184,10 @@ export default function EditEmployeePage({ params }: EditEmployeePageProps) {
       });
       const json = await res.json();
       if (!res.ok) {
-        showToast(json.error || "Gagal menyimpan", "error");
+        toast(json.error || "Gagal menyimpan", "error");
         return;
       }
-      showToast("Data karyawan berhasil disimpan", "success");
+      toast("Data karyawan berhasil disimpan", "success");
       setTimeout(() => router.push(`/dashboard/hris/employees/${id}`), 1200);
     } finally {
       setSaving(false);
@@ -205,20 +204,7 @@ export default function EditEmployeePage({ params }: EditEmployeePageProps) {
 
   return (
     <div className="max-w-4xl mx-auto space-y-6 pb-12">
-      <ToastContainer toasts={toasts} removeToast={removeToast} />
-
-      {/* Breadcrumb */}
-      <div className="flex items-center gap-2 text-sm text-gray-500">
-        <button onClick={() => router.push("/dashboard/hris/employees")} className="hover:text-gray-900">
-          Direktori Karyawan
-        </button>
-        <span>/</span>
-        <button onClick={() => router.push(`/dashboard/hris/employees/${id}`)} className="hover:text-gray-900">
-          Detail Karyawan
-        </button>
-        <span>/</span>
-        <span className="text-gray-900 font-medium">Edit</span>
-      </div>
+      <ToastContainer toasts={toasts} onDismiss={dismiss} />
 
       {/* Header */}
       <div className="flex items-center gap-4">

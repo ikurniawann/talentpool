@@ -127,9 +127,9 @@ export async function POST(request: NextRequest) {
     const body: EmployeeCreateData = await request.json();
 
     // Validate required fields
-    if (!body.full_name || !body.email || !body.phone || !body.join_date || !body.employment_status) {
+    if (!body.full_name || !body.email || !body.join_date || !body.employment_status) {
       return NextResponse.json(
-        { error: 'Field yang wajib diisi: nama lengkap, email, telepon, tanggal bergabung, status karyawan' },
+        { error: 'Field yang wajib diisi: nama lengkap, email, tanggal bergabung, status karyawan' },
         { status: 400 }
       );
     }
