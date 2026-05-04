@@ -95,7 +95,7 @@ export async function GET(request: NextRequest) {
     if (error) {
       console.error('Error fetching employees:', error);
       return NextResponse.json(
-        { error: 'Gagal mengambil data karyawan' },
+        { error: 'Gagal mengambil data karyawan', details: error.message, hint: (error as any).hint, code: (error as any).code },
         { status: 500 }
       );
     }
@@ -110,7 +110,7 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error('Error in employees API:', error);
     return NextResponse.json(
-      { error: 'Terjadi kesalahan pada server' },
+      { error: 'Terjadi kesalahan pada server', details: error instanceof Error ? error.message : String(error) },
       { status: 500 }
     );
   }
