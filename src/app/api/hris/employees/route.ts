@@ -169,46 +169,64 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Insert employee
-    const { data, error } = await supabase
-      .from('employees')
-      .insert({
-        full_name: body.full_name,
-        email: body.email,
-        phone: body.phone || '',
-        join_date: body.join_date,
-        employment_status: body.employment_status,
-        department_id: body.department_id,
-        section_id: body.section_id,
-        job_title_id: body.job_title_id,
-        reporting_to: body.reporting_to,
-        ktp: body.ktp,
-        npwp: body.npwp,
-        birth_date: body.birth_date,
-        gender: body.gender,
-        marital_status: body.marital_status,
-        address: body.address,
-        city: body.city,
-        province: body.province,
-        postal_code: body.postal_code,
-        bank_name: body.bank_name,
-        bank_account: body.bank_account,
-        bpjs_tk: body.bpjs_tk,
-        bpjs_kesehatan: body.bpjs_kesehatan,
-        emergency_contact_name: body.emergency_contact_name,
-        emergency_contact_phone: body.emergency_contact_phone,
-        emergency_contact_relationship: body.emergency_contact_relationship,
-        photo_url: body.photo_url,
-        notes: body.notes
-      })
-      .select(`
-        *,
-        department:departments (id, name, code),
-        section:sections (id, name),
-        job_title:positions (id, title),
-        manager:employees!reporting_to (id, full_name, nip)
-      `)
-      .single();
+    // Insert employee with retry logic for NIP collision
+    let insertResult;
+    let retryCount = 0;
+    const maxRetries = 3;
+    
+    while (retryCount < maxRetries) {
+      insertResult = await supabase
+        .from('employees')
+        .insert({
+          full_name: body.full_name,
+          email: body.email,
+          phone: body.phone || '',
+          join_date: body.join_date,
+          employment_status: body.employment_status,
+          department_id: body.department_id,
+          section_id: body.section_id,
+          job_title_id: body.job_title_id,
+          reporting_to: body.reporting_to,
+          ktp: body.ktp,
+          npwp: body.npwp,
+          birth_date: body.birth_date,
+          gender: body.gender,
+          marital_status: body.marital_status,
+          address: body.address,
+          city: body.city,
+          province: body.province,
+          postal_code: body.postal_code,
+          bank_name: body.bank_name,
+          bank_account: body.bank_account,
+          bpjs_tk: body.bpjs_tk,
+          bpjs_kesehatan: body.bpjs_kesehatan,
+          emergency_contact_name: body.emergency_contact_name,
+          emergency_contact_phone: body.emergency_contact_phone,
+          emergency_contact_relationship: body.emergency_contact_relationship,
+          photo_url: body.photo_url,
+          notes: body.notes
+        })
+        .select(`
+          *,
+          department:departments (id, name, code),
+          section:sections (id, name),
+          job_title:positions (id, title),
+          manager:employees!reporting_to (id, full_name, nip)
+        `)
+        .single();
+      
+      // If duplicate NIP error, retry (trigger will generate new NIP)
+      if (insertResult.error?.code === '23505' && insertResult.error?.constraint?.includes('nip')) {
+        retryCount++;
+        console.warn(`NIP collision detected, retrying... (${retryCount}/${maxRetries})`);
+        await new Promise(resolve => setTimeout(resolve, 100 * retryCount)); // Exponential backoff
+        continue;
+      }
+      
+      break;
+    }
+
+    const { data, error } = insertResult;
 
     if (error) {
       console.error('Error creating employee:', error);
@@ -218,7 +236,7 @@ export async function POST(request: NextRequest) {
         // Check which field caused the duplicate
         if (error.constraint?.includes('nip')) {
           return NextResponse.json(
-            { error: 'NIP sudah digunakan, silakan gunakan NIP lain atau kosongkan untuk auto-generate' },
+            { error: 'NIP sudah digunakan, silakan coba lagi atau gunakan NIP lain' },
             { status: 400 }
           );
         }
