@@ -537,7 +537,7 @@ ON employee_salary FOR SELECT
 TO authenticated
 USING (
   employee_id IN (
-    SELECT id FROM employees WHERE auth_id = auth.uid()
+    SELECT id FROM employees WHERE user_id = auth.uid()
   )
   OR
   EXISTS (
@@ -619,7 +619,7 @@ ON payroll_details FOR SELECT
 TO authenticated
 USING (
   employee_id IN (
-    SELECT id FROM employees WHERE auth_id = auth.uid()
+    SELECT id FROM employees WHERE user_id = auth.uid()
   )
   OR
   EXISTS (
@@ -692,7 +692,7 @@ ON employee_benefits FOR SELECT
 TO authenticated
 USING (
   employee_id IN (
-    SELECT id FROM employees WHERE auth_id = auth.uid()
+    SELECT id FROM employees WHERE user_id = auth.uid()
   )
   OR
   EXISTS (
@@ -735,7 +735,7 @@ ON loans FOR SELECT
 TO authenticated
 USING (
   employee_id IN (
-    SELECT id FROM employees WHERE auth_id = auth.uid()
+    SELECT id FROM employees WHERE user_id = auth.uid()
   )
   OR
   EXISTS (
@@ -753,7 +753,7 @@ ON loans FOR INSERT
 TO authenticated
 WITH CHECK (
   employee_id IN (
-    SELECT id FROM employees WHERE auth_id = auth.uid()
+    SELECT id FROM employees WHERE user_id = auth.uid()
   )
 );
 
