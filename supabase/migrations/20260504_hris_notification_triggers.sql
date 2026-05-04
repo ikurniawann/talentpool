@@ -320,11 +320,11 @@ BEGIN
   SELECT full_name INTO v_employee_name
   FROM employees WHERE id = COALESCE(NEW.employee_id, OLD.employee_id);
 
-  IF TG_OP = 'UPDATE' AND OLD.is_completed = false AND NEW.is_completed = true THEN
+  IF TG_OP = 'UPDATE' AND OLD.completed = false AND NEW.completed = true THEN
     -- Cek apakah semua task sudah selesai
-    SELECT COUNT(*), COUNT(*) FILTER (WHERE is_completed = true)
+    SELECT COUNT(*), COUNT(*) FILTER (WHERE completed = true)
     INTO v_total_tasks, v_completed_tasks
-    FROM onboarding_tasks WHERE employee_id = NEW.employee_id;
+    FROM onboarding_checklists WHERE employee_id = NEW.employee_id;
 
     IF v_total_tasks = v_completed_tasks THEN
       PERFORM notify_hrd(
@@ -356,9 +356,9 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
-DROP TRIGGER IF EXISTS trg_notify_onboarding_changes ON onboarding_tasks;
+DROP TRIGGER IF EXISTS trg_notify_onboarding_changes ON onboarding_checklists;
 CREATE TRIGGER trg_notify_onboarding_changes
-  AFTER UPDATE OR DELETE ON onboarding_tasks
+  AFTER UPDATE OR DELETE ON onboarding_checklists
   FOR EACH ROW EXECUTE FUNCTION fn_notify_onboarding_changes();
 
 -- ============================================================
@@ -419,9 +419,9 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
-DROP TRIGGER IF EXISTS trg_notify_offboarding_changes ON offboarding;
+DROP TRIGGER IF EXISTS trg_notify_offboarding_changes ON offboarding_checklists;
 CREATE TRIGGER trg_notify_offboarding_changes
-  AFTER INSERT OR UPDATE OR DELETE ON offboarding
+  AFTER INSERT OR UPDATE OR DELETE ON offboarding_checklists
   FOR EACH ROW EXECUTE FUNCTION fn_notify_offboarding_changes();
 
 -- ============================================================
@@ -650,7 +650,7 @@ CREATE TRIGGER trg_notify_interview_changes
 -- leaves:             INSERT, UPDATE (status), DELETE
 -- attendance:         INSERT (terlambat), UPDATE (jam kurang), DELETE
 -- employees:          INSERT, UPDATE (nonaktif/aktif/status), DELETE
--- onboarding_tasks:   UPDATE (selesai), DELETE
+-- onboarding_checklists:   UPDATE (selesai), DELETE
 -- offboarding:        INSERT, UPDATE (status), DELETE
 -- employee_documents: INSERT, DELETE
 -- candidates:         INSERT, UPDATE (status/pipeline/talent_pool/hired/rejected), DELETE
