@@ -201,6 +201,7 @@ export async function POST(request: NextRequest) {
       insertResult = await supabase
         .from('employees')
         .insert({
+          nip: body.nip, // Include generated NIP
           full_name: body.full_name,
           email: body.email,
           phone: body.phone || '',
