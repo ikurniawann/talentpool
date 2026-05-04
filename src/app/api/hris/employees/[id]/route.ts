@@ -143,6 +143,13 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
       }
     }
 
+    // Get current employee data for comparison
+    const { data: currentData } = await supabase
+      .from('employees')
+      .select('employment_status, department_id, section_id, job_title_id')
+      .eq('id', id)
+      .single();
+
     // Update employee — keep phone as '' if null to satisfy NOT NULL constraint
     const updateData: EmployeeUpdateData = {
       ...body,
@@ -163,6 +170,49 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
         { error: 'Gagal update data karyawan', details: error.message },
         { status: 500 }
       );
+    }
+
+    // Create employment history record if there are changes
+    if (currentData) {
+      const changes: string[] = [];
+      let hasChanges = false;
+
+      if (currentData.employment_status !== body.employment_status) {
+        changes.push(`Status: ${currentData.employment_status} → ${body.employment_status}`);
+        hasChanges = true;
+      }
+      if (currentData.department_id !== body.department_id) {
+        changes.push(`Departemen berubah`);
+        hasChanges = true;
+      }
+      if (currentData.section_id !== body.section_id) {
+        changes.push(`Seksi berubah`);
+        hasChanges = true;
+      }
+      if (currentData.job_title_id !== body.job_title_id) {
+        changes.push(`Jabatan berubah`);
+        hasChanges = true;
+      }
+
+      if (hasChanges) {
+        await supabase
+          .from('employment_history')
+          .insert({
+            employee_id: id,
+            change_type: 'status_change',
+            description: changes.join(', '),
+            prev_employment_status: currentData.employment_status,
+            new_employment_status: body.employment_status,
+            prev_department_id: currentData.department_id,
+            new_department_id: body.department_id,
+            prev_section_id: currentData.section_id,
+            new_section_id: body.section_id,
+            prev_job_title_id: currentData.job_title_id,
+            new_job_title_id: body.job_title_id,
+            effective_date: new Date().toISOString().split('T')[0],
+            created_by: 'system'
+          });
+      }
     }
 
     return NextResponse.json({
