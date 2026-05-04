@@ -29,6 +29,7 @@ export default async function DashboardGroupLayout({
                   { href: "/dashboard/hris/leaves", label: "Cuti & Izin", icon: "file-text" },
                   { href: "/dashboard/hris/employees", label: "Direktori Karyawan", icon: "users" },
                   { href: "/dashboard/hris/org-chart", label: "Struktur Org", icon: "sitemap" },
+                  { href: "/dashboard/hris/reports", label: "Laporan HRIS", icon: "reports" },
                   { href: "/dashboard/hris/payroll", label: "Penggajian", icon: "dollar-sign" },
                 ],
               },
