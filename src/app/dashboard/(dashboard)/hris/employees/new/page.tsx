@@ -225,7 +225,7 @@ export default function NewEmployeePage() {
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Jenis Kelamin</label>
-            <Select value={form.gender} onValueChange={(v) => setField("gender", v)}>
+            <Select value={form.gender} onValueChange={(v) => setField("gender", v)} items={GENDER_OPTIONS.map(o => ({ value: o.value, label: o.label }))}>
               <SelectTrigger><SelectValue placeholder="Pilih" /></SelectTrigger>
               <SelectContent>
                 {GENDER_OPTIONS.map((o) => (
@@ -236,7 +236,7 @@ export default function NewEmployeePage() {
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Status Pernikahan</label>
-            <Select value={form.marital_status} onValueChange={(v) => setField("marital_status", v)}>
+            <Select value={form.marital_status} onValueChange={(v) => setField("marital_status", v)} items={MARITAL_OPTIONS.map(o => ({ value: o.value, label: o.label }))}>
               <SelectTrigger><SelectValue placeholder="Pilih" /></SelectTrigger>
               <SelectContent>
                 {MARITAL_OPTIONS.map((o) => (
@@ -304,7 +304,7 @@ export default function NewEmployeePage() {
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Status Kepegawaian <span className="text-red-500">*</span>
             </label>
-            <Select value={form.employment_status} onValueChange={(v) => setField("employment_status", v)}>
+            <Select value={form.employment_status} onValueChange={(v) => setField("employment_status", v)} items={EMPLOYMENT_STATUS_OPTIONS.map(o => ({ value: o.value, label: o.label }))}>
               <SelectTrigger><SelectValue placeholder="Pilih status" /></SelectTrigger>
               <SelectContent>
                 {EMPLOYMENT_STATUS_OPTIONS.map((o) => (
@@ -315,7 +315,7 @@ export default function NewEmployeePage() {
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Departemen</label>
-            <Select value={form.department_id} onValueChange={(v) => setField("department_id", v)}>
+            <Select value={form.department_id} onValueChange={(v) => setField("department_id", v)} items={departments.map(d => ({ value: d.id, label: d.name }))}>
               <SelectTrigger><SelectValue placeholder="Pilih departemen" /></SelectTrigger>
               <SelectContent>
                 {departments.map((d) => (
@@ -326,7 +326,7 @@ export default function NewEmployeePage() {
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Seksi / Tim</label>
-            <Select value={form.section_id} onValueChange={(v) => setField("section_id", v)}>
+            <Select value={form.section_id} onValueChange={(v) => setField("section_id", v)} items={sections.map(s => ({ value: s.id, label: s.name }))}>
               <SelectTrigger><SelectValue placeholder="Pilih seksi" /></SelectTrigger>
               <SelectContent>
                 {sections.map((s) => (
@@ -337,7 +337,7 @@ export default function NewEmployeePage() {
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Jabatan</label>
-            <Select value={form.job_title_id} onValueChange={(v) => setField("job_title_id", v)}>
+            <Select value={form.job_title_id} onValueChange={(v) => setField("job_title_id", v)} items={positions.map(p => ({ value: p.id, label: p.title }))}>
               <SelectTrigger><SelectValue placeholder="Pilih jabatan" /></SelectTrigger>
               <SelectContent>
                 {positions.map((p) => (
@@ -348,7 +348,7 @@ export default function NewEmployeePage() {
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Atasan Langsung</label>
-            <Select value={form.reporting_to} onValueChange={(v) => setField("reporting_to", v)}>
+            <Select value={form.reporting_to} onValueChange={(v) => setField("reporting_to", v)} items={managers.map(m => ({ value: m.id, label: `${m.full_name} (${m.nip})` }))}>
               <SelectTrigger><SelectValue placeholder="Pilih atasan" /></SelectTrigger>
               <SelectContent>
                 {managers.map((m) => (
