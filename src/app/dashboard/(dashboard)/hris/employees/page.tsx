@@ -277,23 +277,6 @@ export default function EmployeesPage() {
         </nav>
       </div>
 
-      {/* Summary Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        {[
-          { label: "Total", value: total, color: "text-gray-900" },
-          { label: "Tetap", value: "—", color: "text-green-700" },
-          { label: "Kontrak", value: "—", color: "text-blue-700" },
-          { label: "Probasi", value: "—", color: "text-yellow-700" },
-        ].map((item) => (
-          <Card key={item.label}>
-            <CardContent className="pt-4 pb-3">
-              <p className={`text-2xl font-bold ${item.color}`}>{item.value}</p>
-              <p className="text-xs text-gray-500">{item.label}</p>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-
       {/* Filters */}
       <div className="flex flex-col sm:flex-row gap-3 flex-wrap">
         <div className="relative flex-1 min-w-[200px]">
