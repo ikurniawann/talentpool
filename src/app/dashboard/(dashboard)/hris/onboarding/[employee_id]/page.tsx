@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, User, Calendar, Briefcase, Mail, Phone, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 
 interface Employee {
   id: string;
@@ -32,6 +32,7 @@ export default function OnboardingPage({ params }: OnboardingPageProps) {
   const [employeeId, setEmployeeId] = useState<string>("");
   const [employee, setEmployee] = useState<Employee | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const pathname = usePathname();
   const { toast } = useToast();
   const router = useRouter();
 
@@ -135,6 +136,15 @@ export default function OnboardingPage({ params }: OnboardingPageProps) {
 
   return (
     <div className="space-y-6">
+      {/* Breadcrumb */}
+      <div className="flex items-center gap-2 text-sm text-gray-500">
+        <button onClick={() => router.push("/dashboard/hris/employees")} className="hover:text-gray-900">
+          Direktori Karyawan
+        </button>
+        <span>/</span>
+        <span className="text-gray-900 font-medium">Onboarding</span>
+      </div>
+
       {/* Header with Back Button */}
       <div className="flex items-center gap-4">
         <Button variant="ghost" size="icon" asChild>

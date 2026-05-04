@@ -47,15 +47,12 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         manager:employees!reporting_to (
           id,
           full_name,
-          nip,
-          job_title
+          nip
         ),
         direct_reports:employees!reporting_to (
           id,
           full_name,
-          nip,
-          job_title,
-          photo_url
+          nip
         )
       `)
       .eq('id', id)

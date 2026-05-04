@@ -8,11 +8,16 @@ const HRIS_MODULES = [
   { href: "/dashboard/hris/candidates", label: "Kandidat" },
   { href: "/dashboard/hris/pipeline", label: "Pipeline" },
   { href: "/dashboard/hris/talent-pool", label: "Talent Pool" },
-  { href: "/dashboard/hris/staff", label: "Staff" },
+  { href: "/dashboard/hris/schedules", label: "Schedules" },
+  { href: "/dashboard/hris/sections", label: "Sections" },
   { href: "/dashboard/hris/analytics", label: "Analytics" },
   { href: "/dashboard/hris/attendance", label: "Absensi" },
   { href: "/dashboard/hris/leaves", label: "Cuti & Izin" },
   { href: "/dashboard/hris/employees", label: "Karyawan" },
+  { href: "/dashboard/hris/payroll", label: "Payroll" },
+  { href: "/dashboard/hris/salary", label: "Salary" },
+  { href: "/dashboard/hris/reports", label: "Reports" },
+  { href: "/dashboard/hris/org-chart", label: "Org Chart" },
 ];
 
 export default function HRISLayout({ children }: { children: ReactNode }) {

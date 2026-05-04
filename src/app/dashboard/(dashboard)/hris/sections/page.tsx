@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useRouter, usePathname } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -29,6 +30,8 @@ import {
 import { useToast, ToastContainer } from "@/components/ui/toast";
 
 export default function SectionStaffPage() {
+  const router = useRouter();
+  const pathname = usePathname();
   const supabase = createClient();
   const { toasts, toast, dismiss } = useToast();
 
@@ -168,6 +171,57 @@ export default function SectionStaffPage() {
 
   return (
     <div className="space-y-6">
+      {/* Breadcrumb */}
+      <div className="flex items-center gap-2 text-sm text-gray-500">
+        <button onClick={() => router.push("/dashboard/hris/employees")} className="hover:text-gray-900">
+          Direktori Karyawan
+        </button>
+        <span>/</span>
+        <span className="text-gray-900 font-medium">Sections</span>
+      </div>
+
+      {/* Tabs */}
+      <div className="border-b border-gray-200">
+        <nav className="-mb-px flex space-x-6 overflow-x-auto">
+          <button
+            onClick={() => router.push("/dashboard/hris/employees")}
+            className={`
+              whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm
+              ${pathname === "/dashboard/hris/employees" || pathname.startsWith("/dashboard/hris/employees/")
+                ? 'border-pink-500 text-pink-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }
+            `}
+          >
+            Semua Karyawan
+          </button>
+          <button
+            onClick={() => router.push("/dashboard/hris/schedules")}
+            className={`
+              whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm
+              ${pathname === "/dashboard/hris/schedules"
+                ? 'border-pink-500 text-pink-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }
+            `}
+          >
+            Schedules
+          </button>
+          <button
+            onClick={() => router.push("/dashboard/hris/sections")}
+            className={`
+              whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm
+              ${pathname === "/dashboard/hris/sections"
+                ? 'border-pink-500 text-pink-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }
+            `}
+          >
+            Sections
+          </button>
+        </nav>
+      </div>
+
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
