@@ -359,12 +359,12 @@ export default function EmployeesPage() {
                         <div className="flex justify-end">
                           <Button
                             size="sm"
-                            variant="ghost"
+                            variant="outline"
                             onClick={(e) => {
                               e.stopPropagation();
                               router.push(`/dashboard/hris/employees/${emp.id}`);
                             }}
-                            className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                            className="text-gray-700 hover:text-blue-600 hover:border-blue-300"
                           >
                             <EyeIcon className="w-4 h-4" />
                           </Button>
