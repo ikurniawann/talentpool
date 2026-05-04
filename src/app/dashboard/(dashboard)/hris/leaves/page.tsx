@@ -105,6 +105,40 @@ export default function LeavesPage() {
     fetchLeaves(); // Refresh list
   };
 
+  const handleExport = async () => {
+    try {
+      // Build query params from filters
+      const params = new URLSearchParams();
+      if (filterStatus !== 'all') {
+        params.set('status', filterStatus);
+      }
+      if (filterType !== 'all') {
+        params.set('leave_type', filterType);
+      }
+      
+      const response = await fetch(`/api/hris/leaves/export?${params.toString()}`);
+      
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Export failed');
+      }
+      
+      // Download CSV file
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `leave_export_${new Date().toISOString().split('T')[0]}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (error) {
+      console.error('Export failed:', error);
+      alert('Export gagal: ' + (error as Error).message);
+    }
+  };
+
   const filteredLeaves = leaves.filter((leave) => {
     if (!searchQuery) return true;
     const query = searchQuery.toLowerCase();
@@ -377,6 +411,13 @@ export default function LeavesPage() {
             </div>
           </CardContent>
         </Card>
+      </div>
+
+      <div className="flex gap-2">
+        <Button variant="outline" size="sm" onClick={handleExport}>
+          <Download className="w-3.5 h-3.5 mr-1.5" />
+          Export CSV
+        </Button>
       </div>
     </div>
   );

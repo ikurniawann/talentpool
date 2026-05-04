@@ -36,6 +36,40 @@ export default function AttendancePage() {
     // Refresh calendar or show success state
   };
 
+  const handleExport = async () => {
+    try {
+      // Build query params from filters
+      const params = new URLSearchParams();
+      if (filterEmployee !== 'all') {
+        params.set('employee_id', filterEmployee);
+      }
+      if (filterStatus !== 'all') {
+        params.set('status', filterStatus);
+      }
+      
+      const response = await fetch(`/api/hris/attendance/export?${params.toString()}`);
+      
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Export failed');
+      }
+      
+      // Download CSV file
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `attendance_export_${new Date().toISOString().split('T')[0]}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (error) {
+      console.error('Export failed:', error);
+      alert('Export gagal: ' + (error as Error).message);
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -46,7 +80,7 @@ export default function AttendancePage() {
         </div>
         
         <div className="flex gap-2">
-          <Button variant="outline" size="sm" className="hidden sm:inline-flex">
+          <Button variant="outline" size="sm" className="hidden sm:inline-flex" onClick={handleExport}>
             <Download className="w-3.5 h-3.5 mr-1.5" />
             <span className="hidden lg:inline">Export CSV</span>
             <span className="lg:hidden">CSV</span>
