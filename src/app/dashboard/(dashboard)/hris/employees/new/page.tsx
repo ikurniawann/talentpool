@@ -117,6 +117,8 @@ export default function NewEmployeePage() {
     try {
       const payload: Record<string, any> = {};
       for (const [k, v] of Object.entries(form)) {
+        // Skip nip - let database trigger auto-generate
+        if (k === 'nip') continue;
         payload[k] = v === "" ? null : v;
       }
 
