@@ -170,7 +170,7 @@ export async function POST(request: NextRequest) {
       .insert({
         full_name: body.full_name,
         email: body.email,
-        phone: body.phone,
+        phone: body.phone || '',
         join_date: body.join_date,
         employment_status: body.employment_status,
         department_id: body.department_id,
