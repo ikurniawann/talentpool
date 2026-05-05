@@ -6,7 +6,7 @@
 // ============================================================
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
 import { Employee, EmployeeUpdateData, ApiResponse } from '@/types';
 
 interface RouteParams {
@@ -19,41 +19,17 @@ interface RouteParams {
 
 export async function GET(request: NextRequest, { params }: RouteParams) {
   try {
-    const supabase = await createClient();
+    const supabase = createAdminClient();
     const { id } = await params;
 
     const { data, error } = await supabase
       .from('employees')
       .select(`
         *,
-        department:departments (
-          id,
-          name,
-          code,
-          description
-        ),
-        section:sections (
-          id,
-          name,
-          code,
-          color
-        ),
-        job_title:positions (
-          id,
-          title,
-          department,
-          level
-        ),
-        manager:employees!reporting_to (
-          id,
-          full_name,
-          nip
-        ),
-        direct_reports:employees!reporting_to (
-          id,
-          full_name,
-          nip
-        )
+        department:departments (id, name, code, description),
+        section:sections (id, name, code, color),
+        job_title:positions (id, title, department, level),
+        direct_reports:employees!reporting_to (id, full_name, nip)
       `)
       .eq('id', id)
       .single();
@@ -72,8 +48,19 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       );
     }
 
+    // Fetch manager separately to avoid self-referential join ambiguity
+    let manager = null;
+    if (data.reporting_to) {
+      const { data: managerData } = await supabase
+        .from('employees')
+        .select('id, full_name, nip')
+        .eq('id', data.reporting_to)
+        .single();
+      manager = managerData;
+    }
+
     return NextResponse.json({
-      data: data as Employee
+      data: { ...data, manager } as Employee
     } as ApiResponse<Employee>);
 
   } catch (error) {
@@ -91,7 +78,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 
 export async function PUT(request: NextRequest, { params }: RouteParams) {
   try {
-    const supabase = await createClient();
+    const supabase = createAdminClient();
     const { id } = await params;
     const body: EmployeeUpdateData = await request.json();
 
@@ -161,7 +148,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
       .from('employees')
       .update(updateData)
       .eq('id', id)
-      .select('*, department:departments(id, name, code), section:sections(id, name), job_title:positions(id, title), manager:employees!reporting_to(id, full_name, nip)')
+      .select('*, department:departments(id, name, code), section:sections(id, name), job_title:positions(id, title)')
       .single();
 
     if (error) {
@@ -195,12 +182,12 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
       }
 
       if (hasChanges) {
-        await supabase
+        const { error: historyError } = await supabase
           .from('employment_history')
           .insert({
             employee_id: id,
             change_type: 'status_change',
-            description: changes.join(', '),
+            notes: changes.join(', '),
             prev_employment_status: currentData.employment_status,
             new_employment_status: body.employment_status,
             prev_department_id: currentData.department_id,
@@ -210,13 +197,26 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
             prev_job_title_id: currentData.job_title_id,
             new_job_title_id: body.job_title_id,
             effective_date: new Date().toISOString().split('T')[0],
-            created_by: 'system'
           });
+        if (historyError) {
+          console.error('Error inserting employment history:', historyError);
+        }
       }
     }
 
+    // Fetch manager separately
+    let manager = null;
+    if (data.reporting_to) {
+      const { data: managerData } = await supabase
+        .from('employees')
+        .select('id, full_name, nip')
+        .eq('id', data.reporting_to)
+        .single();
+      manager = managerData;
+    }
+
     return NextResponse.json({
-      data: data as Employee,
+      data: { ...data, manager } as Employee,
       message: 'Data karyawan berhasil diupdate'
     } as ApiResponse<Employee>);
 
@@ -236,7 +236,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
 
 export async function DELETE(request: NextRequest, { params }: RouteParams) {
   try {
-    const supabase = await createClient();
+    const supabase = createAdminClient();
     const { id } = await params;
 
     // Check if employee exists

@@ -26,15 +26,6 @@ interface EditEmployeePageProps {
   params: Promise<{ id: string }>;
 }
 
-const EMPLOYMENT_STATUS_OPTIONS = [
-  { value: "probation", label: "Probasi" },
-  { value: "contract", label: "Kontrak" },
-  { value: "permanent", label: "Tetap" },
-  { value: "internship", label: "Magang" },
-  { value: "resigned", label: "Resign" },
-  { value: "terminated", label: "PHK" },
-  { value: "suspended", label: "Suspend" },
-];
 
 const GENDER_OPTIONS = [
   { value: "male", label: "Laki-laki" },
@@ -59,6 +50,7 @@ export default function EditEmployeePage({ params }: EditEmployeePageProps) {
   const [sections, setSections] = useState<any[]>([]);
   const [positions, setPositions] = useState<any[]>([]);
   const [managers, setManagers] = useState<any[]>([]);
+  const [employmentStatuses, setEmploymentStatuses] = useState<any[]>([]);
 
   const [form, setForm] = useState({
     // Personal
@@ -149,21 +141,39 @@ export default function EditEmployeePage({ params }: EditEmployeePageProps) {
 
   async function fetchLookups() {
     const supabase = createClient();
-    const [depts, sects, pos, emps] = await Promise.all([
-      supabase.from("departments").select("id, name").order("name"),
+
+    const [deptsRes, posRes, statusRes, managersRes, sects] = await Promise.all([
+      fetch("/api/master/departments"),
+      fetch("/api/master/positions"),
+      fetch("/api/master/employment-statuses"),
+      fetch("/api/hris/employees?is_active=true&limit=200&sort_by=full_name&sort_order=asc"),
       supabase.from("sections").select("id, name").order("name"),
-      supabase.from("positions").select("id, title").order("title"),
-      supabase.from("employees").select("id, full_name, nip").eq("is_active", true).order("full_name"),
     ]);
-    setDepartments(depts.data || []);
+
+    const deptsJson = await deptsRes.json();
+    const posJson = await posRes.json();
+    const statusJson = await statusRes.json();
+    const managersJson = await managersRes.json();
+
+    setDepartments(deptsJson.data || []);
+    setPositions(posJson.data || []);
+    setEmploymentStatuses(statusJson.data || []);
+    setManagers(managersJson.data || []);
     setSections(sects.data || []);
-    setPositions(pos.data || []);
-    setManagers(emps.data || []);
   }
 
   function setField(key: string, value: any) {
     setForm((prev) => ({ ...prev, [key]: value }));
   }
+
+  function handleDepartmentChange(v: string) {
+    setForm((prev) => ({ ...prev, department_id: v, job_title_id: "" }));
+  }
+
+  const selectedDeptName = departments.find((d) => d.id === form.department_id)?.name;
+  const filteredPositions = form.department_id
+    ? positions.filter((p) => p.department === selectedDeptName)
+    : [];
 
   async function handleSave() {
     if (!form.full_name || !form.email || !form.employment_status) {
@@ -312,11 +322,11 @@ export default function EditEmployeePage({ params }: EditEmployeePageProps) {
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Status Kepegawaian <span className="text-red-500">*</span></label>
-            <Select value={form.employment_status} onValueChange={(v) => setField("employment_status", v)} items={EMPLOYMENT_STATUS_OPTIONS.map(o => ({ value: o.value, label: o.label }))}>
+            <Select value={form.employment_status} onValueChange={(v) => setField("employment_status", v)} items={employmentStatuses.map(o => ({ value: o.code, label: o.name }))}>
               <SelectTrigger><SelectValue placeholder="Pilih status" /></SelectTrigger>
               <SelectContent>
-                {EMPLOYMENT_STATUS_OPTIONS.map((o) => (
-                  <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                {employmentStatuses.map((o) => (
+                  <SelectItem key={o.code} value={o.code}>{o.name}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -331,7 +341,7 @@ export default function EditEmployeePage({ params }: EditEmployeePageProps) {
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Departemen</label>
-            <Select value={form.department_id} onValueChange={(v) => setField("department_id", v)} items={departments.map(d => ({ value: d.id, label: d.name }))}>
+            <Select value={form.department_id} onValueChange={handleDepartmentChange} items={departments.map(d => ({ value: d.id, label: d.name }))}>
               <SelectTrigger><SelectValue placeholder="Pilih departemen" /></SelectTrigger>
               <SelectContent>
                 {departments.map((d) => (
@@ -353,10 +363,17 @@ export default function EditEmployeePage({ params }: EditEmployeePageProps) {
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Jabatan</label>
-            <Select value={form.job_title_id} onValueChange={(v) => setField("job_title_id", v)} items={positions.map(p => ({ value: p.id, label: p.title }))}>
-              <SelectTrigger><SelectValue placeholder="Pilih jabatan" /></SelectTrigger>
+            <Select
+              value={form.job_title_id}
+              onValueChange={(v) => setField("job_title_id", v)}
+              disabled={!form.department_id}
+              items={filteredPositions.map(p => ({ value: p.id, label: p.title }))}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder={form.department_id ? "Pilih jabatan" : "Pilih departemen dulu"} />
+              </SelectTrigger>
               <SelectContent>
-                {positions.map((p) => (
+                {filteredPositions.map((p) => (
                   <SelectItem key={p.id} value={p.id}>{p.title}</SelectItem>
                 ))}
               </SelectContent>

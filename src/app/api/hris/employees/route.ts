@@ -6,6 +6,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
 import { Employee, EmployeeCreateData, ApiResponse, PaginatedResponse } from '@/types';
 
 // ============================================================
@@ -15,7 +16,7 @@ import { Employee, EmployeeCreateData, ApiResponse, PaginatedResponse } from '@/
 
 export async function GET(request: NextRequest) {
   try {
-    const supabase = await createClient();
+    const supabase = createAdminClient();
 
     // Parse query params
     const searchParams = request.nextUrl.searchParams;
@@ -123,7 +124,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createClient();
+    const supabase = createAdminClient();
     const body: EmployeeCreateData = await request.json();
 
     // Validate required fields
@@ -284,9 +285,9 @@ export async function POST(request: NextRequest) {
     } as ApiResponse<Employee>);
 
   } catch (error) {
-    console.error('Error in employees API:', error);
+    console.error('Error in employees POST API:', error);
     return NextResponse.json(
-      { error: 'Terjadi kesalahan pada server' },
+      { error: 'Terjadi kesalahan pada server', details: error instanceof Error ? error.message : String(error) },
       { status: 500 }
     );
   }

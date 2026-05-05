@@ -42,6 +42,16 @@ export default async function DashboardGroupLayout({
                   { href: "/dashboard/hris/salary", label: "Salary", icon: "money" },
                 ],
               },
+              {
+                href: "/dashboard/master",
+                label: "Master Data",
+                icon: "database",
+                children: [
+                  { href: "/dashboard/master/departments", label: "Departemen", icon: "building" },
+                  { href: "/dashboard/master/positions", label: "Jabatan", icon: "briefcase" },
+                  { href: "/dashboard/master/employment-statuses", label: "Status Kepegawaian", icon: "identification" },
+                ],
+              },
               { href: "/dashboard/settings", label: "Pengaturan", icon: "settings" },
             ]
           : user.role === "hiring_manager"

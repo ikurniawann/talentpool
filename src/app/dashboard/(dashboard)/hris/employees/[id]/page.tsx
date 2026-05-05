@@ -555,8 +555,8 @@ export default function EmployeeProfilePage({ params }: { params: Promise<{ id: 
                                 </div>
                               )}
                             </div>
-                            {h.reason && (
-                              <p className="mt-2 text-xs text-gray-500 italic">"{h.reason}"</p>
+                            {(h.reason || h.notes) && (
+                              <p className="mt-2 text-xs text-gray-500 italic">"{h.reason || h.notes}"</p>
                             )}
                           </CardContent>
                         </Card>

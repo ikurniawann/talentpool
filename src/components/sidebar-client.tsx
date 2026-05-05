@@ -23,6 +23,9 @@ import {
   ChevronLeftIcon,
   ChevronRightIcon,
   BuildingOffice2Icon,
+  CircleStackIcon,
+  BuildingOfficeIcon,
+  IdentificationIcon,
 } from "@heroicons/react/24/outline";
 import { NotificationBell } from "./hris/NotificationBell";
 import {
@@ -40,6 +43,9 @@ import {
   BookOpenIcon as BookOpenIconSolid,
   CubeIcon as CubeIconSolid,
   BuildingOffice2Icon as BuildingOffice2IconSolid,
+  CircleStackIcon as CircleStackIconSolid,
+  BuildingOfficeIcon as BuildingOfficeIconSolid,
+  IdentificationIcon as IdentificationIconSolid,
 } from "@heroicons/react/24/solid";
 
 const iconMap: Record<string, { outline: React.ElementType; solid: React.ElementType }> = {
@@ -57,6 +63,9 @@ const iconMap: Record<string, { outline: React.ElementType; solid: React.Element
   po: { outline: ClipboardDocumentCheckIcon, solid: ClipboardDocumentCheckIconSolid },
   reports: { outline: BookOpenIcon, solid: BookOpenIconSolid },
   sitemap: { outline: BuildingOffice2Icon, solid: BuildingOffice2IconSolid },
+  database: { outline: CircleStackIcon, solid: CircleStackIconSolid },
+  building: { outline: BuildingOfficeIcon, solid: BuildingOfficeIconSolid },
+  identification: { outline: IdentificationIcon, solid: IdentificationIconSolid },
 };
 
 function NavIcon({ name, className, isActive }: { name: string; className?: string; isActive: boolean }) {
