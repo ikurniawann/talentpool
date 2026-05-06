@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { ArrowLeftIcon, PlusIcon, TrendingUpIcon, CalendarIcon, UserIcon, TargetIcon } from "lucide-react";
-import { showToast, ToastContainer } from "@/components/ui/toast";
+import { useToast } from "@/components/ui/toast";
 
 interface EmployeeKpi {
   id: string;
@@ -55,6 +55,7 @@ interface ProgressUpdate {
 export default function EmployeeKpiDetailPage() {
   const params = useParams();
   const router = useRouter();
+  const { toasts, showToast, removeToast } = useToast();
   const [kpi, setKpi] = useState<EmployeeKpi | null>(null);
   const [progressUpdates, setProgressUpdates] = useState<ProgressUpdate[]>([]);
   const [loading, setLoading] = useState(true);
@@ -179,7 +180,25 @@ export default function EmployeeKpiDetailPage() {
 
   return (
     <div className="container mx-auto py-8 max-w-5xl">
-      <ToastContainer toasts={[]} removeToast={() => {}} />
+      {/* Toast notifications */}
+      {toasts.map((toast) => (
+        <div
+          key={toast.id}
+          className={`fixed top-4 right-4 z-50 flex items-center gap-2 px-4 py-3 rounded-lg shadow-lg border ${
+            toast.type === 'success' ? 'bg-green-50 border-green-200 text-green-700' : 'bg-red-50 border-red-200 text-red-700'
+          }`}
+        >
+          {toast.type === 'success' ? (
+            <CheckCircleIcon className="w-5 h-5" />
+          ) : (
+            <XCircleIcon className="w-5 h-5" />
+          )}
+          <span className="text-sm font-medium">{toast.message}</span>
+          <button onClick={() => removeToast(toast.id)} className="ml-2 hover:opacity-70">
+            <XMarkIcon className="w-4 h-4" />
+          </button>
+        </div>
+      ))}
 
       {/* Header */}
       <div className="mb-6 flex items-center justify-between">
