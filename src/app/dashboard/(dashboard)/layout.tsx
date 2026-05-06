@@ -28,7 +28,7 @@ export default async function DashboardGroupLayout({
                   { href: "/dashboard/hris/leaves", label: "Cuti & Izin", icon: "file-text" },
                   {
                     href: "/dashboard/hris/employees",
-                    label: "Direktori Karyawan",
+                    label: "Karyawan",
                     icon: "users",
                     children: [
                       { href: "/dashboard/hris/employees", label: "Semua Karyawan" },
