@@ -39,15 +39,22 @@ export async function GET(request: NextRequest) {
     query = query.range(from, to).order('final_score', { ascending: false });
 
     const { data, error, count } = await query;
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    
+    if (error) {
+      console.error('Supabase error:', error);
+      return NextResponse.json({ error: error.message, details: error }, { status: 500 });
+    }
 
+    console.log('Feedback summaries fetched:', data?.length || 0);
+    
     return NextResponse.json({
       data: data || [],
       pagination: { page, limit, total: count || 0, totalPages: Math.ceil((count || 0) / limit) },
     });
   } catch (error) {
     console.error('Error fetching feedback summaries:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    return NextResponse.json({ error: 'Internal server error', details: errorMessage }, { status: 500 });
   }
 }
 

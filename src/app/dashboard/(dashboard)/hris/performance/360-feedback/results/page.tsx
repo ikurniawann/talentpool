@@ -94,8 +94,9 @@ export default function FeedbackResultsPage() {
     window.print();
   };
 
-  // Filter & Sort
+  // Filter & Sort - remove null/invalid data
   const filteredSummaries = summaries
+    .filter((s) => s.final_score != null && s.final_score !== undefined)
     .filter((s) => {
       const matchGrade = filterGrade ? s.final_grade === filterGrade : true;
       const matchSearch = searchQuery
@@ -106,7 +107,7 @@ export default function FeedbackResultsPage() {
       return matchGrade && matchSearch;
     })
     .sort((a, b) => {
-      if (sortBy === "score") return b.final_score - a.final_score;
+      if (sortBy === "score") return (b.final_score || 0) - (a.final_score || 0);
       if (sortBy === "name") return a.employee.full_name.localeCompare(b.employee.full_name);
       if (sortBy === "grade") {
         const gradeOrder = { A: 5, B: 4, C: 3, D: 2, E: 1 };
@@ -115,15 +116,16 @@ export default function FeedbackResultsPage() {
       return 0;
     });
 
-  // Statistics
+  // Statistics - only count valid data
+  const validSummaries = summaries.filter(s => s.final_score != null && s.final_score !== undefined);
   const stats = {
-    total: summaries.length,
-    avgScore: summaries.length > 0 ? summaries.reduce((sum, s) => sum + s.final_score, 0) / summaries.length : 0,
-    gradeA: summaries.filter(s => s.final_grade === 'A').length,
-    gradeB: summaries.filter(s => s.final_grade === 'B').length,
-    gradeC: summaries.filter(s => s.final_grade === 'C').length,
-    gradeD: summaries.filter(s => s.final_grade === 'D' || s.final_grade === 'E').length,
-    highRisk: summaries.filter(s => s.burnout_risk === 'high').length,
+    total: validSummaries.length,
+    avgScore: validSummaries.length > 0 ? validSummaries.reduce((sum, s) => sum + (s.final_score || 0), 0) / validSummaries.length : 0,
+    gradeA: validSummaries.filter(s => s.final_grade === 'A').length,
+    gradeB: validSummaries.filter(s => s.final_grade === 'B').length,
+    gradeC: validSummaries.filter(s => s.final_grade === 'C').length,
+    gradeD: validSummaries.filter(s => s.final_grade === 'D' || s.final_grade === 'E').length,
+    highRisk: validSummaries.filter(s => s.burnout_risk === 'high').length,
   };
 
   if (loading) {
@@ -296,11 +298,11 @@ export default function FeedbackResultsPage() {
 
                     {/* Score & Grade */}
                     <div className="text-right flex-shrink-0">
-                      <div className={`text-4xl font-bold mb-2 ${getScoreColor(summary.final_score)}`}>
-                        {summary.final_score.toFixed(1)}
+                      <div className={`text-4xl font-bold mb-2 ${getScoreColor(summary.final_score || 0)}`}>
+                        {(summary.final_score || 0).toFixed(1)}
                       </div>
-                      <Badge className={`${getGradeColor(summary.final_grade)} px-4 py-1.5 text-base font-bold shadow-md`}>
-                        Grade {summary.final_grade}
+                      <Badge className={`${getGradeColor(summary.final_grade || 'C')} px-4 py-1.5 text-base font-bold shadow-md`}>
+                        Grade {summary.final_grade || 'N/A'}
                       </Badge>
                     </div>
                   </div>
@@ -311,12 +313,12 @@ export default function FeedbackResultsPage() {
                     <div className="space-y-3">
                       <div className="flex items-center justify-between text-sm">
                         <span className="text-gray-600 font-medium">KPI Score (70%)</span>
-                        <span className={`font-bold ${getScoreColor(summary.kpi_score)}`}>{summary.kpi_score.toFixed(1)}</span>
+                        <span className={`font-bold ${getScoreColor(summary.kpi_score || 0)}`}>{summary.kpi_score.toFixed(1)}</span>
                       </div>
                       <Progress value={summary.kpi_score} className="h-2.5" />
                       <div className="flex items-center justify-between text-sm">
                         <span className="text-gray-600 font-medium">360° Score (30%)</span>
-                        <span className={`font-bold ${getScoreColor(summary.overall_360_score)}`}>{summary.overall_360_score.toFixed(1)}</span>
+                        <span className={`font-bold ${getScoreColor(summary.overall_360_score || 0)}`}>{summary.overall_360_score.toFixed(1)}</span>
                       </div>
                       <Progress value={(summary.overall_360_score / 100) * 100} className="h-2.5" />
                     </div>
@@ -326,11 +328,11 @@ export default function FeedbackResultsPage() {
                       <div className="text-xs text-gray-500 font-semibold uppercase tracking-wide mb-2">Behavioral Competencies</div>
                       <div className="grid grid-cols-5 gap-2">
                         {[
-                          { label: "Lead", score: summary.leadership_score },
-                          { label: "Comm", score: summary.communication_score },
-                          { label: "Collab", score: summary.collaboration_score },
-                          { label: "Acct", score: summary.accountability_score },
-                          { label: "Prob", score: summary.problem_solving_score },
+                          { label: "Lead", score: summary.leadership_score || 0 },
+                          { label: "Comm", score: summary.communication_score || 0 },
+                          { label: "Collab", score: summary.collaboration_score || 0 },
+                          { label: "Acct", score: summary.accountability_score || 0 },
+                          { label: "Prob", score: summary.problem_solving_score || 0 },
                         ].map((cat) => (
                           <div key={cat.label} className="text-center">
                             <div className={`text-lg font-bold ${getScoreColor(cat.score * 20)}`}>{cat.score.toFixed(1)}</div>
@@ -344,11 +346,11 @@ export default function FeedbackResultsPage() {
                     <div className="space-y-3">
                       <div className="flex items-center justify-between">
                         <span className="text-sm text-gray-600 font-medium">Burnout Risk</span>
-                        {getRiskBadge(summary.burnout_risk)}
+                        {getRiskBadge(summary.burnout_risk || 'low')}
                       </div>
                       <div className="flex items-center justify-between">
                         <span className="text-sm text-gray-600 font-medium">Promotion Potential</span>
-                        {getRiskBadge(summary.promotion_potential)}
+                        {getRiskBadge(summary.promotion_potential || 'low')}
                       </div>
                       {summary.strengths && summary.strengths.length > 0 && (
                         <div className="flex items-start gap-2 text-xs text-green-600 mt-2">

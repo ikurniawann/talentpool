@@ -206,7 +206,7 @@ export default function ExecutiveDashboardPage() {
           </CardHeader>
           <CardContent>
             <div className={`text-3xl font-bold ${getScoreColor(overallStats.avg_final_score)}`}>
-              {overallStats.avg_final_score.toFixed(1)}
+              {(overallStats.avg_final_score || 0).toFixed(1)}
             </div>
             <Progress value={overallStats.avg_final_score} className="h-2 mt-2" />
           </CardContent>
@@ -223,11 +223,11 @@ export default function ExecutiveDashboardPage() {
             <div className="space-y-2">
               <div className="flex justify-between text-sm">
                 <span>KPI</span>
-                <span className="font-medium">{overallStats.avg_kpi_score.toFixed(1)}</span>
+                <span className="font-medium">{(overallStats.avg_kpi_score || 0).toFixed(1)}</span>
               </div>
               <div className="flex justify-between text-sm">
                 <span>360°</span>
-                <span className="font-medium">{overallStats.avg_360_score.toFixed(1)}</span>
+                <span className="font-medium">{(overallStats.avg_360_score || 0).toFixed(1)}</span>
               </div>
             </div>
           </CardContent>
@@ -271,7 +271,7 @@ export default function ExecutiveDashboardPage() {
                   <div className="flex items-center gap-4">
                     <div className="text-right">
                       <div className={`text-lg font-bold ${getScoreColor(dept.avg_final_score)}`}>
-                        {dept.avg_final_score.toFixed(1)}
+                        {(dept.avg_final_score || 0).toFixed(1)}
                       </div>
                       <div className="text-xs text-gray-500">Avg Score</div>
                     </div>
@@ -282,9 +282,9 @@ export default function ExecutiveDashboardPage() {
                 </div>
                 <div className="flex gap-2 text-xs">
                   <span className="text-gray-500">KPI:</span>
-                  <span className="font-medium">{dept.avg_kpi_score.toFixed(1)}</span>
+                  <span className="font-medium">{(dept.avg_kpi_score || 0).toFixed(1)}</span>
                   <span className="text-gray-500 ml-2">360°:</span>
-                  <span className="font-medium">{dept.avg_360_score.toFixed(1)}</span>
+                  <span className="font-medium">{(dept.avg_360_score || 0).toFixed(1)}</span>
                   <div className="ml-auto flex gap-1">
                     {dept.grade_a > 0 && <Badge className="bg-green-100 text-green-700 text-xs">A:{dept.grade_a}</Badge>}
                     {dept.grade_b > 0 && <Badge className="bg-blue-100 text-blue-700 text-xs">B:{dept.grade_b}</Badge>}
@@ -328,9 +328,9 @@ export default function ExecutiveDashboardPage() {
                   </div>
                   <div className="text-right">
                     <div className={`text-lg font-bold ${getScoreColor(emp.final_score)}`}>
-                      {emp.final_score.toFixed(1)}
+                      {(emp.final_score || 0).toFixed(1)}
                     </div>
-                    <Badge className={getGradeColor(emp.final_grade)}>Grade {emp.final_grade}</Badge>
+                    <Badge className={getGradeColor(emp.final_grade)}>Grade {emp.final_grade || 'C'}</Badge>
                   </div>
                 </div>
               ))}
@@ -361,9 +361,9 @@ export default function ExecutiveDashboardPage() {
                   </div>
                   <div className="text-right">
                     <div className={`text-lg font-bold ${getScoreColor(emp.final_score)}`}>
-                      {emp.final_score.toFixed(1)}
+                      {(emp.final_score || 0).toFixed(1)}
                     </div>
-                    <Badge className={getGradeColor(emp.final_grade)}>Grade {emp.final_grade}</Badge>
+                    <Badge className={getGradeColor(emp.final_grade)}>Grade {emp.final_grade || 'C'}</Badge>
                   </div>
                 </div>
               ))}
@@ -400,10 +400,10 @@ export default function ExecutiveDashboardPage() {
                       <td className="py-3 px-3 font-medium">{emp.employee.full_name}</td>
                       <td className="py-3 px-3 text-gray-500">{emp.employee.department?.name}</td>
                       <td className={`py-3 px-3 text-right font-bold ${getScoreColor(emp.final_score)}`}>
-                        {emp.final_score.toFixed(1)}
+                        {(emp.final_score || 0).toFixed(1)}
                       </td>
                       <td className="py-3 px-3">
-                        <Badge className={getGradeColor(emp.final_grade)}>Grade {emp.final_grade}</Badge>
+                        <Badge className={getGradeColor(emp.final_grade)}>Grade {emp.final_grade || 'C'}</Badge>
                       </td>
                       <td className="py-3 px-3">
                         <Badge className={
