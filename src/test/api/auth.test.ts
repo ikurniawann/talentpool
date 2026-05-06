@@ -94,14 +94,15 @@ describe('API Auth Helpers', () => {
       expect(response.status).toBe(204);
     });
 
-    it('paginatedResponse returns correct shape', () => {
+    it('paginatedResponse returns correct shape', async () => {
       const data = [{ id: '1' }, { id: '2' }];
       const meta = { page: 1, limit: 20, total: 50, totalPages: 3 };
       const response = paginatedResponse(data, meta);
+      const body = await response.json();
       
-      expect(response.success).toBe(true);
-      expect(response.data).toEqual(data);
-      expect(response.pagination).toEqual(meta);
+      expect(body.success).toBe(true);
+      expect(body.data).toEqual(data);
+      expect(body.pagination).toEqual(meta);
     });
   });
 });

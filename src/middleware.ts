@@ -7,10 +7,10 @@ export function middleware(request: NextRequest) {
   // Redirect old HRIS paths to new /dashboard/hris/* structure
   const hrisModules = ['candidates', 'pipeline', 'talent-pool', 'staff', 'analytics'];
   
-  for (const module of hrisModules) {
+  for (const hrisModule of hrisModules) {
     // Match /dashboard/{module}/* but NOT /dashboard/hris/{module}/*
-    if (pathname.startsWith(`/dashboard/${module}`) && !pathname.startsWith('/dashboard/hris/')) {
-      const newPath = pathname.replace(`/dashboard/${module}`, `/dashboard/hris/${module}`);
+    if (pathname.startsWith(`/dashboard/${hrisModule}`) && !pathname.startsWith('/dashboard/hris/')) {
+      const newPath = pathname.replace(`/dashboard/${hrisModule}`, `/dashboard/hris/${hrisModule}`);
       return NextResponse.redirect(new URL(newPath, request.url));
     }
   }

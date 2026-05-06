@@ -38,7 +38,6 @@ function matchRoute(pathname: string): RouteDef | null {
   // Try removing trailing segments for parent routes
   const segments = pathToSegments(clean);
   for (let i = segments.length - 1; i >= 0; i--) {
-    const prefix = "/" + segments.slice(0, i).join("/");
     const match = Object.values(ROUTE_MAP).find((r) => {
       const rSegs = pathToSegments(r.path);
       return (
