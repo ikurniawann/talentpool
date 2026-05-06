@@ -41,6 +41,9 @@ export interface PayrollInput {
   bpjsTkEnrolled: boolean;
   bpjsKesEnrolled: boolean;
   taperaEnrolled: boolean;
+  
+  // Options
+  includeThr?: boolean; // Include THR in calculation (default: false)
 }
 
 export interface PayrollResult {
@@ -336,9 +339,9 @@ export async function calculatePayroll(input: PayrollInput): Promise<PayrollResu
   const hourlyRate = workingDays > 0 ? baseSalary / workingDays / 8 : 0;
   const overtimePay = calculateOvertime(overtimeHours, hourlyRate, overtimeRate);
   
-  // Calculate THR (if eligible)
-  const thr = employmentStatus === 'permanent' 
-    ? calculateTHR(baseSalary, joinDate, input.periodYear) 
+  // Calculate THR (only if includeThr option is enabled)
+  const thr = (input.includeThr && employmentStatus === 'permanent')
+    ? calculateTHR(baseSalary, joinDate, input.periodYear)
     : 0;
   
   // Total gross salary

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { LeaveRequestForm } from "@/components/hris/LeaveRequestForm";
+import { useRouter } from "next/navigation";
 import { ApprovalButtons } from "@/components/hris/ApprovalButtons";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -56,6 +56,7 @@ interface LeaveRequest {
 }
 
 export default function LeavesPage() {
+  const router = useRouter();
   const [leaves, setLeaves] = useState<LeaveRequest[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showNewDialog, setShowNewDialog] = useState(false);
@@ -174,24 +175,12 @@ export default function LeavesPage() {
           <p className="text-sm text-gray-500 mt-1">Kelola pengajuan cuti karyawan dengan approval workflow</p>
         </div>
 
-        <Button size="sm" className="bg-green-600 hover:bg-green-700" onClick={() => setShowNewDialog(true)}>
+        <Button size="sm" className="bg-green-600 hover:bg-green-700" onClick={() => router.push('/dashboard/hris/leaves/new')}>
           <Plus className="w-3.5 h-3.5 mr-1.5" />
           <span className="hidden sm:inline">Ajukan Cuti</span>
           <span className="sm:hidden">Cuti</span>
         </Button>
       </div>
-
-      <Dialog open={showNewDialog} onOpenChange={setShowNewDialog}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Ajukan Cuti / Izin Baru</DialogTitle>
-            <DialogDescription>
-              Isi formulir untuk mengajukan cuti atau izin
-            </DialogDescription>
-          </DialogHeader>
-          <LeaveRequestForm onSuccess={handleSuccess} onCancel={() => setShowNewDialog(false)} />
-        </DialogContent>
-      </Dialog>
 
       {/* Filters */}
       <Card>

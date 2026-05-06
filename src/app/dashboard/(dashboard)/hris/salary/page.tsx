@@ -4,20 +4,8 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from "@/components/ui/dialog";
-import {
-  BanknotesIcon,
-  PlusIcon,
-  PencilIcon,
-} from "@heroicons/react/24/outline";
+import { BanknotesIcon, PlusIcon, PencilIcon } from "@heroicons/react/24/outline";
 import { useToast, ToastContainer } from "@/components/ui/toast";
 
 interface EmployeeSalary {
@@ -52,23 +40,9 @@ export default function SalaryPage() {
 
   const [loading, setLoading] = useState(true);
   const [salaries, setSalaries] = useState<EmployeeSalary[]>([]);
-  const [showNewDialog, setShowNewDialog] = useState(false);
-
-  const [newSalary, setNewSalary] = useState({
-    employee_id: "",
-    base_salary: "",
-    fixed_allowance: "0",
-    transport_allowance: "0",
-    meal_allowance: "0",
-    ptkp_status: "TK/0",
-    is_taxable: true,
-  });
-
-  const [employees, setEmployees] = useState<any[]>([]);
 
   useEffect(() => {
     fetchSalaries();
-    fetchEmployees();
   }, []);
 
   async function fetchSalaries() {
@@ -82,63 +56,6 @@ export default function SalaryPage() {
       console.error("Error fetching salaries:", error);
     } finally {
       setLoading(false);
-    }
-  }
-
-  async function fetchEmployees() {
-    try {
-      const res = await fetch("/api/hris/employees");
-      const json = await res.json();
-      if (json.data) {
-        setEmployees(json.data);
-      }
-    } catch (error) {
-      console.error("Error fetching employees:", error);
-    }
-  }
-
-  async function handleCreateSalary() {
-    if (!newSalary.employee_id || !newSalary.base_salary) {
-      showToast("Employee dan base salary wajib diisi", "error");
-      return;
-    }
-
-    try {
-      const res = await fetch("/api/hris/employee-salary", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          employee_id: newSalary.employee_id,
-          base_salary: parseFloat(newSalary.base_salary),
-          fixed_allowance: parseFloat(newSalary.fixed_allowance),
-          transport_allowance: parseFloat(newSalary.transport_allowance),
-          meal_allowance: parseFloat(newSalary.meal_allowance),
-          ptkp_status: newSalary.ptkp_status,
-          is_taxable: newSalary.is_taxable,
-        }),
-      });
-
-      const json = await res.json();
-      if (!res.ok) {
-        showToast(json.error || "Gagal membuat salary", "error");
-        return;
-      }
-
-      showToast("Salary structure berhasil dibuat", "success");
-      setShowNewDialog(false);
-      fetchSalaries();
-      setNewSalary({
-        employee_id: "",
-        base_salary: "",
-        fixed_allowance: "0",
-        transport_allowance: "0",
-        meal_allowance: "0",
-        ptkp_status: "TK/0",
-        is_taxable: true,
-      });
-    } catch (error) {
-      console.error("Error creating salary:", error);
-      showToast("Terjadi kesalahan", "error");
     }
   }
 
@@ -160,7 +77,7 @@ export default function SalaryPage() {
           <h1 className="text-2xl font-bold text-gray-900">Salary Structure</h1>
           <p className="text-sm text-gray-500">Kelola struktur gaji karyawan</p>
         </div>
-        <Button onClick={() => setShowNewDialog(true)} className="bg-pink-600 hover:bg-pink-700">
+        <Button onClick={() => router.push('/dashboard/hris/salary/new')} className="bg-pink-600 hover:bg-pink-700">
           <PlusIcon className="w-4 h-4 mr-2" />
           Tambah Salary
         </Button>
@@ -237,93 +154,6 @@ export default function SalaryPage() {
           </div>
         </CardContent>
       </Card>
-
-      {/* New Salary Dialog */}
-      <Dialog open={showNewDialog} onOpenChange={setShowNewDialog}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>Tambah Salary Structure</DialogTitle>
-          </DialogHeader>
-          <div className="grid grid-cols-2 gap-4 py-4">
-            <div className="col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-1">Karyawan</label>
-              <select
-                value={newSalary.employee_id}
-                onChange={(e) => setNewSalary({ ...newSalary, employee_id: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500"
-              >
-                <option value="">Pilih karyawan</option>
-                {employees.map((emp) => (
-                  <option key={emp.id} value={emp.id}>
-                    {emp.full_name} ({emp.nip})
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-1">Gaji Pokok</label>
-              <Input
-                type="number"
-                value={newSalary.base_salary}
-                onChange={(e) => setNewSalary({ ...newSalary, base_salary: e.target.value })}
-                placeholder="0"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Tunjangan Tetap</label>
-              <Input
-                type="number"
-                value={newSalary.fixed_allowance}
-                onChange={(e) => setNewSalary({ ...newSalary, fixed_allowance: e.target.value })}
-                placeholder="0"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Tunjangan Transport</label>
-              <Input
-                type="number"
-                value={newSalary.transport_allowance}
-                onChange={(e) => setNewSalary({ ...newSalary, transport_allowance: e.target.value })}
-                placeholder="0"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Tunjangan Makan</label>
-              <Input
-                type="number"
-                value={newSalary.meal_allowance}
-                onChange={(e) => setNewSalary({ ...newSalary, meal_allowance: e.target.value })}
-                placeholder="0"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Status PTKP</label>
-              <select
-                value={newSalary.ptkp_status}
-                onChange={(e) => setNewSalary({ ...newSalary, ptkp_status: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500"
-              >
-                <option value="TK/0">TK/0</option>
-                <option value="TK/1">TK/1</option>
-                <option value="TK/2">TK/2</option>
-                <option value="TK/3">TK/3</option>
-                <option value="K/0">K/0</option>
-                <option value="K/1">K/1</option>
-                <option value="K/2">K/2</option>
-                <option value="K/3">K/3</option>
-              </select>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowNewDialog(false)}>
-              Batal
-            </Button>
-            <Button onClick={handleCreateSalary} className="bg-pink-600 hover:bg-pink-700">
-              Simpan
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

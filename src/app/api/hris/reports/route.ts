@@ -175,8 +175,10 @@ const LEAVE_TYPE_LABELS: Record<string, string> = {
   sick: 'Sakit',
   maternity: 'Melahirkan',
   paternity: 'Ayah',
+  unpaid: 'Tidak Dibayar',
+  emergency: 'Darurat',
+  pilgrimage: 'Haji/Umrah',
+  menstrual: 'Haid',
   marriage: 'Pernikahan',
   bereavement: 'Duka Cita',
-  unpaid: 'Tidak Dibayar',
-  other: 'Lainnya',
 };

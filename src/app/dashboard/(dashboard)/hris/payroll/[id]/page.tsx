@@ -286,7 +286,7 @@ export default function PayrollDetailPage({ params }: PayrollPageProps) {
                         <Button
                           size="sm"
                           variant="outline"
-                          onClick={() => router.push(`/dashboard/hris/payroll/${id}/payslip/${detail.id}`)}
+                          onClick={() => router.push(`/dashboard/hris/payroll/${id}/payslip/${detail.employee_id}`)}
                         >
                           <DocumentTextIcon className="w-4 h-4" />
                           Slip

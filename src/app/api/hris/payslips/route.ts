@@ -27,7 +27,13 @@ export async function GET(request: NextRequest) {
           id,
           full_name,
           nip,
-          photo_url
+          photo_url,
+          position:positions (
+            title
+          ),
+          department:departments (
+            name
+          )
         ),
         payroll_run:payroll_runs (
           id,

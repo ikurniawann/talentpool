@@ -86,6 +86,10 @@ export default function PayrollPage() {
   const [payrollRuns, setPayrollRuns] = useState<PayrollRun[]>([]);
   const [showNewDialog, setShowNewDialog] = useState(false);
   const [creating, setCreating] = useState(false);
+  const [calculating, setCalculating] = useState<string | null>(null); // ID payroll yang sedang di-calculate
+  const [calculationResult, setCalculationResult] = useState<{count: number, employees: string[]} | null>(null);
+  const [showCalcDialog, setShowCalcDialog] = useState<string | null>(null); // ID payroll untuk confirm calculate
+  const [includeThr, setIncludeThr] = useState(false);
 
   const [newPeriodMonth, setNewPeriodMonth] = useState(new Date().getMonth() + 1);
   const [newPeriodYear, setNewPeriodYear] = useState(new Date().getFullYear());
@@ -96,8 +100,15 @@ export default function PayrollPage() {
 
   async function fetchPayrollRuns() {
     try {
-      const res = await fetch("/api/hris/payroll");
+      const res = await fetch("/api/hris/payroll", {
+        cache: 'no-store',
+        headers: {
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache',
+        }
+      });
       const json = await res.json();
+      console.log('Fetched payroll runs:', json);
       if (json.data) {
         setPayrollRuns(json.data);
       }
@@ -126,9 +137,19 @@ export default function PayrollPage() {
         return;
       }
 
-      showToast("Payroll run berhasil dibuat", "success");
+      // Close dialog first, then show success and refresh
       setShowNewDialog(false);
-      fetchPayrollRuns();
+      
+      // Reset form
+      setNewPeriodMonth(new Date().getMonth() + 1);
+      setNewPeriodYear(new Date().getFullYear());
+      
+      // Show success toast
+      showToast("✅ Payroll run berhasil dibuat", "success");
+      
+      // Refresh list
+      await fetchPayrollRuns();
+      
     } catch (error) {
       console.error("Error creating payroll:", error);
       showToast("Terjadi kesalahan", "error");
@@ -138,11 +159,23 @@ export default function PayrollPage() {
   }
 
   async function handleCalculate(runId: string) {
+    // Show confirmation dialog instead of calculating directly
+    setShowCalcDialog(runId);
+  }
+
+  async function confirmCalculate() {
+    if (!showCalcDialog) return;
+    
+    setCalculating(showCalcDialog);
+    setShowCalcDialog(null);
+    
     try {
-      showToast("Sedang menghitung payroll...", "info");
-      
-      const res = await fetch(`/api/hris/payroll/${runId}/calculate`, {
+      const res = await fetch(`/api/hris/payroll/${showCalcDialog}/calculate`, {
         method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          include_thr: includeThr
+        }),
       });
 
       const json = await res.json();
@@ -151,11 +184,20 @@ export default function PayrollPage() {
         return;
       }
 
+      // Store result for modal
+      setCalculationResult({
+        count: json.summary?.total_employees || 0,
+        employees: json.summary?.employee_names || []
+      });
+      
       showToast(`Payroll dihitung untuk ${json.summary?.total_employees || 0} karyawan`, "success");
       fetchPayrollRuns();
     } catch (error) {
       console.error("Error calculating payroll:", error);
       showToast("Terjadi kesalahan", "error");
+    } finally {
+      setCalculating(null);
+      setIncludeThr(false); // Reset checkbox
     }
   }
 
@@ -177,6 +219,30 @@ export default function PayrollPage() {
       fetchPayrollRuns();
     } catch (error) {
       console.error("Error updating status:", error);
+      showToast("Terjadi kesalahan", "error");
+    }
+  }
+
+  async function handleDelete(runId: string) {
+    if (!confirm("Apakah Anda yakin ingin menghapus payroll run ini? Data detail payroll juga akan terhapus.")) {
+      return;
+    }
+
+    try {
+      const res = await fetch(`/api/hris/payroll/${runId}`, {
+        method: "DELETE",
+      });
+
+      const json = await res.json();
+      if (!res.ok) {
+        showToast(json.error || "Gagal menghapus payroll", "error");
+        return;
+      }
+
+      showToast("Payroll run berhasil dihapus", "success");
+      fetchPayrollRuns();
+    } catch (error) {
+      console.error("Error deleting payroll:", error);
       showToast("Terjadi kesalahan", "error");
     }
   }
@@ -308,12 +374,12 @@ export default function PayrollPage() {
                                 onClick={() => handleCalculate(run.id)}
                                 className="bg-blue-600 hover:bg-blue-700"
                               >
-                                <CheckCircleIcon className="w-4 h-4" />
+                                Calculate
                               </Button>
                               <Button
                                 size="sm"
                                 onClick={() => handleUpdateStatus(run.id, "processing")}
-                                className="bg-yellow-600 hover:bg-yellow-700"
+                                style={{ backgroundColor: '#ea580c', color: 'white' }}
                               >
                                 Process
                               </Button>
@@ -337,6 +403,14 @@ export default function PayrollPage() {
                               Mark Paid
                             </Button>
                           )}
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleDelete(run.id)}
+                            className="text-red-600 hover:text-red-700 hover:border-red-300"
+                          >
+                            Hapus
+                          </Button>
                         </div>
                       </td>
                     </tr>
@@ -389,6 +463,119 @@ export default function PayrollPage() {
               className="bg-pink-600 hover:bg-pink-700"
             >
               {creating ? "Membuat..." : "Buat Payroll"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Calculation Loading/Result Modal */}
+      <Dialog open={calculating !== null || calculationResult !== null} onOpenChange={(open) => {
+        if (!open) {
+          setCalculating(null);
+          setCalculationResult(null);
+        }
+      }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {calculating ? "Menghitung Payroll..." : "Hasil Perhitungan"}
+            </DialogTitle>
+          </DialogHeader>
+          
+          {calculating ? (
+            <div className="py-8 flex flex-col items-center justify-center space-y-4">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-pink-600" />
+              <p className="text-gray-600">Sedang menghitung payroll untuk semua karyawan...</p>
+            </div>
+          ) : calculationResult ? (
+            <div className="py-4 space-y-4">
+              <div className="flex items-center justify-center space-x-2 text-green-600">
+                <CheckCircleIcon className="w-8 h-8" />
+                <span className="text-lg font-semibold">Perhitungan Berhasil!</span>
+              </div>
+              
+              <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                <p className="text-sm text-gray-600 mb-2">Karyawan yang dihitung:</p>
+                <p className="text-2xl font-bold text-green-700">{calculationResult.count} Karyawan</p>
+                
+                {calculationResult.employees && calculationResult.employees.length > 0 && (
+                  <div className="mt-3 space-y-1">
+                    {calculationResult.employees.map((name, idx) => (
+                      <div key={idx} className="text-sm text-gray-700 flex items-center">
+                        <CheckCircleIcon className="w-4 h-4 mr-2 text-green-600" />
+                        {name}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+              
+              <div className="flex justify-end pt-4">
+                <Button
+                  onClick={() => {
+                    setCalculationResult(null);
+                    fetchPayrollRuns();
+                  }}
+                  className="bg-pink-600 hover:bg-pink-700"
+                >
+                  Tutup
+                </Button>
+              </div>
+            </div>
+          ) : null}
+        </DialogContent>
+      </Dialog>
+
+      {/* Calculate Confirmation Dialog */}
+      <Dialog open={showCalcDialog !== null} onOpenChange={(open) => {
+        if (!open) {
+          setShowCalcDialog(null);
+          setIncludeThr(false);
+        }
+      }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Konfirmasi Perhitungan Payroll</DialogTitle>
+          </DialogHeader>
+          <div className="py-4 space-y-4">
+            <p className="text-sm text-gray-600">
+              Apakah Anda yakin ingin menghitung payroll untuk periode ini?
+            </p>
+            
+            <div className="flex items-center space-x-2 border rounded-lg p-3 bg-gray-50">
+              <input
+                type="checkbox"
+                id="include-thr"
+                checked={includeThr}
+                onChange={(e) => setIncludeThr(e.target.checked)}
+                className="h-4 w-4 text-pink-600 focus:ring-pink-500 border-gray-300 rounded"
+              />
+              <label htmlFor="include-thr" className="text-sm font-medium text-gray-700 cursor-pointer">
+                Include THR (Tunjangan Hari Raya)
+              </label>
+            </div>
+            
+            {includeThr && (
+              <div className="text-xs text-gray-500 bg-yellow-50 border border-yellow-200 rounded p-2">
+                ℹ️ THR akan ditambahkan sebesar 1x gaji pokok untuk karyawan yang sudah bekerja ≥ 1 tahun
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowCalcDialog(null);
+                setIncludeThr(false);
+              }}
+            >
+              Batal
+            </Button>
+            <Button
+              onClick={confirmCalculate}
+              className="bg-blue-600 hover:bg-blue-700"
+            >
+              Hitung Payroll
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -1,15 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
 import { z } from 'zod';
 
 // Validation schema for leave request
 const leaveRequestSchema = z.object({
   employee_id: z.string().uuid().optional(),
-  leave_type: z.enum(['annual', 'sick', 'maternity', 'paternity', 'unpaid', 'emergency', 'pilgrimage', 'menstrual']),
-  start_date: z.string(),
-  end_date: z.string(),
+  leave_type: z.enum(['annual', 'sick', 'maternity', 'paternity', 'unpaid', 'emergency', 'pilgrimage', 'menstrual', 'marriage', 'bereavement']),
+  start_date: z.string().min(1, 'Start date is required'),
+  end_date: z.string().min(1, 'End date is required'),
   reason: z.string().min(10, 'Reason must be at least 10 characters'),
-  attachment_url: z.string().url().optional(),
+  attachment_url: z.string().optional(),
 });
 
 /**
@@ -18,7 +19,7 @@ const leaveRequestSchema = z.object({
  */
 export async function GET(request: NextRequest) {
   try {
-    const supabase = await createClient();
+    const supabase = createAdminClient();
     
     // Get query params
     const searchParams = request.nextUrl.searchParams;
@@ -31,19 +32,18 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get('limit') || '20');
 
     // Build query
+    // Use FK column names as hints to disambiguate multiple relationships to employees
     let query = supabase
       .from('leaves')
       .select(`
         *,
-        employee:employees(
+        employee:employees!employee_id(
           id,
           full_name,
           nip,
-          photo_url,
-          department:departments(name),
-          job_title:positions(title)
+          department:departments(name)
         ),
-        approver:employees!leaves_approved_by_fkey(
+        approver:employees!approved_by(
           id,
           full_name,
           nip
@@ -75,9 +75,9 @@ export async function GET(request: NextRequest) {
     const { data, error, count } = await query;
 
     if (error) {
-      console.error('Error fetching leaves:', error);
+      console.error('Error fetching leaves:', JSON.stringify(error));
       return NextResponse.json(
-        { error: 'Failed to fetch leave requests', details: error.message },
+        { error: 'Failed to fetch leave requests', details: error.message, code: error.code, hint: (error as any).hint },
         { status: 500 }
       );
     }
@@ -106,11 +106,14 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createClient();
+    const authClient = await createClient();
+    const supabase = createAdminClient();
     const body = await request.json();
 
+    console.log('POST /api/hris/leaves - Request body:', body);
+
     // Check authentication
-    const { data: { user } } = await supabase.auth.getUser();
+    const { data: { user } } = await authClient.auth.getUser();
     if (!user) {
       return NextResponse.json(
         { error: 'Unauthorized' },
@@ -119,7 +122,21 @@ export async function POST(request: NextRequest) {
     }
 
     // Validate request
-    const validated = leaveRequestSchema.parse(body);
+    let validated;
+    try {
+      validated = leaveRequestSchema.parse(body);
+      console.log('Validated data:', validated);
+    } catch (validationError) {
+      console.error('Validation error:', validationError);
+      if (validationError instanceof z.ZodError) {
+        const errors = validationError.errors.map(e => `${e.path.join('.')}: ${e.message}`);
+        return NextResponse.json(
+          { error: 'Validation failed', details: errors },
+          { status: 400 }
+        );
+      }
+      throw validationError;
+    }
 
     // Get employee ID (from request or current user)
     const empId = validated.employee_id || await getCurrentEmployeeId(supabase, user.id);
@@ -181,21 +198,13 @@ export async function POST(request: NextRequest) {
         attachment_url: validated.attachment_url || null,
         status: 'pending',
       })
-      .select(`
-        *,
-        employee:employees(
-          id,
-          full_name,
-          nip,
-          department:departments(name)
-        )
-      `)
+      .select('*')
       .single();
 
     if (error) {
-      console.error('Error creating leave request:', error);
+      console.error('Error creating leave request:', JSON.stringify(error));
       return NextResponse.json(
-        { error: 'Failed to create leave request', details: error.message },
+        { error: 'Failed to create leave request', details: error.message, code: error.code, hint: (error as any).hint },
         { status: 500 }
       );
     }
@@ -208,7 +217,7 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     console.error('Error in leaves POST:', error);
-    
+
     if (error instanceof z.ZodError) {
       return NextResponse.json(
         { error: 'Validation failed', details: error.errors },
@@ -216,8 +225,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const msg = error instanceof Error ? error.message : String(error);
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: 'Internal server error', details: msg },
       { status: 500 }
     );
   }

@@ -41,15 +41,45 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       );
     }
 
+    // Parse request body for options
+    const body = await request.json().catch(() => ({}));
+    const includeThr = body.include_thr ?? false;
+
+    // Delete existing payroll details for this run (prevent duplicates on recalculate)
+    const { error: deleteError } = await supabase
+      .from('payroll_details')
+      .delete()
+      .eq('payroll_run_id', id);
+
+    if (deleteError) {
+      console.error('Error deleting old payroll details:', deleteError);
+    }
+
     // Get all active employees
-    const { data: employees } = await supabase
+    const { data: employees, error: empError } = await supabase
       .from('employees')
-      .select('*')
+      .select('id, full_name, nip, is_active, employment_status, join_date')
       .eq('is_active', true);
 
-    if (!employees || employees.length === 0) {
+    console.log('=== PAYROLL CALCULATE DEBUG ===');
+    console.log('Employees query result:', {
+      count: employees?.length,
+      error: empError,
+      data: employees
+    });
+
+    if (empError) {
+      console.error('Error fetching employees:', empError);
       return NextResponse.json(
-        { error: 'Tidak ada karyawan aktif' },
+        { error: 'Gagal fetch karyawan', details: empError.message },
+        { status: 500 }
+      );
+    }
+
+    if (!employees || employees.length === 0) {
+      console.error('No active employees found in database');
+      return NextResponse.json(
+        { error: 'Tidak ada karyawan aktif ditemukan' },
         { status: 400 }
       );
     }
@@ -75,9 +105,13 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         .single();
 
       if (!salary) {
-        console.warn(`No salary data for employee ${employee.id}`);
+        console.warn(`No salary data for employee ${employee.id}:`, { 
+          full_name: employee.full_name,
+          emp_id: employee.id 
+        });
         continue;
       }
+      console.log(`Found salary for ${employee.full_name}:`, salary);
 
       // Get attendance for the period
       const startDate = `${payrollRun.period_year}-${String(payrollRun.period_month).padStart(2, '0')}-01`;
@@ -112,28 +146,37 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       }, 0) || 0;
 
       // Calculate payroll
-      const payrollResult = await calculatePayroll({
-        employeeId: employee.id,
-        periodMonth: payrollRun.period_month,
-        periodYear: payrollRun.period_year,
-        baseSalary: salary.base_salary || 0,
-        fixedAllowance: salary.fixed_allowance || 0,
-        variableAllowance: salary.variable_allowance || 0,
-        transportAllowance: salary.transport_allowance || 0,
-        mealAllowance: salary.meal_allowance || 0,
-        housingAllowance: salary.housing_allowance || 0,
-        workingDays,
-        presentDays,
-        lateDays,
-        unpaidLeaveDays,
-        joinDate: employee.join_date,
-        employmentStatus: employee.employment_status,
-        ptkpStatus: salary.ptkp_status || 'TK/0',
-        isTaxable: salary.is_taxable ?? true,
-        bpjsTkEnrolled: salary.bpjs_tk_enrolled ?? true,
-        bpjsKesEnrolled: salary.bpjs_kes_enrolled ?? true,
-        taperaEnrolled: salary.tapera_enrolled ?? true,
-      });
+      console.log(`🔄 Calculating payroll for ${employee.full_name}...`);
+      let payrollResult;
+      try {
+        payrollResult = await calculatePayroll({
+          employeeId: employee.id,
+          periodMonth: payrollRun.period_month,
+          periodYear: payrollRun.period_year,
+          baseSalary: salary.base_salary || 0,
+          fixedAllowance: salary.fixed_allowance || 0,
+          variableAllowance: salary.variable_allowance || 0,
+          transportAllowance: salary.transport_allowance || 0,
+          mealAllowance: salary.meal_allowance || 0,
+          housingAllowance: salary.housing_allowance || 0,
+          workingDays,
+          presentDays,
+          lateDays,
+          unpaidLeaveDays,
+          joinDate: employee.join_date,
+          employmentStatus: employee.employment_status,
+          ptkpStatus: salary.ptkp_status || 'TK/0',
+          isTaxable: salary.is_taxable ?? true,
+          bpjsTkEnrolled: salary.bpjs_tk_enrolled ?? true,
+          bpjsKesEnrolled: salary.bpjs_kes_enrolled ?? true,
+          taperaEnrolled: salary.tapera_enrolled ?? true,
+          includeThr, // Pass THR option from UI
+        });
+        console.log(`✅ Payroll calculated for ${employee.full_name}: Net=${payrollResult.netSalary}`);
+      } catch (calcError) {
+        console.error(`❌ Calculation error for ${employee.full_name}:`, calcError);
+        continue;
+      }
 
       // Insert payroll detail
       const { data: detail, error } = await supabase
@@ -188,9 +231,11 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         .single();
 
       if (error) {
-        console.error(`Error inserting payroll detail for ${employee.id}:`, error);
+        console.error(`❌ Error inserting payroll detail for ${employee.full_name}:`, error);
+        console.error('Error details:', JSON.stringify(error, null, 2));
         continue;
       }
+      console.log(`✅ Inserted payroll detail for ${employee.full_name}:`, detail?.id);
 
       results.push(detail);
 
@@ -202,6 +247,12 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       totalBjtkEmployer += payrollResult.totalEmployerContribution;
       totalPph21 += payrollResult.pph21Deduction;
     }
+
+    // Collect employee names for summary
+    const employeeNames = results.map(r => {
+      const emp = (r as any).employee;
+      return emp ? emp.full_name : 'Unknown';
+    });
 
     // Update payroll run with totals
     await supabase
@@ -222,6 +273,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       data: results,
       summary: {
         total_employees: results.length,
+        employee_names: employeeNames,
         total_gross: totalGross,
         total_deductions: totalDeductions,
         total_net: totalNet,

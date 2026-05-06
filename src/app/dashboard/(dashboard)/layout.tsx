@@ -43,6 +43,31 @@ export default async function DashboardGroupLayout({
                 ],
               },
               {
+                href: "/dashboard/performance",
+                label: "KPI & Performance",
+                icon: "star",
+                children: [
+                  { href: "/dashboard/performance/kpi-templates", label: "Template KPI" },
+                  { href: "/dashboard/performance/employee-kpis", label: "KPI Karyawan" },
+                  { href: "/dashboard/performance/reviews", label: "Performance Review" },
+                  { href: "/dashboard/performance/dashboard", label: "Dashboard KPI" },
+                  {
+                    href: "/dashboard/hris/performance/360-feedback",
+                    label: "360° Feedback",
+                    icon: "users",
+                    children: [
+                      { href: "/dashboard/hris/performance/360-feedback/cycles", label: "Cycles" },
+                      { href: "/dashboard/hris/performance/360-feedback/cycles/new", label: "New Cycle" },
+                      { href: "/dashboard/hris/performance/360-feedback/submit", label: "Submit Feedback" },
+                      { href: "/dashboard/hris/performance/360-feedback/results", label: "Results" },
+                      { href: "/dashboard/hris/performance/360-feedback/approvals", label: "Approvals" },
+                      { href: "/dashboard/hris/performance/360-feedback/dashboard", label: "Executive Dashboard" },
+                      { href: "/dashboard/hris/performance/360-feedback/test-data", label: "Demo Report" },
+                    ],
+                  },
+                ],
+              },
+              {
                 href: "/dashboard/master",
                 label: "Master Data",
                 icon: "database",

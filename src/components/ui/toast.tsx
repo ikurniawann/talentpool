@@ -14,7 +14,7 @@ interface Toast {
 export function useToast() {
   const [toasts, setToasts] = useState<Toast[]>([]);
 
-  function toast(message: string, type: ToastType = "success") {
+  function showToast(message: string, type: ToastType = "success") {
     const id = Math.random().toString(36).substr(2, 9);
     setToasts((prev) => [...prev, { id, message, type }]);
     setTimeout(() => {
@@ -22,19 +22,19 @@ export function useToast() {
     }, 4000);
   }
 
-  function dismiss(id: string) {
+  function removeToast(id: string) {
     setToasts((prev) => prev.filter((t) => t.id !== id));
   }
 
-  return { toasts, toast, dismiss };
+  return { toasts, showToast, removeToast };
 }
 
 export function ToastContainer({
   toasts,
-  onDismiss,
+  removeToast,
 }: {
   toasts: Toast[];
-  onDismiss: (id: string) => void;
+  removeToast: (id: string) => void;
 }) {
   return (
     <div className="fixed bottom-4 right-4 z-50 flex flex-col gap-2 max-w-sm">
@@ -54,7 +54,7 @@ export function ToastContainer({
           )}
           <p className="text-sm flex-1">{t.message}</p>
           <button
-            onClick={() => onDismiss(t.id)}
+            onClick={() => removeToast(t.id)}
             className="shrink-0 hover:opacity-70"
           >
             <XMarkIcon className="w-4 h-4" />

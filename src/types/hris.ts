@@ -369,7 +369,7 @@ export interface AttendanceWithEmployee extends Attendance {
 }
 
 // Leave Types
-export type LeaveType = 
+export type LeaveType =
   | 'annual'
   | 'sick'
   | 'maternity'
@@ -377,7 +377,9 @@ export type LeaveType =
   | 'unpaid'
   | 'emergency'
   | 'pilgrimage'
-  | 'menstrual';
+  | 'menstrual'
+  | 'marriage'
+  | 'bereavement';
 
 export type LeaveStatus = 'pending' | 'approved' | 'rejected' | 'cancelled';
 
@@ -539,6 +541,8 @@ export const LEAVE_TYPE_LABELS: Record<LeaveType, string> = {
   emergency: 'Cuti Darurat',
   pilgrimage: 'Cuti Haji/Umrah',
   menstrual: 'Cuti Haid',
+  marriage: 'Cuti Pernikahan',
+  bereavement: 'Cuti Duka Cita',
 };
 
 export const LEAVE_STATUS_LABELS: Record<LeaveStatus, string> = {

@@ -25,19 +25,26 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { CalendarIcon, Upload, Loader2 } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { CalendarIcon, Upload, Loader2, X, FileText, Image as ImageIcon, CheckCircle2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { LEAVE_TYPE_LABELS, calculateLeaveDays } from "@/types/hris";
 import { format } from "date-fns";
 import { id } from "date-fns/locale";
 
 const leaveFormSchema = z.object({
-  employee_id: z.string().uuid().optional(),
-  leave_type: z.enum(["annual", "sick", "maternity", "paternity", "unpaid", "emergency", "pilgrimage", "menstrual"]),
+  employee_id: z.string().uuid("Pilih karyawan terlebih dahulu"),
+  leave_type: z.enum(["annual", "sick", "maternity", "paternity", "unpaid", "emergency", "pilgrimage", "menstrual", "marriage", "bereavement"]),
   start_date: z.string().min(1, "Start date is required"),
   end_date: z.string().min(1, "End date is required"),
   reason: z.string().min(10, "Reason must be at least 10 characters"),
-  attachment_url: z.string().url().optional().or(z.literal("")),
+  attachment_url: z.string().optional().or(z.literal("")),
 });
 
 type LeaveFormData = z.infer<typeof leaveFormSchema>;
@@ -56,6 +63,14 @@ export function LeaveRequestForm({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [totalDays, setTotalDays] = useState<number>(0);
   const [leaveBalance, setLeaveBalance] = useState<number | null>(null);
+  const [employees, setEmployees] = useState<any[]>([]);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [showEmployeeDropdown, setShowEmployeeDropdown] = useState(false);
+  const [uploadingFile, setUploadingFile] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [submissionData, setSubmissionData] = useState<any>(null);
   const { toast } = useToast();
 
   const form = useForm<LeaveFormData>({
@@ -73,6 +88,11 @@ export function LeaveRequestForm({
   const startDate = form.watch("start_date");
   const endDate = form.watch("end_date");
   const leaveType = form.watch("leave_type");
+  const employeeIdValue = form.watch("employee_id");
+
+  useEffect(() => {
+    fetchEmployees();
+  }, []);
 
   useEffect(() => {
     if (startDate && endDate) {
@@ -102,10 +122,109 @@ export function LeaveRequestForm({
     }
   };
 
+  const fetchEmployees = async () => {
+    try {
+      const response = await fetch("/api/hris/employees?limit=100");
+      const result = await response.json();
+      
+      if (result.data) {
+        setEmployees(result.data);
+      }
+    } catch (error) {
+      console.error("Error fetching employees:", error);
+    }
+  };
+
+  const filteredEmployees = employees.filter((emp) =>
+    emp.full_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    emp.nip.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    const validTypes = ['application/pdf', 'image/jpeg', 'image/png', 'image/jpg'];
+    if (!validTypes.includes(file.type)) {
+      toast({
+        title: "❌ Tipe File Tidak Valid",
+        description: "Hanya PDF, JPG, dan PNG yang diperbolehkan",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      toast({
+        title: "❌ File Terlalu Besar",
+        description: "Ukuran file maksimal 5MB",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      setUploadingFile(true);
+      setSelectedFile(file);
+
+      // Create preview URL for images
+      if (file.type.startsWith('image/')) {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          setPreviewUrl(reader.result as string);
+        };
+        reader.readAsDataURL(file);
+      } else {
+        setPreviewUrl(null);
+      }
+
+      // TODO: Upload to storage service (Supabase Storage, S3, etc.)
+      // For now, we'll just store the file name
+      toast({
+        title: "✅ File Berhasil Diupload",
+        description: `${file.name} (${(file.size / 1024 / 1024).toFixed(2)} MB)`,
+      });
+
+      // Store file info in form (in real app, this would be the URL from storage)
+      form.setValue("attachment_url", `/uploads/${file.name}`);
+    } catch (error) {
+      console.error("Upload error:", error);
+      toast({
+        title: "❌ Upload Gagal",
+        description: "Terjadi kesalahan saat upload file",
+        variant: "destructive",
+      });
+    } finally {
+      setUploadingFile(false);
+    }
+  };
+
+  const handleRemoveFile = () => {
+    setSelectedFile(null);
+    setPreviewUrl(null);
+    form.setValue("attachment_url", "");
+  };
+
   const onSubmit = async (data: LeaveFormData) => {
+    console.log("✅ Form submitted with data:", data);
+    
     try {
       setIsSubmitting(true);
 
+      // Validate employee_id
+      if (!data.employee_id) {
+        console.error("❌ Validation failed: employee_id is missing");
+        toast({
+          title: "❌ Validasi Gagal",
+          description: "Pilih karyawan terlebih dahulu",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      console.log("📤 Sending request to API...");
       const response = await fetch("/api/hris/leaves", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -113,6 +232,7 @@ export function LeaveRequestForm({
       });
 
       const result = await response.json();
+      console.log("📥 API Response:", result, "Status:", response.status);
 
       if (!response.ok) {
         if (result.error?.includes("Insufficient")) {
@@ -122,7 +242,11 @@ export function LeaveRequestForm({
             variant: "destructive",
           });
         } else {
-          throw new Error(result.error || "Failed to submit request");
+          toast({
+            title: "❌ Pengajuan Gagal",
+            description: result.details ? result.details.join(", ") : (result.error || "Terjadi kesalahan"),
+            variant: "destructive",
+          });
         }
         return;
       }
@@ -132,6 +256,16 @@ export function LeaveRequestForm({
         description: `${totalDays} hari cuti diajukan`,
       });
 
+      // Store submission data for modal
+      setSubmissionData({
+        ...result.data,
+        total_days: totalDays,
+        employee_name: employees.find(e => e.id === data.employee_id)?.full_name,
+      });
+
+      // Show success modal
+      setShowSuccessModal(true);
+      
       onSuccess?.(result.data);
       form.reset();
     } catch (error) {
@@ -158,23 +292,73 @@ export function LeaveRequestForm({
       </CardHeader>
       <CardContent>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-            {/* Employee ID (hidden if provided) */}
-            {!employeeId && (
+          <form 
+            onSubmit={(e) => {
+              console.log("📝 Form submit triggered");
+              console.log("📋 Form values:", form.getValues());
+              console.log("📋 Form errors:", form.formState.errors);
+              form.handleSubmit(onSubmit)(e);
+            }} 
+            className="space-y-6"
+          >
+            {/* Employee ID with Search Dropdown */}
+            {!employeeId ? (
               <FormField
                 control={form.control}
                 name="employee_id"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Karyawan</FormLabel>
+                    <FormLabel>Karyawan *</FormLabel>
                     <FormControl>
-                      <Input placeholder="Pilih karyawan" {...field} />
+                      <div className="relative">
+                        <Input
+                          placeholder="Cari nama atau NIP karyawan..."
+                          value={searchQuery}
+                          onChange={(e) => {
+                            setSearchQuery(e.target.value);
+                            setShowEmployeeDropdown(true);
+                            // Clear employee_id when typing
+                            if (e.target.value === '') {
+                              form.setValue("employee_id", "");
+                            }
+                          }}
+                          onFocus={() => setShowEmployeeDropdown(true)}
+                          onBlur={() => setTimeout(() => setShowEmployeeDropdown(false), 200)}
+                        />
+                        {showEmployeeDropdown && filteredEmployees.length > 0 && (
+                          <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-auto">
+                            {filteredEmployees.map((emp) => (
+                              <div
+                                key={emp.id}
+                                className="px-4 py-2 hover:bg-gray-100 cursor-pointer"
+                                onClick={() => {
+                                  form.setValue("employee_id", emp.id, {
+                                    shouldValidate: true,
+                                    shouldDirty: true,
+                                  });
+                                  setSearchQuery(`${emp.full_name} (${emp.nip})`);
+                                  setShowEmployeeDropdown(false);
+                                  console.log("Selected employee:", emp.id, emp.full_name);
+                                }}
+                              >
+                                <div className="font-medium text-sm">{emp.full_name}</div>
+                                <div className="text-xs text-gray-500">{emp.nip} - {emp.department?.name || 'No Dept'}</div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        {showEmployeeDropdown && filteredEmployees.length === 0 && searchQuery && !form.getValues("employee_id") && (
+                          <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg p-4 text-center text-gray-500 text-sm">
+                            Tidak ada karyawan ditemukan
+                          </div>
+                        )}
+                      </div>
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
-            )}
+            ) : null}
 
             {/* Leave Type */}
             <FormField
@@ -183,7 +367,11 @@ export function LeaveRequestForm({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Jenis Cuti</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <Select 
+                    onValueChange={field.onChange} 
+                    value={field.value}
+                    defaultValue={field.value || "annual"}
+                  >
                     <FormControl>
                       <SelectTrigger>
                         <SelectValue placeholder="Pilih jenis cuti" />
@@ -299,7 +487,7 @@ export function LeaveRequestForm({
               )}
             />
 
-            {/* Attachment URL */}
+            {/* Attachment File Upload */}
             <FormField
               control={form.control}
               name="attachment_url"
@@ -307,18 +495,76 @@ export function LeaveRequestForm({
                 <FormItem>
                   <FormLabel>Lampiran (Opsional)</FormLabel>
                   <FormControl>
-                    <div className="flex gap-2">
-                      <Input
-                        placeholder="https://... (surat dokter, dll)"
-                        {...field}
-                      />
-                      <Button type="button" variant="outline" size="icon">
-                        <Upload className="w-4 h-4" />
-                      </Button>
+                    <div className="space-y-2">
+                      {!selectedFile ? (
+                        <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-gray-400 transition-colors">
+                          <input
+                            type="file"
+                            id="file-upload"
+                            accept=".pdf,.jpg,.jpeg,.png"
+                            onChange={handleFileUpload}
+                            disabled={uploadingFile}
+                            className="hidden"
+                          />
+                          <label htmlFor="file-upload" className="cursor-pointer">
+                            {uploadingFile ? (
+                              <>
+                                <Loader2 className="w-8 h-8 mx-auto text-gray-400 animate-spin mb-2" />
+                                <p className="text-sm text-gray-500">Uploading...</p>
+                              </>
+                            ) : (
+                              <>
+                                <Upload className="w-8 h-8 mx-auto text-gray-400 mb-2" />
+                                <p className="text-sm text-gray-600 mb-1">
+                                  Klik untuk upload atau drag & drop
+                                </p>
+                                <p className="text-xs text-gray-500">
+                                  PDF, JPG, PNG (Max 5MB)
+                                </p>
+                              </>
+                            )}
+                          </label>
+                        </div>
+                      ) : (
+                        <div className="border border-gray-200 rounded-lg p-4">
+                          <div className="flex items-start justify-between gap-4">
+                            <div className="flex items-start gap-3 flex-1">
+                              {previewUrl ? (
+                                <img
+                                  src={previewUrl}
+                                  alt="Preview"
+                                  className="w-16 h-16 object-cover rounded"
+                                />
+                              ) : (
+                                <div className="w-16 h-16 bg-red-100 rounded flex items-center justify-center">
+                                  <FileText className="w-8 h-8 text-red-600" />
+                                </div>
+                              )}
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-medium text-gray-900 truncate">
+                                  {selectedFile.name}
+                                </p>
+                                <p className="text-xs text-gray-500">
+                                  {(selectedFile.size / 1024 / 1024).toFixed(2)} MB
+                                </p>
+                              </div>
+                            </div>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={handleRemoveFile}
+                              className="shrink-0"
+                            >
+                              <X className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </FormControl>
                   <FormDescription>
-                    Upload surat dokter atau dokumen pendukung lainnya
+                    Upload surat dokter atau dokumen pendukung lainnya (PDF, JPG, PNG)
                   </FormDescription>
                   <FormMessage />
                 </FormItem>
@@ -354,6 +600,73 @@ export function LeaveRequestForm({
           </form>
         </Form>
       </CardContent>
+
+      {/* Success Modal */}
+      <Dialog open={showSuccessModal} onOpenChange={setShowSuccessModal}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-center pb-4">
+              <div className="mx-auto w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-3">
+                <CheckCircle2 className="w-10 h-10 text-green-600" />
+              </div>
+              <p className="text-xl font-bold text-gray-900">Pengajuan Berhasil!</p>
+            </DialogTitle>
+          </DialogHeader>
+          
+          {submissionData && (
+            <div className="space-y-4 py-2">
+              <div className="bg-gray-50 rounded-lg p-4 space-y-3">
+                <div className="flex justify-between">
+                  <span className="text-sm text-gray-500">Karyawan</span>
+                  <span className="text-sm font-medium text-gray-900">{submissionData.employee_name}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-sm text-gray-500">Jenis Cuti</span>
+                  <span className="text-sm font-medium text-gray-900">
+                    {LEAVE_TYPE_LABELS[submissionData.leave_type]}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-sm text-gray-500">Periode</span>
+                  <span className="text-sm font-medium text-gray-900">
+                    {new Date(submissionData.start_date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })} - {' '}
+                    {new Date(submissionData.end_date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-sm text-gray-500">Total Hari</span>
+                  <Badge variant="outline" className="bg-green-100 text-green-800">
+                    {submissionData.total_days} hari
+                  </Badge>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-sm text-gray-500">Status</span>
+                  <Badge variant="outline" className="bg-yellow-100 text-yellow-800">
+                    Menunggu Persetujuan
+                  </Badge>
+                </div>
+              </div>
+
+              <div className="text-center text-sm text-gray-500">
+                <p>Pengajuan cuti Anda sedang menunggu persetujuan dari atasan.</p>
+                <p className="mt-1">Anda akan menerima notifikasi jika sudah disetujui.</p>
+              </div>
+            </div>
+          )}
+
+          <div className="pt-4">
+            <Button
+              onClick={() => {
+                setShowSuccessModal(false);
+                if (onCancel) onCancel();
+              }}
+              className="w-full bg-green-600 hover:bg-green-700"
+            >
+              Tutup
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 }

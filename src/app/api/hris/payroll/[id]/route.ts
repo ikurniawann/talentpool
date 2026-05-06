@@ -177,7 +177,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
 
 // ============================================================
 // DELETE /api/hris/payroll/[id]
-// Delete payroll run (only if status is draft)
+// Delete payroll run
 // ============================================================
 
 export async function DELETE(request: NextRequest, { params }: RouteParams) {
@@ -185,7 +185,7 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     const supabase = await createClient();
     const { id } = await params;
 
-    // Check if payroll run exists and is in draft status
+    // Check if payroll run exists
     const { data: existing } = await supabase
       .from('payroll_runs')
       .select('id, status')
@@ -199,14 +199,13 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
       );
     }
 
-    if (existing.status !== 'draft') {
-      return NextResponse.json(
-        { error: 'Hanya payroll dengan status draft yang bisa dihapus' },
-        { status: 400 }
-      );
-    }
+    // First, delete all payroll details (to avoid FK constraint issues)
+    await supabase
+      .from('payroll_details')
+      .delete()
+      .eq('payroll_run_id', id);
 
-    // Delete (cascade will handle payroll_details)
+    // Then delete the payroll run
     const { error } = await supabase
       .from('payroll_runs')
       .delete()
@@ -215,7 +214,7 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     if (error) {
       console.error('Error deleting payroll run:', error);
       return NextResponse.json(
-        { error: 'Gagal menghapus payroll run' },
+        { error: 'Gagal menghapus payroll run', details: error.message },
         { status: 500 }
       );
     }
@@ -225,7 +224,7 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     });
 
   } catch (error) {
-    console.error('Error in payroll API:', error);
+    console.error('Error in payroll DELETE API:', error);
     return NextResponse.json(
       { error: 'Terjadi kesalahan pada server' },
       { status: 500 }
