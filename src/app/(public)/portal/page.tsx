@@ -124,11 +124,32 @@ export default function PortalPage() {
           console.log("Loaded positions:", data.length);
           setPositions(data);
         } else {
-          setPositions([]);
+          console.warn("No positions found, trying without is_active filter...");
+          // Fallback: fetch all positions even if inactive
+          supabase
+            .from("positions")
+            .select("id, title, brand_id")
+            .order("title", { ascending: true })
+            .limit(50)
+            .then(({ data: fallbackData, error: fallbackError }) => {
+              if (fallbackError) {
+                console.error("Fallback error:", fallbackError);
+                setPositions([]);
+              } else if (fallbackData) {
+                console.log("Loaded fallback positions:", fallbackData.length);
+                setPositions(fallbackData);
+              } else {
+                setPositions([]);
+              }
+            })
+            .finally(() => {
+              setPositionsLoading(false);
+            });
+          return; // Don't set loading false here, let the fallback do it
         }
       })
       .finally(() => {
-        setPositionsLoading(false);
+        if (data) setPositionsLoading(false);
       });
   }, []);
 
