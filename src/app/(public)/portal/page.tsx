@@ -111,7 +111,7 @@ export default function PortalPage() {
   // Fetch all active positions from master data
   useEffect(() => {
     setPositionsLoading(true);
-    let hasActiveData = false;
+    console.log("[Positions] Starting fetch...");
     
     supabase
       .from("positions")
@@ -119,15 +119,16 @@ export default function PortalPage() {
       .eq("is_active", true)
       .order("title", { ascending: true })
       .then(({ data, error }) => {
+        console.log("[Positions] Query result:", { data, error });
+        
         if (error) {
-          console.error("Error fetching positions:", error);
+          console.error("[Positions] Error:", error);
           setPositions([]);
         } else if (data && data.length > 0) {
-          console.log("Loaded positions:", data.length);
+          console.log("[Positions] Loaded:", data.length, "positions");
           setPositions(data);
-          hasActiveData = true;
         } else {
-          console.warn("No active positions found, trying without is_active filter...");
+          console.warn("[Positions] No active positions, trying fallback...");
           // Fallback: fetch all positions even if inactive
           return supabase
             .from("positions")
@@ -135,19 +136,22 @@ export default function PortalPage() {
             .order("title", { ascending: true })
             .limit(50)
             .then(({ data: fallbackData, error: fallbackError }) => {
+              console.log("[Positions] Fallback result:", { fallbackData, fallbackError });
               if (fallbackError) {
-                console.error("Fallback error:", fallbackError);
+                console.error("[Positions] Fallback error:", fallbackError);
                 setPositions([]);
-              } else if (fallbackData) {
-                console.log("Loaded fallback positions:", fallbackData.length);
+              } else if (fallbackData && fallbackData.length > 0) {
+                console.log("[Positions] Loaded fallback:", fallbackData.length, "positions");
                 setPositions(fallbackData);
               } else {
+                console.warn("[Positions] Still no data after fallback");
                 setPositions([]);
               }
             });
         }
       })
       .finally(() => {
+        console.log("[Positions] Fetch complete, loading = false");
         setPositionsLoading(false);
       });
   }, []);
