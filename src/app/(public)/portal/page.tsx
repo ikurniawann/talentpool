@@ -107,23 +107,18 @@ export default function PortalPage() {
       });
   }, []);
 
-  // Fetch positions when brand changes
+  // Fetch all active positions from master data
   useEffect(() => {
-    if (selectedBrand) {
-      supabase
-        .from("positions")
-        .select("id, title")
-        .eq("brand_id", selectedBrand)
-        .eq("is_active", true)
-        .then(({ data }) => {
-          if (data) setPositions(data);
-          else setPositions([]);
-        });
-    } else {
-      setPositions([]);
-      setValue("position_id", "");
-    }
-  }, [selectedBrand, setValue]);
+    supabase
+      .from("positions")
+      .select("id, title, brand_id")
+      .eq("is_active", true)
+      .order("title", { ascending: true })
+      .then(({ data }) => {
+        if (data) setPositions(data);
+        else setPositions([]);
+      });
+  }, []);
 
   // File handlers
   const handleCvChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
