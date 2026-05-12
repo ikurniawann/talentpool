@@ -111,6 +111,8 @@ export default function PortalPage() {
   // Fetch all active positions from master data
   useEffect(() => {
     setPositionsLoading(true);
+    let hasActiveData = false;
+    
     supabase
       .from("positions")
       .select("id, title, brand_id")
@@ -120,13 +122,14 @@ export default function PortalPage() {
         if (error) {
           console.error("Error fetching positions:", error);
           setPositions([]);
-        } else if (data) {
+        } else if (data && data.length > 0) {
           console.log("Loaded positions:", data.length);
           setPositions(data);
+          hasActiveData = true;
         } else {
-          console.warn("No positions found, trying without is_active filter...");
+          console.warn("No active positions found, trying without is_active filter...");
           // Fallback: fetch all positions even if inactive
-          supabase
+          return supabase
             .from("positions")
             .select("id, title, brand_id")
             .order("title", { ascending: true })
@@ -141,15 +144,11 @@ export default function PortalPage() {
               } else {
                 setPositions([]);
               }
-            })
-            .finally(() => {
-              setPositionsLoading(false);
             });
-          return; // Don't set loading false here, let the fallback do it
         }
       })
       .finally(() => {
-        if (data) setPositionsLoading(false);
+        setPositionsLoading(false);
       });
   }, []);
 
