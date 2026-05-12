@@ -41,7 +41,7 @@ export default function PortalPage() {
   const [brands, setBrands] = useState<{ id: string; name: string }[]>([]);
   const [positions, setPositions] = useState<{ id: string; title: string }[]>([]);
   const [jobOpeningId, setJobOpeningId] = useState<string | null>(null);
-  const [isReadOnly, setIsReadOnly] = useState(false);
+  const [isBrandReadOnly, setIsBrandReadOnly] = useState(false);
 
   // File states
   const [cvFile, setCvFile] = useState<File | null>(null);
@@ -77,7 +77,7 @@ export default function PortalPage() {
 
     // If job_opening_id is present, fetch job details and auto-fill brand & position
     if (openingId) {
-      setIsReadOnly(true);
+      setIsBrandReadOnly(true);
       supabase
         .from("job_openings")
         .select("brand_id, position_id")
@@ -255,10 +255,10 @@ export default function PortalPage() {
                     id="brand_id"
                     value={watch("brand_id") || ""}
                     onChange={(e) => setValue("brand_id", e.target.value || undefined)}
-                    disabled={isReadOnly}
+                    disabled={isBrandReadOnly}
                     className="flex h-10 w-full rounded-md border border-[#e1bec6] bg-transparent px-3 py-2 text-sm outline-none transition-colors focus:border-[#db2777] disabled:cursor-not-allowed disabled:opacity-50"
                   >
-                    <option value="">{isReadOnly ? "Auto-selected" : "Pilih Outlet (opsional)"}</option>
+                    <option value="">{isBrandReadOnly ? "Auto-selected" : "Pilih Outlet (opsional)"}</option>
                     {brands.map((b) => (
                       <option key={b.id} value={b.id}>
                         {b.name}
@@ -276,10 +276,9 @@ export default function PortalPage() {
                     id="position_id"
                     value={watch("position_id") || ""}
                     onChange={(e) => setValue("position_id", e.target.value || undefined)}
-                    disabled={isReadOnly}
                     className="flex h-10 w-full rounded-md border border-[#e1bec6] bg-transparent px-3 py-2 text-sm outline-none transition-colors focus:border-[#db2777] disabled:cursor-not-allowed disabled:opacity-50"
                   >
-                    <option value="">{isReadOnly ? "Auto-selected" : (selectedBrand ? "Pilih Posisi" : "Pilih Outlet dulu")}</option>
+                    <option value="">Pilih Posisi</option>
                     {positions.map((p) => (
                       <option key={p.id} value={p.id}>
                         {p.title}
