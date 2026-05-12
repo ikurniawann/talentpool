@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { uploadFile } from "@/lib/storage";
 import { Resend } from "resend";
 import { createClient } from "@/lib/supabase/server";
+import type { CandidateSource } from "@/types";
 
 const FROM_EMAIL = process.env.FROM_EMAIL ?? "noreply@aapextechnology.com";
 
@@ -16,6 +17,7 @@ export async function POST(request: NextRequest) {
     const source = formData.get("source") as string;
     const position_id = formData.get("position_id") as string | null;
     const brand_id = formData.get("brand_id") as string | null;
+    const job_opening_id = formData.get("job_opening_id") as string | null;
     const notes = formData.get("notes") as string | null;
 
     const cvFile = formData.get("cv") as File | null;
@@ -92,9 +94,10 @@ export async function POST(request: NextRequest) {
         email,
         phone,
         domicile,
-        source: source as any,
+        source: source as CandidateSource,
         position_id: position_id || null,
         brand_id: brand_id || null,
+        job_opening_id: job_opening_id || null,
         cv_url: cvUrl,
         photo_url: photoUrl,
         notes: notes || null,
@@ -191,8 +194,9 @@ export async function POST(request: NextRequest) {
       message: "Lamaran berhasil dikirim",
       candidate_id: candidate.id,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Portal submit error:", error);
-    return NextResponse.json({ error: "Terjadi kesalahan: " + error.message }, { status: 500 });
+    const message = error instanceof Error ? error.message : "Unknown error";
+    return NextResponse.json({ error: "Terjadi kesalahan: " + message }, { status: 500 });
   }
 }

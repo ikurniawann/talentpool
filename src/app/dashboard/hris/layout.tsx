@@ -8,6 +8,7 @@ const HRIS_MODULES = [
   { href: "/dashboard/hris/candidates", label: "Kandidat" },
   { href: "/dashboard/hris/pipeline", label: "Pipeline" },
   { href: "/dashboard/hris/talent-pool", label: "Talent Pool" },
+  { href: "/dashboard/hris/job-portal", label: "Job Portal" },
   { href: "/dashboard/hris/schedules", label: "Schedules" },
   { href: "/dashboard/hris/sections", label: "Sections" },
   { href: "/dashboard/hris/analytics", label: "Analytics" },

@@ -23,6 +23,7 @@ export default async function DashboardGroupLayout({
                   { href: "/dashboard/hris/candidates", label: "Kandidat", icon: "user-plus" },
                   { href: "/dashboard/hris/pipeline", label: "Pipeline", icon: "clipboard" },
                   { href: "/dashboard/hris/talent-pool", label: "Talent Pool", icon: "star" },
+                  { href: "/dashboard/hris/job-portal", label: "Job Portal", icon: "briefcase" },
                   { href: "/dashboard/hris/analytics", label: "Analytics", icon: "chart" },
                   { href: "/dashboard/hris/attendance", label: "Absensi", icon: "calendar" },
                   { href: "/dashboard/hris/leaves", label: "Cuti & Izin", icon: "file-text" },
@@ -89,6 +90,7 @@ export default async function DashboardGroupLayout({
                   children: [
                     { href: "/dashboard/hris/candidates", label: "Kandidat", icon: "user-plus" },
                     { href: "/dashboard/hris/pipeline", label: "Pipeline", icon: "clipboard" },
+                    { href: "/dashboard/hris/job-portal", label: "Job Portal", icon: "briefcase" },
                     { href: "/dashboard/hris/analytics", label: "Analytics", icon: "chart" },
                   ],
                 },

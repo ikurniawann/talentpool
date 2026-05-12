@@ -1,19 +1,15 @@
 "use client";
 
+/* eslint-disable @next/next/no-img-element */
+
 import { useState, useEffect, useCallback } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Loader2, Upload, X, CheckCircle, Phone, Mail, MapPin, Briefcase } from "lucide-react";
+import Link from "next/link";
+import { Loader2, Upload, X, CheckCircle, Phone, Mail, MapPin, Briefcase, ArrowUp } from "lucide-react";
 
 // Validation schema
 const formSchema = z.object({
@@ -31,6 +27,9 @@ const formSchema = z.object({
 });
 
 type FormValues = z.infer<typeof formSchema>;
+type PortalSource = FormValues["source"];
+
+const logoUrl = "/logos/sulu-in-wounderland-logo.png";
 
 export default function PortalPage() {
   const router = useRouter();
@@ -41,6 +40,7 @@ export default function PortalPage() {
 
   const [brands, setBrands] = useState<{ id: string; name: string }[]>([]);
   const [positions, setPositions] = useState<{ id: string; title: string }[]>([]);
+  const [jobOpeningId, setJobOpeningId] = useState<string | null>(null);
 
   // File states
   const [cvFile, setCvFile] = useState<File | null>(null);
@@ -63,6 +63,17 @@ export default function PortalPage() {
   });
 
   const selectedBrand = watch("brand_id");
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const brandId = params.get("brand_id");
+    const positionId = params.get("position_id");
+    const openingId = params.get("job_opening_id");
+
+    if (openingId) setJobOpeningId(openingId);
+    if (brandId) setValue("brand_id", brandId);
+    if (positionId) setValue("position_id", positionId);
+  }, [setValue]);
 
   // Fetch brands
   useEffect(() => {
@@ -161,6 +172,7 @@ export default function PortalPage() {
       if (data.position_id) submitFormData.append("position_id", data.position_id);
       if (data.brand_id) submitFormData.append("brand_id", data.brand_id);
       if (data.notes) submitFormData.append("notes", data.notes);
+      if (jobOpeningId) submitFormData.append("job_opening_id", jobOpeningId);
       if (cvFile) submitFormData.append("cv", cvFile);
       if (photoFile) submitFormData.append("photo", photoFile);
 
@@ -176,351 +188,419 @@ export default function PortalPage() {
       }
 
       setSuccess(true);
-    } catch (err: any) {
-      setSubmitError(err.message || "Gagal mengirim lamaran");
+    } catch (err: unknown) {
+      setSubmitError(err instanceof Error ? err.message : "Gagal mengirim lamaran");
     } finally {
       setLoading(false);
     }
   };
 
-  // Success page
-  if (success) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
-        <Card className="max-w-md w-full text-center shadow-lg border-0">
-          <CardContent className="pt-8 pb-8">
-            <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <CheckCircle className="w-8 h-8 text-emerald-600" />
-            </div>
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">Lamaran Terkirim!</h2>
-            <p className="text-gray-600 mb-6">
-              Terima kasih sudah melamar. Tim HRD kami akan menghubungi kamu
-              melalui WhatsApp atau email dalam 1-3 hari kerja.
-            </p>
-            <Button
-              onClick={() => router.push("/")}
-              variant="outline"
-              className="w-full"
-            >
-              Kembali ke Beranda
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 py-8 px-4">
-      <div className="max-w-xl mx-auto">
-        {/* Header */}
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-12 h-12 bg-blue-600 rounded-xl mb-3">
-            <Briefcase className="w-6 h-6 text-white" />
-          </div>
-          <h1 className="text-2xl font-bold text-gray-900">Lamar Kerja di Aapex Technology</h1>
-          <p className="text-gray-500 mt-1">Isi formulir di bawah untuk melamar posisi yang tersedia</p>
+    <div id="top" className="min-h-screen bg-[#f8f9fa] text-[#191c1d] career-roundo">
+      <nav className="fixed top-0 z-50 w-full border-b border-[#e1bec6] bg-[#f8f9fa]/95 backdrop-blur">
+        <div className="mx-auto flex h-20 max-w-[1280px] items-center justify-between px-4 sm:px-6 lg:px-10">
+          <Link href="/career" className="flex h-full items-center" aria-label="Sulu in Wounderland careers">
+            <img src={logoUrl} alt="Sulu in Wounderland Logo" className="h-full w-auto object-contain" />
+          </Link>
+          <Link
+            href="/career"
+            className="rounded-full bg-[#db2777] px-6 py-2 text-sm font-semibold uppercase tracking-[0.08em] text-white transition hover:bg-[#b7005e] active:scale-95"
+          >
+            Back to Careers
+          </Link>
         </div>
+      </nav>
 
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
-          <Card className="border-0 shadow-md">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base">Informasi Diri</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {/* Brand */}
-              <div className="space-y-1.5">
-                <Label htmlFor="brand_id">Outlet / Brand</Label>
-                <Select
-                  value={watch("brand_id") || ""}
-                  onValueChange={(v) => setValue("brand_id", v || undefined)}
-                >
-                  <SelectTrigger id="brand_id" className={errors.brand_id ? "border-red-500" : ""}>
-                    <SelectValue placeholder="Pilih Outlet (opsional)" />
-                  </SelectTrigger>
-                  <SelectContent>
+      <main className="overflow-x-hidden pb-20 pt-36 sm:pt-40">
+        <section className="mx-auto mb-12 max-w-[800px] px-4 text-center sm:px-6 lg:px-10">
+          <div className="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-full bg-[#edeeef] text-[#db2777]">
+            <Briefcase className="h-6 w-6" />
+          </div>
+          <h1 className="mb-4 text-3xl font-semibold leading-tight sm:text-4xl">
+            Submit Your Application
+          </h1>
+          <p className="mx-auto max-w-2xl text-lg leading-relaxed text-[#594047]">
+            Isi formulir di bawah untuk melamar posisi yang tersedia. Kami tunggu kontribusi kamu di tim Sulu in Wounderland!
+          </p>
+        </section>
+
+        <section className="mx-auto max-w-[800px] px-4 sm:px-6 lg:px-10">
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+            {/* Personal Info */}
+            <div className="rounded-lg border border-[#e1bec6] bg-white p-6 sm:p-8">
+              <h2 className="mb-6 text-xl font-medium leading-tight">Informasi Diri</h2>
+              <div className="space-y-5">
+                {/* Brand */}
+                <div className="space-y-2">
+                  <label htmlFor="brand_id" className="text-xs font-bold uppercase tracking-[0.12em] text-[#594047]">
+                    Outlet / Brand
+                  </label>
+                  <select
+                    id="brand_id"
+                    value={watch("brand_id") || ""}
+                    onChange={(e) => setValue("brand_id", e.target.value || undefined)}
+                    className="flex h-11 w-full rounded-md border border-[#e1bec6] bg-transparent px-3 py-2 text-sm outline-none transition-colors focus:border-[#db2777] disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    <option value="">Pilih Outlet (opsional)</option>
                     {brands.map((b) => (
-                      <SelectItem key={b.id} value={b.id}>
+                      <option key={b.id} value={b.id}>
                         {b.name}
-                      </SelectItem>
+                      </option>
                     ))}
-                  </SelectContent>
-                </Select>
-              </div>
+                  </select>
+                </div>
 
-              {/* Position */}
-              <div className="space-y-1.5">
-                <Label htmlFor="position_id">Posisi yang Dilamar</Label>
-                <Select
-                  value={watch("position_id") || ""}
-                  onValueChange={(v) => setValue("position_id", v || undefined)}
-                >
-                  <SelectTrigger id="position_id">
-                    <SelectValue placeholder={selectedBrand ? "Pilih Posisi" : "Pilih Outlet dulu"} />
-                  </SelectTrigger>
-                  <SelectContent>
+                {/* Position */}
+                <div className="space-y-2">
+                  <label htmlFor="position_id" className="text-xs font-bold uppercase tracking-[0.12em] text-[#594047]">
+                    Posisi yang Dilamar
+                  </label>
+                  <select
+                    id="position_id"
+                    value={watch("position_id") || ""}
+                    onChange={(e) => setValue("position_id", e.target.value || undefined)}
+                    className="flex h-11 w-full rounded-md border border-[#e1bec6] bg-transparent px-3 py-2 text-sm outline-none transition-colors focus:border-[#db2777] disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    <option value="">{selectedBrand ? "Pilih Posisi" : "Pilih Outlet dulu"}</option>
                     {positions.map((p) => (
-                      <SelectItem key={p.id} value={p.id}>
+                      <option key={p.id} value={p.id}>
                         {p.title}
-                      </SelectItem>
+                      </option>
                     ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* Full Name */}
-              <div className="space-y-1.5">
-                <Label htmlFor="full_name">
-                  Nama Lengkap <span className="text-red-500">*</span>
-                </Label>
-                <Input
-                  id="full_name"
-                  placeholder="Nama lengkap kamu"
-                  {...register("full_name")}
-                  className={errors.full_name ? "border-red-500" : ""}
-                />
-                {errors.full_name && (
-                  <p className="text-xs text-red-500">{errors.full_name.message}</p>
-                )}
-              </div>
-
-              {/* Email */}
-              <div className="space-y-1.5">
-                <Label htmlFor="email">
-                  Email <span className="text-red-500">*</span>
-                </Label>
-                <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                  <Input
-                    id="email"
-                    type="email"
-                    placeholder="email@contoh.com"
-                    {...register("email")}
-                    className={`pl-9 ${errors.email ? "border-red-500" : ""}`}
-                  />
+                  </select>
                 </div>
-                {errors.email && (
-                  <p className="text-xs text-red-500">{errors.email.message}</p>
-                )}
-              </div>
 
-              {/* Phone */}
-              <div className="space-y-1.5">
-                <Label htmlFor="phone">
-                  No. WhatsApp <span className="text-red-500">*</span>
-                </Label>
-                <div className="relative">
-                  <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                  <Input
-                    id="phone"
-                    type="tel"
-                    placeholder="081234567890"
-                    {...register("phone")}
-                    className={`pl-9 ${errors.phone ? "border-red-500" : ""}`}
-                  />
-                </div>
-                {errors.phone && (
-                  <p className="text-xs text-red-500">{errors.phone.message}</p>
-                )}
-              </div>
-
-              {/* Domicile */}
-              <div className="space-y-1.5">
-                <Label htmlFor="domicile">
-                  Domisili / Kota <span className="text-red-500">*</span>
-                </Label>
-                <div className="relative">
-                  <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                  <Input
-                    id="domicile"
-                    placeholder="Contoh: Jakarta Selatan"
-                    {...register("domicile")}
-                    className={`pl-9 ${errors.domicile ? "border-red-500" : ""}`}
-                  />
-                </div>
-                {errors.domicile && (
-                  <p className="text-xs text-red-500">{errors.domicile.message}</p>
-                )}
-              </div>
-
-              {/* Source */}
-              <div className="space-y-1.5">
-                <Label htmlFor="source">
-                  Sumber Informasi Lowongan <span className="text-red-500">*</span>
-                </Label>
-                <Select
-                  value={watch("source") || "portal"}
-                  onValueChange={(v) => setValue("source", v as any)}
-                >
-                  <SelectTrigger id="source" className={errors.source ? "border-red-500" : ""}>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="portal">Website / Portal</SelectItem>
-                    <SelectItem value="instagram">Instagram</SelectItem>
-                    <SelectItem value="jobstreet">JobStreet</SelectItem>
-                    <SelectItem value="referral">Rekomendasi (Referral)</SelectItem>
-                    <SelectItem value="walk_in">Walk-in</SelectItem>
-                    <SelectItem value="other">Lainnya</SelectItem>
-                  </SelectContent>
-                </Select>
-                {errors.source && (
-                  <p className="text-xs text-red-500">{errors.source.message}</p>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* File Upload Card */}
-          <Card className="border-0 shadow-md">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base">Upload Dokumen</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {/* CV Upload */}
-              <div className="space-y-1.5">
-                <Label>
-                  CV (PDF/DOC) <span className="text-red-500">*</span>
-                </Label>
-                <span className="text-xs text-gray-500">Maksimal 2MB</span>
-
-                {cvFile ? (
-                  <div className="flex items-center gap-3 p-3 bg-emerald-50 border border-emerald-200 rounded-lg">
-                    <Upload className="w-5 h-5 text-emerald-600 shrink-0" />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-emerald-700 truncate">{cvFile.name}</p>
-                      <p className="text-xs text-emerald-600">
-                        {(cvFile.size / 1024 / 1024).toFixed(2)} MB
-                      </p>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={removeCv}
-                      className="p-1 hover:bg-emerald-100 rounded"
-                    >
-                      <X className="w-4 h-4 text-emerald-600" />
-                    </button>
-                  </div>
-                ) : (
-                  <label className="flex flex-col items-center justify-center gap-2 p-6 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-blue-400 hover:bg-blue-50 transition-colors">
-                    <Upload className="w-6 h-6 text-gray-400" />
-                    <span className="text-sm text-gray-500">Klik untuk upload CV</span>
-                    <span className="text-xs text-gray-400">PDF atau DOC, maks 2MB</span>
-                    <input
-                      type="file"
-                      accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-                      className="hidden"
-                      onChange={handleCvChange}
-                    />
+                {/* Full Name */}
+                <div className="space-y-2">
+                  <label htmlFor="full_name" className="text-xs font-bold uppercase tracking-[0.12em] text-[#594047]">
+                    Nama Lengkap <span className="text-[#db2777]">*</span>
                   </label>
-                )}
+                  <input
+                    id="full_name"
+                    placeholder="Nama lengkap kamu"
+                    {...register("full_name")}
+                    className={`flex h-11 w-full rounded-md border bg-transparent px-3 py-2 text-sm outline-none transition-colors focus:border-[#db2777] disabled:cursor-not-allowed disabled:opacity-50 ${errors.full_name ? "border-[#db2777]" : "border-[#e1bec6]"}`}
+                  />
+                  {errors.full_name && (
+                    <p className="text-xs text-[#db2777]">{errors.full_name.message}</p>
+                  )}
+                </div>
+
+                {/* Email */}
+                <div className="space-y-2">
+                  <label htmlFor="email" className="text-xs font-bold uppercase tracking-[0.12em] text-[#594047]">
+                    Email <span className="text-[#db2777]">*</span>
+                  </label>
+                  <div className="relative">
+                    <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#594047]" />
+                    <input
+                      id="email"
+                      type="email"
+                      placeholder="email@contoh.com"
+                      {...register("email")}
+                      className={`flex h-11 w-full rounded-md border bg-transparent pl-10 py-2 text-sm outline-none transition-colors focus:border-[#db2777] disabled:cursor-not-allowed disabled:opacity-50 ${errors.email ? "border-[#db2777]" : "border-[#e1bec6]"}`}
+                    />
+                  </div>
+                  {errors.email && (
+                    <p className="text-xs text-[#db2777]">{errors.email.message}</p>
+                  )}
+                </div>
+
+                {/* Phone */}
+                <div className="space-y-2">
+                  <label htmlFor="phone" className="text-xs font-bold uppercase tracking-[0.12em] text-[#594047]">
+                    No. WhatsApp <span className="text-[#db2777]">*</span>
+                  </label>
+                  <div className="relative">
+                    <Phone className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#594047]" />
+                    <input
+                      id="phone"
+                      type="tel"
+                      placeholder="081234567890"
+                      {...register("phone")}
+                      className={`flex h-11 w-full rounded-md border bg-transparent pl-10 py-2 text-sm outline-none transition-colors focus:border-[#db2777] disabled:cursor-not-allowed disabled:opacity-50 ${errors.phone ? "border-[#db2777]" : "border-[#e1bec6]"}`}
+                    />
+                  </div>
+                  {errors.phone && (
+                    <p className="text-xs text-[#db2777]">{errors.phone.message}</p>
+                  )}
+                </div>
+
+                {/* Domicile */}
+                <div className="space-y-2">
+                  <label htmlFor="domicile" className="text-xs font-bold uppercase tracking-[0.12em] text-[#594047]">
+                    Domisili / Kota <span className="text-[#db2777]">*</span>
+                  </label>
+                  <div className="relative">
+                    <MapPin className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#594047]" />
+                    <input
+                      id="domicile"
+                      placeholder="Contoh: Jakarta Selatan"
+                      {...register("domicile")}
+                      className={`flex h-11 w-full rounded-md border bg-transparent pl-10 py-2 text-sm outline-none transition-colors focus:border-[#db2777] disabled:cursor-not-allowed disabled:opacity-50 ${errors.domicile ? "border-[#db2777]" : "border-[#e1bec6]"}`}
+                    />
+                  </div>
+                  {errors.domicile && (
+                    <p className="text-xs text-[#db2777]">{errors.domicile.message}</p>
+                  )}
+                </div>
+
+                {/* Source */}
+                <div className="space-y-2">
+                  <label htmlFor="source" className="text-xs font-bold uppercase tracking-[0.12em] text-[#594047]">
+                    Sumber Informasi <span className="text-[#db2777]">*</span>
+                  </label>
+                  <select
+                    id="source"
+                    value={watch("source") || "portal"}
+                    onChange={(e) => setValue("source", e.target.value as PortalSource)}
+                    className={`flex h-11 w-full rounded-md border bg-transparent px-3 py-2 text-sm outline-none transition-colors focus:border-[#db2777] disabled:cursor-not-allowed disabled:opacity-50 ${errors.source ? "border-[#db2777]" : "border-[#e1bec6]"}`}
+                  >
+                    <option value="portal">Website / Portal</option>
+                    <option value="instagram">Instagram</option>
+                    <option value="jobstreet">JobStreet</option>
+                    <option value="referral">Rekomendasi (Referral)</option>
+                    <option value="walk_in">Walk-in</option>
+                    <option value="other">Lainnya</option>
+                  </select>
+                  {errors.source && (
+                    <p className="text-xs text-[#db2777]">{errors.source.message}</p>
+                  )}
+                </div>
               </div>
+            </div>
 
-              {/* Photo Upload */}
-              <div className="space-y-1.5">
-                <Label>
-                  Pas Foto (JPG/PNG) <span className="text-red-500">*</span>
-                </Label>
-                <span className="text-xs text-gray-500">Maksimal 2MB</span>
+            {/* File Upload */}
+            <div className="rounded-lg border border-[#e1bec6] bg-white p-6 sm:p-8">
+              <h2 className="mb-6 text-xl font-medium leading-tight">Upload Dokumen</h2>
+              <div className="space-y-6">
+                {/* CV Upload */}
+                <div className="space-y-2">
+                  <label className="text-xs font-bold uppercase tracking-[0.12em] text-[#594047]">
+                    CV (PDF/DOC) <span className="text-[#db2777]">*</span>
+                  </label>
+                  <span className="text-xs text-[#594047]">Maksimal 2MB</span>
 
-                {photoFile ? (
-                  <div className="flex items-center gap-3 p-3 bg-emerald-50 border border-emerald-200 rounded-lg">
-                    {photoPreview && (
-                      <img
-                        src={photoPreview}
-                        alt="Preview"
-                        className="w-12 h-12 object-cover rounded"
+                  {cvFile ? (
+                    <div className="flex items-center gap-3 rounded-lg border border-[#e1bec6] bg-[#f8f9fa] p-4">
+                      <Upload className="h-5 w-5 shrink-0 text-[#db2777]" />
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-medium text-[#191c1d]">{cvFile.name}</p>
+                        <p className="text-xs text-[#594047]">
+                          {(cvFile.size / 1024 / 1024).toFixed(2)} MB
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={removeCv}
+                        className="rounded p-1 transition-colors hover:bg-[#e1bec6]"
+                      >
+                        <X className="h-4 w-4 text-[#db2777]" />
+                      </button>
+                    </div>
+                  ) : (
+                    <label className="flex cursor-pointer flex-col items-center justify-center gap-3 rounded-lg border-2 border-dashed border-[#e1bec6] p-8 transition-colors hover:border-[#db2777] hover:bg-[#edeeef]">
+                      <Upload className="h-6 w-6 text-[#594047]" />
+                      <span className="text-sm font-medium text-[#191c1d]">Klik untuk upload CV</span>
+                      <span className="text-xs text-[#594047]">PDF atau DOC, maks 2MB</span>
+                      <input
+                        type="file"
+                        accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                        className="hidden"
+                        onChange={handleCvChange}
                       />
-                    )}
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-emerald-700 truncate">{photoFile.name}</p>
-                      <p className="text-xs text-emerald-600">
-                        {(photoFile.size / 1024 / 1024).toFixed(2)} MB
-                      </p>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={removePhoto}
-                      className="p-1 hover:bg-emerald-100 rounded"
-                    >
-                      <X className="w-4 h-4 text-emerald-600" />
-                    </button>
-                  </div>
-                ) : (
-                  <label className="flex flex-col items-center justify-center gap-2 p-6 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-blue-400 hover:bg-blue-50 transition-colors">
-                    <Upload className="w-6 h-6 text-gray-400" />
-                    <span className="text-sm text-gray-500">Klik untuk upload foto</span>
-                    <span className="text-xs text-gray-400">JPG atau PNG, maks 2MB</span>
-                    <input
-                      type="file"
-                      accept="image/jpeg,image/png,image/webp"
-                      className="hidden"
-                      onChange={handlePhotoChange}
-                    />
+                    </label>
+                  )}
+                </div>
+
+                {/* Photo Upload */}
+                <div className="space-y-2">
+                  <label className="text-xs font-bold uppercase tracking-[0.12em] text-[#594047]">
+                    Pas Foto (JPG/PNG) <span className="text-[#db2777]">*</span>
                   </label>
+                  <span className="text-xs text-[#594047]">Maksimal 2MB</span>
+
+                  {photoFile ? (
+                    <div className="flex items-center gap-3 rounded-lg border border-[#e1bec6] bg-[#f8f9fa] p-4">
+                      {photoPreview && (
+                        <img
+                          src={photoPreview}
+                          alt="Preview"
+                          className="h-12 w-12 rounded object-cover"
+                        />
+                      )}
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-medium text-[#191c1d]">{photoFile.name}</p>
+                        <p className="text-xs text-[#594047]">
+                          {(photoFile.size / 1024 / 1024).toFixed(2)} MB
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={removePhoto}
+                        className="rounded p-1 transition-colors hover:bg-[#e1bec6]"
+                      >
+                        <X className="h-4 w-4 text-[#db2777]" />
+                      </button>
+                    </div>
+                  ) : (
+                    <label className="flex cursor-pointer flex-col items-center justify-center gap-3 rounded-lg border-2 border-dashed border-[#e1bec6] p-8 transition-colors hover:border-[#db2777] hover:bg-[#edeeef]">
+                      <Upload className="h-6 w-6 text-[#594047]" />
+                      <span className="text-sm font-medium text-[#191c1d]">Klik untuk upload foto</span>
+                      <span className="text-xs text-[#594047]">JPG atau PNG, maks 2MB</span>
+                      <input
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp"
+                        className="hidden"
+                        onChange={handlePhotoChange}
+                      />
+                    </label>
+                  )}
+                </div>
+
+                {fileError && (
+                  <div className="rounded-lg border border-[#db2777] bg-[#fce7f3] p-4 text-sm text-[#db2777]">
+                    {fileError}
+                  </div>
                 )}
               </div>
+            </div>
 
-              {fileError && (
-                <Alert variant="destructive">
-                  <AlertDescription>{fileError}</AlertDescription>
-                </Alert>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Notes Card */}
-          <Card className="border-0 shadow-md">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base">Catatan Tambahan</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <Textarea
+            {/* Notes */}
+            <div className="rounded-lg border border-[#e1bec6] bg-white p-6 sm:p-8">
+              <h2 className="mb-6 text-xl font-medium leading-tight">Catatan Tambahan</h2>
+              <textarea
                 placeholder="Info tambahan yang ingin kamu sampaikan (opsional)"
-                rows={3}
+                rows={4}
                 {...register("notes")}
-                className={errors.notes ? "border-red-500" : ""}
+                className={`min-h-[120px] w-full rounded-md border bg-transparent px-3 py-2 text-sm outline-none transition-colors focus:border-[#db2777] disabled:cursor-not-allowed disabled:opacity-50 ${errors.notes ? "border-[#db2777]" : "border-[#e1bec6]"}`}
               />
               {errors.notes && (
-                <p className="text-xs text-red-500 mt-1">{errors.notes.message}</p>
+                <p className="mt-2 text-xs text-[#db2777]">{errors.notes.message}</p>
               )}
-            </CardContent>
-          </Card>
+            </div>
 
-          {/* Submit Error */}
-          {submitError && (
-            <Alert variant="destructive">
-              <AlertDescription>{submitError}</AlertDescription>
-            </Alert>
-          )}
-
-          {/* Submit Button */}
-          <Button
-            type="submit"
-            disabled={loading || !cvFile || !photoFile}
-            className="w-full bg-blue-600 hover:bg-blue-700"
-          >
-            {loading ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                Mengirim Lamaran...
-              </>
-            ) : (
-              "Kirim Lamaran"
+            {/* Submit Error */}
+            {submitError && (
+              <div className="rounded-lg border border-[#db2777] bg-[#fce7f3] p-4 text-sm text-[#db2777]">
+                {submitError}
+              </div>
             )}
-          </Button>
 
-          {!cvFile && (
-            <p className="text-xs text-center text-gray-400 -mt-2">
-              * Wajib upload CV untuk mengirim lamaran
+            {/* Submit Button */}
+            <button
+              type="submit"
+              disabled={loading || !cvFile || !photoFile}
+              className="w-full rounded-full bg-[#db2777] px-10 py-4 text-sm font-semibold uppercase tracking-[0.08em] text-white transition-all hover:bg-[#b7005e] active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {loading ? (
+                <>
+                  <Loader2 className="mr-2 inline h-4 w-4 animate-spin" />
+                  Mengirim Lamaran...
+                </>
+              ) : (
+                "Kirim Lamaran"
+              )}
+            </button>
+
+            {!cvFile && (
+              <p className="-mt-3 text-center text-xs text-[#594047]">
+                * Wajib upload CV untuk mengirim lamaran
+              </p>
+            )}
+          </form>
+
+          <p className="mt-8 text-center text-xs text-[#594047]">
+            Dengan mengirim lamaran, kamu menyetujui kebijakan privasi Sulu in Wounderland
+          </p>
+        </section>
+      </main>
+
+      <footer className="w-full border-t border-[#e1bec6] bg-[#f8f9fa] py-12">
+        <div className="mx-auto grid max-w-[1280px] grid-cols-1 gap-8 px-4 sm:px-6 md:grid-cols-2 lg:px-10">
+          <div className="space-y-4">
+            <div className="flex h-10 items-center">
+              <img src={logoUrl} alt="Sulu in Wounderland Logo" className="h-full w-auto object-contain" />
+            </div>
+            <p className="max-w-sm text-sm leading-relaxed text-[#594047]">
+              Designing emotional experiences at the intersection of technology, art, and service.
             </p>
-          )}
-        </form>
+            <p className="text-sm text-[#594047]">© 2026 Sulu in Wounderland. All rights reserved.</p>
+          </div>
+          <div className="flex flex-col justify-between gap-6 md:items-end">
+            <div className="flex flex-wrap gap-4">
+              {["LinkedIn", "Instagram", "Vimeo", "Privacy Policy", "Terms"].map((item) => (
+                <a key={item} href="#" className="text-sm text-[#594047] transition-colors hover:text-[#db2777]">
+                  {item}
+                </a>
+              ))}
+            </div>
+            <Link href="#top" className="group flex items-center gap-1 text-[#594047]">
+              <span className="text-xs font-semibold uppercase tracking-[0.12em] transition-colors group-hover:text-[#db2777]">
+                Back to top
+              </span>
+              <ArrowUp className="h-3 w-3 text-[#db2777]" />
+            </Link>
+          </div>
+        </div>
+      </footer>
 
-        <p className="text-center text-xs text-gray-400 mt-6">
-          Dengan mengirim lamaran, kamu menyetujui kebijakan privasi Aapex Technology
-        </p>
-      </div>
+      {/* Success Modal */}
+      {success && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          {/* Backdrop */}
+          <div 
+            className="absolute inset-0 bg-[#191c1d]/60 backdrop-blur-sm transition-opacity"
+            onClick={() => {
+              setSuccess(false);
+              router.push("/career");
+            }}
+          />
+          
+          {/* Modal Content */}
+          <div className="relative z-10 w-full max-w-lg animate-in fade-in zoom-in duration-300">
+            <div className="overflow-hidden rounded-2xl bg-white p-8 shadow-2xl">
+              {/* Icon */}
+              <div className="mb-6 flex justify-center">
+                <div className="flex h-20 w-20 items-center justify-center rounded-full bg-[#edeeef]">
+                  <CheckCircle className="h-10 w-10 text-[#db2777]" />
+                </div>
+              </div>
+
+              {/* Title */}
+              <h2 className="mb-3 text-center text-2xl font-semibold leading-tight text-[#191c1d]">
+                Lamaran Terkirim!
+              </h2>
+
+              {/* Message */}
+              <p className="mb-8 text-center text-base leading-relaxed text-[#594047]">
+                Terima kasih sudah melamar. Tim HRD kami akan menghubungi kamu
+                melalui WhatsApp atau email dalam 1-3 hari kerja.
+              </p>
+
+              {/* Actions */}
+              <div className="flex flex-col gap-3">
+                <Link
+                  href="/career"
+                  className="flex w-full items-center justify-center gap-2 rounded-full bg-[#db2777] px-8 py-3 text-sm font-semibold uppercase tracking-[0.08em] text-white transition-all hover:bg-[#b7005e] active:scale-95"
+                >
+                  Kembali ke Career Page
+                </Link>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSuccess(false);
+                    router.push("/career");
+                  }}
+                  className="w-full rounded-full border border-[#e1bec6] bg-transparent px-8 py-3 text-sm font-semibold uppercase tracking-[0.08em] text-[#191c1d] transition-all hover:bg-[#edeeef]"
+                >
+                  Tutup
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

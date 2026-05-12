@@ -1,4 +1,31 @@
+@import url("https://api.fontshare.com/v2/css?f[]=roundo@400,500,600,700&display=swap");
+
 @import "tailwindcss";
+
+@keyframes career-marquee {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+.career-roundo {
+  font-family: "Roundo", var(--font-inter, Inter), system-ui, sans-serif;
+}
+
+.career-marquee {
+  animation: career-marquee 40s linear infinite;
+}
+
+.career-roundo details > summary {
+  list-style: none;
+}
+
+.career-roundo details > summary::-webkit-details-marker {
+  display: none;
+}
 
 /* ── Liquid Glass Theme ── */
 
