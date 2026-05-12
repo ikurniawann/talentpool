@@ -73,6 +73,25 @@ export default function PortalPage() {
     if (openingId) setJobOpeningId(openingId);
     if (brandId) setValue("brand_id", brandId);
     if (positionId) setValue("position_id", positionId);
+
+    // If job_opening_id is present, fetch job details and auto-fill brand & position
+    if (openingId) {
+      supabase
+        .from("job_openings")
+        .select("brand_id, position_id")
+        .eq("id", openingId)
+        .single()
+        .then(({ data }) => {
+          if (data) {
+            if (data.brand_id && !brandId) {
+              setValue("brand_id", data.brand_id);
+            }
+            if (data.position_id && !positionId) {
+              setValue("position_id", data.position_id);
+            }
+          }
+        });
+    }
   }, [setValue]);
 
   // Fetch brands
