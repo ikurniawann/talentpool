@@ -42,6 +42,7 @@ export default function PortalPage() {
   const [positions, setPositions] = useState<{ id: string; title: string }[]>([]);
   const [jobOpeningId, setJobOpeningId] = useState<string | null>(null);
   const [isBrandReadOnly, setIsBrandReadOnly] = useState(false);
+  const [positionsLoading, setPositionsLoading] = useState(true);
 
   // File states
   const [cvFile, setCvFile] = useState<File | null>(null);
@@ -109,14 +110,25 @@ export default function PortalPage() {
 
   // Fetch all active positions from master data
   useEffect(() => {
+    setPositionsLoading(true);
     supabase
       .from("positions")
       .select("id, title, brand_id")
       .eq("is_active", true)
       .order("title", { ascending: true })
-      .then(({ data }) => {
-        if (data) setPositions(data);
-        else setPositions([]);
+      .then(({ data, error }) => {
+        if (error) {
+          console.error("Error fetching positions:", error);
+          setPositions([]);
+        } else if (data) {
+          console.log("Loaded positions:", data.length);
+          setPositions(data);
+        } else {
+          setPositions([]);
+        }
+      })
+      .finally(() => {
+        setPositionsLoading(false);
       });
   }, []);
 
@@ -278,13 +290,21 @@ export default function PortalPage() {
                     onChange={(e) => setValue("position_id", e.target.value || undefined)}
                     className="flex h-10 w-full rounded-md border border-[#e1bec6] bg-transparent px-3 py-2 text-sm outline-none transition-colors focus:border-[#db2777] disabled:cursor-not-allowed disabled:opacity-50"
                   >
-                    <option value="">Pilih Posisi</option>
+                    <option value="">
+                      {positionsLoading ? "Loading positions..." : (positions.length > 0 ? "Pilih Posisi" : "No positions available")}
+                    </option>
                     {positions.map((p) => (
                       <option key={p.id} value={p.id}>
                         {p.title}
                       </option>
                     ))}
                   </select>
+                  {positionsLoading && (
+                    <p className="text-xs text-[#594047]">Loading positions from database...</p>
+                  )}
+                  {!positionsLoading && positions.length === 0 && (
+                    <p className="text-xs text-[#db2777]">No active positions found in database</p>
+                  )}
                 </div>
 
                 {/* Full Name */}
