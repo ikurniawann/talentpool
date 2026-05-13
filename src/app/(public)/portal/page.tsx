@@ -76,7 +76,7 @@ export default function PortalPage() {
   const formatSalary = (value: string) => {
     const numericValue = value.replace(/\D/g, "");
     if (!numericValue) return "";
-    return new Intl.NumberFormat("id-ID").format(parseInt(numericValue, 10));
+    return "Rp " + new Intl.NumberFormat("id-ID").format(parseInt(numericValue, 10));
   };
 
   const handleSalaryChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -519,7 +519,7 @@ export default function PortalPage() {
                     id="expected_salary"
                     type="text"
                     inputMode="numeric"
-                    value={salaryInput}
+                    value={formatSalary(salaryInput)}
                     onChange={handleSalaryChange}
                     placeholder="Rp 0"
                     className="flex h-10 w-full rounded-md border border-[#e1bec6] bg-transparent px-3 py-2 text-sm outline-none transition-colors focus:border-[#db2777] disabled:cursor-not-allowed disabled:opacity-50"
