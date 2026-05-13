@@ -470,6 +470,7 @@ export default function CandidatesPage() {
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead className="w-12 text-center">No</TableHead>
                   <TableHead>Nama</TableHead>
                   <TableHead>Posisi</TableHead>
                   <TableHead>Outlet</TableHead>
@@ -482,20 +483,22 @@ export default function CandidatesPage() {
               <TableBody>
                 {loading ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center py-8 text-gray-500">
+                    <TableCell colSpan={8} className="text-center py-8 text-gray-500">
                       Memuat...
                     </TableCell>
                   </TableRow>
                 ) : candidates.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center py-8 text-gray-500">
+                    <TableCell colSpan={8} className="text-center py-8 text-gray-500">
                       Tidak ada kandidat ditemukan
                     </TableCell>
                   </TableRow>
                 ) : (
-                  candidates.map((c) => (
+                  candidates.map((c, index) => (
                     <TableRow key={c.id} className="hover:bg-gray-50">
-                      <TableCell>
+                      <TableCell className="text-center text-gray-500 text-sm">
+                        {(page - 1) * perPage + index + 1}
+                      </TableCell>                      <TableCell>
                         <div>
                           <p className="font-medium text-gray-900">{c.full_name}</p>
                           <p className="text-gray-500 text-xs">{c.email}</p>
@@ -592,28 +595,61 @@ export default function CandidatesPage() {
             )}
           </div>
 
-          {/* Pagination */}
+          {/* Enhanced Pagination */}
           {totalPages > 1 && (
-            <div className="px-4 py-3 border-t border-gray-200 flex items-center justify-between">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setPage((p) => Math.max(1, p - 1))}
-                disabled={page === 1}
-              >
-                ← Prev
-              </Button>
-              <span className="text-sm text-gray-500">
-                Halaman {page} dari {totalPages}
-              </span>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setPage((p) => p + 1)}
-                disabled={page >= totalPages}
-              >
-                Next →
-              </Button>
+            <div className="px-4 py-3 border-t border-gray-200 flex flex-col sm:flex-row items-center justify-between gap-3">
+              <div className="text-sm text-gray-500">
+                Menampilkan {(page - 1) * perPage + 1} - {Math.min(page * perPage, totalCount)} dari {totalCount} kandidat
+              </div>
+              <div className="flex items-center gap-1">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  disabled={page === 1}
+                  className="h-8 w-8 p-0"
+                >
+                  ←
+                </Button>
+                
+                {/* Page numbers */}
+                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                  let pageNum: number;
+                  if (totalPages <= 5) {
+                    pageNum = i + 1;
+                  } else if (page <= 3) {
+                    pageNum = i + 1;
+                  } else if (page >= totalPages - 2) {
+                    pageNum = totalPages - 4 + i;
+                  } else {
+                    pageNum = page - 2 + i;
+                  }
+                  
+                  return (
+                    <Button
+                      key={pageNum}
+                      variant={pageNum === page ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setPage(pageNum)}
+                      className={`h-8 w-8 p-0 text-xs ${
+                        pageNum === page ? "bg-pink-600 hover:bg-pink-700" : ""
+                      }`}
+                    >
+                      {pageNum}
+                    </Button>
+                  );
+                })}
+                
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                  disabled={page >= totalPages}
+                  className="h-8 w-8 p-0"
+                >
+                  →
+                </Button>
+              </div>
             </div>
           )}
         </CardContent>
