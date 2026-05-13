@@ -308,8 +308,8 @@ export default function SidebarClient({ user, navItems, children }: SidebarClien
           lg:relative lg:translate-x-0 lg:z-0 lg:flex lg:shrink-0
           ${mobileOpen ? "translate-x-0" : "-translate-x-full"}
           ${collapsed ? "lg:w-20" : "lg:w-64"}
-        `
-      }
+        `}
+      >
         {/* Header */}
         <SidebarHeader
           collapsed={collapsed}
