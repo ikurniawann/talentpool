@@ -333,6 +333,20 @@ export default function SidebarClient({ user, navItems, children }: SidebarClien
           onLogout={handleLogout}
         />
 
+        {/* Top Bar - Desktop Notification + Logout */}
+        <div className="hidden lg:flex items-center justify-end gap-3 px-6 py-3 border-b border-gray-100 bg-white/50 backdrop-blur-sm">
+          <NotificationBell />
+          <div className="h-6 w-px bg-gray-200" />
+          <span className="text-sm text-gray-700 font-medium">{user.full_name}</span>
+          <button
+            onClick={handleLogout}
+            className="p-2 rounded-lg hover:bg-pink-100 text-gray-500 hover:text-pink-600 transition-colors"
+            title="Keluar"
+          >
+            <NavIcon name="logout" className="w-5 h-5" isActive={false} />
+          </button>
+        </div>
+
         {/* Page Content */}
         <main className={`flex-1 overflow-auto p-4 lg:p-6 ${collapsed ? "lg:ml-0" : ""} transition-all duration-200`}>{children}</main>
       </div>
@@ -457,21 +471,16 @@ function SidebarFooter({ collapsed, onLogout }: SidebarFooterProps) {
   return (
     <div className={`p-4 border-t border-pink-200 ${collapsed ? "px-2" : ""}`}>
       {!collapsed ? (
-        <>
-          <div className="mb-3">
-            <NotificationBell />
-          </div>
-          <button
-            onClick={onLogout}
-            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 
-                     bg-gradient-to-r from-pink-600 to-pink-700 text-white 
-                     rounded-lg hover:from-pink-700 hover:to-pink-800 
-                     transition-all font-medium shadow-md hover:shadow-lg"
-          >
-            <NavIcon name="logout" className="w-5 h-5" isActive={false} />
-            <span>Keluar</span>
-          </button>
-        </>
+        <button
+          onClick={onLogout}
+          className="w-full flex items-center justify-center gap-2 px-4 py-2.5 
+                   bg-gradient-to-r from-pink-600 to-pink-700 text-white 
+                   rounded-lg hover:from-pink-700 hover:to-pink-800 
+                   transition-all font-medium shadow-md hover:shadow-lg"
+        >
+          <NavIcon name="logout" className="w-5 h-5" isActive={false} />
+          <span>Keluar</span>
+        </button>
       ) : (
         <button
           onClick={onLogout}
