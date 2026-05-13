@@ -26,6 +26,7 @@ export type InterviewRecommendation = "proceed" | "pool" | "reject";
 export type NotificationChannel = "whatsapp" | "email";
 export type NotificationStatus = "pending" | "sent" | "failed";
 export type InterviewMode = "offline" | "online";
+export type AvailabilityType = "immediate" | "1_week" | "2_weeks" | "1_month";
 
 // --- Tables ---
 
@@ -75,6 +76,11 @@ export interface Candidate {
   created_by: string | null;
   created_at: string;
   updated_at: string;
+  // New fields for candidate profile
+  last_experience?: string | null; // "PT Company Name - Position (2 years)"
+  last_education?: string | null; // "S1/D3/SMA - Major - University/School"
+  availability?: AvailabilityType | null;
+  expected_salary?: number | null;
 }
 
 export interface Interview {
@@ -159,6 +165,11 @@ export interface CandidateCreateInput {
   notes?: string;
   cv_url?: string;
   photo_url?: string;
+  // New fields
+  last_experience?: string | null;
+  last_education?: string | null;
+  availability?: AvailabilityType | null;
+  expected_salary?: number | null;
 }
 
 export interface CandidateUpdateInput {
@@ -173,6 +184,11 @@ export interface CandidateUpdateInput {
   notes?: string | null;
   cv_url?: string | null;
   photo_url?: string | null;
+  // New fields
+  last_experience?: string | null;
+  last_education?: string | null;
+  availability?: AvailabilityType | null;
+  expected_salary?: number | null;
 }
 
 export interface InterviewCreateInput {

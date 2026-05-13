@@ -112,6 +112,11 @@ export default function CandidatesPage() {
     position_id?: string;
     status: string;
     notes?: string;
+    // New fields
+    last_experience?: string;
+    last_education?: string;
+    availability?: string;
+    expected_salary?: string;
   };
 
   const addForm = useForm<AddFormValues>({
@@ -178,6 +183,11 @@ export default function CandidatesPage() {
       position_id: values.position_id || null,
       status: values.status,
       notes: values.notes || null,
+      // New fields
+      last_experience: values.last_experience || null,
+      last_education: values.last_education || null,
+      availability: values.availability || null,
+      expected_salary: values.expected_salary ? parseInt(values.expected_salary, 10) : null,
     }).select().single();
 
     if (error) {
@@ -800,6 +810,62 @@ export default function CandidatesPage() {
                 {...addForm.register("notes")}
                 className="text-sm resize-none"
               />
+            </div>
+
+            {/* New Profile Fields Section */}
+            <div className="border-t border-gray-200 pt-4 mt-4">
+              <h3 className="text-sm font-semibold text-gray-700 mb-3">Informasi Tambahan</h3>
+              
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-medium">Pengalaman Kerja Terakhir</Label>
+                  <Input
+                    placeholder="PT Company - Position (2 tahun)"
+                    {...addForm.register("last_experience")}
+                    className="h-9 text-sm"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-medium">Pendidikan Terakhir</Label>
+                  <Input
+                    placeholder="S1/D3/SMA - Jurusan - Universitas/Sekolah"
+                    {...addForm.register("last_education")}
+                    className="h-9 text-sm"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3 mt-3">
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-medium">Status Ketersediaan</Label>
+                  <Controller
+                    name="availability"
+                    control={addForm.control}
+                    render={({ field }) => (
+                      <Select value={field.value} onValueChange={field.onChange}>
+                        <SelectTrigger className="h-9 text-sm">
+                          <SelectValue placeholder="Pilih ketersediaan" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="immediate">Secepatnya</SelectItem>
+                          <SelectItem value="1_week">1 Minggu</SelectItem>
+                          <SelectItem value="2_weeks">2 Minggu</SelectItem>
+                          <SelectItem value="1_month">1 Bulan</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    )}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-medium">Ekspektasi Gaji (Rp)</Label>
+                  <Input
+                    type="number"
+                    placeholder="5000000"
+                    {...addForm.register("expected_salary")}
+                    className="h-9 text-sm"
+                  />
+                </div>
+              </div>
             </div>
 
             <DialogFooter>
