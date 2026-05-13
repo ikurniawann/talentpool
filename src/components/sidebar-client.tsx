@@ -334,7 +334,7 @@ export default function SidebarClient({ user, navItems, children }: SidebarClien
         />
 
         {/* Page Content */}
-        <main className={`flex-1 overflow-auto ${collapsed ? "lg:ml-0" : ""} transition-all duration-200`}>{children}</main>
+        <main className={`flex-1 overflow-auto p-4 lg:p-6 ${collapsed ? "lg:ml-0" : ""} transition-all duration-200`}>{children}</main>
       </div>
     </div>
   );
