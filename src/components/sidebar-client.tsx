@@ -24,6 +24,16 @@ import {
   CircleStackIcon,
   BuildingOfficeIcon,
   IdentificationIcon,
+  CalendarIcon,
+  CurrencyDollarIcon,
+  CurrencyBangladeshiTakaIcon,
+  PlusIcon,
+  PaperAirplaneIcon,
+  CheckCircleIcon,
+  ChartPieIcon,
+  ArrowDownOnSquareIcon,
+  TruckIcon,
+  DocumentMagnifyingGlassIcon,
 } from "@heroicons/react/24/outline";
 import {
   HomeIcon as HomeIconSolid,
@@ -43,6 +53,16 @@ import {
   CircleStackIcon as CircleStackIconSolid,
   BuildingOfficeIcon as BuildingOfficeIconSolid,
   IdentificationIcon as IdentificationIconSolid,
+  CalendarIcon as CalendarIconSolid,
+  CurrencyDollarIcon as DollarIconSolid,
+  CurrencyBangladeshiTakaIcon as MoneyIconSolid,
+  PlusIcon as PlusIconSolid,
+  PaperAirplaneIcon as PaperAirplaneIconSolid,
+  CheckCircleIcon as CheckCircleIconSolid,
+  ChartPieIcon as ChartPieIconSolid,
+  ArrowDownOnSquareIcon as ArrowDownOnSquareIconSolid,
+  TruckIcon as TruckIconSolid,
+  DocumentMagnifyingGlassIcon as DocumentMagnifyingGlassIconSolid,
 } from "@heroicons/react/24/solid";
 import { NotificationBell } from "./hris/NotificationBell";
 
@@ -67,7 +87,20 @@ type IconName =
   | "sitemap"
   | "database"
   | "building"
-  | "identification";
+  | "identification"
+  | "calendar"
+  | "dollar-sign"
+  | "money"
+  | "user-plus"
+  | "file-text"
+  | "chart-bar"
+  | "plus"
+  | "paper-airplane"
+  | "check-circle"
+  | "chart-pie"
+  | "arrow-down-on-square"
+  | "truck"
+  | "document-magnifying-glass";
 
 interface IconSet {
   outline: React.ElementType;
@@ -92,6 +125,19 @@ const iconMap: Record<IconName, IconSet> = {
   database: { outline: CircleStackIcon, solid: CircleStackIconSolid },
   building: { outline: BuildingOfficeIcon, solid: BuildingOfficeIconSolid },
   identification: { outline: IdentificationIcon, solid: IdentificationIconSolid },
+  calendar: { outline: CalendarIcon, solid: CalendarIconSolid },
+  "dollar-sign": { outline: CurrencyDollarIcon, solid: DollarIconSolid },
+  money: { outline: CurrencyBangladeshiTakaIcon, solid: MoneyIconSolid },
+  "user-plus": { outline: UsersIcon, solid: UsersIconSolid },
+  "file-text": { outline: DocumentTextIcon, solid: DocumentTextIconSolid },
+  "chart-bar": { outline: ChartBarIcon, solid: ChartIconSolid },
+  plus: { outline: PlusIcon, solid: PlusIconSolid },
+  "paper-airplane": { outline: PaperAirplaneIcon, solid: PaperAirplaneIconSolid },
+  "check-circle": { outline: CheckCircleIcon, solid: CheckCircleIconSolid },
+  "chart-pie": { outline: ChartPieIcon, solid: ChartPieIconSolid },
+  "arrow-down-on-square": { outline: ArrowDownOnSquareIcon, solid: ArrowDownOnSquareIconSolid },
+  truck: { outline: TruckIcon, solid: TruckIconSolid },
+  "document-magnifying-glass": { outline: DocumentMagnifyingGlassIcon, solid: DocumentMagnifyingGlassIconSolid },
 };
 
 // ============================================================================
@@ -204,7 +250,7 @@ export default function SidebarClient({ user, navItems, children }: SidebarClien
             onCloseMobile={closeMobile}
           />
           {isExpanded && !collapsed && (
-            <div className="ml-9 mt-1 space-y-0.5">
+            <div className="ml-4 mt-1 space-y-1">
               {item.children!.map((child) => renderNavItem(child, depth + 1))}
             </div>
           )}
@@ -225,6 +271,7 @@ export default function SidebarClient({ user, navItems, children }: SidebarClien
               : "text-gray-900 hover:bg-pink-100"
           }
           ${collapsed ? "justify-center" : ""}
+          ${depth > 0 ? "ml-4" : ""}
         `}
         title={collapsed ? item.label : undefined}
       >
@@ -258,11 +305,11 @@ export default function SidebarClient({ user, navItems, children }: SidebarClien
         className={`
           fixed inset-y-0 left-0 z-40 bg-gradient-to-br from-pink-50 to-white flex flex-col
           transform transition-all duration-200 ease-in-out shadow-xl
-          lg:relative lg:translate-x-0 lg:z-0 lg:flex
+          lg:relative lg:translate-x-0 lg:z-0 lg:flex lg:shrink-0
           ${mobileOpen ? "translate-x-0" : "-translate-x-full"}
           ${collapsed ? "lg:w-20" : "lg:w-64"}
-        `}
-      >
+        `
+      }
         {/* Header */}
         <SidebarHeader
           collapsed={collapsed}
@@ -271,7 +318,7 @@ export default function SidebarClient({ user, navItems, children }: SidebarClien
         />
 
         {/* Navigation */}
-        <nav className="flex-1 p-3 space-y-0.5 overflow-y-auto">
+        <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
           {navItems.map((item) => renderNavItem(item))}
         </nav>
 
@@ -289,7 +336,7 @@ export default function SidebarClient({ user, navItems, children }: SidebarClien
         />
 
         {/* Page Content */}
-        <main className="flex-1 overflow-auto">{children}</main>
+        <main className={`flex-1 overflow-auto ${collapsed ? "lg:ml-0" : ""} transition-all duration-200`}>{children}</main>
       </div>
     </div>
   );
