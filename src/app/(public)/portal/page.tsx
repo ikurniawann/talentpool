@@ -24,6 +24,11 @@ const formSchema = z.object({
   position_id: z.string().optional(),
   brand_id: z.string().optional(),
   notes: z.string().max(1000, "Catatan maksimal 1000 karakter").optional(),
+  // New fields
+  last_experience: z.string().max(200, "Maksimal 200 karakter").optional(),
+  last_education: z.string().max(200, "Maksimal 200 karakter").optional(),
+  availability: z.enum(["immediate", "1_week", "2_weeks", "1_month"]).optional(),
+  expected_salary: z.string().optional(),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -227,6 +232,11 @@ export default function PortalPage() {
       if (jobOpeningId) submitFormData.append("job_opening_id", jobOpeningId);
       if (cvFile) submitFormData.append("cv", cvFile);
       if (photoFile) submitFormData.append("photo", photoFile);
+      // New fields
+      if (data.last_experience) submitFormData.append("last_experience", data.last_experience);
+      if (data.last_education) submitFormData.append("last_education", data.last_education);
+      if (data.availability) submitFormData.append("availability", data.availability);
+      if (data.expected_salary) submitFormData.append("expected_salary", data.expected_salary);
 
       const res = await fetch("/api/portal/submit", {
         method: "POST",
@@ -427,6 +437,77 @@ export default function PortalPage() {
                   {errors.source && (
                     <p className="text-xs text-[#db2777]">{errors.source.message}</p>
                   )}
+                </div>
+              </div>
+            </div>
+
+            {/* Additional Profile Info */}
+            <div className="rounded-lg border border-[#e1bec6] bg-white p-5 sm:p-6">
+              <h2 className="mb-4 text-base font-medium leading-tight">Informasi Tambahan</h2>
+              <div className="grid gap-4 sm:grid-cols-2">
+                {/* Last Experience */}
+                <div className="space-y-1.5">
+                  <label htmlFor="last_experience" className="text-xs font-bold uppercase tracking-[0.12em] text-[#594047]">
+                    Pengalaman Kerja Terakhir
+                  </label>
+                  <input
+                    id="last_experience"
+                    placeholder="PT Company - Position (2 tahun)"
+                    {...register("last_experience")}
+                    className="flex h-10 w-full rounded-md border border-[#e1bec6] bg-transparent px-3 py-2 text-sm outline-none transition-colors focus:border-[#db2777] disabled:cursor-not-allowed disabled:opacity-50"
+                  />
+                  {errors.last_experience && (
+                    <p className="text-xs text-[#db2777]">{errors.last_experience.message}</p>
+                  )}
+                </div>
+
+                {/* Last Education */}
+                <div className="space-y-1.5">
+                  <label htmlFor="last_education" className="text-xs font-bold uppercase tracking-[0.12em] text-[#594047]">
+                    Pendidikan Terakhir
+                  </label>
+                  <input
+                    id="last_education"
+                    placeholder="S1/D3/SMA - Jurusan - Universitas"
+                    {...register("last_education")}
+                    className="flex h-10 w-full rounded-md border border-[#e1bec6] bg-transparent px-3 py-2 text-sm outline-none transition-colors focus:border-[#db2777] disabled:cursor-not-allowed disabled:opacity-50"
+                  />
+                  {errors.last_education && (
+                    <p className="text-xs text-[#db2777]">{errors.last_education.message}</p>
+                  )}
+                </div>
+
+                {/* Availability */}
+                <div className="space-y-1.5">
+                  <label htmlFor="availability" className="text-xs font-bold uppercase tracking-[0.12em] text-[#594047]">
+                    Ketersediaan Bergabung
+                  </label>
+                  <select
+                    id="availability"
+                    value={watch("availability") || ""}
+                    onChange={(e) => setValue("availability", e.target.value || undefined)}
+                    className="flex h-10 w-full rounded-md border border-[#e1bec6] bg-transparent px-3 py-2 text-sm outline-none transition-colors focus:border-[#db2777] disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    <option value="">Pilih ketersediaan</option>
+                    <option value="immediate">Secepatnya</option>
+                    <option value="1_week">1 Minggu</option>
+                    <option value="2_weeks">2 Minggu</option>
+                    <option value="1_month">1 Bulan</option>
+                  </select>
+                </div>
+
+                {/* Expected Salary */}
+                <div className="space-y-1.5">
+                  <label htmlFor="expected_salary" className="text-xs font-bold uppercase tracking-[0.12em] text-[#594047]">
+                    Ekspektasi Gaji (Rp)
+                  </label>
+                  <input
+                    id="expected_salary"
+                    type="number"
+                    placeholder="5000000"
+                    {...register("expected_salary")}
+                    className="flex h-10 w-full rounded-md border border-[#e1bec6] bg-transparent px-3 py-2 text-sm outline-none transition-colors focus:border-[#db2777] disabled:cursor-not-allowed disabled:opacity-50"
+                  />
                 </div>
               </div>
             </div>

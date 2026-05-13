@@ -19,6 +19,11 @@ export async function POST(request: NextRequest) {
     const brand_id = formData.get("brand_id") as string | null;
     const job_opening_id = formData.get("job_opening_id") as string | null;
     const notes = formData.get("notes") as string | null;
+    // New fields
+    const last_experience = formData.get("last_experience") as string | null;
+    const last_education = formData.get("last_education") as string | null;
+    const availability = formData.get("availability") as string | null;
+    const expected_salary = formData.get("expected_salary") as string | null;
 
     const cvFile = formData.get("cv") as File | null;
     const photoFile = formData.get("photo") as File | null;
@@ -102,6 +107,11 @@ export async function POST(request: NextRequest) {
         photo_url: photoUrl,
         notes: notes || null,
         status: "new",
+        // New fields
+        last_experience: last_experience || null,
+        last_education: last_education || null,
+        availability: availability || null,
+        expected_salary: expected_salary ? parseInt(expected_salary, 10) : null,
       })
       .select()
       .single();
