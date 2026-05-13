@@ -48,6 +48,7 @@ export default function PortalPage() {
   const [jobOpeningId, setJobOpeningId] = useState<string | null>(null);
   const [isBrandReadOnly, setIsBrandReadOnly] = useState(false);
   const [positionsLoading, setPositionsLoading] = useState(true);
+  const [salaryInput, setSalaryInput] = useState<string>("");
 
   // File states
   const [cvFile, setCvFile] = useState<File | null>(null);
@@ -70,6 +71,19 @@ export default function PortalPage() {
   });
 
   const selectedBrand = watch("brand_id");
+
+  // Format salary as IDR currency
+  const formatSalary = (value: string) => {
+    const numericValue = value.replace(/\D/g, "");
+    if (!numericValue) return "";
+    return new Intl.NumberFormat("id-ID").format(parseInt(numericValue, 10));
+  };
+
+  const handleSalaryChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const rawValue = e.target.value.replace(/\D/g, "");
+    setSalaryInput(rawValue);
+    setValue("expected_salary", rawValue);
+  };
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -503,9 +517,11 @@ export default function PortalPage() {
                   </label>
                   <input
                     id="expected_salary"
-                    type="number"
-                    placeholder="5000000"
-                    {...register("expected_salary")}
+                    type="text"
+                    inputMode="numeric"
+                    value={salaryInput}
+                    onChange={handleSalaryChange}
+                    placeholder="Rp 0"
                     className="flex h-10 w-full rounded-md border border-[#e1bec6] bg-transparent px-3 py-2 text-sm outline-none transition-colors focus:border-[#db2777] disabled:cursor-not-allowed disabled:opacity-50"
                   />
                 </div>
