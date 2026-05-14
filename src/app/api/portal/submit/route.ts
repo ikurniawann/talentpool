@@ -2,9 +2,24 @@ import { NextRequest, NextResponse } from "next/server";
 import { uploadFile } from "@/lib/storage";
 import { Resend } from "resend";
 import { createClient } from "@/lib/supabase/server";
+import { createClient as createServiceClient } from "@supabase/supabase-js";
 import type { CandidateSource } from "@/types";
 
 const FROM_EMAIL = process.env.FROM_EMAIL ?? "noreply@aapextechnology.com";
+
+// Admin client dengan service role key untuk bypass RLS
+function getAdminSupabase() {
+  return createServiceClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false,
+      },
+    }
+  );
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -77,22 +92,24 @@ export async function POST(request: NextRequest) {
     }
 
     // --- Save to Supabase ---
-    const supabase = await createClient();
+    // Gunakan admin client untuk bypass RLS
+    const adminSupabase = getAdminSupabase();
+    const supabase = await createClient(); // tetap pakai untuk auth session kalau perlu
 
     // Get position and brand names for email
     let positionTitle = "Belum ditentukan";
     let brandName = "Umum";
     
     if (position_id) {
-      const { data: pos } = await supabase.from("positions").select("title").eq("id", position_id).single();
+      const { data: pos } = await adminSupabase.from("positions").select("title").eq("id", position_id).single();
       if (pos) positionTitle = pos.title;
     }
     if (brand_id) {
-      const { data: br } = await supabase.from("brands").select("name").eq("id", brand_id).single();
+      const { data: br } = await adminSupabase.from("brands").select("name").eq("id", brand_id).single();
       if (br) brandName = br.name;
     }
 
-    const { data: candidate, error: insertError } = await supabase
+    const { data: candidate, error: insertError } = await adminSupabase
       .from("candidates")
       .insert({
         full_name,
