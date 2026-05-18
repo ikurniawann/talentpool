@@ -32,15 +32,16 @@ export interface Product {
   name: string;
   description?: string;
   category_id?: string;
+  category?: { name: string };
   base_price: number;
   cost_price?: number;
   is_active: boolean;
   is_available: boolean;
   image_url?: string;
-  xp?: number; // XP points for this product
+  xp?: number;
   variants?: ProductVariant[];
   modifiers?: ProductModifier[];
-}
+};
 
 export interface ProductVariant {
   id: string;
@@ -49,19 +50,22 @@ export interface ProductVariant {
   group_name: string;
   price_adjustment: number;
   is_active: boolean;
-}
+};
 
 export interface ProductModifier {
   id: string;
   modifier_group: {
+    id: string;
     name: string;
+    min_selection: number;
+    max_selection: number;
     modifiers: Array<{
       id: string;
       name: string;
       price_adjustment: number;
     }>;
   };
-}
+};
 
 export async function getProducts(params?: { category?: string; search?: string }) {
   const queryString = params ? new URLSearchParams(params as any).toString() : '';
@@ -96,6 +100,110 @@ export async function saveCustomer(customer: Partial<Customer> & { phone: string
   });
 }
 
+export interface SplitWithItems {
+  label?: string;
+  subtotal?: number;
+  tax_amount?: number;
+  discount_amount?: number;
+  total_amount: number;
+  customer_id?: string;
+  items?: {
+    order_item_index: number;
+    quantity: number;
+    product_id: string;
+    product_name: string;
+    unit_price: number;
+  }[];
+}
+
+export interface SplitBillRequest {
+  order_type: 'dine_in' | 'takeaway' | 'delivery' | 'self_order';
+  customer_id?: string;
+  cashier_id: string;
+  server_id?: string;
+  table_id?: string;
+  items: OrderItem[];
+  subtotal: number;
+  discount_amount?: number;
+  discount_reason?: string;
+  tax_amount?: number;
+  service_charge_amount?: number;
+  total_amount: number;
+  notes?: string;
+  special_requests?: string;
+  include_tax?: boolean;
+  membership_discount_pct?: number;
+  splits: SplitWithItems[];
+}
+
+export interface SplitDetail {
+  id: string;
+  label: string;
+  split_index: number;
+  total_amount: number;
+  amount_paid: number;
+  change_amount: number;
+  tax_amount: number;
+  discount_amount: number;
+  payment_method?: string;
+  status: 'pending' | 'paid' | 'partial' | 'cancelled';
+  customer_id?: string;
+  ark_coins_used: number;
+  paid_at?: string;
+  created_at: string;
+}
+
+export interface SplitPaymentResult {
+  success: boolean;
+  split_id: string;
+  change: number;
+  paid_splits: number;
+  total_splits: number;
+  error?: string;
+}
+
+export async function createSplitOrder(order: SplitBillRequest) {
+  return fetchAPI<{ success: boolean; data: any; error?: string }>('/orders', {
+    method: 'POST',
+    body: JSON.stringify(order),
+  });
+}
+
+export async function getOrderSplits(orderId: string) {
+  return fetchAPI<{
+    success: boolean;
+    data: {
+      splits: SplitDetail[];
+      total_paid: number;
+      total_remaining: number;
+      split_count: number;
+      paid_count: number;
+    }
+  }>(`/orders/${orderId}/splits`);
+}
+
+export async function paySplit(
+  orderId: string,
+  splitId: string,
+  payload: {
+    payment_method: string;
+    amount_paid: number;
+    ark_coins_used?: number;
+    reference_number?: string;
+  }
+) {
+  return fetchAPI<{ success: boolean; data: SplitPaymentResult; error?: string }>(`/orders/${orderId}/splits/${splitId}/pay`, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function cancelSplit(orderId: string, splitId: string) {
+  return fetchAPI<{ success: boolean; data: any; error?: string }>(`/orders/${orderId}/splits/${splitId}`, {
+    method: 'PATCH',
+  });
+}
+
 // ============ ORDERS ============
 
 export interface OrderItem {
@@ -108,6 +216,32 @@ export interface OrderItem {
   unit_price: number;
   subtotal: number;
   total_amount: number;
+}
+
+export interface Order {
+  id: string;
+  order_number?: string;
+  order_type?: string;
+  status?: string;
+  payment_status?: string;
+  payment_method?: string;
+  customer?: Customer;
+  customer_id?: string;
+  cashier_id?: string;
+  server_id?: string;
+  table_id?: string;
+  subtotal?: number;
+  discount_amount?: number;
+  tax_amount?: number;
+  service_charge_amount?: number;
+  total_amount?: number;
+  amount_paid?: number;
+  change_amount?: number;
+  ark_coins_used?: number;
+  ordered_at?: string;
+  completed_at?: string;
+  notes?: string;
+  items?: any[];
 }
 
 export interface CreateOrderRequest {
@@ -128,10 +262,14 @@ export interface CreateOrderRequest {
   notes?: string;
   special_requests?: string;
   ark_coins_used?: number;
+  /** Server-side recalculation flag (client sends for audit only) */
+  include_tax?: boolean;
+  /** Membership discount percentage sent for server validation */
+  membership_discount_pct?: number;
 }
 
 export async function createOrder(order: CreateOrderRequest) {
-  return fetchAPI<{ success: boolean; data: any }>('/orders', {
+  return fetchAPI<{ success: boolean; data: any; error?: string }>('/orders', {
     method: 'POST',
     body: JSON.stringify(order),
   });
@@ -175,7 +313,7 @@ export async function getCustomerFavoriteProducts(customerId: string, products: 
 export async function updateOrderStatus(
   orderId: string,
   status: string,
-  additionalData?: { payment_status?: string; payment_method?: string; amount_paid?: number; cancelled_reason?: string }
+  additionalData?: { payment_status?: string; payment_method?: string; amount_paid?: number; ark_coins_used?: number; cancelled_reason?: string }
 ) {
   const response = await fetch(`/api/pos/orders/${orderId}`, {
     method: 'PATCH',

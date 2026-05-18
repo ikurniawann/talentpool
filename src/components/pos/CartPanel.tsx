@@ -1,19 +1,10 @@
 'use client';
 
 import { Minus, Plus, Trash2, ShoppingBag, Utensils, Truck, Check } from 'lucide-react';
-
-interface CartItem {
-  id: string;
-  name: string;
-  price: number;
-  quantity: number;
-  notes?: string;
-  variantName?: string;
-  modifierNames?: string[];
-}
+import type { PosCartItem } from '@/hooks/use-pos-cart';
 
 interface CartPanelProps {
-  cart: CartItem[];
+  cart: PosCartItem[];
   orderType: 'dine_in' | 'takeaway' | 'delivery' | 'self_order';
   selectedTable: string | null;
   subtotal: number;
@@ -29,6 +20,7 @@ interface CartPanelProps {
   formatArk: (value: number) => string;
   setIncludeTax: (val: boolean) => void;
   setShowPaymentModal: () => void;
+  onSplitBill: () => void;
   updateQuantity: (id: string, delta: number) => void;
   removeFromCart: (id: string) => void;
 }
@@ -50,6 +42,7 @@ export function CartPanel({
   formatArk,
   setIncludeTax,
   setShowPaymentModal,
+  onSplitBill,
   updateQuantity,
   removeFromCart,
 }: CartPanelProps) {
@@ -188,13 +181,20 @@ export function CartPanel({
       </div>
 
       {/* Pay Button */}
-      <div className="p-4 border-t border-gray-200">
-        <button 
+      <div className="p-4 border-t border-gray-200 space-y-2">
+        <button
           onClick={setShowPaymentModal}
-          disabled={cart.length === 0} 
+          disabled={cart.length === 0}
           className="w-full py-3 bg-pink-600 text-white rounded-lg font-semibold hover:bg-pink-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
         >
           Bayar {formatCurrency(total)}
+        </button>
+        <button
+          onClick={onSplitBill}
+          disabled={cart.length === 0}
+          className="w-full py-2.5 border-2 border-pink-600 text-pink-600 rounded-lg font-semibold hover:bg-pink-50 disabled:border-gray-300 disabled:text-gray-400 disabled:bg-gray-100 disabled:cursor-not-allowed transition-colors text-sm"
+        >
+          Split Bill
         </button>
       </div>
     </div>

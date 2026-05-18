@@ -1,0 +1,144 @@
+"use client";
+
+import { useState, useCallback } from "react";
+import { createOrder, type CreateOrderRequest } from "@/lib/pos-api";
+import type { PosCartItem } from "./use-pos-cart";
+
+export interface PaymentResult {
+  success: boolean;
+  orderId?: string;
+  orderNumber?: string;
+  total: number;
+  change: number;
+  error?: string;
+  snapshotCart: PosCartItem[];
+  snapshotOrderType: string;
+  snapshotTable: string | null;
+  snapshotNotes: string;
+  xpEarned?: number;
+}
+
+export function usePosCheckout() {
+  const [submitting, setSubmitting] = useState(false);
+
+  const checkout = useCallback(
+    async ({
+      cart,
+      orderType,
+      selectedTable,
+      selectedCustomer,
+      paymentMethod,
+      cashReceived,
+      includeTax,
+      notes,
+      arkToUse,
+    }: {
+      cart: PosCartItem[];
+      orderType: string;
+      selectedTable: string | null;
+      selectedCustomer: { id: string; discount?: number } | null;
+      paymentMethod: string;
+      cashReceived: string;
+      includeTax: boolean;
+      notes: string;
+      arkToUse: number;
+    }): Promise<PaymentResult> => {
+      const snap = {
+        snapshotCart: [...cart],
+        snapshotOrderType: orderType,
+        snapshotTable: selectedTable,
+        snapshotNotes: notes,
+      };
+
+      try {
+        setSubmitting(true);
+
+        // Build item payload with price adjustments broken out for server validation
+        const items = cart.map((item) => ({
+          product_id: item.productId,
+          product_name: item.name,
+          product_sku: `SKU-${item.productId}`,
+          variants: item.variantName ? [{ name: item.variantName, group: "Size", price: item.variantPriceAdj || 0 }] : [],
+          modifiers: item.modifierNames?.map((name, idx) => ({
+            name,
+            group: `Option-${idx}`,
+          })) || [],
+          quantity: Number(item.quantity),
+          unit_price: Number(item.price - (item.variantPriceAdj || 0) - (item.modifierPriceAdj || 0)),
+          variant_price_adjustment: item.variantPriceAdj || 0,
+          modifier_price_adjustment: item.modifierPriceAdj || 0,
+          subtotal: Number(item.price * item.quantity),
+          total_amount: Number(item.price * item.quantity),
+        }));
+
+        // Client-side pre-calc for reference (server recalculates)
+        const subtotal = cart.reduce((sum, i) => sum + i.price * i.quantity, 0);
+        const discountPct = selectedCustomer?.discount || 0;
+        const discountAmount = discountPct > 0 ? Math.floor((subtotal * discountPct) / 100) : 0;
+        const afterDiscount = subtotal - discountAmount;
+        const tax = includeTax ? Math.round(afterDiscount * 0.1) : 0;
+        const total = afterDiscount + tax;
+        const paidAmount =
+          paymentMethod === "cash"
+            ? Number(parseFloat(cashReceived) || total)
+            : total;
+
+        const payload: CreateOrderRequest = {
+          order_type: orderType as any,
+          customer_id: selectedCustomer?.id,
+          cashier_id: "00000000-0000-0000-0000-000000000001",
+          items,
+          subtotal,
+          discount_amount: discountAmount,
+          tax_amount: tax,
+          service_charge_amount: 0,
+          total_amount: total,
+          payment_method:
+            paymentMethod === "qris"
+              ? "qris"
+              : paymentMethod === "credit_card"
+              ? "credit"
+              : paymentMethod === "ark_coin"
+              ? "ark_coin"
+              : "cash",
+          amount_paid: paidAmount,
+          include_tax: includeTax,
+          membership_discount_pct: discountPct,
+          notes,
+          ark_coins_used: paymentMethod === "ark_coin" ? arkToUse : 0,
+        };
+
+        const response = await createOrder(payload);
+
+        if (!response.success) {
+          return { success: false, total, change: 0, error: response.error || "Gagal membuat order", ...snap };
+        }
+
+        const change = paymentMethod === "cash" ? (parseFloat(cashReceived) || 0) - total : 0;
+
+        return {
+          success: true,
+          orderId: response.data?.order_id || response.data?.id,
+          orderNumber: response.data?.order_number,
+          total,
+          change,
+          xpEarned: response.data?.xp_earned,
+          ...snap,
+        };
+      } catch (err: any) {
+        return {
+          success: false,
+          total: 0,
+          change: 0,
+          error: err.message || "Network error",
+          ...snap,
+        };
+      } finally {
+        setSubmitting(false);
+      }
+    },
+    []
+  );
+
+  return { checkout, submitting };
+}

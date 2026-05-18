@@ -12,6 +12,8 @@ import {
   ChevronDownIcon,
   UserCircle,
   Coins,
+  Monitor,
+  ChefHat,
   Calendar,
   LogOut,
 } from "lucide-react";
@@ -25,6 +27,7 @@ const POS_ITEMS = [
   { href: "/dashboard/pos/orders", label: "Pesanan", icon: ClipboardListIcon },
   { href: "/dashboard/pos/reservation", label: "Reservasi", icon: Calendar },
   { href: "/dashboard/pos/topup", label: "Topup", icon: Coins },
+  { href: "/dashboard/pos/kds", label: "KDS", icon: ChefHat },
 ];
 
 function clsx(...args: (string | boolean | undefined | null)[]) {

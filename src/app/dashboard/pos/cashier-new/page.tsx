@@ -1,461 +1,306 @@
 'use client';
 
-import { useState, useEffect, useRef, useMemo } from 'react';
-import { Search, Utensils, ShoppingBag, Truck, Monitor, Table as TableIcon, User, X, Sparkles, Printer, CheckCircle, AlertCircle, Wifi } from 'lucide-react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { getProducts, getCustomers, createOrder, getCustomerFavoriteProducts, type Product, type Customer } from '@/lib/pos-api';
+import { useState, useEffect, useMemo, useCallback } from 'react';
+import {
+  Search, Utensils, ShoppingBag, Truck, Monitor, Table as TableIcon,
+  User, X, Sparkles, Printer, CheckCircle, AlertCircle
+} from 'lucide-react';
+import { getCustomerFavoriteProducts, type Product } from '@/lib/pos-api';
+import { usePosCart } from '@/hooks/use-pos-cart';
+import { usePosProducts } from '@/hooks/use-pos-products';
+import { usePosCustomers } from '@/hooks/use-pos-customers';
+import { usePosCheckout } from '@/hooks/use-pos-checkout';
 import { CartPanel } from '@/components/pos/CartPanel';
+import { CustomizationModal, type SelectedCustomization } from '@/components/pos/CustomizationModal';
+import { PaymentModal, type PaymentMethod } from '@/components/pos/PaymentModal';
+import { NFCModal } from '@/components/pos/NFCModal';
+import { CustomerSearchModal } from '@/components/pos/CustomerSearchModal';
+import { printThermalReceipt, type ReceiptPayload } from '@/components/pos/PrintReceipt';
+import type { SplitConfig } from '@/components/pos/SplitBillModal';
+import { SplitBillModal } from '@/components/pos/SplitBillModal';
+import { SplitPaymentScreen } from '@/components/pos/SplitPaymentScreen';
+import { createSplitOrder } from '@/lib/pos-api';
+import { Dialog, DialogContent } from '@/components/ui/dialog';
 
-type OrderType = 'dine_in' | 'takeaway' | 'delivery' | 'self_order';
-type PaymentMethod = 'cash' | 'qris' | 'credit_card' | 'ark_coin';
-
-interface CartItem {
-  id: string;
-  name: string;
-  price: number;
-  quantity: number;
-  notes?: string;
-  variantName?: string;
-  modifierNames?: string[];
-}
-
-interface CustomizationState {
-  isOpen: boolean;
-  product: Product | null;
-  selectedVariant: string | null;
-  selectedModifiers: Record<string, string[]>;
-  quantity: number;
-  notes: string;
-}
-
-interface PaymentResult {
-  success: boolean;
-  orderId?: string;
-  total: number;
-  change: number;
-  error?: string;
-  snapshotCart: CartItem[];
-  snapshotOrderType: OrderType;
-  snapshotTable: string | null;
-  snapshotNotes: string;
-}
-
-const DEBUG = false;
-const log = (...args: any[]) => DEBUG && console.log('[POS]', ...args);
-
+/* ─── helpers ─────────────────────────────────────────────────────── */
 const formatCurrency = (value: number) =>
   new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(value);
 
-const formatArk = (value: number) => `${(value / 1000).toFixed(0)} ARK`;
+const formatArk = (value: number) => `${(value / 1000).toLocaleString('id-ID')} ARK`;
 
+const ARK_RATE = 1000;
+const MAX_TABLES = 6;
+
+/* ─── page ────────────────────────────────────────────────────────── */
 export default function CashierPageNew() {
-  const [products, setProducts] = useState<Product[]>([]);
-  const [customers, setCustomers] = useState<Customer[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { products, categories, loading, error } = usePosProducts();
+  const { customers, findCustomer } = usePosCustomers();
+  const cart = usePosCart();
+  const { checkout, submitting } = usePosCheckout();
+
+  /* UI state */
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('Semua');
-  const [cart, setCart] = useState<CartItem[]>([]);
-  const [orderType, setOrderType] = useState<OrderType>('dine_in');
-  const [selectedTable, setSelectedTable] = useState<string | null>(null);
-  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [showCustomerModal, setShowCustomerModal] = useState(false);
   const [customerSearch, setCustomerSearch] = useState('');
-  const [showPaymentModal, setShowPaymentModal] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('cash');
-  const [cashReceived, setCashReceived] = useState('');
-  const [includeTax, setIncludeTax] = useState(false);
-  const [notes, setNotes] = useState('');
-  const [arkToUse, setArkToUse] = useState<number>(0);
-  const [customerFavorites, setCustomerFavorites] = useState<Product[]>([]);
-  const [loadingFavorites, setLoadingFavorites] = useState(false);
-  const [customization, setCustomization] = useState<CustomizationState>({
-    isOpen: false,
-    product: null,
-    selectedVariant: null,
-    selectedModifiers: {},
-    quantity: 1,
-    notes: ''
-  });
 
-  // NFC state
-  const [showNFCModal, setShowNFCModal] = useState(false);
+  /* Customization */
+  const [custom, setCustom] = useState<SelectedCustomization | null>(null);
+  const [customizingProduct, setCustomizingProduct] = useState<Product | null>(null);
+
+  /* Payment */
+  const [showPayment, setShowPayment] = useState(false);
+  const [cashReceived, setCashReceived] = useState('');
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('cash');
+  const [currentArkToUse, setCurrentArkToUse] = useState(0);
+
+  /* NFC */
+  const [showNFC, setShowNFC] = useState(false);
   const [nfcInput, setNfcInput] = useState('');
   const [nfcSearching, setNfcSearching] = useState(false);
   const [nfcError, setNfcError] = useState('');
-  const nfcInputRef = useRef<HTMLInputElement>(null);
 
-  // Payment result state
-  const [paymentResult, setPaymentResult] = useState<PaymentResult | null>(null);
+  /* Result */
+  const [resultPayload, setResultPayload] = useState<ReceiptPayload | null>(null);
 
+  /* Split Bill */
+  const [showSplitModal, setShowSplitModal] = useState(false);
+  const [splitOrder, setSplitOrder] = useState<any | null>(null);
+  const [showSplitPayment, setShowSplitPayment] = useState(false);
+
+  /* Favorites */
+  const [favorites, setFavorites] = useState<Product[]>([]);
+  const [loadingFav, setLoadingFav] = useState(false);
+
+  const selectedCustomer = useMemo(() => {
+    if (!cart.selectedCustomerId) return null;
+    return findCustomer(cart.selectedCustomerId) || null;
+  }, [cart.selectedCustomerId, findCustomer]);
+
+  /* Favorites effect */
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setLoading(true);
-        const [productsRes, customersRes] = await Promise.all([
-          getProducts(),
-          getCustomers()
-        ]);
-        setProducts(productsRes.data || []);
-        setCustomers(customersRes.data || []);
-      } catch (err: any) {
-        setError(err.message || 'Failed to load data');
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchData();
-  }, []);
-
-  useEffect(() => {
-    if (!selectedCustomer) {
-      setCustomerFavorites([]);
-      return;
-    }
-    const fetchFavorites = async () => {
-      try {
-        setLoadingFavorites(true);
-        const favorites = await getCustomerFavoriteProducts(selectedCustomer.id, products);
-        setCustomerFavorites(favorites);
-      } catch (err) {
-        setCustomerFavorites([]);
-      } finally {
-        setLoadingFavorites(false);
-      }
-    };
-    fetchFavorites();
+    if (!selectedCustomer || !products.length) { setFavorites([]); return; }
+    setLoadingFav(true);
+    getCustomerFavoriteProducts(selectedCustomer.id, products)
+      .then((f) => setFavorites(f))
+      .catch(() => setFavorites([]))
+      .finally(() => setLoadingFav(false));
   }, [selectedCustomer, products]);
 
-  // Auto-focus NFC input when modal opens
-  useEffect(() => {
-    if (showNFCModal) {
-      setTimeout(() => nfcInputRef.current?.focus(), 100);
-    } else {
-      setNfcInput('');
-      setNfcError('');
-    }
-  }, [showNFCModal]);
-
-  const getDiscountByTier = (tier: string): number => {
-    switch (tier?.toLowerCase()) {
-      case 'platinum': return 15;
-      case 'gold': return 10;
-      case 'silver': return 5;
-      default: return 0;
-    }
-  };
-
-  const customersWithDiscount = useMemo(() => customers.map(c => ({
-    ...c,
-    discount: getDiscountByTier(c.membership_tier)
-  })), [customers]);
-
-  const filteredCustomers = useMemo(() => customersWithDiscount.filter(c =>
-    c.name?.toLowerCase().includes(customerSearch.toLowerCase()) || c.phone.includes(customerSearch)
-  ), [customersWithDiscount, customerSearch]);
-
-  const categories = useMemo(() =>
-    ['Semua', ...Array.from(new Set(products.map(p => p.category?.name || 'Uncategorized')))],
-  [products]);
-
-  const filteredProducts = useMemo(() => products.filter(p => {
-    const matchCategory = selectedCategory === 'Semua' || p.category?.name === selectedCategory;
-    const matchSearch = p.name.toLowerCase().includes(searchTerm.toLowerCase());
-    return matchCategory && matchSearch;
-  }), [products, selectedCategory, searchTerm]);
-
-  const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-  const discountAmount = selectedCustomer ? Math.floor(subtotal * selectedCustomer.discount! / 100) : 0;
-  const afterDiscount = subtotal - discountAmount;
-  const tax = includeTax ? afterDiscount * 0.1 : 0;
-  const total = afterDiscount + tax;
+  /* Financials */
+  const membershipDiscount = selectedCustomer ? selectedCustomer.discount : 0;
+  const discountAmount = membershipDiscount > 0 ? Math.floor(cart.subtotal * membershipDiscount / 100) : 0;
+  const afterDiscount = cart.subtotal - discountAmount;
+  const taxAmount = cart.includeTax ? Math.round(afterDiscount * 0.1) : 0;
+  const total = afterDiscount + taxAmount;
   const maxArkUsable = selectedCustomer ? Math.min(selectedCustomer.ark_coin_balance, total) : 0;
-  const arkToUseCapped = Math.min(arkToUse, maxArkUsable);
+  const arkToUseCapped = Math.min(currentArkToUse, maxArkUsable);
   const totalAfterArk = total - arkToUseCapped;
 
-  useEffect(() => {
-    if (paymentMethod === 'ark_coin') {
-      setArkToUse(maxArkUsable);
+  /* Product filter */
+  const filteredProducts = useMemo(() => products.filter(p => {
+    const okCat = selectedCategory === 'Semua' || (p.category?.name || 'Uncategorized') === selectedCategory;
+    const okSearch = p.name.toLowerCase().includes(searchTerm.toLowerCase());
+    return okCat && okSearch;
+  }), [products, selectedCategory, searchTerm]);
+
+  /* ─── Actions ──────────────────────────────────────────────────── */
+  const openCustomization = useCallback((product: Product) => {
+    if ((product.variants && product.variants.length > 0) || (product.modifiers && product.modifiers.length > 0)) {
+      const firstVariant = product.variants?.[0]?.id ?? null;
+      const defaultModifiers: Record<string, string[]> = {};
+      product.modifiers?.forEach(g => {
+        if (g.modifier_group.modifiers.length > 0) {
+          defaultModifiers[g.modifier_group.name] = [g.modifier_group.modifiers[0].id];
+        }
+      });
+      setCustomizingProduct(product);
+      setCustom({
+        product,
+        selectedVariant: firstVariant,
+        selectedModifiers: defaultModifiers,
+        quantity: 1,
+        notes: '',
+      });
     } else {
-      setArkToUse(0);
+      cart.addItem({
+        id: product.id,
+        productId: product.id,
+        name: product.name,
+        price: product.base_price,
+        quantity: 1,
+        imageUrl: product.image_url,
+      });
     }
-  }, [paymentMethod, maxArkUsable]);
+  }, [cart]);
 
-  // ─── NFC ───────────────────────────────────────────────────────────────────
+  const handleConfirmCustomization = useCallback(() => {
+    if (!custom || !customizingProduct) return;
+    const product = customizingProduct;
+    const variant = product.variants?.find(v => v.id === custom.selectedVariant);
+    const variantName = variant?.name;
+    const modifierNames: string[] = [];
+    let modifierAdj = 0;
+    product.modifiers?.forEach(g => {
+      const ids = custom.selectedModifiers[g.modifier_group.name] || [];
+      ids.forEach(id => {
+        const mod = g.modifier_group.modifiers.find(m => m.id === id);
+        if (mod) { modifierNames.push(mod.name); modifierAdj += (mod.price_adjustment || 0); }
+      });
+    });
+    const finalPrice = product.base_price + (variant?.price_adjustment || 0) + modifierAdj;
+    const compositeId = `${product.id}::${variantName ?? ''}::${modifierNames.join(',')}`;
+    cart.addItem({
+      id: compositeId,
+      productId: product.id,
+      name: product.name,
+      price: finalPrice,
+      quantity: custom.quantity,
+      variantName,
+      modifierNames,
+      variantPriceAdj: variant?.price_adjustment || 0,
+      modifierPriceAdj: modifierAdj,
+      notes: custom.notes,
+      imageUrl: product.image_url,
+    });
+    setCustom(null);
+    setCustomizingProduct(null);
+  }, [custom, customizingProduct, cart]);
 
-  const processNFCCard = (cardData: string) => {
+  /* NFC */
+  const processNFCCard = useCallback((cardData: string) => {
     const trimmed = cardData.trim();
     if (!trimmed) return;
-
     setNfcSearching(true);
     setNfcError('');
-
-    // Match by customer ID or phone
-    const found = customersWithDiscount.find(
-      c => c.id === trimmed || c.phone === trimmed
-    );
-
+    const found = customers.find(c => c.id === trimmed || c.phone === trimmed);
     if (!found) {
       setNfcError('Kartu tidak ditemukan. Pastikan kartu sudah terdaftar sebagai member.');
       setNfcSearching(false);
       setNfcInput('');
-      nfcInputRef.current?.focus();
       return;
     }
-
     if (found.ark_coin_balance < total) {
       setNfcError(`Saldo ARK tidak cukup. Saldo: ${formatArk(found.ark_coin_balance)}, Dibutuhkan: ${formatArk(total)}`);
       setNfcSearching(false);
       setNfcInput('');
-      nfcInputRef.current?.focus();
       return;
     }
-
-    setSelectedCustomer(found);
-    setShowNFCModal(false);
+    cart.setCustomer(found.id);
+    setShowNFC(false);
     setNfcSearching(false);
     setNfcInput('');
-  };
+  }, [customers, total, cart]);
 
-  const handleSelectPaymentMethod = (method: PaymentMethod) => {
-    setPaymentMethod(method);
-    if (method === 'ark_coin' && !selectedCustomer) {
-      setShowNFCModal(true);
-    }
-  };
+  /* Checkout */
+  const handleCreateOrder = useCallback(async () => {
+    if (cart.items.length === 0) return;
+    if (paymentMethod === 'ark_coin' && !selectedCustomer) { setShowNFC(true); return; }
+    if (paymentMethod === 'cash' && (parseFloat(cashReceived) || 0) < totalAfterArk) return;
 
-  // ─── Print ─────────────────────────────────────────────────────────────────
-
-  const handlePrint = (label: 'KITCHEN' | 'BAR', result: PaymentResult) => {
-    const printWin = window.open('', '_blank', 'width=320,height=600');
-    if (!printWin) { alert('Izinkan popup untuk print.'); return; }
-
-    const itemsHtml = result.snapshotCart.map(item => `
-      <tr>
-        <td style="width:28px;vertical-align:top;font-weight:bold;padding:3px 2px">${item.quantity}x</td>
-        <td style="padding:3px 2px">
-          <strong>${item.name}</strong>
-          ${item.variantName ? `<br><small style="color:#555">${item.variantName}</small>` : ''}
-          ${item.modifierNames?.length ? `<br><small style="color:#555">${item.modifierNames.join(', ')}</small>` : ''}
-          ${item.notes ? `<br><em style="color:#555">* ${item.notes}</em>` : ''}
-        </td>
-      </tr>
-      <tr><td colspan="2"><div style="border-top:1px dashed #ccc;margin:2px 0"></div></td></tr>
-    `).join('');
-
-    printWin.document.write(`<!DOCTYPE html>
-<html><head><meta charset="utf-8"><title>${label}</title>
-<style>
-  * { margin:0; padding:0; box-sizing:border-box; }
-  body { font-family:'Courier New',monospace; font-size:12px; width:72mm; padding:6mm 4mm; }
-  h1 { font-size:15px; text-align:center; letter-spacing:2px; margin-bottom:4px; }
-  .center { text-align:center; }
-  .divider { border-top:1px dashed #000; margin:6px 0; }
-  .big { font-size:16px; font-weight:bold; text-align:center; }
-  table { width:100%; border-collapse:collapse; }
-  @media print { @page { margin:0; size:72mm auto; } }
-</style></head>
-<body>
-  <h1>--- ${label} ---</h1>
-  <div class="big">${result.snapshotOrderType.replace(/_/g, '-').toUpperCase()}</div>
-  ${result.snapshotTable ? `<div class="center">${result.snapshotTable}</div>` : ''}
-  <div class="center">Order #${(result.orderId || '').slice(-8).toUpperCase()}</div>
-  <div class="center">${new Date().toLocaleTimeString('id-ID')}</div>
-  <div class="divider"></div>
-  <table>${itemsHtml}</table>
-  ${result.snapshotNotes ? `<div class="divider"></div><div><strong>Catatan:</strong> ${result.snapshotNotes}</div>` : ''}
-  <div class="divider"></div>
-  <div class="center">--- ${label} COPY ---</div>
-</body></html>`);
-
-    printWin.document.close();
-    printWin.focus();
-    setTimeout(() => { printWin.print(); printWin.close(); }, 400);
-  };
-
-  // ─── Order ─────────────────────────────────────────────────────────────────
-
-  const openCustomization = (product: Product) => {
-    const hasVariants = product.variants && product.variants.length > 0;
-    const hasModifiers = product.modifiers && product.modifiers.length > 0;
-    log('Opening customization for:', product.name, { hasVariants, hasModifiers });
-    if (!hasVariants && !hasModifiers) { addToCartDirect(product, 1); return; }
-    const defaultVariant = hasVariants ? product.variants[0].id : null;
-    const defaultModifiers: Record<string, string[]> = {};
-    if (hasModifiers) {
-      product.modifiers.forEach(group => {
-        if (group.modifier_group.modifiers.length > 0) {
-          defaultModifiers[group.modifier_group.name] = [group.modifier_group.modifiers[0].id];
-        }
-      });
-    }
-    setCustomization({ isOpen: true, product, selectedVariant: defaultVariant, selectedModifiers: defaultModifiers, quantity: 1, notes: '' });
-  };
-
-  const addToCartDirect = (product: Product, quantity: number = 1) => {
-    setCart(prev => {
-      const existing = prev.find(item => item.id === product.id);
-      if (existing) return prev.map(item => item.id === product.id ? { ...item, quantity: item.quantity + quantity } : item);
-      return [...prev, { id: product.id, name: product.name, price: product.base_price, quantity, variantName: undefined, modifierNames: undefined }];
+    const res = await checkout({
+      cart: cart.items,
+      orderType: cart.orderType,
+      selectedTable: cart.selectedTable,
+      selectedCustomer,
+      paymentMethod,
+      cashReceived,
+      includeTax: cart.includeTax,
+      notes: cart.notes,
+      arkToUse: paymentMethod === 'ark_coin' ? arkToUseCapped : 0,
     });
-  };
 
-  const confirmCustomization = () => {
-    if (!customization.product) return;
-    const product = customization.product;
-    const variant = product.variants?.find(v => v.id === customization.selectedVariant);
-    const variantPriceAdj = variant?.price_adjustment || 0;
-    let modifierPriceAdj = 0;
-    const modifierNames: string[] = [];
-    if (product.modifiers) {
-      product.modifiers.forEach(group => {
-        const selectedIds = customization.selectedModifiers[group.modifier_group.name] || [];
-        selectedIds.forEach(modId => {
-          const mod = group.modifier_group.modifiers.find(m => m.id === modId);
-          if (mod) { modifierPriceAdj += mod.price_adjustment; modifierNames.push(mod.name); }
-        });
-      });
+    if (res.success) {
+      const receipt: ReceiptPayload = {
+        orderId: res.orderId,
+        orderNumber: res.orderNumber,
+        orderType: cart.orderType,
+        table: cart.selectedTable,
+        items: [...cart.items],
+        notes: cart.notes,
+        total: res.total,
+        change: res.change,
+        paymentMethod,
+        customerName: selectedCustomer?.name,
+        discountAmount,
+        taxAmount,
+      };
+      setResultPayload(receipt);
+      setShowPayment(false);
+      cart.clearCart();
+      setCashReceived('');
+      setPaymentMethod('cash');
+      setCurrentArkToUse(0);
+    } else {
+      // Show error in simple alert or toast
+      alert(res.error || 'Pembayaran gagal');
     }
-    const finalPrice = product.base_price + variantPriceAdj + modifierPriceAdj;
-    const variantName = variant?.name;
-    setCart(prev => {
-      const existing = prev.find(item => item.id === product.id && item.variantName === variantName && JSON.stringify(item.modifierNames) === JSON.stringify(modifierNames));
-      if (existing) return prev.map(item => item.id === product.id && item.variantName === variantName && JSON.stringify(item.modifierNames) === JSON.stringify(modifierNames) ? { ...item, quantity: item.quantity + customization.quantity } : item);
-      return [...prev, { id: product.id, name: product.name, price: finalPrice, quantity: customization.quantity, variantName, modifierNames, notes: customization.notes }];
-    });
-    setCustomization({ isOpen: false, product: null, selectedVariant: null, selectedModifiers: {}, quantity: 1, notes: '' });
-  };
+  }, [cart, paymentMethod, selectedCustomer, cashReceived, totalAfterArk, checkout, discountAmount, taxAmount, arkToUseCapped]);
 
-  const updateQuantity = (id: string, delta: number) => {
-    setCart(prev => prev.map(item => {
-      if (item.id === id) { const newQty = Math.max(0, item.quantity + delta); return { ...item, quantity: newQty }; }
-      return item;
-    }).filter(item => item.quantity > 0));
-  };
-
-  const removeFromCart = (id: string) => setCart(prev => prev.filter(item => item.id !== id));
-
-  const selectCustomer = (customer: Customer | null) => {
-    setSelectedCustomer(customer);
-    setShowCustomerModal(false);
-    setCustomerSearch('');
-  };
-
-  const isPaymentValid = () => {
-    if (cart.length === 0) return false;
-    if (paymentMethod === 'ark_coin') {
-      if (!selectedCustomer) return false;
-      return selectedCustomer.ark_coin_balance >= total;
-    }
-    if (paymentMethod === 'cash') {
-      const received = parseFloat(cashReceived) || 0;
-      return received >= totalAfterArk;
-    }
-    return true;
-  };
-
-  const handleCreateOrder = async () => {
-    if (!cart || cart.length === 0) return;
-
-    if (paymentMethod === 'ark_coin' && !selectedCustomer) {
-      setShowNFCModal(true);
-      return;
-    }
-
-    if (!isPaymentValid()) return;
-
-    // Snapshot before reset
-    const snap = {
-      snapshotCart: [...cart],
-      snapshotOrderType: orderType,
-      snapshotTable: selectedTable,
-      snapshotNotes: notes,
-    };
+  /* Split Bill */
+  const handleConfirmSplit = useCallback(async (config: SplitConfig) => {
+    if (cart.items.length === 0) return;
+    setShowSplitModal(false);
 
     try {
-      const cartSubtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-      const cartDiscount = selectedCustomer ? Math.floor(cartSubtotal * selectedCustomer.discount! / 100) : 0;
-      const cartAfterDiscount = cartSubtotal - cartDiscount;
-      const cartTax = includeTax ? cartAfterDiscount * 0.1 : 0;
-      const cartTotal = cartAfterDiscount + cartTax;
-
-      const orderItems = cart.map(item => ({
-        product_id: item.id,
-        product_name: item.name,
-        product_sku: `SKU-${item.id}`,
-        variants: item.variantName ? [{ name: item.variantName, group: 'Size', price: 0 }] : [],
-        modifiers: item.modifierNames?.map(name => ({ name, group: 'Options' })) || [],
-        quantity: Number(item.quantity),
-        unit_price: Number(item.price),
-        subtotal: Number(item.price * item.quantity),
-        total_amount: Number(item.price * item.quantity)
-      }));
-
-      const DEFAULT_CASHIER_ID = '00000000-0000-0000-0000-000000000001';
-
-      const payload: any = {
-        order_type: orderType,
+      const res = await createSplitOrder({
+        order_type: cart.orderType,
         customer_id: selectedCustomer?.id,
-        cashier_id: DEFAULT_CASHIER_ID,
-        items: orderItems,
-        subtotal: Number(cartSubtotal),
-        discount_amount: Number(cartDiscount),
-        tax_amount: Number(cartTax),
-        service_charge_amount: 0,
-        total_amount: Number(cartTotal),
-        payment_method: paymentMethod === 'qris' ? 'qris' : paymentMethod === 'credit_card' ? 'credit' : paymentMethod === 'ark_coin' ? 'ark_coin' : 'cash',
-        amount_paid: paymentMethod === 'cash' ? Number(parseFloat(cashReceived) || cartTotal) : Number(cartTotal),
-        notes: notes || undefined,
-        ark_coins_used: paymentMethod === 'ark_coin' ? arkToUseCapped : 0
-      };
-
-      const response = await createOrder(payload);
-
-      if (response.success) {
-        const change = paymentMethod === 'cash' ? (parseFloat(cashReceived) || 0) - total : 0;
-
-        const result: PaymentResult = {
-          success: true,
-          orderId: response.data.id,
-          total,
-          change,
-          ...snap,
-        };
-
-        setPaymentResult(result);
-        setShowPaymentModal(false);
-
-        // Reset
-        setCart([]);
-        setSelectedTable(null);
-        setSelectedCustomer(null);
-        setPaymentMethod('cash');
-        setCashReceived('');
-        setNotes('');
-      } else {
-        setPaymentResult({
-          success: false,
-          total,
-          change: 0,
-          error: response.error || 'Gagal membuat order',
-          ...snap,
-        });
-        setShowPaymentModal(false);
-      }
-    } catch (err: any) {
-      setPaymentResult({
-        success: false,
-        total,
-        change: 0,
-        error: err.message,
-        ...snap,
+        cashier_id: '00000000-0000-0000-0000-000000000001',
+        server_id: undefined,
+        table_id: cart.selectedTable || undefined,
+        items: cart.items.map(item => ({
+          product_id: item.productId,
+          product_name: item.name,
+          product_sku: item.id,
+          quantity: item.quantity,
+          unit_price: item.price,
+          subtotal: item.price * item.quantity,
+          total_amount: item.price * item.quantity,
+        })),
+        subtotal: cart.subtotal,
+        discount_amount: discountAmount,
+        tax_amount: taxAmount,
+        total_amount: total,
+        notes: cart.notes,
+        include_tax: cart.includeTax,
+        membership_discount_pct: membershipDiscount,
+        splits: config.splits.map(s => ({
+          label: s.label,
+          subtotal: s.subtotal || 0,
+          tax_amount: s.tax_amount || 0,
+          discount_amount: s.discount_amount || 0,
+          total_amount: s.total,
+          customer_id: s.customerId,
+          items: s.items,
+        })),
       });
-      setShowPaymentModal(false);
+
+      if (res.success && res.data) {
+        setSplitOrder(res.data);
+        setShowSplitPayment(true);
+        cart.clearCart();
+      } else {
+        alert(res.error || 'Gagal membuat split order');
+      }
+    } catch (e: any) {
+      alert(e.message || 'Gagal membuat split order');
     }
-  };
+  }, [cart, selectedCustomer, discountAmount, taxAmount, total, membershipDiscount]);
 
-  // ─── Render ────────────────────────────────────────────────────────────────
+  const handleSplitComplete = useCallback(() => {
+    setShowSplitPayment(false);
+    setSplitOrder(null);
+    setResultPayload(null);
+  }, []);
 
+  /* Print helpers */
+  const handlePrint = useCallback((label: 'KITCHEN' | 'BAR' | 'CUSTOMER') => {
+    if (!resultPayload) return;
+    printThermalReceipt(resultPayload, label);
+  }, [resultPayload]);
+
+  /* ─── Render ───────────────────────────────────────────────────── */
   return (
     <div className="flex flex-col lg:flex-row h-[calc(100vh-8rem)] gap-4">
       {loading && (
@@ -466,7 +311,6 @@ export default function CashierPageNew() {
           </div>
         </div>
       )}
-
       {error && (
         <div className="fixed top-4 right-4 bg-red-50 border border-red-200 rounded-xl p-4 z-50">
           <div className="flex items-center gap-2 text-red-700">
@@ -480,33 +324,37 @@ export default function CashierPageNew() {
       <div className="flex-1 flex flex-col gap-4 overflow-hidden">
         {/* Order Type */}
         <div className="bg-white rounded-xl border border-gray-200 p-4">
-          <div className="flex items-center gap-2 mb-3">
-            <span className="text-sm font-semibold text-gray-900">Tipe Pesanan</span>
-          </div>
           <div className="flex flex-wrap gap-2">
-            <button onClick={() => setOrderType('dine_in')} className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium border-2 transition-all ${orderType === 'dine_in' ? 'border-pink-600 bg-pink-50 text-pink-700' : 'border-gray-200 text-gray-600 hover:border-gray-300'}`}>
-              <Utensils className="w-4 h-4" /> Dine-in
-            </button>
-            <button onClick={() => { setOrderType('takeaway'); setSelectedTable(null); }} className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium border-2 transition-all ${orderType === 'takeaway' ? 'border-pink-600 bg-pink-50 text-pink-700' : 'border-gray-200 text-gray-600 hover:border-gray-300'}`}>
-              <ShoppingBag className="w-4 h-4" /> Takeaway
-            </button>
-            <button onClick={() => { setOrderType('delivery'); setSelectedTable(null); }} className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium border-2 transition-all ${orderType === 'delivery' ? 'border-pink-600 bg-pink-50 text-pink-700' : 'border-gray-200 text-gray-600 hover:border-gray-300'}`}>
-              <Truck className="w-4 h-4" /> Delivery
-            </button>
-            <button onClick={() => { setOrderType('self_order'); setSelectedTable(null); }} className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium border-2 transition-all ${orderType === 'self_order' ? 'border-pink-600 bg-pink-50 text-pink-700' : 'border-gray-200 text-gray-600 hover:border-gray-300'}`}>
-              <Monitor className="w-4 h-4" /> Self-order
-            </button>
+            {[
+              { key: 'dine_in', label: 'Dine-in', icon: Utensils },
+              { key: 'takeaway', label: 'Takeaway', icon: ShoppingBag },
+              { key: 'delivery', label: 'Delivery', icon: Truck },
+              { key: 'self_order', label: 'Self-order', icon: Monitor },
+            ].map(t => (
+              <button
+                key={t.key}
+                onClick={() => cart.setOrderType(t.key as any)}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium border-2 transition-all ${
+                  cart.orderType === t.key ? 'border-pink-600 bg-pink-50 text-pink-700' : 'border-gray-200 text-gray-600 hover:border-gray-300'
+                }`}
+              >
+                <t.icon className="w-4 h-4" /> {t.label}
+              </button>
+            ))}
           </div>
-
-          {orderType === 'dine_in' && (
+          {cart.orderType === 'dine_in' && (
             <div className="mt-4 pt-4 border-t border-gray-200">
-              <div className="flex items-center gap-2 mb-3">
-                <TableIcon className="w-4 h-4 text-gray-600" />
-                <span className="text-sm font-semibold text-gray-900">Pilih Meja (Demo)</span>
-              </div>
               <div className="grid grid-cols-6 gap-2">
-                {[1, 2, 3, 4, 5, 6].map(num => (
-                  <button key={num} onClick={() => setSelectedTable(selectedTable === `Meja ${num}` ? null : `Meja ${num}`)} className={`py-2 px-3 rounded-lg text-xs font-semibold border-2 transition-all ${selectedTable === `Meja ${num}` ? 'border-pink-600 bg-pink-600 text-white' : 'border-gray-200 text-gray-700 hover:border-pink-400'}`}>
+                {Array.from({ length: MAX_TABLES }, (_, i) => i + 1).map(num => (
+                  <button
+                    key={num}
+                    onClick={() => cart.setTable(cart.selectedTable === `Meja ${num}` ? null : `Meja ${num}`)}
+                    className={`py-2 px-3 rounded-lg text-xs font-semibold border-2 transition-all ${
+                      cart.selectedTable === `Meja ${num}`
+                        ? 'border-pink-600 bg-pink-600 text-white'
+                        : 'border-gray-200 text-gray-700 hover:border-pink-400'
+                    }`}
+                  >
                     {num}
                   </button>
                 ))}
@@ -515,31 +363,32 @@ export default function CashierPageNew() {
           )}
         </div>
 
-        {/* Customer + Search */}
+        {/* Search + Customer */}
         <div className="flex gap-2">
           <button
             onClick={() => setShowCustomerModal(true)}
-            className={`flex items-center gap-2 px-4 py-2.5 rounded-lg border transition-all min-w-[180px] ${selectedCustomer ? 'bg-pink-50 border-pink-200 hover:bg-pink-100' : 'bg-gray-50 border-gray-200 hover:bg-gray-100'}`}
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-lg border transition-all min-w-[180px] ${
+              selectedCustomer ? 'bg-pink-50 border-pink-200 hover:bg-pink-100' : 'bg-gray-50 border-gray-200 hover:bg-gray-100'
+            }`}
           >
             <User className={`w-4 h-4 ${selectedCustomer ? 'text-pink-600' : 'text-gray-500'}`} />
             <span className={`text-sm font-medium ${selectedCustomer ? 'text-pink-700' : 'text-gray-700'}`}>
               {selectedCustomer?.name ? selectedCustomer.name.split(' ')[0] : 'Cari Pelanggan'}
             </span>
           </button>
-
           <div className="flex-1 relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
             <input
               type="text"
               placeholder="Cari produk..."
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              onChange={e => setSearchTerm(e.target.value)}
               className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:bg-white transition-all placeholder:text-gray-400"
             />
           </div>
         </div>
 
-        {/* Selected Customer Info */}
+        {/* Selected Customer */}
         {selectedCustomer && (
           <div className="flex items-center gap-3 p-3 bg-gradient-to-r from-pink-50 to-amber-50 rounded-lg border border-pink-100">
             <div className="w-8 h-8 rounded-full bg-pink-100 flex items-center justify-center text-pink-600 font-bold text-xs flex-shrink-0">
@@ -555,51 +404,57 @@ export default function CashierPageNew() {
                 <span className="text-amber-600 font-medium">{formatArk(selectedCustomer.ark_coin_balance)}</span>
               </div>
             </div>
-            <button onClick={() => setSelectedCustomer(null)} className="p-1 text-gray-400 hover:text-red-600 transition-colors">
-              <X className="w-4 h-4" />
-            </button>
+            <button onClick={() => cart.setCustomer(null)} className="p-1 text-gray-400 hover:text-red-600 transition-colors"><X className="w-4 h-4" /></button>
           </div>
         )}
 
-        {/* Customer Favorites */}
-        {(customerFavorites.length > 0 || loadingFavorites) && (
+        {/* Favorites */}
+        {favorites.length > 0 && (
           <div className="bg-gradient-to-r from-amber-50 to-orange-50 rounded-xl p-3 border border-amber-100">
             <div className="flex items-center gap-2 mb-3">
               <Sparkles className="w-4 h-4 text-amber-500" />
               <span className="text-sm font-semibold text-amber-700">Favorit {selectedCustomer?.name?.split(' ')[0]}</span>
-              {loadingFavorites ? <span className="text-xs text-amber-600">Loading...</span> : <span className="text-xs text-amber-600">({customerFavorites.length} menu)</span>}
+              <span className="text-xs text-amber-600">({favorites.length} menu)</span>
             </div>
-            {loadingFavorites ? (
-              <div className="flex items-center justify-center py-4">
-                <div className="animate-spin h-6 w-6 border-2 border-amber-500 border-t-transparent rounded-full" />
-              </div>
-            ) : (
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
-                {customerFavorites.map(product => (
-                  <button key={product.id} onClick={() => openCustomization(product)} className="flex items-center gap-2 p-2 bg-white rounded-lg border border-amber-200 hover:border-amber-400 hover:bg-amber-50 transition-all text-left">
-                    <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center overflow-hidden flex-shrink-0">
-                      <img src={product.image_url || '/products/placeholder.png'} alt={product.name} className="w-full h-full object-cover" />
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
+              {favorites.map(product => (
+                <button key={product.id} onClick={() => openCustomization(product)} className="flex items-center gap-2 p-2 bg-white rounded-lg border border-amber-200 hover:border-amber-400 hover:bg-amber-50 transition-all text-left">
+                  <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center overflow-hidden flex-shrink-0">
+                    <img src={product.image_url || '/products/placeholder.png'} alt={product.name} className="w-full h-full object-cover" />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="text-xs font-medium text-gray-900 truncate">{product.name}</div>
+                    <div className="flex items-baseline gap-1 mt-0.5">
+                      <span className="text-xs text-pink-600 font-semibold">{formatCurrency(product.base_price)}</span>
+                      <span className="text-[10px] text-amber-600 font-medium">{formatArk(product.base_price)}</span>
                     </div>
-                    <div className="min-w-0">
-                      <div className="text-xs font-medium text-gray-900 truncate">{product.name}</div>
-                      <div className="flex items-baseline gap-1 mt-0.5">
-                        <span className="text-xs text-pink-600 font-semibold">{formatCurrency(product.base_price)}</span>
-                        <span className="text-[10px] text-amber-600 font-medium">{formatArk(product.base_price)}</span>
-                      </div>
-                    </div>
-                  </button>
-                ))}
-              </div>
-            )}
+                  </div>
+                </button>
+              ))}
+            </div>
           </div>
         )}
 
-        {/* Products Grid */}
+        {/* Categories */}
+        <div className="flex gap-2 overflow-x-auto pb-2">
+          {categories.map(cat => (
+            <button
+              key={cat}
+              onClick={() => setSelectedCategory(cat)}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all ${
+                selectedCategory === cat ? 'bg-pink-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              {cat}
+            </button>
+          ))}
+        </div>
+
+        {/* Product Grid */}
         <div className="flex-1 overflow-y-auto">
           <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-5 gap-3">
-            {filteredProducts.map((product) => {
-              // Random XP between 1-100 for each product (deterministic based on product id)
-              const xp = product.xp ?? (Math.abs(product.id.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0)) % 100) + 1;
+            {filteredProducts.map(product => {
+              const xp = product.xp ?? ((Math.abs(product.id.split('').reduce((a, c) => a + c.charCodeAt(0), 0)) % 100) + 1);
               return (
                 <button
                   key={product.id}
@@ -627,414 +482,148 @@ export default function CashierPageNew() {
         </div>
       </div>
 
-      {/* RIGHT PANEL - Cart */}
+      {/* RIGHT PANEL — Cart */}
       <CartPanel
-        cart={cart}
-        orderType={orderType}
-        selectedTable={selectedTable}
-        subtotal={subtotal}
+        cart={cart.items}
+        orderType={cart.orderType}
+        selectedTable={cart.selectedTable}
+        subtotal={cart.subtotal}
         discountAmount={discountAmount}
         selectedCustomer={selectedCustomer}
-        includeTax={includeTax}
-        tax={tax}
+        includeTax={cart.includeTax}
+        tax={taxAmount}
         arkToUseCapped={arkToUseCapped}
         paymentMethod={paymentMethod}
         totalAfterArk={totalAfterArk}
         total={total}
         formatCurrency={formatCurrency}
         formatArk={formatArk}
-        setIncludeTax={setIncludeTax}
-        setShowPaymentModal={() => setShowPaymentModal(true)}
-        updateQuantity={updateQuantity}
-        removeFromCart={removeFromCart}
+        setIncludeTax={cart.setIncludeTax}
+        setShowPaymentModal={() => setShowPayment(true)}
+        onSplitBill={() => setShowSplitModal(true)}
+        updateQuantity={cart.updateQty}
+        removeFromCart={cart.removeItem}
       />
 
-      {/* ── Customer Modal ────────────────────────────────────────────────── */}
-      <Dialog open={showCustomerModal} onOpenChange={(open) => !open && setShowCustomerModal(false)}>
-        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
-          <DialogHeader><DialogTitle>Pilih Pelanggan</DialogTitle></DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
-              <input type="text" placeholder="Cari pelanggan..." value={customerSearch} onChange={(e) => setCustomerSearch(e.target.value)} autoFocus className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-500" />
-            </div>
-            <button onClick={() => selectCustomer(null)} className="w-full px-4 py-3 text-left rounded-lg border border-gray-200 hover:bg-gray-50 flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 font-bold"><User className="w-5 h-5" /></div>
-              <div><div className="font-medium">Guest / Tanpa Pelanggan</div><div className="text-sm text-gray-500">Tidak mendapat diskon</div></div>
-            </button>
-            <div className="space-y-2">
-              {filteredCustomers.map(customer => (
-                <button key={customer.id} onClick={() => selectCustomer(customer)} className="w-full px-4 py-3 text-left rounded-lg border border-gray-200 hover:bg-pink-50 hover:border-pink-300 flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-pink-100 flex items-center justify-center text-pink-600 font-bold">{customer.name?.charAt(0)}</div>
-                  <div className="flex-1 min-w-0">
-                    <div className="font-medium text-gray-900 truncate">{customer.name}</div>
-                    <div className="text-sm text-gray-500">{customer.phone}</div>
-                  </div>
-                  <div className="text-right">
-                    <span className={`inline-flex items-center px-2 py-1 text-xs font-medium rounded-full capitalize ${customer.membership_tier === 'platinum' ? 'bg-purple-100 text-purple-700' : customer.membership_tier === 'gold' ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-700'}`}>
-                      {customer.membership_tier}
-                    </span>
-                    {customer.discount > 0 && <div className="text-xs text-green-600 font-medium mt-1">-{customer.discount}%</div>}
-                  </div>
-                </button>
-              ))}
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
+      {/* ── Customer Modal ── */}
+      <CustomerSearchModal
+        open={showCustomerModal}
+        customers={customers}
+        search={customerSearch}
+        selectedCustomerId={cart.selectedCustomerId}
+        onSearchChange={setCustomerSearch}
+        onSelect={(c) => { cart.setCustomer(c?.id ?? null); setShowCustomerModal(false); setCustomerSearch(''); }}
+        onClose={() => setShowCustomerModal(false)}
+      />
 
-      {/* ── Payment Modal ─────────────────────────────────────────────────── */}
-      <Dialog open={showPaymentModal} onOpenChange={(open) => !open && setShowPaymentModal(false)}>
-        <DialogContent className="max-w-md">
-          <DialogHeader><DialogTitle>Metode Pembayaran</DialogTitle></DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="grid grid-cols-2 gap-2">
-              {(['cash', 'qris', 'credit_card', 'ark_coin'] as PaymentMethod[]).map(m => (
-                <button
-                  key={m}
-                  onClick={() => handleSelectPaymentMethod(m)}
-                  className={`p-4 rounded-lg border-2 text-left transition-all ${paymentMethod === m ? 'border-pink-600 bg-pink-50' : 'border-gray-200 hover:border-gray-300'}`}
-                >
-                  <div className="text-lg font-semibold">{m === 'cash' ? 'Cash' : m === 'qris' ? 'QRIS' : m === 'credit_card' ? 'Credit Card' : 'ARK Coin'}</div>
-                  <div className="text-xs text-gray-500">
-                    {m === 'cash' ? 'Bayar dengan uang tunai' :
-                     m === 'qris' ? 'Scan QR code' :
-                     m === 'credit_card' ? 'Visa / Mastercard' :
-                     formatArk(selectedCustomer?.ark_coin_balance || 0)}
-                  </div>
-                </button>
-              ))}
-            </div>
+      {/* ── Customization Modal ── */}
+      <CustomizationModal
+        open={!!custom}
+        product={customizingProduct}
+        value={custom}
+        onChange={setCustom}
+        onConfirm={handleConfirmCustomization}
+        onCancel={() => { setCustom(null); setCustomizingProduct(null); }}
+        formatCurrency={formatCurrency}
+        formatArk={formatArk}
+      />
 
-            {paymentMethod === 'cash' && (
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-gray-700">Jumlah Uang Diterima</label>
-                <input type="number" placeholder="0" value={cashReceived} onChange={(e) => setCashReceived(e.target.value)} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500" />
-                <div className="text-sm text-gray-500">Kembalian: {formatCurrency((parseFloat(cashReceived) || 0) - totalAfterArk)}</div>
-              </div>
-            )}
+      {/* ── Payment Modal ── */}
+      <PaymentModal
+        open={showPayment}
+        total={total}
+        totalAfterArk={totalAfterArk}
+        selectedCustomer={selectedCustomer}
+        onClose={() => setShowPayment(false)}
+        onConfirm={({ method, cashReceived, arkToUse }) => {
+          setPaymentMethod(method);
+          setCashReceived(cashReceived);
+          setCurrentArkToUse(arkToUse);
+          handleCreateOrder();
+        }}
+        formatCurrency={formatCurrency}
+        formatArk={formatArk}
+        onTapNFC={() => setShowNFC(true)}
+      />
 
-            {paymentMethod === 'ark_coin' && !selectedCustomer && (
-              <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg text-center space-y-3">
-                <Wifi className="w-8 h-8 text-amber-500 mx-auto" />
-                <div className="text-sm font-semibold text-amber-700">Member belum dipilih</div>
-                <div className="text-xs text-amber-600">Tap kartu NFC member untuk melanjutkan pembayaran ARK Coin</div>
-                <button
-                  onClick={() => setShowNFCModal(true)}
-                  className="w-full py-2 bg-amber-500 text-white rounded-lg text-sm font-semibold hover:bg-amber-600"
-                >
-                  Tap Kartu NFC
-                </button>
-              </div>
-            )}
+      {/* ── NFC Modal ── */}
+      <NFCModal
+        open={showNFC}
+        input={nfcInput}
+        searching={nfcSearching}
+        error={nfcError}
+        onInputChange={setNfcInput}
+        onSubmit={() => processNFCCard(nfcInput)}
+        onCancel={() => { setShowNFC(false); setNfcInput(''); setNfcError(''); }}
+      />
 
-            {paymentMethod === 'ark_coin' && selectedCustomer && (
-              <div className="space-y-2 p-3 bg-amber-50 rounded-lg border border-amber-200">
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-600">Saldo ARK</span>
-                  <span className="font-semibold text-amber-600">{formatArk(selectedCustomer.ark_coin_balance)}</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-600">Total tagihan</span>
-                  <span className="font-semibold text-gray-900">{formatArk(total)}</span>
-                </div>
-                <div className={`text-sm font-medium ${selectedCustomer.ark_coin_balance >= total ? 'text-green-600' : 'text-red-500'}`}>
-                  {selectedCustomer.ark_coin_balance >= total
-                    ? '✓ Saldo cukup untuk membayar penuh'
-                    : `Saldo kurang ${formatArk(total - selectedCustomer.ark_coin_balance)}`}
-                </div>
-              </div>
-            )}
-
-            <div className="pt-4 border-t">
-              <div className="flex justify-between text-lg font-bold">
-                <span>Total</span>
-                <span className="text-pink-600">{formatCurrency(total)}</span>
-              </div>
-            </div>
-
-            <button
-              onClick={handleCreateOrder}
-              disabled={!isPaymentValid()}
-              className="w-full py-3 bg-pink-600 text-white rounded-lg font-semibold hover:bg-pink-700 disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-              Konfirmasi Pembayaran
-            </button>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* ── NFC Modal ─────────────────────────────────────────────────────── */}
-      <Dialog open={showNFCModal} onOpenChange={(open) => { if (!open) setShowNFCModal(false); }}>
+      {/* ── Result Modal ── */}
+      <Dialog open={!!resultPayload} onOpenChange={() => setResultPayload(null)}>
         <DialogContent className="max-w-sm">
-          <DialogHeader><DialogTitle>Tap Kartu Member NFC</DialogTitle></DialogHeader>
-          <div className="py-6 space-y-6 text-center">
-            {/* Animated NFC icon */}
-            <div className="relative mx-auto w-24 h-24 flex items-center justify-center">
-              <div className="absolute inset-0 rounded-full bg-amber-100 animate-ping opacity-40" />
-              <div className="absolute inset-2 rounded-full bg-amber-200 animate-ping opacity-30 animation-delay-150" />
-              <div className="relative w-16 h-16 rounded-full bg-amber-500 flex items-center justify-center">
-                <Wifi className="w-8 h-8 text-white" />
-              </div>
-            </div>
-
-            <div>
-              <p className="text-base font-semibold text-gray-800">Dekatkan Kartu ke Reader NFC</p>
-              <p className="text-sm text-gray-500 mt-1">Kartu akan otomatis terdeteksi</p>
-            </div>
-
-            {/* Hidden input for HID NFC reader (auto types card ID + Enter) */}
-            <input
-              ref={nfcInputRef}
-              type="text"
-              value={nfcInput}
-              onChange={(e) => setNfcInput(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && nfcInput.trim()) {
-                  processNFCCard(nfcInput);
-                }
-              }}
-              className="opacity-0 absolute w-0 h-0 pointer-events-none"
-              aria-hidden="true"
-            />
-
-            {/* Manual input fallback */}
-            <div className="space-y-2">
-              <p className="text-xs text-gray-400">Atau masukkan ID kartu secara manual:</p>
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={nfcInput}
-                  onChange={(e) => setNfcInput(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === 'Enter') processNFCCard(nfcInput); }}
-                  placeholder="ID Pelanggan / Nomor HP"
-                  className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
-                />
-                <button
-                  onClick={() => processNFCCard(nfcInput)}
-                  disabled={!nfcInput.trim() || nfcSearching}
-                  className="px-4 py-2 bg-amber-500 text-white rounded-lg text-sm font-medium hover:bg-amber-600 disabled:opacity-40"
-                >
-                  Cari
-                </button>
-              </div>
-            </div>
-
-            {nfcError && (
-              <div className="flex items-start gap-2 p-3 bg-red-50 border border-red-200 rounded-lg text-left">
-                <AlertCircle className="w-4 h-4 text-red-500 flex-shrink-0 mt-0.5" />
-                <p className="text-sm text-red-700">{nfcError}</p>
-              </div>
-            )}
-
-            {nfcSearching && (
-              <div className="flex items-center justify-center gap-2 text-amber-600">
-                <div className="w-4 h-4 border-2 border-amber-500 border-t-transparent rounded-full animate-spin" />
-                <span className="text-sm">Mencari member...</span>
-              </div>
-            )}
-
-            <button onClick={() => setShowNFCModal(false)} className="w-full py-2 border border-gray-300 text-gray-600 rounded-lg text-sm hover:bg-gray-50">
-              Batal
-            </button>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* ── Payment Result Modal ──────────────────────────────────────────── */}
-      <Dialog open={!!paymentResult} onOpenChange={(open) => { if (!open) setPaymentResult(null); }}>
-        <DialogContent className="max-w-sm">
-          {paymentResult && (
+          {resultPayload && (
             <div className="py-4 space-y-6 text-center">
-              {paymentResult.success ? (
-                <>
-                  <CheckCircle className="w-16 h-16 text-green-500 mx-auto" />
-                  <div>
-                    <h2 className="text-xl font-bold text-gray-900">Pembayaran Berhasil!</h2>
-                    <p className="text-sm text-gray-500 mt-1">Order #{(paymentResult.orderId || '').slice(-8).toUpperCase()}</p>
+              <CheckCircle className="w-16 h-16 text-green-500 mx-auto" />
+              <div>
+                <h2 className="text-xl font-bold text-gray-900">Pembayaran Berhasil!</h2>
+                <p className="text-sm text-gray-500 mt-1">Order #{resultPayload.orderNumber?.slice(-8).toUpperCase() || resultPayload.orderId?.slice(-8).toUpperCase()}</p>
+              </div>
+              <div className="bg-gray-50 rounded-xl p-4 space-y-2 text-left">
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-500">Total Bayar</span>
+                  <span className="font-bold text-gray-900">{formatCurrency(resultPayload.total)}</span>
+                </div>
+                {resultPayload.change > 0 && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-500">Kembalian</span>
+                    <span className="font-bold text-green-600">{formatCurrency(resultPayload.change)}</span>
                   </div>
-
-                  <div className="bg-gray-50 rounded-xl p-4 space-y-2 text-left">
-                    <div className="flex justify-between text-sm">
-                      <span className="text-gray-500">Total Bayar</span>
-                      <span className="font-bold text-gray-900">{formatCurrency(paymentResult.total)}</span>
-                    </div>
-                    {paymentResult.change > 0 && (
-                      <div className="flex justify-between text-sm">
-                        <span className="text-gray-500">Kembalian</span>
-                        <span className="font-bold text-green-600">{formatCurrency(paymentResult.change)}</span>
-                      </div>
-                    )}
-                    <div className="flex justify-between text-sm">
-                      <span className="text-gray-500">Item</span>
-                      <span className="font-medium">{paymentResult.snapshotCart.reduce((s, i) => s + i.quantity, 0)} produk</span>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-3 gap-2">
-                    <button
-                      onClick={() => handlePrint('KITCHEN', paymentResult)}
-                      className="flex items-center justify-center gap-1.5 py-2.5 border-2 border-orange-400 text-orange-600 rounded-lg text-sm font-semibold hover:bg-orange-50"
-                    >
-                      <Printer className="w-4 h-4" /> Kitchen
-                    </button>
-                    <button
-                      onClick={() => handlePrint('BAR', paymentResult)}
-                      className="flex items-center justify-center gap-1.5 py-2.5 border-2 border-blue-400 text-blue-600 rounded-lg text-sm font-semibold hover:bg-blue-50"
-                    >
-                      <Printer className="w-4 h-4" /> Bar
-                    </button>
-                    <button
-                      onClick={() => { handlePrint('KITCHEN', paymentResult); setTimeout(() => handlePrint('BAR', paymentResult), 500); }}
-                      className="flex items-center justify-center gap-1.5 py-2.5 border-2 border-purple-400 text-purple-600 rounded-lg text-sm font-semibold hover:bg-purple-50"
-                    >
-                      <Printer className="w-4 h-4" /> Semua
-                    </button>
-                  </div>
-
-                  <button
-                    onClick={() => setPaymentResult(null)}
-                    className="w-full py-3 bg-pink-600 text-white rounded-lg font-semibold hover:bg-pink-700"
-                  >
-                    Transaksi Baru
-                  </button>
-                </>
-              ) : (
-                <>
-                  <AlertCircle className="w-16 h-16 text-red-500 mx-auto" />
-                  <div>
-                    <h2 className="text-xl font-bold text-gray-900">Pembayaran Gagal</h2>
-                    <p className="text-sm text-red-600 mt-2">{paymentResult.error}</p>
-                  </div>
-                  <button
-                    onClick={() => { setPaymentResult(null); setShowPaymentModal(true); }}
-                    className="w-full py-3 bg-pink-600 text-white rounded-lg font-semibold hover:bg-pink-700"
-                  >
-                    Coba Lagi
-                  </button>
-                </>
-              )}
+                )}
+              </div>
+              <div className="grid grid-cols-3 gap-2">
+                <button onClick={() => handlePrint('KITCHEN')} className="flex items-center justify-center gap-1.5 py-2.5 border-2 border-orange-400 text-orange-600 rounded-lg text-sm font-semibold hover:bg-orange-50"><Printer className="w-4 h-4" /> Kitchen</button>
+                <button onClick={() => handlePrint('BAR')} className="flex items-center justify-center gap-1.5 py-2.5 border-2 border-blue-400 text-blue-600 rounded-lg text-sm font-semibold hover:bg-blue-50"><Printer className="w-4 h-4" /> Bar</button>
+                <button onClick={() => handlePrint('CUSTOMER')} className="flex items-center justify-center gap-1.5 py-2.5 border-2 border-purple-400 text-purple-600 rounded-lg text-sm font-semibold hover:bg-purple-50"><Printer className="w-4 h-4" /> Struk</button>
+              </div>
+              <button onClick={() => setResultPayload(null)} className="w-full py-3 bg-pink-600 text-white rounded-lg font-semibold hover:bg-pink-700">Transaksi Baru</button>
             </div>
           )}
         </DialogContent>
       </Dialog>
 
-      {/* ── Customization Modal ───────────────────────────────────────────── */}
-      <Dialog open={customization.isOpen} onOpenChange={(open) => !open && setCustomization({ ...customization, isOpen: false })}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader><DialogTitle className="text-xl font-bold">{customization.product?.name}</DialogTitle></DialogHeader>
-          {customization.product && (
-            <div className="space-y-6 py-4">
-              <div className="flex gap-4">
-                <div className="w-24 h-24 bg-gray-100 rounded-lg flex items-center justify-center overflow-hidden flex-shrink-0">
-                  <img src={customization.product.image_url || '/products/placeholder.png'} alt={customization.product.name} className="w-full h-full object-cover" />
-                </div>
-                <div className="flex-1">
-                  <div className="text-lg font-bold text-pink-600">{formatCurrency(customization.product.base_price)}</div>
-                  <div className="text-sm text-amber-600 font-medium">{formatArk(customization.product.base_price)}</div>
-                </div>
-              </div>
+      {/* ── Split Bill Modal ── */}
+      <SplitBillModal
+        open={showSplitModal}
+        total={total}
+        subtotal={cart.subtotal}
+        taxAmount={taxAmount}
+        discountAmount={discountAmount}
+        cartItems={cart.items}
+        onClose={() => setShowSplitModal(false)}
+        onConfirm={handleConfirmSplit}
+        formatCurrency={formatCurrency}
+      />
 
-              {customization.product.variants && customization.product.variants.length > 0 && (
-                <div className="space-y-3">
-                  <label className="text-sm font-semibold text-gray-700 flex items-center gap-2"><Sparkles className="w-4 h-4 text-pink-600" />Pilih Varian</label>
-                  <div className="grid grid-cols-2 gap-2">
-                    {customization.product.variants.map((variant) => {
-                      const isSelected = customization.selectedVariant === variant.id;
-                      const priceText = variant.price_adjustment > 0 ? `+${formatCurrency(variant.price_adjustment)}` : variant.price_adjustment < 0 ? `${formatCurrency(variant.price_adjustment)}` : 'Same price';
-                      return (
-                        <button key={variant.id} type="button" onClick={() => setCustomization({ ...customization, selectedVariant: variant.id })} className={`p-3 rounded-lg border-2 text-left transition-all ${isSelected ? 'border-pink-600 bg-pink-50' : 'border-gray-200 hover:border-pink-300'}`}>
-                          <div className="font-medium text-gray-900">{variant.name}</div>
-                          <div className="text-xs text-gray-600 mt-1">{priceText}</div>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-
-              {customization.product.modifiers && customization.product.modifiers.map((modifierGroup) => (
-                <div key={modifierGroup.modifier_group.id} className="space-y-3">
-                  <label className="text-sm font-semibold text-gray-700 flex items-center gap-2">
-                    <Utensils className="w-4 h-4 text-pink-600" />
-                    {modifierGroup.modifier_group.name}
-                    {modifierGroup.modifier_group.is_required && <span className="text-xs text-red-500">*</span>}
-                  </label>
-                  <div className="space-y-2">
-                    {modifierGroup.modifier_group.modifiers.map((modifier) => {
-                      const groupName = modifierGroup.modifier_group.name;
-                      const selectedIds = customization.selectedModifiers[groupName] || [];
-                      const isSelected = selectedIds.includes(modifier.id);
-                      const priceText = modifier.price_adjustment > 0 ? `+${formatCurrency(modifier.price_adjustment)}` : modifier.price_adjustment < 0 ? `${formatCurrency(modifier.price_adjustment)}` : '';
-                      return (
-                        <button key={modifier.id} type="button" onClick={() => {
-                          const newSelected = isSelected ? selectedIds.filter(id => id !== modifier.id) : [...selectedIds, modifier.id];
-                          setCustomization({ ...customization, selectedModifiers: { ...customization.selectedModifiers, [groupName]: newSelected } });
-                        }} className={`w-full p-3 rounded-lg border-2 text-left transition-all flex items-center justify-between ${isSelected ? 'border-pink-600 bg-pink-50' : 'border-gray-200 hover:border-pink-300'}`}>
-                          <span className="font-medium text-gray-900">{modifier.name}</span>
-                          {priceText && <span className="text-sm text-amber-600 font-medium">{priceText}</span>}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              ))}
-
-              <div className="space-y-2">
-                <label className="text-sm font-semibold text-gray-700">Catatan Tambahan</label>
-                <textarea value={customization.notes} onChange={(e) => setCustomization({ ...customization, notes: e.target.value })} placeholder="Contoh: Jangan terlalu pedas, kurang manis, dll." rows={2} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-500" />
-              </div>
-
-              <div className="flex items-center justify-between pt-4 border-t">
-                <span className="text-sm font-medium text-gray-700">Jumlah</span>
-                <div className="flex items-center gap-3">
-                  <button onClick={() => setCustomization({ ...customization, quantity: Math.max(1, customization.quantity - 1) })} className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center hover:bg-gray-200">-</button>
-                  <span className="text-lg font-medium w-8 text-center">{customization.quantity}</span>
-                  <button onClick={() => setCustomization({ ...customization, quantity: customization.quantity + 1 })} className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center hover:bg-gray-200">+</button>
-                </div>
-              </div>
-
-              <div className="pt-4 mt-4 border-t border-pink-200">
-                <div className="flex justify-between items-end">
-                  <div>
-                    <div className="text-lg font-bold text-gray-900">Total</div>
-                    <div className="text-xs text-gray-600">× {customization.quantity} item</div>
-                  </div>
-                  <div className="text-right">
-                    {(() => {
-                      const variant = customization.product.variants?.find(v => v.id === customization.selectedVariant);
-                      const variantAdj = variant?.price_adjustment || 0;
-                      let modifierAdj = 0;
-                      if (customization.product.modifiers) {
-                        customization.product.modifiers.forEach(group => {
-                          const selectedIds = customization.selectedModifiers[group.modifier_group.name] || [];
-                          selectedIds.forEach(modId => {
-                            const mod = group.modifier_group.modifiers.find(m => m.id === modId);
-                            if (mod) modifierAdj += mod.price_adjustment;
-                          });
-                        });
-                      }
-                      const unitPrice = customization.product.base_price + variantAdj + modifierAdj;
-                      const totalPrice = unitPrice * customization.quantity;
-                      return (
-                        <>
-                          <div className="text-2xl font-bold text-pink-600">{formatCurrency(totalPrice)}</div>
-                          <div className="text-sm text-amber-600 font-medium">{formatArk(totalPrice)}</div>
-                        </>
-                      );
-                    })()}
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex gap-3 pt-4 border-t">
-                <button onClick={() => setCustomization({ ...customization, isOpen: false })} className="flex-1 py-3 bg-gray-100 text-gray-700 rounded-lg font-semibold hover:bg-gray-200">Batal</button>
-                <button onClick={confirmCustomization} className="flex-1 py-3 bg-pink-600 text-white rounded-lg font-semibold hover:bg-pink-700">Tambah ke Pesanan</button>
-              </div>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
+      {/* ── Split Payment Screen (overlay) ── */}
+      {showSplitPayment && splitOrder && (
+        <div className="fixed inset-0 bg-white z-50 flex flex-col p-4 lg:p-6">
+          <SplitPaymentScreen
+            orderId={splitOrder.id}
+            orderNumber={splitOrder.order_number}
+            orderType={splitOrder.order_type}
+            table={splitOrder.table_id}
+            items={splitOrder.items || []}
+            notes={splitOrder.notes}
+            total={total}
+            taxAmount={taxAmount}
+            discountAmount={discountAmount}
+            customerName={selectedCustomer?.name}
+            onBack={() => setShowSplitPayment(false)}
+            onComplete={handleSplitComplete}
+            formatCurrency={formatCurrency}
+            formatArk={formatArk}
+          />
+        </div>
+      )}
     </div>
   );
 }
