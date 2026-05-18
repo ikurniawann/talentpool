@@ -211,10 +211,10 @@ export default async function PRDetailPage({ params }: PRDetailPageProps) {
                       <td className="py-3 px-4 text-sm text-center">{item.qty}</td>
                       <td className="py-3 px-4 text-sm text-center">{item.unit}</td>
                       <td className="py-3 px-4 text-sm text-right">
-                        {formatRupiah(item.estimated_price)}
+                        {formatRupiah(item.estimated_price || 0)}
                       </td>
                       <td className="py-3 px-4 text-sm text-right font-medium">
-                        {formatRupiah(item.total)}
+                        {formatRupiah(item.total || 0)}
                       </td>
                     </tr>
                   ))}

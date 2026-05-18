@@ -3,8 +3,8 @@
 // Utility functions untuk HRIS module
 // ============================================================
 
-import { createClient } from './browser';
-import { Employee, Department, PaginatedResponse, EmployeeListFilters } from '@/types';
+import { createClient } from '@/lib/supabase/client';
+import { Employee, Department, PaginatedResponse, EmployeeListFilters } from '@/types/hris';
 
 // ============================================================
 // EMPLOYEES

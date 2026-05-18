@@ -25,16 +25,14 @@ import {
 } from "@/components/ui/dialog";
 import { ArrowLeft, Package, ClipboardCheck, CheckCircle, AlertCircle, Printer, PlusCircle } from "lucide-react";
 import { toast } from "sonner";
-import { GoodsReceipt, GoodsReceiptItem, GRNStatus, QCInspection } from "@/types/purchasing";
-import { getGoodsReceipt, getQCInspection } from "@/lib/purchasing";
 
 export default function GRNDetailPage() {
   const params = useParams();
   const router = useRouter();
   const grnId = params.id as string;
 
-  const [grn, setGrn] = useState<GoodsReceipt | null>(null);
-  const [qc, setQc] = useState<QCInspection | null>(null);
+  const [grn, setGrn] = useState<any | null>(null);
+  const [qc, setQc] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -47,11 +45,11 @@ export default function GRNDetailPage() {
     try {
       setLoading(true);
       const [grnData, qcData] = await Promise.all([
-        getGoodsReceipt(grnId),
-        getQCInspection(grnId),
+        fetch(`/api/purchasing/grn/${grnId}`).then(r => r.json()),
+        fetch(`/api/purchasing/qc/${grnId}`).then(r => r.json()),
       ]);
-      setGrn(grnData);
-      setQc(qcData);
+      setGrn(grnData?.data || grnData);
+      setQc(qcData?.data || qcData);
     } catch (error) {
       console.error("Error loading GRN:", error);
       toast.error("Gagal memuat data GRN");
@@ -60,15 +58,15 @@ export default function GRNDetailPage() {
     }
   };
 
-  const getStatusBadge = (status: GRNStatus) => {
-    const styles: Record<GRNStatus, string> = {
+  const getStatusBadge = (status: string) => {
+    const styles: Record<string, string> = {
       DRAFT: "bg-gray-100 text-gray-800",
       QC_PENDING: "bg-yellow-100 text-yellow-800",
       QC_APPROVED: "bg-green-100 text-green-800",
       QC_REJECTED: "bg-red-100 text-red-800",
       COMPLETED: "bg-blue-100 text-blue-800",
     };
-    const labels: Record<GRNStatus, string> = {
+    const labels: Record<string, string> = {
       DRAFT: "Draft",
       QC_PENDING: "Menunggu QC",
       QC_APPROVED: "QC Approved",
@@ -225,7 +223,7 @@ export default function GRNDetailPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {grn.items?.map((item) => (
+                  {grn.items?.map((item: any) => (
                     <TableRow key={item.id}>
                       <TableCell>
                         <div className="font-medium">{item.raw_material?.nama}</div>

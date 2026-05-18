@@ -10,7 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { DatePicker } from "@/components/ui/datepicker";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { useToast } from "@/components/ui/toast";
+import { useToast } from "@/hooks/use-toast";
 import { BreadcrumbNav } from "@/modules/purchasing/components/breadcrumb/BreadcrumbNav";
 import {
   Command,
@@ -129,7 +129,7 @@ export default function CreateGrnPage() {
 
   // Fetch PO items when delivery selected
   useEffect(() => {
-    const poId = selectedDelivery?.purchase_order_id || selectedDelivery?.po_id;
+    const poId = selectedDelivery?.purchase_order_id;
     if (poId) {
       console.log('Fetching PO items for:', poId);
       fetchPOItems(poId);
@@ -297,7 +297,7 @@ export default function CreateGrnPage() {
                 <div className="space-y-2">
                   <Label className="text-sm font-medium">Pengiriman</Label>
                   <Popover open={openDelivery} onOpenChange={setOpenDelivery}>
-                    <PopoverTrigger asChild>
+                    <PopoverTrigger>
                       <Button
                         variant="outline"
                         role="combobox"
@@ -307,12 +307,10 @@ export default function CreateGrnPage() {
                         <span className="truncate text-left font-medium">
                           {selectedDelivery
                             ? (() => {
-                                // Prioritize kurir, then ekspedisi, then show no resi only
-                                const displayKurir = selectedDelivery.kurir || selectedDelivery.ekspedisi || '';
+                                const displayKurir = selectedDelivery.kurir || '';
                                 if (displayKurir) {
                                   return `${selectedDelivery.no_resi} - ${displayKurir}`;
                                 }
-                                // If no kurir, just show no resi
                                 return selectedDelivery.no_resi;
                               })()
                             : "Pilih pengiriman..."}
@@ -324,8 +322,6 @@ export default function CreateGrnPage() {
                       className="w-[calc(var(--radix-popover-trigger-width)-16px)] p-0 shadow-2xl z-[100] border-gray-200 bg-white ml-2" 
                       align="start" 
                       sideOffset={8} 
-                      avoidCollisions 
-                      collisionPadding={16}
                     >
                       <Command shouldFilter={false} className="bg-white">
                         <div className="flex items-center border-b border-gray-200 px-3 py-2.5">
@@ -421,8 +417,8 @@ export default function CreateGrnPage() {
                       <p className="text-sm font-medium text-gray-900 mt-0.5">{selectedDelivery.no_surat_jalan || "-"}</p>
                     </div>
                     <div>
-                      <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">Kurir/Ekspedisi</span>
-                      <p className="text-sm font-medium text-gray-900 mt-0.5">{(selectedDelivery.kurir || selectedDelivery.ekspedisi) || "-"}</p>
+                      <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">Kurir</span>
+                      <p className="text-sm font-medium text-gray-900 mt-0.5">{selectedDelivery.kurir || "-"}</p>
                     </div>
                     <div>
                       <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">Status</span>
@@ -436,12 +432,12 @@ export default function CreateGrnPage() {
                 {/* Informasi Penerimaan */}
                 <div className="space-y-3 pt-4 border-t mt-4">
                   <div className="space-y-1.5">
-                    <Label htmlFor="tanggal" className="text-sm font-medium">Tanggal Penerimaan</Label>
+                    <Label htmlFor="tanggal">Tanggal Penerimaan</Label>
                     <DatePicker
                       id="tanggal"
-                      date={formData.tanggal_penerimaan ? new Date(formData.tanggal_penerimaan) : new Date()}
+                      value={formData.tanggal_penerimaan}
                       onChange={(date) =>
-                        setFormData((prev) => ({ ...prev, tanggal_penerimaan: date?.toISOString().split("T")[0] || "" }))
+                        setFormData((prev) => ({ ...prev, tanggal_penerimaan: date }))
                       }
                     />
                   </div>

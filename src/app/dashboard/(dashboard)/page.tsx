@@ -42,7 +42,7 @@ const SOURCE_COLORS = ["#6366f1", "#22c55e", "#f59e0b", "#ef4444", "#8b5cf6", "#
 export default function DashboardPage() {
   const router = useRouter();
   const supabase = useMemo(() => createClient(), []);
-  const { toasts, toast, dismiss } = useToast();
+  const { toasts, showToast: toast, removeToast: dismiss } = useToast();
 
   // Redirect purchasing users to /dashboard/purchasing
   useEffect(() => {
@@ -50,6 +50,9 @@ export default function DashboardPage() {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
         const { data: profile } = await supabase.from("users").select("role").eq("id", user.id).single();
+        if (profile?.role === "super_admin") {
+          return;
+        }
         if (profile?.role === "pos") {
           router.replace("/dashboard/pos/cashier-new");
         } else if (profile && ["purchasing_manager", "purchasing_staff", "purchasing_admin", "warehouse_staff", "qc_staff"].includes(profile.role)) {
@@ -225,9 +228,7 @@ export default function DashboardPage() {
       <div className="flex flex-col sm:flex-row gap-3">
         <Select value={brandFilter} onValueChange={(v) => setBrandFilter(v ?? "all")}>
           <SelectTrigger className="w-full sm:w-48">
-            <SelectValue placeholder="Semua Outlet">
-              {brandFilter !== "all" ? (brands.find(b => String(b.id) === brandFilter)?.name ?? '') : undefined}
-            </SelectValue>
+            <SelectValue placeholder="Semua Outlet" />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Semua Outlet</SelectItem>
@@ -437,7 +438,7 @@ export default function DashboardPage() {
         </Card>
       </div>
 
-      <ToastContainer toasts={toasts} onDismiss={dismiss} />
+      <ToastContainer toasts={toasts} removeToast={dismiss} />
     </div>
   );
 }

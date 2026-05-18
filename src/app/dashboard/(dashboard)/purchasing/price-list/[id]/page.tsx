@@ -37,8 +37,9 @@ export default function PriceListDetailPage() {
   const loadData = async () => {
     try {
       setLoading(true);
-      const response = await listPriceLists({});
-      const item = response.find(p => p.id === priceListId);
+      const response: any = await listPriceLists({});
+      const items = Array.isArray(response) ? response : (response.data || []);
+      const item = items.find((p: any) => p.id === priceListId);
       setPriceList(item || null);
     } catch (error) {
       console.error("Error loading price list:", error);
@@ -140,7 +141,7 @@ export default function PriceListDetailPage() {
               <div>
                 <p className="text-sm text-muted-foreground">Supplier</p>
                 <p className="font-medium">{priceList.supplier?.nama_supplier}</p>
-                <p className="text-sm text-muted-foreground">{priceList.supplier?.kode}</p>
+                <p className="text-sm text-muted-foreground">{priceList.supplier?.kode_supplier}</p>
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Bahan Baku</p>
@@ -151,7 +152,7 @@ export default function PriceListDetailPage() {
             <div className="border-t pt-4">
               <div className="flex justify-between items-center mb-2">
                 <span className="text-muted-foreground">Harga per Unit</span>
-                <span className="text-2xl font-bold">{formatCurrency(priceList.harga)}</span>
+                <span className="text-2xl font-bold">{formatCurrency(priceList.harga || 0)}</span>
               </div>
               <p className="text-sm text-muted-foreground">
                 per {priceList.satuan?.nama || "unit"}

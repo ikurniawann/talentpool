@@ -40,7 +40,7 @@ const SOURCE_COLORS = ["#6366f1", "#22c55e", "#f59e0b", "#ef4444", "#8b5cf6", "#
 
 export default function DashboardPage() {
   const supabase = createClient();
-  const { toasts, toast, dismiss } = useToast();
+  const { toasts, showToast, removeToast } = useToast();
 
   const [loading, setLoading] = useState(true);
   const [brandFilter, setBrandFilter] = useState("all");
@@ -159,27 +159,27 @@ export default function DashboardPage() {
       }
     } catch (error) {
       console.error("Error fetching dashboard data:", error);
-      toast("Gagal memuat data dashboard", "error");
+      showToast("Gagal memuat data dashboard", "error");
     } finally {
       setLoading(false);
     }
-  }, [supabase, brandFilter, toast]);
+  }, [supabase, brandFilter, showToast]);
 
   useEffect(() => {
     fetchData();
   }, [fetchData]);
 
   const exportCSV = () => {
-    toast("Data berhasil diekspor ke CSV", "success");
+    showToast("Data berhasil diekspor ke CSV", "success");
   };
 
   const exportPDF = () => {
-    toast("Data berhasil diekspor ke PDF", "success");
+    showToast("Data berhasil diekspor ke PDF", "success");
   };
 
   return (
     <div className="space-y-6">
-      <ToastContainer toasts={toasts} onDismiss={dismiss} />
+      <ToastContainer toasts={toasts} removeToast={removeToast} />
 
       {/* Header */}
       <div className="flex items-center justify-between">

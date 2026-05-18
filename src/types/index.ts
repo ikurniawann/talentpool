@@ -3,7 +3,7 @@
 // ============================================================
 
 // --- Enums ---
-export type UserRole = "hrd" | "hiring_manager" | "direksi" | "purchasing_admin" | "purchasing_manager" | "purchasing_staff" | "finance_staff" | "warehouse_staff" | "pos";
+export type UserRole = "super_admin" | "hrd" | "hiring_manager" | "direksi" | "purchasing_admin" | "purchasing_manager" | "purchasing_staff" | "finance_staff" | "warehouse_staff" | "warehouse_admin" | "pos" | "admin" | "qc_staff";
 export type CandidateSource =
   | "portal"
   | "internal"
@@ -76,11 +76,16 @@ export interface Candidate {
   created_by: string | null;
   created_at: string;
   updated_at: string;
+  promoted_to_employee_id: string | null;
   // New fields for candidate profile
   last_experience?: string | null; // "PT Company Name - Position (2 years)"
   last_education?: string | null; // "S1/D3/SMA - Major - University/School"
   availability?: AvailabilityType | null;
   expected_salary?: number | null;
+  // Joined fields
+  position?: Position;
+  brand?: Brand;
+  interviews?: Interview[];
 }
 
 export interface Interview {

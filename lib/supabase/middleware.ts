@@ -36,8 +36,8 @@ export async function updateSession(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // Public routes
-  const publicRoutes = ["/login", "/portal"];
-  const isPublicRoute = publicRoutes.some((route) =>
+  const publicRoutes = ["/arkiv-os", "/login", "/portal", "/career"];
+  const isPublicRoute = pathname === "/" || publicRoutes.some((route) =>
     pathname.startsWith(route)
   );
 

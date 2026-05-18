@@ -15,7 +15,7 @@ import {
   PencilIcon,
   TrashIcon,
 } from "@heroicons/react/24/outline";
-import { useToast } from "@/components/ui/toast";
+import { useToast } from "@/hooks/use-toast";
 
 type GrnStatus = "pending" | "partially_received" | "received" | "rejected";
 

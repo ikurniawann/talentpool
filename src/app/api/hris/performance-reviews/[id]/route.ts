@@ -2,9 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { createClient } from '@/lib/supabase/server';
 
-export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const supabase = createAdminClient();
+    const { id } = await params;
     const { data, error } = await supabase
       .from('performance_reviews')
       .select(`
@@ -12,7 +13,7 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
         employee:employees!employee_id(id, full_name, nip, department:departments(name), position:positions(name)),
         reviewer:employees!reviewer_id(id, full_name)
       `)
-      .eq('id', params.id)
+      .eq('id', id)
       .single();
 
     if (error || !data) return NextResponse.json({ error: 'Review not found' }, { status: 404 });
@@ -23,8 +24,9 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
   }
 }
 
-export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
+export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const { id } = await params;
     const authClient = await createClient();
     const { data: { user } } = await authClient.auth.getUser();
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -35,7 +37,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
     const { data, error } = await supabase
       .from('performance_reviews')
       .update({ ...body, updated_at: new Date().toISOString() })
-      .eq('id', params.id)
+      .eq('id', id)
       .select()
       .single();
 

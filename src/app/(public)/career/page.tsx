@@ -46,11 +46,19 @@ export default function CareerPage() {
   const [jobsLoading, setJobsLoading] = useState(true);
 
   useEffect(() => {
-    fetch("/api/job-openings/public")
-      .then((res) => res.json())
-      .then((json) => setJobs(Array.isArray(json.data) ? json.data : []))
-      .catch(() => setJobs([]))
-      .finally(() => setJobsLoading(false));
+    const fetchJobs = async () => {
+      try {
+        const res = await fetch("/api/job-openings/public");
+        const json = await res.json();
+        setJobs(Array.isArray(json.data) ? json.data : []);
+      } catch {
+        setJobs([]);
+      } finally {
+        setJobsLoading(false);
+      }
+    };
+
+    fetchJobs();
   }, []);
 
   const departments = useMemo(() => {

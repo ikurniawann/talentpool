@@ -7,7 +7,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { Employee, EmployeeCreateData, ApiResponse, PaginatedResponse } from '@/types';
+import { Employee, EmployeeCreateData, ApiResponse, PaginatedResponse } from '@/types/hris';
 
 // ============================================================
 // GET /api/hris/employees

@@ -47,11 +47,12 @@ export default function PriceListPage() {
   const loadPriceLists = async () => {
     try {
       setLoading(true);
-      const response = await listPriceLists({
+      const response: any = await listPriceLists({
         supplier_id: filterSupplier || undefined,
         raw_material_id: filterMaterial || undefined,
       });
-      setPriceLists(response);
+      const items = Array.isArray(response) ? response : (response.data || []);
+      setPriceLists(items);
     } catch (error) {
       console.error("Error loading price lists:", error);
       toast.error("Gagal memuat data price list");
@@ -158,8 +159,8 @@ export default function PriceListPage() {
               priceLists.map((item) => (
                 <TableRow key={item.id}>
                   <TableCell>
-                    <div className="font-medium">{item.supplier?.nama_supplier}</div>
-                    <div className="text-sm text-muted-foreground">{item.supplier?.kode}</div>
+                <div className="font-medium">{item.supplier?.nama_supplier}</div>
+                <div className="text-sm text-muted-foreground">{item.supplier?.kode_supplier}</div>
                   </TableCell>
                   <TableCell>
                     <div className="font-medium">{item.bahan_baku?.nama}</div>
@@ -168,7 +169,7 @@ export default function PriceListPage() {
                   <TableCell className="text-right">
                     <div className="flex items-center justify-end gap-1">
                       <DollarSign className="w-3 h-3 text-muted-foreground" />
-                      {formatCurrency(item.harga)}
+                      {formatCurrency(item.harga || 0)}
                     </div>
                     <div className="text-xs text-muted-foreground">
                       per {item.satuan?.nama || "unit"}
@@ -188,7 +189,7 @@ export default function PriceListPage() {
                   </TableCell>
                   <TableCell>
                     <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
+                      <DropdownMenuTrigger>
                         <Button variant="ghost" size="icon" className="relative z-10">
                           <MoreVertical className="w-4 h-4" />
                         </Button>

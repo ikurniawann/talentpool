@@ -46,32 +46,41 @@ export default function RawMaterialsEditPage({ params }: { params: { id: string 
   });
 
   useEffect(() => {
-    Promise.all([
-      fetch("/api/purchasing/units?limit=100&is_active=true").then(r => r.json()),
-      fetch(`/api/purchasing/raw-materials/${params.id}`).then(r => r.json()),
-    ]).then(([unitsData, materialData]) => {
-      setUnits(unitsData.data || []);
-      if (!materialData || materialData.success === false) {
+    const fetchData = async () => {
+      try {
+        const [unitsData, materialData] = await Promise.all([
+          fetch("/api/purchasing/units?limit=100&is_active=true").then(r => r.json()),
+          fetch(`/api/purchasing/raw-materials/${params.id}`).then(r => r.json()),
+        ]);
+
+        setUnits(unitsData.data || []);
+        if (!materialData || materialData.success === false) {
+          setNotFound(true);
+          return;
+        }
+        const m = materialData.data || materialData;
+        setForm({
+          kode: m.kode || "",
+          nama: m.nama || "",
+          kategori: m.kategori || "",
+          coa: m.coa || "",
+          deskripsi: m.deskripsi || "",
+          satuan_besar_id: m.satuan_besar_id || m.satuan_besar?.id || "",
+          satuan_kecil_id: m.satuan_kecil_id || m.satuan_kecil?.id || "",
+          konversi_factor: String(m.konversi_factor ?? 1),
+          stok_minimum: String(m.stok_minimum ?? m.minimum_stock ?? 0),
+          stok_maximum: String(m.stok_maksimum ?? m.stok_maximum ?? m.maximum_stock ?? 0),
+          shelf_life_days: String(m.shelf_life_days ?? ""),
+          storage_condition: m.storage_condition || "",
+        });
+      } catch {
         setNotFound(true);
-        return;
+      } finally {
+        setLoadingData(false);
       }
-      const m = materialData.data || materialData;
-      setForm({
-        kode: m.kode || "",
-        nama: m.nama || "",
-        kategori: m.kategori || "",
-        coa: m.coa || "",
-        deskripsi: m.deskripsi || "",
-        satuan_besar_id: m.satuan_besar_id || m.satuan_besar?.id || "",
-        satuan_kecil_id: m.satuan_kecil_id || m.satuan_kecil?.id || "",
-        konversi_factor: String(m.konversi_factor ?? 1),
-        stok_minimum: String(m.stok_minimum ?? m.minimum_stock ?? 0),
-        stok_maximum: String(m.stok_maksimum ?? m.stok_maximum ?? m.maximum_stock ?? 0),
-        shelf_life_days: String(m.shelf_life_days ?? ""),
-        storage_condition: m.storage_condition || "",
-      });
-    }).catch(() => setNotFound(true))
-      .finally(() => setLoadingData(false));
+    };
+
+    fetchData();
   }, [params.id]);
 
   const set = (field: string, value: string) => setForm(f => ({ ...f, [field]: value }));

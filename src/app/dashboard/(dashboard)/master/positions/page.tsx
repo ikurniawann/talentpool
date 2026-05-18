@@ -35,7 +35,7 @@ const LEVEL_OPTIONS = ["Staff", "Senior Staff", "Supervisor", "Assistant Manager
 const EMPTY_FORM = { title: "", department_name: "", level: "Staff", is_active: true };
 
 export default function PositionsPage() {
-  const { toasts, toast, dismiss } = useToast();
+  const { toasts, showToast, removeToast } = useToast();
   const [data, setData] = useState<Position[]>([]);
   const [departments, setDepartments] = useState<{ id: string; name: string }[]>([]);
   const [loading, setLoading] = useState(true);
@@ -76,7 +76,7 @@ export default function PositionsPage() {
 
   async function handleSave() {
     if (!form.title.trim()) {
-      toast("Nama jabatan wajib diisi", "error");
+      showToast("Nama jabatan wajib diisi", "error");
       return;
     }
     setSaving(true);
@@ -88,9 +88,9 @@ export default function PositionsPage() {
       body: JSON.stringify(payload),
     });
     const json = await res.json();
-    if (!res.ok) { toast(json.error || "Gagal menyimpan", "error"); }
+    if (!res.ok) { showToast(json.error || "Gagal menyimpan", "error"); }
     else {
-      toast(json.message || "Berhasil disimpan");
+      showToast(json.message || "Berhasil disimpan");
       setDialog(null);
       fetch();
     }
@@ -102,8 +102,8 @@ export default function PositionsPage() {
     setDeleting(true);
     const res = await window.fetch(`/api/master/positions/${deleteId}`, { method: "DELETE" });
     const json = await res.json();
-    if (!res.ok) { toast(json.error || "Gagal menghapus", "error"); }
-    else { toast(json.message || "Berhasil dihapus"); fetch(); }
+    if (!res.ok) { showToast(json.error || "Gagal menghapus", "error"); }
+    else { showToast(json.message || "Berhasil dihapus"); fetch(); }
     setDeleteId(null);
     setDeleting(false);
   }
@@ -114,7 +114,7 @@ export default function PositionsPage() {
 
   return (
     <div className="space-y-6">
-      <ToastContainer toasts={toasts} onDismiss={dismiss} />
+      <ToastContainer toasts={toasts} removeToast={removeToast} />
 
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">

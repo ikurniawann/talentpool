@@ -7,7 +7,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { Employee, EmployeeUpdateData, ApiResponse } from '@/types';
+import { Employee, EmployeeUpdateData, ApiResponse } from '@/types/hris';
 
 interface RouteParams {
   params: Promise<{ id: string }>;

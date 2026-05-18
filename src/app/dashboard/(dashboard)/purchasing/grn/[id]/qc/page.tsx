@@ -18,8 +18,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, ClipboardCheck, Save, CheckCircle, XCircle, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
-import { GoodsReceipt, GoodsReceiptItem, QCInspectionFormData } from "@/types/purchasing";
-import { getGoodsReceipt, createQCInspection } from "@/lib/purchasing";
 
 const QC_PARAMETERS = [
   "Kemasan",
@@ -36,14 +34,13 @@ export default function QCInspectionPage() {
   const router = useRouter();
   const grnId = params.id as string;
 
-  const [grn, setGrn] = useState<GoodsReceipt | null>(null);
+  const [grn, setGrn] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-
-  const [formData, setFormData] = useState<QCInspectionFormData>({
+  const [saving, setSaving] = useState(false);
+  const [formData, setFormData] = useState({
     status: "PENDING",
     parameter_inspeksi: QC_PARAMETERS,
-    hasil_inspeksi: {},
+    hasil_inspeksi: {} as Record<string, string>,
     catatan_qc: "",
     rekomendasi: "ACCEPT",
   });
@@ -56,8 +53,9 @@ export default function QCInspectionPage() {
 
   const loadGRN = async () => {
     try {
-      const data = await getGoodsReceipt(grnId);
-      setGrn(data);
+      const res = await fetch(`/api/purchasing/grn/${grnId}`);
+      const data = await res.json();
+      setGrn(data?.data || data);
       
       // Initialize hasil inspeksi
       const initialHasil: Record<string, string> = {};
@@ -96,13 +94,23 @@ export default function QCInspectionPage() {
     const rekomendasi = status === "REJECTED" ? "REJECT" : 
                         status === "PARTIAL" ? "REWORK" : "ACCEPT";
 
-    setIsSubmitting(true);
+    setSaving(true);
     try {
-      await createQCInspection(grnId, {
-        ...formData,
-        status,
-        rekomendasi,
+      const res = await fetch("/api/purchasing/qc", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          grn_id: grnId,
+          ...formData,
+          status,
+          rekomendasi,
+        }),
       });
+      
+      if (!res.ok) {
+        const json = await res.json();
+        throw new Error(json.error || "Gagal menyimpan QC");
+      }
       
       toast.success("QC inspection berhasil disimpan");
       router.push(`/dashboard/purchasing/grn/${grnId}`);
@@ -110,7 +118,7 @@ export default function QCInspectionPage() {
       console.error("Error saving QC:", error);
       toast.error(error.message || "Gagal menyimpan QC inspection");
     } finally {
-      setIsSubmitting(false);
+      setSaving(false);
     }
   };
 
@@ -266,7 +274,7 @@ export default function QCInspectionPage() {
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              {grn.items?.map((item) => (
+              {grn.items?.map((item: any) => (
                 <div key={item.id} className="p-3 border rounded-lg">
                   <div className="font-medium text-sm">{item.raw_material?.nama}</div>
                   <div className="text-xs text-muted-foreground">{item.raw_material?.kode}</div>
@@ -283,13 +291,13 @@ export default function QCInspectionPage() {
         {/* Actions */}
         <div className="flex justify-end gap-4">
           <Link href={`/dashboard/purchasing/grn/${grnId}`}>
-            <Button variant="outline" disabled={isSubmitting}>
+            <Button variant="outline" disabled={saving}>
               Batal
             </Button>
           </Link>
-          <Button type="submit" disabled={isSubmitting}>
+          <Button type="submit" disabled={saving}>
             <Save className="w-4 h-4 mr-2" />
-            {isSubmitting ? "Menyimpan..." : "Simpan QC Inspection"}
+            {saving ? "Menyimpan..." : "Simpan QC Inspection"}
           </Button>
         </div>
       </form>

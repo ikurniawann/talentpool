@@ -10,7 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { DatePicker } from "@/components/ui/datepicker";
-import { useToast } from "@/components/ui/toast";
+import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { BreadcrumbNav } from "@/modules/purchasing/components/breadcrumb/BreadcrumbNav";
 import {
@@ -132,9 +132,9 @@ export default function ContinueGrnPage() {
         console.log("GRN po_id:", grn.po_id);
         console.log("GRN purchase_order_id:", grn.purchase_order_id);
         
-        if (poIdToFetch) {
-          console.log("Fetching PO items for PO ID:", poIdToFetch);
-          await fetchPOItems(poIdToFetch);
+        if (grn.po_id) {
+          console.log("Fetching PO items for PO ID:", grn.po_id);
+          await fetchPOItems(grn.po_id);
         } else {
           console.error("❌ No PO ID found in GRN data!");
           console.error("GRN data:", grn);

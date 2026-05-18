@@ -42,7 +42,7 @@ const MARITAL_OPTIONS = [
 export default function EditEmployeePage({ params }: EditEmployeePageProps) {
   const { id } = use(params);
   const router = useRouter();
-  const { toasts, toast, dismiss } = useToast();
+  const { toasts, showToast, removeToast } = useToast();
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -97,7 +97,7 @@ export default function EditEmployeePage({ params }: EditEmployeePageProps) {
   async function fetchEmployee() {
     const res = await fetch(`/api/hris/employees/${id}`);
     if (!res.ok) {
-      toast("Gagal memuat data karyawan", "error");
+      showToast("Gagal memuat data karyawan", "error");
       setLoading(false);
       return;
     }
@@ -177,7 +177,7 @@ export default function EditEmployeePage({ params }: EditEmployeePageProps) {
 
   async function handleSave() {
     if (!form.full_name || !form.email || !form.employment_status) {
-      toast("Nama, email, dan status kepegawaian wajib diisi", "error");
+      showToast("Nama, email, dan status kepegawaian wajib diisi", "error");
       return;
     }
 
@@ -199,10 +199,10 @@ export default function EditEmployeePage({ params }: EditEmployeePageProps) {
       });
       const json = await res.json();
       if (!res.ok) {
-        toast(json.error || "Gagal menyimpan", "error");
+        showToast(json.error || "Gagal menyimpan", "error");
         return;
       }
-      toast("Data karyawan berhasil disimpan", "success");
+      showToast("Data karyawan berhasil disimpan", "success");
       setTimeout(() => router.push(`/dashboard/hris/employees/${id}`), 1200);
     } finally {
       setSaving(false);
@@ -219,7 +219,7 @@ export default function EditEmployeePage({ params }: EditEmployeePageProps) {
 
   return (
     <div className="max-w-4xl mx-auto space-y-6 pb-12">
-      <ToastContainer toasts={toasts} onDismiss={dismiss} />
+      <ToastContainer toasts={toasts} removeToast={removeToast} />
 
       {/* Header */}
       <div className="flex items-center gap-4">
@@ -268,7 +268,7 @@ export default function EditEmployeePage({ params }: EditEmployeePageProps) {
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Jenis Kelamin</label>
-            <Select value={form.gender} onValueChange={(v) => setField("gender", v)} items={GENDER_OPTIONS.map(o => ({ value: o.value, label: o.label }))}>
+            <Select value={form.gender} onValueChange={(v) => setField("gender", v)}>
               <SelectTrigger><SelectValue placeholder="Pilih" /></SelectTrigger>
               <SelectContent>
                 {GENDER_OPTIONS.map((o) => (
@@ -279,7 +279,7 @@ export default function EditEmployeePage({ params }: EditEmployeePageProps) {
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Status Pernikahan</label>
-            <Select value={form.marital_status} onValueChange={(v) => setField("marital_status", v)} items={MARITAL_OPTIONS.map(o => ({ value: o.value, label: o.label }))}>
+            <Select value={form.marital_status} onValueChange={(v) => setField("marital_status", v)}>
               <SelectTrigger><SelectValue placeholder="Pilih" /></SelectTrigger>
               <SelectContent>
                 {MARITAL_OPTIONS.map((o) => (
@@ -322,7 +322,7 @@ export default function EditEmployeePage({ params }: EditEmployeePageProps) {
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Status Kepegawaian <span className="text-red-500">*</span></label>
-            <Select value={form.employment_status} onValueChange={(v) => setField("employment_status", v)} items={employmentStatuses.map(o => ({ value: o.code, label: o.name }))}>
+            <Select value={form.employment_status} onValueChange={(v) => setField("employment_status", v)}>
               <SelectTrigger><SelectValue placeholder="Pilih status" /></SelectTrigger>
               <SelectContent>
                 {employmentStatuses.map((o) => (
@@ -341,7 +341,7 @@ export default function EditEmployeePage({ params }: EditEmployeePageProps) {
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Departemen</label>
-            <Select value={form.department_id} onValueChange={handleDepartmentChange} items={departments.map(d => ({ value: d.id, label: d.name }))}>
+            <Select value={form.department_id} onValueChange={handleDepartmentChange}>
               <SelectTrigger><SelectValue placeholder="Pilih departemen" /></SelectTrigger>
               <SelectContent>
                 {departments.map((d) => (
@@ -352,7 +352,7 @@ export default function EditEmployeePage({ params }: EditEmployeePageProps) {
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Seksi / Tim</label>
-            <Select value={form.section_id} onValueChange={(v) => setField("section_id", v)} items={sections.map(s => ({ value: s.id, label: s.name }))}>
+            <Select value={form.section_id} onValueChange={(v) => setField("section_id", v)}>
               <SelectTrigger><SelectValue placeholder="Pilih seksi" /></SelectTrigger>
               <SelectContent>
                 {sections.map((s) => (
@@ -366,10 +366,8 @@ export default function EditEmployeePage({ params }: EditEmployeePageProps) {
             <Select
               value={form.job_title_id}
               onValueChange={(v) => setField("job_title_id", v)}
-              disabled={!form.department_id}
-              items={filteredPositions.map(p => ({ value: p.id, label: p.title }))}
             >
-              <SelectTrigger>
+              <SelectTrigger className={!form.department_id ? "opacity-50" : ""}>
                 <SelectValue placeholder={form.department_id ? "Pilih jabatan" : "Pilih departemen dulu"} />
               </SelectTrigger>
               <SelectContent>
@@ -381,7 +379,7 @@ export default function EditEmployeePage({ params }: EditEmployeePageProps) {
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Atasan Langsung</label>
-            <Select value={form.reporting_to} onValueChange={(v) => setField("reporting_to", v)} items={managers.filter(m => m.id !== id).map(m => ({ value: m.id, label: `${m.full_name} (${m.nip})` }))}>
+            <Select value={form.reporting_to} onValueChange={(v) => setField("reporting_to", v)}>
               <SelectTrigger><SelectValue placeholder="Pilih atasan" /></SelectTrigger>
               <SelectContent>
                 {managers.filter((m) => m.id !== id).map((m) => (

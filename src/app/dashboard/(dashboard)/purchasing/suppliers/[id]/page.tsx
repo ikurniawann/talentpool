@@ -23,7 +23,7 @@ import {
 } from "lucide-react";
 import { SupplierDetail, SupplierPOSummary } from "@/types/supplier";
 import { getSupplier, deactivateSupplier, getSupplierPOHistory } from "@/lib/purchasing/supplier";
-import { useToast } from "@/components/ui/toast";
+import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 
 function formatCurrency(amount: number, currency = "IDR") {

@@ -128,11 +128,7 @@ export async function GET(request: NextRequest) {
 
     if (error) throw error;
 
-    return successResponse(
-      data || [],
-      undefined,
-      { page, limit, total: count || 0 }
-    );
+    return successResponse(data || []);
   } catch (error) {
     if (error instanceof ApiError) return error.toResponse();
     console.error("Error fetching QC:", error);

@@ -5,7 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { PrinterIcon, DownloadIcon, ArrowLeftIcon } from "@heroicons/react/24/outline";
+import { PrinterIcon, ArrowDownOnSquareIcon, ArrowLeftIcon } from "@heroicons/react/24/outline";
 import { useToast } from "@/components/ui/toast";
 
 interface PayrollDetail {

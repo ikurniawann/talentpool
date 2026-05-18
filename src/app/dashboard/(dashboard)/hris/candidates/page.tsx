@@ -151,7 +151,7 @@ export default function CandidatesPage() {
     }
 
     const { data, count } = await query;
-    setCandidates((data as Candidate[]) ?? []);
+    setCandidates((data as unknown as Candidate[]) ?? []);
     setTotalCount(count ?? 0);
     setLoading(false);
   }, [filter, page]);
@@ -432,9 +432,7 @@ export default function CandidatesPage() {
                 onValueChange={(v) => { setFilter((f) => ({ ...f, brand_id: v === "all" ? "" : (v as string) })); setPage(1); }}
               >
                 <SelectTrigger className="w-[140px] flex-shrink-0">
-                  <SelectValue placeholder="Outlet">
-                    {filter.brand_id && filter.brand_id !== "all" ? (brands.find(b => String(b.id) === filter.brand_id)?.name ?? '') : undefined}
-                  </SelectValue>
+                  <SelectValue placeholder={filter.brand_id && filter.brand_id !== "all" ? (brands.find(b => String(b.id) === filter.brand_id)?.name ?? 'Pilih Outlet') : "Pilih Outlet"} />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Semua Outlet</SelectItem>
@@ -739,12 +737,9 @@ export default function CandidatesPage() {
                       <Select
                         value={field.value}
                         onValueChange={field.onChange}
-                        disabled={brands.length === 0}
                       >
                         <SelectTrigger className="h-9 text-sm">
-                          <SelectValue placeholder={brands.length === 0 ? "Loading..." : "Pilih Outlet"}>
-                            {field.value ? (brands.find(b => String(b.id) === field.value)?.name ?? '') : undefined}
-                          </SelectValue>
+                          <SelectValue placeholder={field.value ? (brands.find(b => String(b.id) === field.value)?.name ?? 'Pilih Outlet') : "Pilih Outlet"} />
                         </SelectTrigger>
                         <SelectContent>
                           {brands.map((b) => (

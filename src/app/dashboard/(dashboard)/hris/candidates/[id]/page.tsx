@@ -53,6 +53,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { PromoteCandidateButton } from "@/components/hris/PromoteCandidateButton";
 
 const STATUS_LABELS: Record<string, string> = {
   new: "Baru",
@@ -89,7 +90,7 @@ const SOURCE_LABELS: Record<string, string> = {
   other: "Lainnya",
 };
 
-interface Candidate {
+interface CandidateView {
   id: string;
   full_name: string;
   email: string;
@@ -107,6 +108,7 @@ interface Candidate {
   updated_at: string;
   brands?: { name: string };
   positions?: { title: string };
+  promoted_to_employee_id?: string | null;
 }
 
 interface Activity {
@@ -133,7 +135,7 @@ export default function CandidateDetailPage() {
   const candidateId = params?.id as string;
   
   const [loading, setLoading] = useState(true);
-  const [candidate, setCandidate] = useState<Candidate | null>(null);
+  const [candidate, setCandidate] = useState<CandidateView | null>(null);
   const [activities, setActivities] = useState<Activity[]>([]);
   const [notes, setNotes] = useState<Note[]>([]);
   const [showEditDialog, setShowEditDialog] = useState(false);
@@ -199,7 +201,7 @@ export default function CandidateDetailPage() {
         positions: positionData ? { title: positionData.title } : null,
       };
 
-      setCandidate(candidate as Candidate);
+      setCandidate(candidate as CandidateView);
 
       // Fetch activities (ignore errors if table doesn't exist yet)
       try {
@@ -382,7 +384,7 @@ export default function CandidateDetailPage() {
             Edit
           </Button>
           <DropdownMenu>
-            <DropdownMenuTrigger asChild>
+            <DropdownMenuTrigger>
               <Button variant="outline" size="icon">
                 <MoreVertical className="w-4 h-4" />
               </Button>
@@ -547,11 +549,12 @@ export default function CandidateDetailPage() {
               <Select
                 value={candidate.status}
                 onValueChange={handleStatusChange}
-                disabled={statusUpdating}
               >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
+                <div className={statusUpdating ? "pointer-events-none opacity-50" : ""}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                </div>
                 <SelectContent>
                   <SelectItem value="new">Baru (New)</SelectItem>
                   <SelectItem value="screening">Screening</SelectItem>
@@ -621,6 +624,15 @@ export default function CandidateDetailPage() {
                 <Edit3 className="w-4 h-4 mr-2" />
                 Edit Data Kandidat
               </Button>
+              {candidate && ['hired', 'talent_pool'].includes(candidate.status) && !candidate.promoted_to_employee_id && (
+                <PromoteCandidateButton
+                  candidate={candidate as any}
+                  onSuccess={() => {
+                    toast.success("Berhasil dipromosikan menjadi karyawan!");
+                    fetchCandidateDetail();
+                  }}
+                />
+              )}
             </CardContent>
           </Card>
 

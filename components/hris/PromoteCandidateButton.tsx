@@ -20,10 +20,17 @@ import {
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { EmploymentStatus } from '@/types/hris';
-import { Candidate } from '@/types';
 
 interface PromoteCandidateButtonProps {
-  candidate: Candidate;
+  candidate: {
+    id: string;
+    full_name: string;
+    email?: string | null;
+    phone?: string;
+    status: string;
+    promoted_to_employee_id?: string | null;
+    position?: { title?: string } | null;
+  };
   onSuccess?: () => void;
 }
 
@@ -138,7 +145,7 @@ export function PromoteCandidateButton({ candidate, onSuccess }: PromoteCandidat
                 <Label htmlFor="employmentStatus">Status Karyawan</Label>
                 <Select
                   value={employmentStatus}
-                  onValueChange={(value: EmploymentStatus) => setEmploymentStatus(value)}
+                  onValueChange={(value) => setEmploymentStatus(value as EmploymentStatus)}
                 >
                   <SelectTrigger id="employmentStatus">
                     <SelectValue placeholder="Pilih status" />

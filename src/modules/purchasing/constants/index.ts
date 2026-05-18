@@ -10,6 +10,7 @@ export const PURCHASING_ROLES = {
   warehouse: "warehouse_staff",
   finance: "finance_staff",
   direksi: "direksi",
+  superAdmin: "super_admin",
 } as const;
 
 export type PurchasingRole = typeof PURCHASING_ROLES[keyof typeof PURCHASING_ROLES];
@@ -21,6 +22,7 @@ export const ALLOWED_PURCHASING_ROLES: PurchasingRole[] = [
   "warehouse_staff",
   "finance_staff",
   "direksi",
+  "super_admin",
 ];
 
 export const ROLE_LABELS: Record<PurchasingRole | string, string> = {
@@ -30,6 +32,7 @@ export const ROLE_LABELS: Record<PurchasingRole | string, string> = {
   warehouse_staff: "Staff Warehouse",
   finance_staff: "Finance Staff",
   direksi: "Direksi",
+  super_admin: "Super Admin",
 };
 
 // ============================================================

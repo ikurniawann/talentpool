@@ -2,12 +2,12 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase/service-client';
 
 // PATCH /api/pos/orders/:id - Update order status and payment
-export async function PATCH(request: NextRequest, { params }: { params: { id: string } }) {
+export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const supabase = createServiceClient();
+    const { id: orderId } = await params;
     const body = await request.json();
     const { status, payment_status, payment_method, amount_paid, ark_coins_used, notes } = body;
-    const orderId = params.id;
 
     // Convert to numbers
     const numericAmountPaid = Number(amount_paid) || 0;
@@ -69,10 +69,10 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
 }
 
 // GET /api/pos/orders/:id - Get single order details
-export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const supabase = createServiceClient();
-    const orderId = params.id;
+    const { id: orderId } = await params;
 
     const { data, error } = await supabase
       .from('pos_orders')

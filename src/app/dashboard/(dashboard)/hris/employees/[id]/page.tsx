@@ -113,7 +113,7 @@ export default function EmployeeProfilePage({ params }: { params: Promise<{ id: 
   const { id } = use(params);
   const router = useRouter();
   const pathname = usePathname();
-  const { toasts, toast, dismiss } = useToast();
+  const { toasts, showToast, removeToast } = useToast();
 
   const [employee, setEmployee] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -189,7 +189,7 @@ export default function EmployeeProfilePage({ params }: { params: Promise<{ id: 
 
   async function handleSaveDocument() {
     if (!docForm.document_name || !docForm.file_url) {
-      toast("Nama dokumen dan URL file wajib diisi", "error");
+      showToast("Nama dokumen dan URL file wajib diisi", "error");
       return;
     }
     setSavingDoc(true);
@@ -199,13 +199,13 @@ export default function EmployeeProfilePage({ params }: { params: Promise<{ id: 
       body: JSON.stringify({ employee_id: id, ...docForm }),
     });
     if (res.ok) {
-      toast("Dokumen berhasil disimpan");
+      showToast("Dokumen berhasil disimpan");
       setDocDialog(false);
       setDocForm({ document_type: "ktp", document_name: "", file_url: "", issue_date: "", expiry_date: "", notes: "" });
       fetchTabData("documents");
     } else {
       const err = await res.json();
-      toast(err.error || "Gagal menyimpan dokumen", "error");
+      showToast(err.error || "Gagal menyimpan dokumen", "error");
     }
     setSavingDoc(false);
   }
@@ -214,10 +214,10 @@ export default function EmployeeProfilePage({ params }: { params: Promise<{ id: 
     if (!confirm("Hapus dokumen ini?")) return;
     const res = await fetch(`/api/hris/employees/documents/${docId}`, { method: "DELETE" });
     if (res.ok) {
-      toast("Dokumen dihapus");
+      showToast("Dokumen dihapus");
       fetchTabData("documents");
     } else {
-      toast("Gagal menghapus dokumen", "error");
+      showToast("Gagal menghapus dokumen", "error");
     }
   }
 
@@ -837,7 +837,7 @@ export default function EmployeeProfilePage({ params }: { params: Promise<{ id: 
         </DialogContent>
       </Dialog>
 
-      <ToastContainer toasts={toasts} onDismiss={dismiss} />
+      <ToastContainer toasts={toasts} removeToast={removeToast} />
     </div>
   );
 }

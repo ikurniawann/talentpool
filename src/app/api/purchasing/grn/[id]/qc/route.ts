@@ -3,18 +3,18 @@ import { createClient } from "@/lib/supabase/server";
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const supabase = await createClient();
-
+    const { id } = await params;
     const { data, error } = await supabase
       .from("qc_inspections")
       .select(`
         *,
         inspected_by_user:inspected_by(id,email)
       `)
-      .eq("grn_id", params.id)
+      .eq("grn_id", id)
       .maybeSingle();
 
     if (error) throw error;
@@ -31,17 +31,18 @@ export async function GET(
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const supabase = await createClient();
+    const { id } = await params;
     const body = await request.json();
 
     // Check GRN status
     const { data: grn } = await supabase
       .from("goods_receipts")
       .select("status")
-      .eq("id", params.id)
+      .eq("id", id)
       .single();
 
     if (!grn) {
@@ -62,7 +63,7 @@ export async function POST(
     const { data: qc, error: qcError } = await supabase
       .from("qc_inspections")
       .insert({
-        grn_id: params.id,
+        grn_id: id,
         ...body,
         inspected_at: new Date().toISOString(),
       })
@@ -86,7 +87,7 @@ export async function POST(
         status: newStatus,
         updated_at: new Date().toISOString(),
       })
-      .eq("id", params.id);
+      .eq("id", id);
 
     return NextResponse.json({ data: qc });
   } catch (error: any) {

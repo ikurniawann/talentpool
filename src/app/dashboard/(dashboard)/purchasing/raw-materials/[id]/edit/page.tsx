@@ -228,7 +228,7 @@ export default function EditRawMaterialPage() {
                 <div className="space-y-1.5">
                   <Label htmlFor="satuan_besar" className="text-xs">Satuan Besar <span className="text-red-500">*</span></Label>
                   <Combobox
-                    options={satuanBesar.map((u) => ({ value: u.id, label: u.nama, description: u.kode }))}
+                    options={satuanBesar.map((u) => ({ value: u.id, label: u.nama, description: u.simbol }))}
                     value={formData.satuan_besar_id}
                     onChange={(v) => setFormData({ ...formData, satuan_besar_id: v })}
                     placeholder="Pilih satuan..."
@@ -244,7 +244,7 @@ export default function EditRawMaterialPage() {
                   <Combobox
                     options={[
                       { value: "", label: "Tidak ada", description: "Tanpa satuan kecil" },
-                      ...satuanKecil.map((u) => ({ value: u.id, label: u.nama, description: u.kode })),
+                      ...satuanKecil.map((u) => ({ value: u.id, label: u.nama, description: u.simbol })),
                     ]}
                     value={formData.satuan_kecil_id || ""}
                     onChange={(v) => setFormData({ ...formData, satuan_kecil_id: v || undefined })}

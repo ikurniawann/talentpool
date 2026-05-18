@@ -152,7 +152,7 @@ export async function GET(request: Request) {
 
     const monthlyTrends: Record<string, any>[] = [];
     if (monthlyData) {
-      const months: Record<string, Record<string, number>> = {};
+      const months: Record<string, Record<string, any>> = {};
       monthlyData.forEach((po: any) => {
         const date = new Date(po.created_at);
         const monthKey = date.toLocaleString("id-ID", { month: "short" });

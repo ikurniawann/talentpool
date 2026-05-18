@@ -60,7 +60,7 @@ export default function NewPOPage() {
         // Find supplier by name if provided
         let supplierId = formData.supplier_id;
         if (supplierName && suppliers.length > 0) {
-          const supplier = suppliers.find(s => s.nama.includes(supplierName));
+          const supplier = suppliers.find(s => s.nama_supplier.includes(supplierName));
           if (supplier) {
             supplierId = supplier.id;
             setFormData(prev => ({ ...prev, supplier_id: supplier.id }));
@@ -68,14 +68,14 @@ export default function NewPOPage() {
         }
         
         // Add item to PO
-        const unit = units.find(u => u.id === material.satuan_id);
+        const unit = units.find(u => u.nama === material.satuan);
         const newItem: POItemForm = {
           id: `temp-${Date.now()}`,
           raw_material_id: material.id,
-          purchase_order_item_id: "",
-          qty: parseInt(qty),
+          qty_ordered: parseInt(qty),
           harga_satuan: material.harga_terakhir || 0,
           subtotal: parseInt(qty) * (material.harga_terakhir || 0),
+          notes: "",
           raw_material_name: material.nama,
           raw_material_unit: unit?.nama || 'Pcs',
         };
@@ -95,6 +95,7 @@ export default function NewPOPage() {
     diskon_persen: 0,
     diskon_nominal: 0,
     ppn_persen: 11,
+    items: [],
   });
 
   const [items, setItems] = useState<POItemForm[]>([]);
@@ -109,8 +110,8 @@ export default function NewPOPage() {
       // Load suppliers
       console.log("Loading suppliers...");
       try {
-        const suppliersRes = await listSuppliers();
-        const suppliersArray = Array.isArray(suppliersRes) ? suppliersRes : suppliersRes.data || [];
+        const suppliersRes: any = await listSuppliers();
+        const suppliersArray = Array.isArray(suppliersRes) ? suppliersRes : (suppliersRes as any).data || [];
         setSuppliers(suppliersArray);
         console.log("Suppliers loaded:", suppliersArray.length);
       } catch (err: any) {
@@ -162,19 +163,19 @@ export default function NewPOPage() {
 
   const filteredSuppliers = suppliers.filter(s => 
     s.nama_supplier.toLowerCase().includes(supplierSearch.toLowerCase()) ||
-    s.kode.toLowerCase().includes(supplierSearch.toLowerCase())
+    s.kode_supplier.toLowerCase().includes(supplierSearch.toLowerCase())
   );
 
   const addItem = () => {
-    setItems([
-      ...items,
+    setItems(prev => [
+      ...prev,
       {
-        id: crypto.randomUUID(),
+        id: `temp-${Date.now()}`,
         raw_material_id: "",
         qty_ordered: 1,
         harga_satuan: 0,
-        diskon_item: 0,
         subtotal: 0,
+        notes: "",
       },
     ]);
   };
@@ -188,19 +189,17 @@ export default function NewPOPage() {
     newItems[index] = { ...newItems[index], [field]: value };
 
     // Recalculate subtotal
-    if (field === "qty_ordered" || field === "harga_satuan" || field === "diskon_item") {
+    if (field === "qty_ordered" || field === "harga_satuan") {
       const qty = field === "qty_ordered" ? value : newItems[index].qty_ordered;
       const price = field === "harga_satuan" ? value : newItems[index].harga_satuan;
-      const discount = field === "diskon_item" ? value : newItems[index].diskon_item;
-      newItems[index].subtotal = qty * price - discount;
+      newItems[index].subtotal = qty * price;
     }
 
     // Update material info
     if (field === "raw_material_id") {
       const material = materials.find((m) => m.id === value);
       newItems[index].raw_material_name = material?.nama;
-      newItems[index].raw_material_unit = material?.satuan_besar_nama;
-      newItems[index].satuan_id = material?.satuan_besar_id;
+      newItems[index].raw_material_unit = material?.satuan;
     }
 
     setItems(newItems);
@@ -242,10 +241,8 @@ export default function NewPOPage() {
         await createPOItem(po.id, {
           raw_material_id: item.raw_material_id,
           qty_ordered: item.qty_ordered,
-          satuan_id: item.satuan_id,
           harga_satuan: item.harga_satuan,
-          diskon_item: item.diskon_item,
-          catatan: item.catatan,
+          notes: item.notes,
         });
       }
 
@@ -319,7 +316,7 @@ export default function NewPOPage() {
                   </Label>
                   <div className="flex gap-2">
                     <Input
-                      value={selectedSupplier ? `${selectedSupplier.nama_supplier} (${selectedSupplier.kode})` : ""}
+                      value={selectedSupplier ? `${selectedSupplier.nama_supplier} (${selectedSupplier.kode_supplier})` : ""}
                       placeholder="Pilih supplier..."
                       readOnly
                       className="flex-1"
@@ -506,24 +503,7 @@ export default function NewPOPage() {
                     />
                   </div>
 
-                  <div className="col-span-2 space-y-1">
-                    <Label className="text-xs">Satuan</Label>
-                    <Combobox
-                      options={(units || []).map((u) => ({
-                        value: u.id,
-                        label: u.nama,
-                        description: u.kode,
-                      }))}
-                      value={item.satuan_id || ""}
-                      onChange={(v) =>
-                        updateItem(index, "satuan_id", v)
-                      }
-                      placeholder="Pilih satuan..."
-                      searchPlaceholder="Cari satuan..."
-                      emptyMessage="Satuan tidak ditemukan"
-                      allowClear
-                    />
-                  </div>
+
 
                   <div className="col-span-2 space-y-1">
                     <Label className="text-xs">Harga *</Label>
@@ -624,7 +604,7 @@ export default function NewPOPage() {
                     >
                       <div className="font-medium">{supplier.nama_supplier}</div>
                       <div className="text-sm text-muted-foreground">
-                        {supplier.kode} • {supplier.pic_name} • {supplier.kota}
+                        {supplier.kode_supplier}
                       </div>
                     </button>
                   ))}

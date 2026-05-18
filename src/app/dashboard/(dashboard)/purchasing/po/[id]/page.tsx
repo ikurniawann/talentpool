@@ -169,20 +169,24 @@ export default function PODetailPage() {
 
   const getStatusBadge = (status: POStatus) => {
     const styles: Record<POStatus, string> = {
-      DRAFT: "bg-gray-100 text-gray-800",
-      APPROVED: "bg-blue-100 text-blue-800",
-      SENT: "bg-purple-100 text-purple-800",
-      PARTIAL: "bg-yellow-100 text-yellow-800",
-      RECEIVED: "bg-green-100 text-green-800",
-      CANCELLED: "bg-red-100 text-red-800",
+      draft: "bg-gray-100 text-gray-800",
+      pending_approval: "bg-yellow-100 text-yellow-800",
+      approved: "bg-blue-100 text-blue-800",
+      sent: "bg-purple-100 text-purple-800",
+      partially_received: "bg-yellow-100 text-yellow-800",
+      received: "bg-green-100 text-green-800",
+      rejected: "bg-red-100 text-red-800",
+      cancelled: "bg-red-100 text-red-800",
     };
     const labels: Record<POStatus, string> = {
-      DRAFT: "Draft",
-      APPROVED: "Approved",
-      SENT: "Terkirim",
-      PARTIAL: "Diterima Sebagian",
-      RECEIVED: "Diterima Penuh",
-      CANCELLED: "Dibatalkan",
+      draft: "Draft",
+      pending_approval: "Menunggu Persetujuan",
+      approved: "Disetujui",
+      sent: "Terkirim",
+      partially_received: "Diterima Sebagian",
+      received: "Diterima Penuh",
+      rejected: "Ditolak",
+      cancelled: "Dibatalkan",
     };
     return <Badge className={styles[status]}>{labels[status]}</Badge>;
   };
@@ -191,7 +195,7 @@ export default function PODetailPage() {
     return `Rp ${num.toLocaleString("id-ID")}`;
   };
 
-  const formatDate = (dateStr?: string) => {
+  const formatDate = (dateStr?: string | null) => {
     if (!dateStr) return "-";
     return new Date(dateStr).toLocaleDateString("id-ID", {
       day: "numeric",
@@ -242,7 +246,7 @@ export default function PODetailPage() {
             Print
           </Button>
           
-          {po.status === "DRAFT" && (
+          {po.status === "draft" && (
             <>
               <Link href={`/dashboard/purchasing/po/${po.id}/edit`}>
                 <Button variant="outline">Edit</Button>
@@ -254,14 +258,14 @@ export default function PODetailPage() {
             </>
           )}
           
-          {po.status === "APPROVED" && (
+          {po.status === "approved" && (
             <Button onClick={() => setIsSendDialogOpen(true)}>
               <Send className="w-4 h-4 mr-2" />
               Kirim ke Supplier
             </Button>
           )}
           
-          {po.status !== "RECEIVED" && po.status !== "CANCELLED" && (
+          {po.status !== "received" && po.status !== "cancelled" && (
             <Button variant="destructive" onClick={() => setIsCancelDialogOpen(true)}>
               <XCircle className="w-4 h-4 mr-2" />
               Batal
@@ -402,25 +406,25 @@ export default function PODetailPage() {
               );
             })()}
 
-            {po.status !== "DRAFT" && po.status !== "CANCELLED" && (
+            {po.status !== "draft" && po.status !== "cancelled" && (
               <div className="pt-4 border-t mt-4">
                 <div className="text-sm text-muted-foreground mb-2">Progress Penerimaan</div>
                 <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
                   <div
                     className={`h-full transition-all duration-500 ${
-                      (po.receive_percentage || 0) >= 100
+                      (po.received_percentage || 0) >= 100
                         ? "bg-green-500"
-                        : (po.receive_percentage || 0) > 0
+                        : (po.received_percentage || 0) > 0
                         ? "bg-yellow-500"
                         : "bg-gray-400"
                     }`}
-                    style={{ width: `${po.receive_percentage || 0}%` }}
+                    style={{ width: `${po.received_percentage || 0}%` }}
                   />
                 </div>
                 <div className="text-right text-sm mt-1">
                   {po.total_qty_received || 0} / {po.total_qty_ordered || 0} item
-                  ({po.receive_percentage || 0}%)
-                  {(po.receive_percentage || 0) > 0 && (po.receive_percentage || 0) < 100 && (
+                  ({po.received_percentage || 0}%)
+                  {(po.received_percentage || 0) > 0 && (po.received_percentage || 0) < 100 && (
                     <span className="ml-2 text-yellow-600 font-medium">(Sebagian)</span>
                   )}
                 </div>
@@ -447,7 +451,7 @@ export default function PODetailPage() {
                 <TableHead>Satuan</TableHead>
                 <TableHead className="text-right">Harga Satuan</TableHead>
                 <TableHead className="text-right">Subtotal</TableHead>
-                {po.status !== "DRAFT" && po.status !== "CANCELLED" && (
+                {po.status !== "draft" && po.status !== "cancelled" && (
                   <TableHead className="text-right">Diterima</TableHead>
                 )}
               </TableRow>
@@ -469,7 +473,7 @@ export default function PODetailPage() {
                   <TableCell className="text-right font-medium">
                     {formatCurrency(item.subtotal)}
                   </TableCell>
-                  {po.status !== "DRAFT" && po.status !== "CANCELLED" && (
+                  {po.status !== "draft" && po.status !== "cancelled" && (
                     <TableCell className="text-right">
                       <div
                         className={

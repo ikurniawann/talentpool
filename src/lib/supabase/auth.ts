@@ -7,6 +7,7 @@ export interface AuthUser {
   id: string;
   full_name: string;
   role: UserRole;
+  email: string;
   brand_id: string | null;
 }
 
@@ -33,6 +34,7 @@ export const getUser = cache(async (): Promise<{ user: AuthUser | null; supabase
       id: user.id,
       full_name: profile.full_name,
       role: profile.role as UserRole,
+      email: user.email ?? "",
       brand_id: profile.brand_id,
     },
     supabase,
@@ -48,7 +50,7 @@ export const requireUser = cache(async (): Promise<AuthUser> => {
 
 export async function requireRole(roles: UserRole[]): Promise<AuthUser> {
   const user = await requireUser();
-  if (!roles.includes(user.role)) {
+  if (user.role !== "super_admin" && !roles.includes(user.role)) {
     redirect("/dashboard");
   }
   return user;

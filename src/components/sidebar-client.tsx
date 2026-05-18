@@ -98,7 +98,10 @@ type IconName =
   | "chart-pie"
   | "arrow-down-on-square"
   | "truck"
-  | "document-magnifying-glass";
+  | "document-magnifying-glass"
+  | "circle-stack"
+  | "document-text"
+  | "clipboard-document-check";
 
 interface IconSet {
   outline: React.ElementType;
@@ -136,6 +139,9 @@ const iconMap: Record<IconName, IconSet> = {
   "arrow-down-on-square": { outline: ArrowDownOnSquareIcon, solid: ArrowDownOnSquareIconSolid },
   truck: { outline: TruckIcon, solid: TruckIconSolid },
   "document-magnifying-glass": { outline: DocumentMagnifyingGlassIcon, solid: DocumentMagnifyingGlassIconSolid },
+  "circle-stack": { outline: CircleStackIcon, solid: CircleStackIconSolid },
+  "document-text": { outline: DocumentTextIcon, solid: DocumentTextIconSolid },
+  "clipboard-document-check": { outline: ClipboardDocumentCheckIcon, solid: ClipboardDocumentCheckIconSolid },
 };
 
 // ============================================================================
@@ -150,7 +156,7 @@ interface NavItem {
 }
 
 interface SidebarClientProps {
-  user: { full_name: string; role: string };
+  user: { full_name: string; role: string; email?: string };
   navItems: NavItem[];
   children: React.ReactNode;
 }
@@ -177,10 +183,13 @@ function NavIcon({ name, className = "w-5 h-5", isActive }: NavIconProps) {
 // ============================================================================
 
 export default function SidebarClient({ user, navItems, children }: SidebarClientProps) {
+  const desktopNavItem: NavItem = { href: "/arkiv-os", label: "Kembali ke Desktop", icon: "home" };
+  const allNavItems = [desktopNavItem, ...navItems];
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [expandedMenus, setExpandedMenus] = useState<string[]>(["HRIS Modules"]);
   const [collapsed, setCollapsed] = useState(false);
+  const [accountOpen, setAccountOpen] = useState(false);
 
   // --------------------------------------------------------------------------
   // Active State Logic
@@ -313,11 +322,12 @@ export default function SidebarClient({ user, navItems, children }: SidebarClien
           collapsed={collapsed}
           onToggleCollapse={toggleCollapse}
           user={user}
+          onAccountClick={() => setAccountOpen(true)}
         />
 
         {/* Navigation */}
         <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
-          {navItems.map((item) => renderNavItem(item))}
+          {allNavItems.map((item) => renderNavItem(item))}
         </nav>
 
         {/* Footer */}
@@ -331,13 +341,35 @@ export default function SidebarClient({ user, navItems, children }: SidebarClien
           onMenuClick={() => setMobileOpen(true)}
           userName={user.full_name}
           onLogout={handleLogout}
+          onAccountClick={() => setAccountOpen(true)}
         />
 
         {/* Top Bar - Desktop Notification + Logout */}
         <div className="hidden lg:flex items-center justify-end gap-3 px-6 py-3 border-b border-gray-100 bg-white/50 backdrop-blur-sm">
+          <Link
+            href="/arkiv-os"
+            className="inline-flex items-center gap-2 rounded-lg bg-pink-600 px-3 py-2 text-sm font-semibold text-white hover:bg-pink-700 transition-colors"
+          >
+            <NavIcon name="home" className="w-4 h-4" isActive={true} />
+            Desktop
+          </Link>
           <NotificationBell />
           <div className="h-6 w-px bg-gray-200" />
-          <span className="text-sm text-gray-700 font-medium">{user.full_name}</span>
+          <button
+            type="button"
+            onClick={() => setAccountOpen(true)}
+            className="inline-flex cursor-pointer items-center gap-3 rounded-xl border border-pink-100 bg-white px-3 py-2 text-left shadow-sm transition-colors hover:bg-pink-50 hover:border-pink-200"
+            title="Klik untuk melihat akun login"
+            aria-label="Buka popup akun login"
+          >
+            <span className="grid h-9 w-9 place-items-center rounded-full bg-pink-600 text-sm font-bold text-white">
+              {user.full_name?.slice(0, 1).toUpperCase() || "A"}
+            </span>
+            <span>
+              <span className="block text-sm text-gray-700 font-medium">{user.full_name}</span>
+              {user.email && <span className="block text-xs text-gray-500">{user.email}</span>}
+            </span>
+          </button>
           <button
             onClick={handleLogout}
             className="p-2 rounded-lg hover:bg-pink-100 text-gray-500 hover:text-pink-600 transition-colors"
@@ -349,6 +381,14 @@ export default function SidebarClient({ user, navItems, children }: SidebarClien
 
         {/* Page Content */}
         <main className={`flex-1 overflow-auto p-4 lg:p-6 ${collapsed ? "lg:ml-0" : ""} transition-all duration-200`}>{children}</main>
+
+        {accountOpen && (
+          <AccountPopup
+            user={user}
+            onClose={() => setAccountOpen(false)}
+            onLogout={handleLogout}
+          />
+        )}
       </div>
     </div>
   );
@@ -361,10 +401,11 @@ export default function SidebarClient({ user, navItems, children }: SidebarClien
 interface SidebarHeaderProps {
   collapsed: boolean;
   onToggleCollapse: () => void;
-  user: { full_name: string; role: string };
+  user: { full_name: string; role: string; email?: string };
+  onAccountClick: () => void;
 }
 
-function SidebarHeader({ collapsed, onToggleCollapse, user }: SidebarHeaderProps) {
+function SidebarHeader({ collapsed, onToggleCollapse, user, onAccountClick }: SidebarHeaderProps) {
   return (
     <div
       className={`p-4 border-b border-pink-200 flex flex-col items-center ${
@@ -381,12 +422,18 @@ function SidebarHeader({ collapsed, onToggleCollapse, user }: SidebarHeaderProps
       {!collapsed && (
         <div className="px-4 pb-3 w-full">
           <p className="text-xs text-gray-500 px-2 mb-2 text-center">Backoffice</p>
-          <div className="mt-3 p-2.5 bg-pink-100 backdrop-blur-sm rounded-lg text-center border border-pink-200">
+          <button
+            type="button"
+            onClick={onAccountClick}
+            className="mt-3 w-full p-2.5 bg-pink-100 backdrop-blur-sm rounded-lg text-center border border-pink-200 hover:bg-pink-200/80 transition-colors"
+            title="Lihat akun login"
+          >
             <p className="text-xs font-semibold text-gray-900">{user.full_name}</p>
+            {user.email && <p className="truncate text-[11px] text-gray-500">{user.email}</p>}
             <p className="text-xs text-pink-600 capitalize">
               {user.role.replace("_", " ")}
             </p>
-          </div>
+          </button>
         </div>
       )}
       <button
@@ -473,10 +520,7 @@ function SidebarFooter({ collapsed, onLogout }: SidebarFooterProps) {
       {!collapsed ? (
         <button
           onClick={onLogout}
-          className="w-full flex items-center justify-center gap-2 px-4 py-2.5 
-                   bg-gradient-to-r from-pink-600 to-pink-700 text-white 
-                   rounded-lg hover:from-pink-700 hover:to-pink-800 
-                   transition-all font-medium shadow-md hover:shadow-lg"
+          className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-pink-600 to-pink-700 text-white rounded-lg hover:from-pink-700 hover:to-pink-800 transition-all font-medium shadow-md hover:shadow-lg"
         >
           <NavIcon name="logout" className="w-5 h-5" isActive={false} />
           <span>Keluar</span>
@@ -484,8 +528,7 @@ function SidebarFooter({ collapsed, onLogout }: SidebarFooterProps) {
       ) : (
         <button
           onClick={onLogout}
-          className="w-full flex items-center justify-center p-3 rounded-lg 
-                   hover:bg-pink-100 text-gray-700"
+          className="w-full flex items-center justify-center p-3 rounded-lg hover:bg-pink-100 text-gray-700"
           title="Logout"
         >
           <NavIcon name="logout" className="w-5 h-5" isActive={false} />
@@ -499,18 +542,82 @@ interface MobileHeaderProps {
   onMenuClick: () => void;
   userName: string;
   onLogout: () => void;
+  onAccountClick: () => void;
 }
 
-function MobileHeader({ onMenuClick, userName, onLogout }: MobileHeaderProps) {
+function MobileHeader({ onMenuClick, userName, onLogout, onAccountClick }: MobileHeaderProps) {
   return (
     <header className="lg:hidden bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between">
       <button onClick={onMenuClick} className="p-2 hover:bg-gray-100 rounded-lg">
         <Bars3Icon className="w-6 h-6 text-gray-700" />
       </button>
-      <span className="font-semibold text-gray-900">{userName}</span>
+      <button onClick={onAccountClick} className="rounded-lg px-3 py-2 text-sm font-semibold text-gray-900 hover:bg-pink-50">
+        {userName}
+      </button>
+      <Link href="/arkiv-os" className="font-semibold text-pink-600">Desktop</Link>
       <button onClick={onLogout} className="p-2 hover:bg-gray-100 rounded-lg">
         <ArrowRightStartOnRectangleIcon className="w-6 h-6 text-gray-700" />
       </button>
     </header>
+  );
+}
+
+function AccountPopup({
+  user,
+  onClose,
+  onLogout,
+}: {
+  user: { full_name: string; role: string; email?: string };
+  onClose: () => void;
+  onLogout: () => void;
+}) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-start justify-end bg-black/20 p-4 pt-16 backdrop-blur-sm" onClick={onClose}>
+      <div
+        className="w-full max-w-sm overflow-hidden rounded-2xl border border-pink-100 bg-white shadow-2xl"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <div className="flex items-center justify-between border-b border-gray-100 px-5 py-4">
+          <div>
+            <h2 className="text-base font-semibold text-gray-900">Akun Login</h2>
+            <p className="text-xs text-gray-500">Session aktif Arkiv OS</p>
+          </div>
+          <button onClick={onClose} className="rounded-lg p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-700">
+            <XMarkIcon className="h-5 w-5" />
+          </button>
+        </div>
+
+        <div className="p-5">
+          <div className="mb-5 rounded-2xl bg-pink-50 p-4 text-center border border-pink-100">
+            <div className="mx-auto mb-3 grid h-14 w-14 place-items-center rounded-full bg-pink-600 text-lg font-bold text-white">
+              {user.full_name?.slice(0, 1).toUpperCase() || "A"}
+            </div>
+            <div className="font-semibold text-gray-900">{user.full_name}</div>
+            {user.email && <div className="mt-1 text-sm text-gray-600">{user.email}</div>}
+            <div className="mt-2 inline-flex rounded-full bg-white px-3 py-1 text-xs font-semibold capitalize text-pink-600 ring-1 ring-pink-100">
+              {user.role.replace("_", " ")}
+            </div>
+          </div>
+
+          <div className="grid gap-2">
+            <Link
+              href="/arkiv-os"
+              onClick={onClose}
+              className="flex items-center justify-center gap-2 rounded-xl bg-pink-600 px-4 py-3 text-sm font-semibold text-white hover:bg-pink-700"
+            >
+              <NavIcon name="home" className="h-5 w-5" isActive={true} />
+              Kembali ke Desktop
+            </Link>
+            <button
+              onClick={onLogout}
+              className="flex items-center justify-center gap-2 rounded-xl border border-pink-200 px-4 py-3 text-sm font-semibold text-pink-700 hover:bg-pink-50"
+            >
+              <NavIcon name="logout" className="h-5 w-5" isActive={false} />
+              Keluar / Ganti Akun
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }

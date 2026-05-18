@@ -29,9 +29,9 @@ export async function GET() {
     return NextResponse.json({
       success: true,
       data: {
-        id: user.id,
-        email: user.email,
         ...profile,
+        id: user.id,
+        email: user.email ?? profile?.email,
       },
     });
   } catch (error: any) {

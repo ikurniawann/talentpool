@@ -239,7 +239,7 @@ export default function POSDashboard() {
         </CardHeader>
         <CardContent>
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[600px]">
+            <table className="w-full">
               <thead>
                 <tr className="text-left text-sm text-gray-500 border-b border-gray-100">
                   <th className="pb-3 font-medium">Order ID</th>

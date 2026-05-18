@@ -3,10 +3,11 @@ import { createClient } from "@/lib/supabase/server";
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const supabase = await createClient();
+    const { id } = await params;
 
     const { data, error } = await supabase
       .from("deliveries")
@@ -15,7 +16,7 @@ export async function GET(
         po:nomor_po,status,tanggal_po,
         supplier:supplier_id(id,kode,nama_supplier)
       `)
-      .eq("id", params.id)
+      .eq("id", id)
       .single();
 
     if (error) throw error;
@@ -38,10 +39,11 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const supabase = await createClient();
+    const { id } = await params;
     const body = await request.json();
 
     const { data, error } = await supabase
@@ -50,7 +52,7 @@ export async function PUT(
         ...body,
         updated_at: new Date().toISOString(),
       })
-      .eq("id", params.id)
+      .eq("id", id)
       .select(`
         *,
         po:nomor_po,status,
@@ -72,15 +74,16 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const supabase = await createClient();
+    const { id } = await params;
 
     const { error } = await supabase
       .from("deliveries")
       .update({ status: "CANCELLED", updated_at: new Date().toISOString() })
-      .eq("id", params.id);
+      .eq("id", id);
 
     if (error) throw error;
 

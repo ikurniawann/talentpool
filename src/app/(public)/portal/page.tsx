@@ -129,50 +129,60 @@ export default function PortalPage() {
 
   // Fetch all active positions from master data
   useEffect(() => {
-    setPositionsLoading(true);
-    console.log("[Positions] Starting fetch...");
-    
-    supabase
-      .from("positions")
-      .select("id, title, brand_id")
-      .eq("is_active", true)
-      .order("title", { ascending: true })
-      .then(({ data, error }) => {
-        console.log("[Positions] Query result:", { data, error });
-        
+    let cancelled = false;
+
+    const fetchPositions = async () => {
+      setPositionsLoading(true);
+      try {
+        const { data, error } = await supabase
+          .from("positions")
+          .select("id, title, brand_id")
+          .eq("is_active", true)
+          .order("title", { ascending: true });
+
+        if (cancelled) return;
+
         if (error) {
           console.error("[Positions] Error:", error);
           setPositions([]);
-        } else if (data && data.length > 0) {
+          return;
+        }
+
+        if (data && data.length > 0) {
           console.log("[Positions] Loaded:", data.length, "positions");
           setPositions(data);
-        } else {
-          console.warn("[Positions] No active positions, trying fallback...");
-          // Fallback: fetch all positions even if inactive
-          return supabase
-            .from("positions")
-            .select("id, title, brand_id")
-            .order("title", { ascending: true })
-            .limit(50)
-            .then(({ data: fallbackData, error: fallbackError }) => {
-              console.log("[Positions] Fallback result:", { fallbackData, fallbackError });
-              if (fallbackError) {
-                console.error("[Positions] Fallback error:", fallbackError);
-                setPositions([]);
-              } else if (fallbackData && fallbackData.length > 0) {
-                console.log("[Positions] Loaded fallback:", fallbackData.length, "positions");
-                setPositions(fallbackData);
-              } else {
-                console.warn("[Positions] Still no data after fallback");
-                setPositions([]);
-              }
-            });
+          return;
         }
-      })
-      .finally(() => {
-        console.log("[Positions] Fetch complete, loading = false");
-        setPositionsLoading(false);
-      });
+
+        console.warn("[Positions] No active positions, trying fallback...");
+        const { data: fallbackData, error: fallbackError } = await supabase
+          .from("positions")
+          .select("id, title, brand_id")
+          .order("title", { ascending: true })
+          .limit(50);
+
+        if (cancelled) return;
+
+        if (fallbackError) {
+          console.error("[Positions] Fallback error:", fallbackError);
+          setPositions([]);
+        } else if (fallbackData && fallbackData.length > 0) {
+          console.log("[Positions] Loaded fallback:", fallbackData.length, "positions");
+          setPositions(fallbackData);
+        } else {
+          console.warn("[Positions] Still no data after fallback");
+          setPositions([]);
+        }
+      } finally {
+        if (!cancelled) {
+          console.log("[Positions] Fetch complete, loading = false");
+          setPositionsLoading(false);
+        }
+      }
+    };
+
+    fetchPositions();
+    return () => { cancelled = true; };
   }, []);
 
   // File handlers
@@ -499,7 +509,7 @@ export default function PortalPage() {
                   <select
                     id="availability"
                     value={watch("availability") || ""}
-                    onChange={(e) => setValue("availability", e.target.value || undefined)}
+                    onChange={(e) => setValue("availability", (e.target.value || undefined) as FormValues["availability"])}
                     className="flex h-10 w-full rounded-md border border-[#e1bec6] bg-transparent px-3 py-2 text-sm outline-none transition-colors focus:border-[#db2777] disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     <option value="">Pilih ketersediaan</option>

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { OnboardingChecklist } from "@/components/hris/OnboardingChecklist";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, User, Calendar, Briefcase, Mail, Phone, Loader2 } from "lucide-react";
@@ -169,10 +169,8 @@ export default function OnboardingPage({ params }: OnboardingPageProps) {
               {employee.full_name}
               {getStatusBadge(employee.employment_status)}
             </div>
+            <span className="text-sm text-gray-500 font-normal ml-2">Informasi karyawan dan detail onboarding</span>
           </CardTitle>
-          <CardDescription>
-            Informasi karyawan dan detail onboarding
-          </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -251,9 +249,7 @@ export default function OnboardingPage({ params }: OnboardingPageProps) {
           <div className="flex items-center justify-between">
             <div>
               <CardTitle>Checklist Onboarding</CardTitle>
-              <CardDescription>
-                Task yang harus diselesaikan selama masa onboarding
-              </CardDescription>
+              <span className="text-sm text-gray-500">Task yang harus diselesaikan selama masa onboarding</span>
             </div>
             <Badge variant="outline" className="bg-blue-100 text-blue-800">
               Auto-generated saat karyawan bergabung

@@ -48,7 +48,7 @@ const COLOR_CLASS_MAP: Record<string, string> = Object.fromEntries(COLOR_OPTIONS
 const EMPTY_FORM = { code: "", name: "", color: "gray", description: "", is_active: true };
 
 export default function EmploymentStatusesPage() {
-  const { toasts, toast, dismiss } = useToast();
+  const { toasts, showToast, removeToast } = useToast();
   const [data, setData] = useState<EmploymentStatus[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -83,7 +83,7 @@ export default function EmploymentStatusesPage() {
 
   async function handleSave() {
     if (!form.code.trim() || !form.name.trim()) {
-      toast("Kode dan nama wajib diisi", "error");
+      showToast("Kode dan nama wajib diisi", "error");
       return;
     }
     setSaving(true);
@@ -94,9 +94,9 @@ export default function EmploymentStatusesPage() {
       body: JSON.stringify(form),
     });
     const json = await res.json();
-    if (!res.ok) { toast(json.error || "Gagal menyimpan", "error"); }
+    if (!res.ok) { showToast(json.error || "Gagal menyimpan", "error"); }
     else {
-      toast(json.message || "Berhasil disimpan");
+      showToast(json.message || "Berhasil disimpan");
       setDialog(null);
       fetch();
     }
@@ -108,8 +108,8 @@ export default function EmploymentStatusesPage() {
     setDeleting(true);
     const res = await window.fetch(`/api/master/employment-statuses/${deleteId}`, { method: "DELETE" });
     const json = await res.json();
-    if (!res.ok) { toast(json.error || "Gagal menghapus", "error"); }
-    else { toast(json.message || "Berhasil dihapus"); fetch(); }
+    if (!res.ok) { showToast(json.error || "Gagal menghapus", "error"); }
+    else { showToast(json.message || "Berhasil dihapus"); fetch(); }
     setDeleteId(null);
     setDeleting(false);
   }
@@ -120,7 +120,7 @@ export default function EmploymentStatusesPage() {
 
   return (
     <div className="space-y-6">
-      <ToastContainer toasts={toasts} onDismiss={dismiss} />
+      <ToastContainer toasts={toasts} removeToast={removeToast} />
 
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
@@ -225,11 +225,7 @@ export default function EmploymentStatusesPage() {
               <label className="text-xs font-medium text-gray-600">Warna Badge</label>
               <Select value={form.color} onValueChange={(v) => setForm((f) => ({ ...f, color: v }))}>
                 <SelectTrigger>
-                  <SelectValue>
-                    <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${COLOR_CLASS_MAP[form.color]}`}>
-                      {COLOR_OPTIONS.find((c) => c.value === form.color)?.label || form.color}
-                    </span>
-                  </SelectValue>
+                  <SelectValue placeholder={COLOR_OPTIONS.find((c) => c.value === form.color)?.label || form.color} />
                 </SelectTrigger>
                 <SelectContent>
                   {COLOR_OPTIONS.map((c) => (

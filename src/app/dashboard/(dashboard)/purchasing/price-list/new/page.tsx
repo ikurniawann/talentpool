@@ -13,7 +13,7 @@ import { toast } from "sonner";
 import { Combobox } from "@/components/ui/combobox";
 import { DatePicker } from "@/components/ui/datepicker";
 import { Supplier } from "@/types/supplier";
-import { RawMaterialWithStock, Unit, SupplierPriceListFormData } from "@/types/raw-material";
+import { RawMaterialWithStock, Unit, SupplierPriceListFormData } from "@/types/purchasing";
 import { listSuppliers, listRawMaterials, listUnits, createPriceList } from "@/lib/purchasing";
 
 export default function NewPriceListPage() {
@@ -49,9 +49,9 @@ export default function NewPriceListPage() {
         listUnits(),
       ]);
       // Handle paginated responses
-      const suppliersData = Array.isArray(suppliersRes) ? suppliersRes : (suppliersRes.data || []);
-      const materialsData = materialsRes.data;
-      const unitsData = Array.isArray(unitsRes) ? unitsRes : (unitsRes.data || []);
+      const suppliersData: any = Array.isArray(suppliersRes) ? suppliersRes : ((suppliersRes as any).data || []);
+      const materialsData: any = materialsRes.data;
+      const unitsData: any = Array.isArray(unitsRes) ? unitsRes : ((unitsRes as any).data || []);
       
       setSuppliers(suppliersData);
       setMaterials(materialsData);
@@ -165,7 +165,7 @@ export default function NewPriceListPage() {
                 <div className="space-y-1.5">
                   <Label htmlFor="supplier" className="text-xs">Supplier <span className="text-red-500">*</span></Label>
                   <Combobox
-                    options={suppliers.map((s) => ({ value: s.id, label: s.nama_supplier, description: s.kota }))}
+                    options={suppliers.map((s) => ({ value: s.id, label: s.nama_supplier, description: s.kota || undefined }))}
                     value={formData.supplier_id}
                     onChange={(v) => setFormData((prev) => ({ ...prev, supplier_id: v }))}
                     placeholder="Pilih supplier..."
@@ -193,7 +193,7 @@ export default function NewPriceListPage() {
               <div className="space-y-1.5">
                 <Label htmlFor="satuan" className="text-xs">Satuan <span className="text-red-500">*</span></Label>
                 <Combobox
-                  options={units.map((u) => ({ value: u.id, label: u.nama, description: u.kode }))}
+                  options={units.map((u) => ({ value: u.id, label: u.nama, description: u.simbol }))}
                   value={formData.satuan_id}
                   onChange={(v) => setFormData((prev) => ({ ...prev, satuan_id: v }))}
                   placeholder="Pilih satuan..."

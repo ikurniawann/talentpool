@@ -6,7 +6,7 @@
 // ============================================================
 // ENUMS
 // ============================================================
-export type UserRole = "hrd" | "hiring_manager" | "direksi";
+export type UserRole = "hrd" | "hiring_manager" | "direksi" | "purchasing_admin" | "purchasing_manager" | "purchasing_staff" | "finance_staff" | "warehouse_staff" | "warehouse_admin" | "pos" | "admin" | "qc_staff";
 export type CandidateSource =
   | "portal"
   | "internal"
@@ -74,6 +74,7 @@ export interface Candidate {
   created_by: string | null;
   created_at: string;
   updated_at: string;
+  promoted_to_employee_id: string | null;
   // Joined fields
   position?: Position;
   brand?: Brand;

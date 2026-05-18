@@ -124,7 +124,7 @@ export default function OrdersPage() {
       <Card>
         <CardContent className="p-0">
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[700px]">
+            <table className="w-full">
               <thead>
                 <tr className="text-left text-sm text-gray-500 border-b border-gray-100">
                   <th className="p-4 font-medium">Order ID</th>

@@ -10,9 +10,67 @@ export default async function DashboardGroupLayout({
 
   return (
     <SidebarClient
-      user={{ full_name: user.full_name, role: user.role }}
+      user={{ full_name: user.full_name, role: user.role, email: user.email }}
       navItems={
-        user.role === "hrd"
+        user.role === "super_admin"
+          ? [
+              { href: "/dashboard", label: "Beranda", icon: "home" },
+              {
+                href: "/dashboard/hris",
+                label: "HRIS Modules",
+                icon: "users",
+                children: [
+                  { href: "/dashboard/hris/candidates", label: "Kandidat", icon: "user-plus" },
+                  { href: "/dashboard/hris/talent-pool", label: "Talent Pool", icon: "star" },
+                  { href: "/dashboard/hris/job-portal", label: "Job Portal", icon: "briefcase" },
+                  { href: "/dashboard/hris/analytics", label: "Analytics", icon: "chart" },
+                  { href: "/dashboard/hris/employees", label: "Karyawan", icon: "users" },
+                  { href: "/dashboard/hris/payroll", label: "Penggajian", icon: "dollar-sign" },
+                  { href: "/dashboard/hris/kpi-templates", label: "KPI Templates", icon: "clipboard" },
+                  { href: "/dashboard/hris/performance", label: "Performance Review", icon: "chart" },
+                ],
+              },
+              {
+                href: "/dashboard/purchasing",
+                label: "Procurement",
+                icon: "shopping",
+                children: [
+                  { href: "/dashboard/purchasing", label: "Dashboard", icon: "home" },
+                  { href: "/dashboard/purchasing/main", label: "Master Data", icon: "database" },
+                  { href: "/dashboard/purchasing/pr", label: "Purchase Request", icon: "clipboard" },
+                  { href: "/dashboard/purchasing/po", label: "Purchase Order", icon: "clipboard-document-check" },
+                  { href: "/dashboard/purchasing/grn", label: "Penerimaan", icon: "arrow-down-on-square" },
+                  { href: "/dashboard/purchasing/products", label: "Produk", icon: "cube" },
+                  { href: "/dashboard/purchasing/raw-materials", label: "Bahan Baku", icon: "circle-stack" },
+                  { href: "/dashboard/purchasing/suppliers", label: "Supplier", icon: "users" },
+                  { href: "/dashboard/purchasing/reports", label: "Laporan", icon: "chart" },
+                ],
+              },
+              {
+                href: "/dashboard/pos",
+                label: "POS",
+                icon: "shopping",
+                children: [
+                  { href: "/dashboard/pos", label: "POS Dashboard", icon: "home" },
+                  { href: "/dashboard/pos/cashier-new", label: "Cashier", icon: "shopping" },
+                  { href: "/dashboard/pos/orders", label: "Orders", icon: "clipboard" },
+                  { href: "/dashboard/pos/products", label: "Products", icon: "cube" },
+                  { href: "/dashboard/pos/reservation", label: "Reservation", icon: "calendar" },
+                ],
+              },
+              {
+                href: "/dashboard/master",
+                label: "Master Data",
+                icon: "database",
+                children: [
+                  { href: "/dashboard/master/departments", label: "Departemen", icon: "building" },
+                  { href: "/dashboard/master/positions", label: "Jabatan", icon: "briefcase" },
+                  { href: "/dashboard/master/employment-statuses", label: "Status Kepegawaian", icon: "identification" },
+                ],
+              },
+              { href: "/dashboard/settings", label: "Pengaturan", icon: "settings" },
+            ]
+          : user.role === "hrd"
           ? [
               { href: "/dashboard", label: "Beranda", icon: "home" },
               {
@@ -44,28 +102,14 @@ export default async function DashboardGroupLayout({
                 ],
               },
               {
-                href: "/dashboard/performance",
+                href: "/dashboard/hris/kpi-templates",
                 label: "KPI & Performance",
                 icon: "star",
                 children: [
-                  { href: "/dashboard/performance/kpi-templates", label: "Template KPI", icon: "clipboard" },
-                  { href: "/dashboard/performance/employee-kpis", label: "KPI Karyawan", icon: "star" },
-                  { href: "/dashboard/performance/reviews", label: "Performance Review", icon: "chart" },
-                  { href: "/dashboard/performance/dashboard", label: "Dashboard KPI", icon: "chart-bar" },
-                  {
-                    href: "/dashboard/hris/performance/360-feedback",
-                    label: "360° Feedback",
-                    icon: "users",
-                    children: [
-                      { href: "/dashboard/hris/performance/360-feedback/cycles", label: "Cycles", icon: "calendar" },
-                      { href: "/dashboard/hris/performance/360-feedback/cycles/new", label: "New Cycle", icon: "plus" },
-                      { href: "/dashboard/hris/performance/360-feedback/submit", label: "Submit Feedback", icon: "paper-airplane" },
-                      { href: "/dashboard/hris/performance/360-feedback/results", label: "Results", icon: "chart-bar" },
-                      { href: "/dashboard/hris/performance/360-feedback/approvals", label: "Approvals", icon: "check-circle" },
-                      { href: "/dashboard/hris/performance/360-feedback/dashboard", label: "Executive Dashboard", icon: "chart-pie" },
-                      { href: "/dashboard/hris/performance/360-feedback/test-data", label: "Demo Report", icon: "document-text" },
-                    ],
-                  },
+                  { href: "/dashboard/hris/kpi-templates", label: "KPI Templates", icon: "clipboard" },
+                  { href: "/dashboard/hris/kpi-templates/new", label: "Buat Template", icon: "plus" },
+                  { href: "/dashboard/hris/performance", label: "Performance Review", icon: "chart" },
+                  { href: "/dashboard/hris/performance/new", label: "Review Baru", icon: "plus" },
                 ],
               },
               {

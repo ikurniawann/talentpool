@@ -1,21 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 
-interface Params {
-  params: {
-    id: string;
-  };
-}
-
 // GET /api/purchasing/grn/[id]/returnable-items
 // Get items from GRN that can be returned
 export async function GET(
   request: NextRequest,
-  { params }: Params
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const supabase = await createClient();
-    const grnId = params.id;
+    const grnId = (await params).id;
 
     // Get returnable items from view
     const { data, error } = await supabase

@@ -52,7 +52,7 @@ export default function ScheduleStaffPage() {
   const router = useRouter();
   const pathname = usePathname();
   const supabase = createClient();
-  const { toasts, toast, dismiss } = useToast();
+  const { toasts, showToast, removeToast } = useToast();
 
   const [staff, setStaff] = useState<any[]>([]);
   const [schedules, setSchedules] = useState<any[]>([]);
@@ -173,7 +173,7 @@ export default function ScheduleStaffPage() {
       });
     }
 
-    toast("Jadwal berhasil disimpan");
+    showToast("Jadwal berhasil disimpan");
     setSaving(false);
     setScheduleDialog(null);
     fetchData();
@@ -185,7 +185,7 @@ export default function ScheduleStaffPage() {
 
     // For now, just show a placeholder message
     // Full Excel parsing would require xlsx library
-    toast("Fitur import Excel dalam pengembangan. Silakan input jadwal secara manual.", "error");
+    showToast("Fitur import Excel dalam pengembangan. Silakan input jadwal secara manual.", "error");
     setImportDialog(false);
     e.target.value = "";
   }
@@ -292,7 +292,7 @@ export default function ScheduleStaffPage() {
       <Card>
         <CardContent className="p-0">
           <div className="overflow-x-auto">
-            <table className="w-full text-sm min-w-[800px]">
+            <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-gray-100 bg-gray-50">
                   <th className="text-left p-3 text-xs font-semibold text-gray-500 uppercase">Staff</th>
@@ -462,7 +462,7 @@ export default function ScheduleStaffPage() {
         </DialogContent>
       </Dialog>
 
-      <ToastContainer toasts={toasts} onDismiss={dismiss} />
+      <ToastContainer toasts={toasts} removeToast={removeToast} />
     </div>
   );
 }

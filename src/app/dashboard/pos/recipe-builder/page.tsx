@@ -170,7 +170,7 @@ export default function RecipeBuilderPage() {
               </div>
             ) : (
               <div className="space-y-3 overflow-x-auto">
-                <div className="min-w-[600px] grid grid-cols-12 gap-2 text-sm font-medium text-gray-500 pb-2 border-b">
+                <div className="grid grid-cols-12 gap-2 text-sm font-medium text-gray-500 pb-2 border-b">
                   <div className="col-span-4">Bahan</div>
                   <div className="col-span-2">Jumlah</div>
                   <div className="col-span-2">Satuan</div>
@@ -178,7 +178,7 @@ export default function RecipeBuilderPage() {
                   <div className="col-span-1"></div>
                 </div>
                 {ingredients.map((ingredient, index) => (
-                  <div key={index} className="min-w-[600px] grid grid-cols-12 gap-2 items-center">
+                  <div key={index} className="grid grid-cols-12 gap-2 items-center">
                     <div className="col-span-4">
                       <div className="font-medium text-gray-900">{ingredient.name}</div>
                     </div>

@@ -90,9 +90,10 @@ export default function ProductDetailPage() {
 
   const calculateMargin = () => {
     if (!product) return { amount: 0, percentage: 0 };
-    const amount = product.harga_jual - product.hpp_estimasi;
-    const percentage = product.hpp_estimasi > 0 
-      ? (amount / product.hpp_estimasi) * 100 
+    const hpp = product.hpp_estimasi || 0;
+    const amount = product.harga_jual - hpp;
+    const percentage = hpp > 0 
+      ? (amount / hpp) * 100 
       : 0;
     return { amount, percentage };
   };
@@ -134,7 +135,7 @@ export default function ProductDetailPage() {
                 <Badge variant="secondary">Nonaktif</Badge>
               )}
             </div>
-            <p className="text-muted-foreground">{product.kode}</p>
+            <p className="text-muted-foreground">{product.kode_produk}</p>
           </div>
         </div>
         <div className="flex gap-2">
@@ -172,7 +173,7 @@ export default function ProductDetailPage() {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <p className="text-sm text-muted-foreground">Kode</p>
-                    <p className="font-medium">{product.kode}</p>
+                    <p className="font-medium">{product.kode_produk}</p>
                   </div>
                   <div>
                     <p className="text-sm text-muted-foreground">Kategori</p>
@@ -256,7 +257,7 @@ export default function ProductDetailPage() {
                         Total HPP
                       </TableCell>
                       <TableCell className="text-right font-semibold">
-                        {formatCurrency(bomItems.reduce((sum, item) => sum + item.subtotal, 0))}
+                        {formatCurrency(bomItems.reduce((sum, item) => sum + (item.subtotal || 0), 0))}
                       </TableCell>
                     </TableRow>
                   </TableBody>

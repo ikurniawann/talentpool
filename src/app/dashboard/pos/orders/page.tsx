@@ -81,6 +81,63 @@ const getPaymentBadge = (method: string) => {
   }
 };
 
+// Moved to module scope so OrderDetail can also use them
+function printReceiptWindow(order: Order, paymentMethod: string, arkUsed: number = 0) {
+  const printWindow = window.open('', '_blank');
+  if (printWindow) {
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>Receipt - ${order.order_number}</title>
+          <style>
+            body { font-family: monospace; width: 58mm; padding: 10px; margin: 0; }
+            .header { text-align: center; margin-bottom: 10px; }
+            .divider { border-bottom: 1px dashed #000; margin: 5px 0; }
+            .row { display: flex; justify-content: space-between; margin: 3px 0; }
+            .total { font-weight: bold; font-size: 1.2em; }
+            @media print { @page { margin: 0; } body { -webkit-print-color-adjust: exact; } }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <h3>Arkiv OS POS</h3>
+            <p>${order.order_number}</p>
+            <p>${new Date(order.ordered_at!).toLocaleString('id-ID')}</p>
+          </div>
+          <div class="divider"></div>
+          ${order.items?.map((item: any) => `
+            <div class="row">
+              <span>${item.product_name} x${item.quantity}</span>
+              <span>Rp ${item.total_amount.toLocaleString('id-ID')}</span>
+            </div>
+          `).join('') || ''}
+          <div class="divider"></div>
+          <div class="row total">
+            <span>Total</span>
+            <span>Rp ${order.total_amount?.toLocaleString('id-ID')}</span>
+          </div>
+          <div class="row">
+            <span>Payment</span>
+            <span>${paymentMethod.toUpperCase()}${arkUsed > 0 ? ` (${arkUsed} ARK)` : ''}</span>
+          </div>
+          <div class="divider"></div>
+          <p style="text-align: center; font-size: 0.8em;">Terima kasih!</p>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
+    printWindow.focus();
+    setTimeout(() => {
+      printWindow.print();
+      printWindow.close();
+    }, 250);
+  }
+}
+
+function printReceiptPreview(order: Order) {
+  printReceiptWindow(order, order.payment_method || 'CASH', order.ark_coins_used || 0);
+}
+
 export default function OrdersPage() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
@@ -94,62 +151,6 @@ export default function OrdersPage() {
   const [arkCoinCustomer, setArkCoinCustomer] = useState<Customer | null>(null);
   const [arkToUse, setArkToUse] = useState<number>(0);
   const [scanningArk, setScanningArk] = useState(false);
-
-  const printReceiptPreview = (order: Order) => {
-    printReceiptWindow(order, order.payment_method || 'CASH', order.ark_coins_used || 0);
-  };
-
-  const printReceiptWindow = (order: Order, paymentMethod: string, arkUsed: number = 0) => {
-    const printWindow = window.open('', '_blank');
-    if (printWindow) {
-      printWindow.document.write(`
-        <html>
-          <head>
-            <title>Receipt - ${order.order_number}</title>
-            <style>
-              body { font-family: monospace; width: 58mm; padding: 10px; margin: 0; }
-              .header { text-align: center; margin-bottom: 10px; }
-              .divider { border-bottom: 1px dashed #000; margin: 5px 0; }
-              .row { display: flex; justify-content: space-between; margin: 3px 0; }
-              .total { font-weight: bold; font-size: 1.2em; }
-              @media print { @page { margin: 0; } body { -webkit-print-color-adjust: exact; } }
-            </style>
-          </head>
-          <body>
-            <div class="header">
-              <h3>Arkiv OS POS</h3>
-              <p>${order.order_number}</p>
-              <p>${new Date(order.ordered_at!).toLocaleString('id-ID')}</p>
-            </div>
-            <div class="divider"></div>
-            ${order.items?.map((item: any) => `
-              <div class="row">
-                <span>${item.product_name} x${item.quantity}</span>
-                <span>Rp ${item.total_amount.toLocaleString('id-ID')}</span>
-              </div>
-            `).join('') || ''}
-            <div class="divider"></div>
-            <div class="row total">
-              <span>Total</span>
-              <span>Rp ${order.total_amount?.toLocaleString('id-ID')}</span>
-            </div>
-            <div class="row">
-              <span>Payment</span>
-              <span>${paymentMethod.toUpperCase()}${arkUsed > 0 ? ` (${arkUsed} ARK)` : ''}</span>
-            </div>
-            <div class="divider"></div>
-            <p style="text-align: center; font-size: 0.8em;">Terima kasih!</p>
-          </body>
-        </html>
-      `);
-      printWindow.document.close();
-      printWindow.focus();
-      setTimeout(() => {
-        printWindow.print();
-        printWindow.close();
-      }, 250);
-    }
-  };
 
   useEffect(() => {
     loadOrders();

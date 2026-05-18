@@ -19,7 +19,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Search, MoreVertical, Package, Calculator, ArrowUpTray } from "lucide-react";
+import { Plus, Search, MoreVertical, Package, Calculator, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { ProductWithCOGS, PaginatedResponse } from "@/types/purchasing";
 import { listProducts, deleteProduct } from "@/lib/purchasing";
@@ -76,8 +76,8 @@ export default function ProductsPage() {
       setProducts(response.data);
       setPagination((prev) => ({
         ...prev,
-        total: response.pagination.total,
-        total_pages: response.pagination.total_pages,
+        total: response.total,
+        total_pages: response.total_pages,
       }));
     } catch (error) {
       console.error("Error loading products:", error);
@@ -170,7 +170,7 @@ export default function ProductsPage() {
             ) : (
               products.map((product) => (
                 <TableRow key={product.id}>
-                  <TableCell className="font-medium">{product.kode}</TableCell>
+                  <TableCell className="font-medium">{product.kode_produk}</TableCell>
                   <TableCell>
                     <Link
                       href={`/dashboard/purchasing/products/${product.id}`}
@@ -183,7 +183,7 @@ export default function ProductsPage() {
                   <TableCell className="text-right">
                     <div className="flex items-center justify-end gap-1">
                       <Calculator className="w-3 h-3 text-muted-foreground" />
-                      {formatCurrency(product.hpp_estimasi)}
+                      {formatCurrency(product.hpp_estimasi || 0)}
                     </div>
                   </TableCell>
                   <TableCell className="text-right">
@@ -198,7 +198,7 @@ export default function ProductsPage() {
                   </TableCell>
                   <TableCell>
                     <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
+                      <DropdownMenuTrigger>
                         <Button variant="ghost" size="icon" className="relative z-10">
                           <MoreVertical className="w-4 h-4" />
                         </Button>
@@ -231,7 +231,7 @@ export default function ProductsPage() {
 
       {/* Pagination */}
       {pagination.total_pages > 1 && (
-        <Pagination>
+        <Pagination currentPage={pagination.page} totalPages={pagination.total_pages}>
           <PaginationContent>
             <PaginationItem>
               <PaginationPrevious

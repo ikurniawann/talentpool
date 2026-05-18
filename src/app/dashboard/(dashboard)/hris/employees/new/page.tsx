@@ -97,7 +97,7 @@ function FieldLabel({ children, required }: { children: React.ReactNode; require
 
 export default function NewEmployeePage() {
   const router = useRouter();
-  const { toasts, toast, dismiss } = useToast();
+  const { toasts, showToast, removeToast } = useToast();
 
   const [saving, setSaving] = useState(false);
   const [successData, setSuccessData] = useState<SuccessData | null>(null);
@@ -178,7 +178,7 @@ export default function NewEmployeePage() {
 
   async function handleSave() {
     if (!form.full_name || !form.email || !form.join_date || !form.employment_status) {
-      toast("Nama, email, tanggal bergabung, dan status kepegawaian wajib diisi", "error");
+      showToast("Nama, email, tanggal bergabung, dan status kepegawaian wajib diisi", "error");
       return;
     }
 
@@ -201,7 +201,7 @@ export default function NewEmployeePage() {
       const json = await res.json();
 
       if (!res.ok) {
-        toast(json.error || "Gagal menyimpan data karyawan", "error");
+        showToast(json.error || "Gagal menyimpan data karyawan", "error");
         return;
       }
 
@@ -211,7 +211,7 @@ export default function NewEmployeePage() {
         nip: json.data?.nip || "-",
       });
     } catch {
-      toast("Terjadi kesalahan, coba lagi", "error");
+      showToast("Terjadi kesalahan, coba lagi", "error");
     } finally {
       setSaving(false);
     }
@@ -238,7 +238,7 @@ export default function NewEmployeePage() {
 
   return (
     <div className="max-w-4xl mx-auto space-y-4 pb-10">
-      <ToastContainer toasts={toasts} onDismiss={dismiss} />
+      <ToastContainer toasts={toasts} removeToast={removeToast} />
 
       {successData && (
         <SuccessModal
@@ -327,7 +327,7 @@ export default function NewEmployeePage() {
           </div>
           <div>
             <FieldLabel>Jenis Kelamin</FieldLabel>
-            <Select value={form.gender} onValueChange={(v) => setField("gender", v)} items={GENDER_OPTIONS.map(o => ({ value: o.value, label: o.label }))}>
+            <Select value={form.gender} onValueChange={(v) => setField("gender", v)}>
               <SelectTrigger className="h-8 text-sm"><SelectValue placeholder="Pilih" /></SelectTrigger>
               <SelectContent>
                 {GENDER_OPTIONS.map((o) => (
@@ -338,7 +338,7 @@ export default function NewEmployeePage() {
           </div>
           <div>
             <FieldLabel>Status Pernikahan</FieldLabel>
-            <Select value={form.marital_status} onValueChange={(v) => setField("marital_status", v)} items={MARITAL_OPTIONS.map(o => ({ value: o.value, label: o.label }))}>
+            <Select value={form.marital_status} onValueChange={(v) => setField("marital_status", v)}>
               <SelectTrigger className="h-8 text-sm"><SelectValue placeholder="Pilih" /></SelectTrigger>
               <SelectContent>
                 {MARITAL_OPTIONS.map((o) => (
@@ -407,7 +407,7 @@ export default function NewEmployeePage() {
           </div>
           <div>
             <FieldLabel required>Status Kepegawaian</FieldLabel>
-            <Select value={form.employment_status} onValueChange={(v) => setField("employment_status", v)} items={employmentStatuses.map(o => ({ value: o.code, label: o.name }))}>
+            <Select value={form.employment_status} onValueChange={(v) => setField("employment_status", v)}>
               <SelectTrigger className="h-8 text-sm"><SelectValue placeholder="Pilih status" /></SelectTrigger>
               <SelectContent>
                 {employmentStatuses.map((o) => (
@@ -418,7 +418,7 @@ export default function NewEmployeePage() {
           </div>
           <div>
             <FieldLabel>Departemen</FieldLabel>
-            <Select value={form.department_id} onValueChange={handleDepartmentChange} items={departments.map(d => ({ value: d.id, label: d.name }))}>
+            <Select value={form.department_id} onValueChange={handleDepartmentChange}>
               <SelectTrigger className="h-8 text-sm"><SelectValue placeholder="Pilih departemen" /></SelectTrigger>
               <SelectContent>
                 {departments.map((d) => (
@@ -429,7 +429,7 @@ export default function NewEmployeePage() {
           </div>
           <div>
             <FieldLabel>Seksi / Tim</FieldLabel>
-            <Select value={form.section_id} onValueChange={(v) => setField("section_id", v)} items={sections.map(s => ({ value: s.id, label: s.name }))}>
+            <Select value={form.section_id} onValueChange={(v) => setField("section_id", v)}>
               <SelectTrigger className="h-8 text-sm"><SelectValue placeholder="Pilih" /></SelectTrigger>
               <SelectContent>
                 {sections.map((s) => (
@@ -443,8 +443,6 @@ export default function NewEmployeePage() {
             <Select
               value={form.job_title_id}
               onValueChange={(v) => setField("job_title_id", v)}
-              disabled={!form.department_id}
-              items={filteredPositions.map(p => ({ value: p.id, label: p.title }))}
             >
               <SelectTrigger className="h-8 text-sm">
                 <SelectValue placeholder={form.department_id ? "Pilih jabatan" : "Pilih departemen dulu"} />
@@ -458,7 +456,7 @@ export default function NewEmployeePage() {
           </div>
           <div>
             <FieldLabel>Atasan Langsung</FieldLabel>
-            <Select value={form.reporting_to} onValueChange={(v) => setField("reporting_to", v)} items={managers.map(m => ({ value: m.id, label: `${m.full_name} (${m.nip})` }))}>
+            <Select value={form.reporting_to} onValueChange={(v) => setField("reporting_to", v)}>
               <SelectTrigger className="h-8 text-sm"><SelectValue placeholder="Pilih" /></SelectTrigger>
               <SelectContent>
                 {managers.map((m) => (

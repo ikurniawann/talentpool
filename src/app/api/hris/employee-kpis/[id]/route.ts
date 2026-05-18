@@ -2,9 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { createClient } from '@/lib/supabase/server';
 
-export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const supabase = createAdminClient();
+    const { id } = await params;
     const { data: kpi, error } = await supabase
       .from('employee_kpis')
       .select(`
@@ -20,7 +21,7 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
         template:kpi_templates(id, name, category, measurement_formula),
         assigner:employees!assigned_by(id, full_name)
       `)
-      .eq('id', params.id)
+      .eq('id', id)
       .single();
 
     if (error || !kpi) return NextResponse.json({ error: 'KPI not found' }, { status: 404 });
@@ -28,7 +29,7 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
     const { data: progressUpdates } = await supabase
       .from('kpi_progress_updates')
       .select(`*, updater:employees!updated_by(id, full_name)`)
-      .eq('employee_kpi_id', params.id)
+      .eq('employee_kpi_id', id)
       .order('created_at', { ascending: false });
 
     return NextResponse.json({ data: { ...kpi, progress_updates: progressUpdates || [] } });
@@ -37,8 +38,9 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
   }
 }
 
-export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
+export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const { id } = await params;
     const authClient = await createClient();
     const { data: { user } } = await authClient.auth.getUser();
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -53,7 +55,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
     const { data, error } = await supabase
       .from('employee_kpis')
       .update({ ...body, updated_at: new Date().toISOString() })
-      .eq('id', params.id)
+      .eq('id', id)
       .select()
       .single();
 

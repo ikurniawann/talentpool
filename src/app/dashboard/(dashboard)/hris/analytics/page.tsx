@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useToast, ToastContainer } from "@/components/ui/toast";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -36,13 +37,12 @@ import {
   ResponsiveContainer,
   ReferenceLine,
 } from "recharts";
-import { useToast, ToastContainer } from "@/components/ui/toast";
+
 
 const COLORS = ["#6366f1", "#22c55e", "#f59e0b", "#ef4444", "#8b5cf6", "#06b6d4", "#ec4899", "#14b8a6"];
 
 export default function AnalyticsPage() {
-  const { toasts, toast, dismiss } = useToast();
-
+  const { toasts, showToast, removeToast } = useToast();
   const [brandFilter, setBrandFilter] = useState("all");
   const [period, setPeriod] = useState("month");
   const [brands, setBrands] = useState<any[]>([]);
@@ -161,7 +161,7 @@ export default function AnalyticsPage() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a"); a.href = url; a.download = "laporan-analytics.csv"; a.click();
     URL.revokeObjectURL(url);
-    toast("Export CSV berhasil");
+    showToast("Export CSV berhasil");
   };
 
   return (
@@ -181,9 +181,7 @@ export default function AnalyticsPage() {
       <div className="flex flex-col sm:flex-row gap-3">
         <Select value={brandFilter} onValueChange={(v) => setBrandFilter(v ?? "all")}>
           <SelectTrigger className="w-full sm:w-48">
-            <SelectValue placeholder="Semua Outlet">
-              {brandFilter !== "all" && brands.find(b => b.id === brandFilter)?.name}
-            </SelectValue>
+            <SelectValue placeholder="Semua Outlet" />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Semua Outlet</SelectItem>
@@ -440,7 +438,7 @@ export default function AnalyticsPage() {
         </Card>
       </div>
 
-      <ToastContainer toasts={toasts} onDismiss={dismiss} />
+      <ToastContainer toasts={toasts} removeToast={removeToast} />
     </div>
   );
 }

@@ -129,7 +129,7 @@ export async function POST(request: NextRequest) {
     } catch (validationError) {
       console.error('Validation error:', validationError);
       if (validationError instanceof z.ZodError) {
-        const errors = validationError.errors.map(e => `${e.path.join('.')}: ${e.message}`);
+        const errors = validationError.issues.map(e => `${e.path.join('.')}: ${e.message}`);
         return NextResponse.json(
           { error: 'Validation failed', details: errors },
           { status: 400 }
@@ -220,7 +220,7 @@ export async function POST(request: NextRequest) {
 
     if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { error: 'Validation failed', details: error.errors },
+        { error: 'Validation failed', details: error.issues },
         { status: 400 }
       );
     }

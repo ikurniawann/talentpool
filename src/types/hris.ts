@@ -100,14 +100,16 @@ export interface Employee {
   notes: string | null;
   created_at: string;
   updated_at: string;
+  
+  // Relasi (hanya ada saat data di-join dari Supabase)
+  department?: Department | null;
+  section?: Section | null;
+  job_title?: Position | null;
+  manager?: Employee | null;
 }
 
 export interface EmployeeWithRelations extends Employee {
   // Joined fields
-  department?: Department;
-  section?: Section;
-  job_title?: Position;
-  manager?: Employee;
   direct_reports?: Employee[];
   user?: User;
 }
@@ -201,6 +203,7 @@ export interface EmployeeListFilters {
 }
 
 export interface EmployeeCreateData {
+  nip?: string;
   full_name: string;
   email: string;
   phone: string;
@@ -231,8 +234,10 @@ export interface EmployeeCreateData {
 }
 
 export interface EmployeeUpdateData extends Partial<EmployeeCreateData> {
+  nip?: string;
   end_date?: string;
   is_active?: boolean;
+  updated_at?: string;
 }
 
 export interface ApiResponse<T> {

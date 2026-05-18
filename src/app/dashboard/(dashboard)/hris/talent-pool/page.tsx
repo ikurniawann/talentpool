@@ -276,9 +276,7 @@ export default function TalentPoolPage() {
         </div>
         <Select value={selectedBrand} onValueChange={(v) => setSelectedBrand(v ?? "all")}>
           <SelectTrigger className="w-full sm:w-48">
-            <SelectValue placeholder="Semua Outlet">
-              {selectedBrand !== "all" ? (brands.find(b => String(b.id) === selectedBrand)?.name ?? '') : undefined}
-            </SelectValue>
+            <SelectValue placeholder={selectedBrand !== "all" ? (brands.find(b => String(b.id) === selectedBrand)?.name ?? 'Semua Outlet') : "Semua Outlet"} />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Semua Outlet</SelectItem>

@@ -1,5 +1,5 @@
-import { redirect } from "next/navigation";
+import ArkivOsDesktop from "@/components/arkiv/arkiv-os-desktop";
 
 export default function HomePage() {
-  redirect("/dashboard");
+  return <ArkivOsDesktop />;
 }

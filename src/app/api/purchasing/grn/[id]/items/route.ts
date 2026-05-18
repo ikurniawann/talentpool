@@ -3,11 +3,11 @@ import { createClient } from "@/lib/supabase/server";
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const supabase = await createClient();
-
+    const { id } = await params;
     const { data, error } = await supabase
       .from("goods_receipt_items")
       .select(`
@@ -16,7 +16,7 @@ export async function GET(
         satuan:satuan_id(*),
         po_item:po_item_id(*)
       `)
-      .eq("grn_id", params.id)
+      .eq("grn_id", id)
       .order("created_at");
 
     if (error) throw error;
@@ -33,17 +33,18 @@ export async function GET(
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const supabase = await createClient();
+    const { id } = await params;
     const body = await request.json();
 
     // Validate GRN status
     const { data: grn } = await supabase
       .from("goods_receipts")
       .select("status")
-      .eq("id", params.id)
+      .eq("id", id)
       .single();
 
     if (!grn || grn.status !== "DRAFT") {
@@ -57,7 +58,7 @@ export async function POST(
       .from("goods_receipt_items")
       .insert({
         ...body,
-        grn_id: params.id,
+        grn_id: id,
       })
       .select(`
         *,

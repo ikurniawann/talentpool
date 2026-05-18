@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -353,8 +353,8 @@ export default function OffboardingPage({ params }: OffboardingPageProps) {
           <CardTitle className="flex items-center gap-3">
             <User className="w-6 h-6 text-green-600" />
             {employee.full_name}
+            <span className="text-sm text-gray-500 font-normal ml-2">{employee.nip} • {employee.department?.name || "-"}</span>
           </CardTitle>
-          <CardDescription>{employee.nip} • {employee.department?.name || "-"}</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -387,14 +387,12 @@ export default function OffboardingPage({ params }: OffboardingPageProps) {
             <CardTitle className="flex items-center gap-2">
               <AlertCircle className="w-5 h-5 text-yellow-600" />
               Belum Ada Proses Offboarding
+              <span className="text-sm text-gray-500 font-normal ml-2">Mulai proses resignasi untuk karyawan ini</span>
             </CardTitle>
-            <CardDescription>
-              Mulai proses resignasi untuk karyawan ini
-            </CardDescription>
           </CardHeader>
           <CardContent>
             <Dialog open={showInitiateDialog} onOpenChange={setShowInitiateDialog}>
-              <DialogTrigger asChild>
+              <DialogTrigger>
                 <Button className="bg-red-600 hover:bg-red-700">
                   <AlertCircle className="w-4 h-4 mr-2" />
                   Mulai Proses Offboarding
@@ -478,9 +476,7 @@ export default function OffboardingPage({ params }: OffboardingPageProps) {
               <div className="flex items-center justify-between">
                 <div>
                   <CardTitle>Detail Offboarding</CardTitle>
-                  <CardDescription>
-                    Diproses sejak {new Date(offboarding.created_at).toLocaleDateString("id-ID")}
-                  </CardDescription>
+                  <span className="text-sm text-gray-500">Diproses sejak {new Date(offboarding.created_at).toLocaleDateString("id-ID")}</span>
                 </div>
                 <Badge variant="outline" className="text-sm">
                   {resignationTypeLabels[offboarding.resignation_type] || offboarding.resignation_type}

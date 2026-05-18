@@ -51,12 +51,14 @@ import { Label } from "@/components/ui/label";
 
 const STATUS_OPTIONS: { value: POStatus | ""; label: string }[] = [
   { value: "", label: "Semua Status" },
-  { value: "DRAFT", label: "Draft" },
-  { value: "APPROVED", label: "Approved" },
-  { value: "SENT", label: "Terkirim" },
-  { value: "PARTIAL", label: "Diterima Sebagian" },
-  { value: "RECEIVED", label: "Diterima Penuh" },
-  { value: "CANCELLED", label: "Dibatalkan" },
+  { value: "draft", label: "Draft" },
+  { value: "pending_approval", label: "Menunggu Persetujuan" },
+  { value: "approved", label: "Disetujui" },
+  { value: "sent", label: "Terkirim" },
+  { value: "partially_received", label: "Diterima Sebagian" },
+  { value: "received", label: "Diterima Penuh" },
+  { value: "rejected", label: "Ditolak" },
+  { value: "cancelled", label: "Dibatalkan" },
 ];
 
 export default function PurchaseOrdersPage() {
@@ -108,8 +110,8 @@ export default function PurchaseOrdersPage() {
       setPos(response.data);
       setPagination((prev) => ({
         ...prev,
-        total: response.pagination.total,
-        total_pages: response.pagination.total_pages,
+        total: response.total,
+        total_pages: response.total_pages,
       }));
     } catch (error) {
       console.error("Error loading POs:", error);
@@ -309,20 +311,24 @@ export default function PurchaseOrdersPage() {
 
   const getStatusBadge = (status: POStatus) => {
     const styles: Record<POStatus, string> = {
-      DRAFT: "bg-gray-100 text-gray-800",
-      APPROVED: "bg-blue-100 text-blue-800",
-      SENT: "bg-purple-100 text-purple-800",
-      PARTIAL: "bg-yellow-100 text-yellow-800",
-      RECEIVED: "bg-green-100 text-green-800",
-      CANCELLED: "bg-red-100 text-red-800",
+      draft: "bg-gray-100 text-gray-800",
+      pending_approval: "bg-yellow-100 text-yellow-800",
+      approved: "bg-blue-100 text-blue-800",
+      sent: "bg-purple-100 text-purple-800",
+      partially_received: "bg-yellow-100 text-yellow-800",
+      received: "bg-green-100 text-green-800",
+      rejected: "bg-red-100 text-red-800",
+      cancelled: "bg-red-100 text-red-800",
     };
     const labels: Record<POStatus, string> = {
-      DRAFT: "Draft",
-      APPROVED: "Approved",
-      SENT: "Terkirim",
-      PARTIAL: "Sebagian",
-      RECEIVED: "Diterima",
-      CANCELLED: "Batal",
+      draft: "Draft",
+      pending_approval: "Menunggu Persetujuan",
+      approved: "Disetujui",
+      sent: "Terkirim",
+      partially_received: "Diterima Sebagian",
+      received: "Diterima Penuh",
+      rejected: "Ditolak",
+      cancelled: "Dibatalkan",
     };
     return <Badge className={styles[status]}>{labels[status]}</Badge>;
   };
@@ -421,7 +427,7 @@ export default function PurchaseOrdersPage() {
 
       {/* Table */}
       <div className="border rounded-lg overflow-x-auto">
-        <div className="min-w-[1000px]">
+        <div>
           <Table>
           <TableHeader>
             <TableRow>
@@ -477,33 +483,33 @@ export default function PurchaseOrdersPage() {
                   <TableCell>{po.nama_supplier || po.supplier_kode}</TableCell>
                   <TableCell>{formatDate(po.tanggal_po)}</TableCell>
                   <TableCell className="text-right font-medium">
-                    {formatCurrency(po.total)}
+                    {formatCurrency(po.grand_total || 0)}
                   </TableCell>
                   <TableCell>{getStatusBadge(po.status)}</TableCell>
                   <TableCell>
-                    {po.status !== "DRAFT" && po.status !== "CANCELLED" && (
+                    {po.status !== "draft" && po.status !== "cancelled" && (
                       <div className="flex items-center gap-2">
                         <div className="w-24 h-2 bg-gray-200 rounded-full overflow-hidden">
                           <div
                             className={`h-full ${
-                              (po.receive_percentage || 0) >= 100
+                              (po.received_percentage || 0) >= 100
                                 ? "bg-green-500"
-                                : (po.receive_percentage || 0) > 0
+                                : (po.received_percentage || 0) > 0
                                 ? "bg-yellow-400"
                                 : "bg-gray-300"
                             }`}
-                            style={{ width: `${po.receive_percentage || 0}%` }}
+                            style={{ width: `${po.received_percentage || 0}%` }}
                           />
                         </div>
                         <span className="text-xs text-muted-foreground">
-                          {po.receive_percentage || 0}%
+                          {po.received_percentage || 0}%
                         </span>
                       </div>
                     )}
                   </TableCell>
                   <TableCell>
                     <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
+                      <DropdownMenuTrigger>
                         <Button variant="ghost" size="icon" className="relative z-10">
                           <MoreVertical className="w-4 h-4" />
                         </Button>
@@ -515,7 +521,7 @@ export default function PurchaseOrdersPage() {
                             Lihat Detail
                           </DropdownMenuItem>
                         </Link>
-                        {po.status === "DRAFT" && (
+                        {po.status === "draft" && (
                           <>
                             <Link href={`/dashboard/purchasing/po/${po.id}/edit`}>
                               <DropdownMenuItem>
@@ -529,13 +535,13 @@ export default function PurchaseOrdersPage() {
                             </DropdownMenuItem>
                           </>
                         )}
-                        {po.status === "APPROVED" && (
+                        {po.status === "approved" && (
                           <DropdownMenuItem onClick={() => handleOpenSend(po)}>
                             <Send className="w-4 h-4 mr-2 text-pink-600" />
                             Kirim ke Supplier
                           </DropdownMenuItem>
                         )}
-                        {po.status !== "RECEIVED" && po.status !== "CANCELLED" && (
+                        {po.status !== "received" && po.status !== "cancelled" && (
                           <DropdownMenuItem onClick={() => handleOpenCancel(po)}>
                             <XCircle className="w-4 h-4 mr-2 text-red-600" />
                             Batalkan
@@ -554,7 +560,7 @@ export default function PurchaseOrdersPage() {
 
       {/* Pagination */}
       {pagination.total_pages > 1 && (
-        <Pagination>
+        <Pagination currentPage={pagination.page} totalPages={pagination.total_pages}>
           <PaginationContent>
             <PaginationItem>
               <PaginationPrevious

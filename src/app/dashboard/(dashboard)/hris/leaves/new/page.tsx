@@ -441,7 +441,7 @@ export default function NewLeavePage() {
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-500">Jenis Cuti</span>
-                  <span className="font-medium">{LEAVE_TYPE_LABELS[submissionData.leave_type]}</span>
+                  <span className="font-medium">{LEAVE_TYPE_LABELS[submissionData.leave_type as keyof typeof LEAVE_TYPE_LABELS]}</span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-500">Periode</span>

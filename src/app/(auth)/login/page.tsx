@@ -16,6 +16,15 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [requestedRedirect] = useState<string | null>(() => {
+    if (typeof window === "undefined") return null;
+    const redirect = new URLSearchParams(window.location.search).get("redirect");
+    return redirect?.startsWith("/dashboard") ? redirect : null;
+  });
+  const [requestedModule] = useState<string | null>(() => {
+    if (typeof window === "undefined") return null;
+    return new URLSearchParams(window.location.search).get("module");
+  });
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -55,7 +64,11 @@ export default function LoginPage() {
 
       const isHrdEmail = hrdEmails.some(h => email.toLowerCase().includes(h));
 
-      if (isHrdEmail || profile?.role === "hrd" || profile?.role === "hris") {
+      if (requestedRedirect) {
+        router.replace(requestedRedirect);
+      } else if (profile?.role === "super_admin") {
+        router.replace("/dashboard");
+      } else if (isHrdEmail || profile?.role === "hrd" || profile?.role === "hris") {
         router.replace("/dashboard/hris");
       } else if (profile?.role === "pos") {
         router.replace("/dashboard/pos/cashier-new");
@@ -141,7 +154,11 @@ export default function LoginPage() {
           {/* Header */}
           <div className="mb-8">
             <h2 className="text-3xl font-bold text-gray-900">Selamat Datang</h2>
-            <p className="text-gray-500 mt-2">Silakan login untuk melanjutkan</p>
+            <p className="text-gray-500 mt-2">
+              {requestedModule
+                ? `Silakan login untuk membuka module ${requestedModule.toUpperCase()}`
+                : "Silakan login untuk melanjutkan"}
+            </p>
           </div>
 
           {/* Login Card */}

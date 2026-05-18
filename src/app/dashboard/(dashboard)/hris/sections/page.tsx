@@ -33,7 +33,7 @@ export default function SectionStaffPage() {
   const router = useRouter();
   const pathname = usePathname();
   const supabase = createClient();
-  const { toasts, toast, dismiss } = useToast();
+  const { toasts, showToast, removeToast } = useToast();
 
   const [staff, setStaff] = useState<any[]>([]);
   const [sections, setSections] = useState<any[]>([]);
@@ -94,7 +94,7 @@ export default function SectionStaffPage() {
 
   async function handleCreateSection() {
     if (!newSection.name || !newSection.code || !newSection.brand_id) {
-      toast("Nama, kode, dan outlet wajib diisi.", "error");
+      showToast("Nama, kode, dan outlet wajib diisi.", "error");
       return;
     }
     setSaving(true);
@@ -105,9 +105,9 @@ export default function SectionStaffPage() {
     });
     const data = await res.json();
     if (!res.ok) {
-      toast("Gagal membuat section: " + data.error, "error");
+      showToast("Gagal membuat section: " + data.error, "error");
     } else {
-      toast("Section berhasil dibuat");
+      showToast("Section berhasil dibuat");
     }
     setSaving(false);
     setAddSectionDialog(false);
@@ -125,9 +125,9 @@ export default function SectionStaffPage() {
     });
     const data = await res.json();
     if (!res.ok) {
-      toast("Gagal menempatkan staff: " + data.error, "error");
+      showToast("Gagal menempatkan staff: " + data.error, "error");
     } else {
-      toast("Staff berhasil ditempatkan di section");
+      showToast("Staff berhasil ditempatkan di section");
     }
     setSaving(false);
     setSectionDialog(null);
@@ -141,9 +141,9 @@ export default function SectionStaffPage() {
     });
     if (!res.ok) {
       const err = await res.json();
-      toast("Gagal menghapus staff dari section: " + err.error, "error");
+      showToast("Gagal menghapus staff dari section: " + err.error, "error");
     } else {
-      toast("Staff berhasil dikeluarkan dari section");
+      showToast("Staff berhasil dikeluarkan dari section");
     }
     fetchData();
   }
@@ -153,9 +153,9 @@ export default function SectionStaffPage() {
     const res = await fetch(`/api/sections?id=${sec.id}`, { method: "DELETE" });
     if (!res.ok) {
       const err = await res.json();
-      toast("Gagal hapus section: " + err.error, "error");
+      showToast("Gagal hapus section: " + err.error, "error");
     } else {
-      toast("Section berhasil dihapus");
+      showToast("Section berhasil dihapus");
       setSectionFilter("all");
     }
     fetchData();
@@ -310,7 +310,7 @@ export default function SectionStaffPage() {
       <Card>
         <CardContent className="p-0">
           <div className="overflow-x-auto">
-            <table className="w-full text-sm min-w-[600px]">
+            <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-gray-100 bg-gray-50">
                   <th className="text-left p-3 text-xs font-semibold text-gray-500 uppercase">Staff</th>
@@ -410,9 +410,7 @@ export default function SectionStaffPage() {
               <label className="text-xs font-medium text-gray-600">Outlet *</label>
               <Select value={newSection.brand_id || ""} onValueChange={(v) => setNewSection((s) => ({ ...s, brand_id: v ?? "" }))}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Pilih Outlet">
-                    {newSection.brand_id ? (brands.find(b => String(b.id) === newSection.brand_id)?.name ?? '') : undefined}
-                  </SelectValue>
+                  <SelectValue placeholder={newSection.brand_id ? (brands.find(b => String(b.id) === newSection.brand_id)?.name ?? 'Pilih Outlet') : "Pilih Outlet"} />
                 </SelectTrigger>
                 <SelectContent>
                   {brands.map((b) => (
@@ -460,9 +458,7 @@ export default function SectionStaffPage() {
             <label className="text-xs font-medium text-gray-600">Pilih Section</label>
             <Select value={assignSection || ""} onValueChange={(v) => setAssignSection(v ?? "")}>
               <SelectTrigger>
-                <SelectValue placeholder="Pilih Section">
-                  {assignSection ? (sections.find(sec => String(sec.id) === assignSection) ? `${sections.find(sec => String(sec.id) === assignSection)!.name} (${sections.find(sec => String(sec.id) === assignSection)!.code})` : '') : undefined}
-                </SelectValue>
+                <SelectValue placeholder={assignSection ? (sections.find(sec => String(sec.id) === assignSection) ? `${sections.find(sec => String(sec.id) === assignSection)!.name} (${sections.find(sec => String(sec.id) === assignSection)!.code})` : 'Pilih Section') : "Pilih Section"} />
               </SelectTrigger>
               <SelectContent>
                 {sections
@@ -490,7 +486,7 @@ export default function SectionStaffPage() {
         </DialogContent>
       </Dialog>
 
-      <ToastContainer toasts={toasts} onDismiss={dismiss} />
+      <ToastContainer toasts={toasts} removeToast={removeToast} />
     </div>
   );
 }

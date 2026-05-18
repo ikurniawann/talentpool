@@ -172,7 +172,7 @@ export default function EditPriceListPage() {
               <div className="space-y-1.5">
                 <Label htmlFor="satuan" className="text-xs">Satuan <span className="text-red-500">*</span></Label>
                 <Combobox
-                  options={units.map((u) => ({ value: u.id, label: u.nama, description: u.kode }))}
+                  options={units.map((u) => ({ value: u.id, label: u.nama, description: u.simbol }))}
                   value={formData.satuan_id}
                   onChange={(v) => setFormData({ ...formData, satuan_id: v })}
                   placeholder="Pilih satuan..."

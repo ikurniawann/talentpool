@@ -6,7 +6,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import { Employee, PromotionRequest, ApiResponse } from '@/types';
+import { Employee, PromotionRequest, ApiResponse } from '@/types/hris';
 
 // ============================================================
 // POST /api/hris/promote
@@ -63,41 +63,82 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Call database function to promote candidate
-    const { data, error } = await supabase.rpc('promote_candidate_to_employee', {
-      p_candidate_id: body.candidate_id,
-      p_join_date: body.join_date || new Date().toISOString().split('T')[0],
-      p_employment_status: body.employment_status || 'probation',
-      p_department_id: body.department_id || null,
-      p_reporting_to: body.reporting_to || null
-    });
+    // Try to use database function first
+    let employeeId: string | null = null;
+    
+    try {
+      const { data, error: rpcError } = await supabase.rpc('promote_candidate_to_employee', {
+        p_candidate_id: body.candidate_id,
+        p_join_date: body.join_date || new Date().toISOString().split('T')[0],
+        p_employment_status: body.employment_status || 'probation',
+        p_department_id: body.department_id || null,
+        p_reporting_to: body.reporting_to || null
+      });
 
-    if (error) {
-      console.error('Error promoting candidate:', error);
-      
-      // Handle specific error messages
-      if (error.message?.includes('Candidate not found')) {
-        return NextResponse.json(
-          { error: 'Kandidat tidak ditemukan' },
-          { status: 404 }
-        );
+      if (!rpcError && data) {
+        employeeId = data as string;
       }
-      
-      if (error.message?.includes('status must be')) {
-        return NextResponse.json(
-          { error: error.message },
-          { status: 400 }
-        );
-      }
-
-      return NextResponse.json(
-        { error: 'Gagal mempromosikan kandidat', details: error.message },
-        { status: 500 }
-      );
+    } catch (rpcFallbackError) {
+      console.log('RPC function not available, using manual fallback');
     }
 
-    // Get the newly created employee data
-    const employeeId = data as string;
+    // Fallback: Manual promote if function failed or not available
+    if (!employeeId) {
+      console.log('Using manual promote fallback...');
+      
+      // Generate NIP
+      const year = new Date().getFullYear();
+      let nip = '';
+      let exists = true;
+      let seq = 1;
+      
+      while (exists && seq < 99999) {
+        nip = `EMP-${year}-${String(seq).padStart(5, '0')}`;
+        const { data: existing } = await supabase
+          .from('employees')
+          .select('id')
+          .eq('nip', nip)
+          .single();
+        exists = !!existing;
+        seq++;
+      }
+      
+      // Insert employee manually
+      const { data: newEmployee, error: insertError } = await supabase
+        .from('employees')
+        .insert({
+          nip,
+          full_name: candidate.full_name,
+          email: candidate.email,
+          phone: candidate.phone || '',
+          join_date: body.join_date || new Date().toISOString().split('T')[0],
+          employment_status: body.employment_status || 'probation',
+          department_id: body.department_id || null,
+          job_title_id: candidate.position?.id || null,
+          reporting_to: body.reporting_to || null,
+          is_active: true,
+        })
+        .select()
+        .single();
+      
+      if (insertError) {
+        console.error('Manual insert error:', insertError);
+        return NextResponse.json(
+          { error: 'Gagal membuat karyawan', details: insertError.message },
+          { status: 500 }
+        );
+      }
+      
+      employeeId = newEmployee?.id || null;
+      
+      // Update candidate
+      if (employeeId) {
+        await supabase
+          .from('candidates')
+          .update({ promoted_to_employee_id: employeeId })
+          .eq('id', candidate.id);
+      }
+    }
     const { data: employee, error: employeeError } = await supabase
       .from('employees')
       .select(`

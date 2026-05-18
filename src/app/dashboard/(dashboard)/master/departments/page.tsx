@@ -27,7 +27,7 @@ interface Department {
 const EMPTY_FORM = { name: "", code: "", description: "", is_active: true };
 
 export default function DepartmentsPage() {
-  const { toasts, toast, dismiss } = useToast();
+  const { toasts, showToast, removeToast } = useToast();
   const [data, setData] = useState<Department[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -62,7 +62,7 @@ export default function DepartmentsPage() {
 
   async function handleSave() {
     if (!form.name.trim() || !form.code.trim()) {
-      toast("Nama dan kode wajib diisi", "error");
+      showToast("Nama dan kode wajib diisi", "error");
       return;
     }
     setSaving(true);
@@ -73,9 +73,9 @@ export default function DepartmentsPage() {
       body: JSON.stringify(form),
     });
     const json = await res.json();
-    if (!res.ok) { toast(json.error || "Gagal menyimpan", "error"); }
+    if (!res.ok) { showToast(json.error || "Gagal menyimpan", "error"); }
     else {
-      toast(json.message || "Berhasil disimpan");
+      showToast(json.message || "Berhasil disimpan");
       setDialog(null);
       fetch();
     }
@@ -87,8 +87,8 @@ export default function DepartmentsPage() {
     setDeleting(true);
     const res = await window.fetch(`/api/master/departments/${deleteId}`, { method: "DELETE" });
     const json = await res.json();
-    if (!res.ok) { toast(json.error || "Gagal menghapus", "error"); }
-    else { toast(json.message || "Berhasil dihapus"); fetch(); }
+    if (!res.ok) { showToast(json.error || "Gagal menghapus", "error"); }
+    else { showToast(json.message || "Berhasil dihapus"); fetch(); }
     setDeleteId(null);
     setDeleting(false);
   }
@@ -99,7 +99,7 @@ export default function DepartmentsPage() {
 
   return (
     <div className="space-y-6">
-      <ToastContainer toasts={toasts} onDismiss={dismiss} />
+      <ToastContainer toasts={toasts} removeToast={removeToast} />
 
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">

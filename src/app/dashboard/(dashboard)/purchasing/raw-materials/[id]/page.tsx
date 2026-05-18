@@ -131,7 +131,7 @@ export default function RawMaterialDetailPage() {
           <div>
             <div className="flex items-center gap-2">
               <h1 className="text-2xl font-bold">{material.nama}</h1>
-              {getStockStatusBadge(material.status_stok)}
+              {getStockStatusBadge(material.status_stok || "")}
             </div>
             <p className="text-muted-foreground">{material.kode}</p>
           </div>
@@ -176,7 +176,7 @@ export default function RawMaterialDetailPage() {
                   <div>
                     <p className="text-sm text-muted-foreground">Kategori</p>
                     <p className="font-medium">
-                      {material.kategori.replace(/_/g, " ")}
+                      {material.kategori?.replace(/_/g, " ") || "-"}
                     </p>
                   </div>
                 </div>
@@ -187,17 +187,17 @@ export default function RawMaterialDetailPage() {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <p className="text-sm text-muted-foreground">Satuan Besar</p>
-                    <p className="font-medium">{material.satuan_besar_nama || "-"}</p>
+                    <p className="font-medium">{material.satuan_besar?.nama || "-"}</p>
                   </div>
                   <div>
                     <p className="text-sm text-muted-foreground">Satuan Kecil</p>
-                    <p className="font-medium">{material.satuan_kecil_nama || "-"}</p>
+                    <p className="font-medium">{material.satuan_kecil_id || "-"}</p>
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <p className="text-sm text-muted-foreground">Konversi</p>
-                    <p className="font-medium">{material.konversi_factor || 1} {material.satuan_kecil_nama} = 1 {material.satuan_besar_nama}</p>
+                    <p className="font-medium">{material.konversi_factor || 1} {material.satuan_kecil_id || "unit"} = 1 {material.satuan_besar?.nama || "unit"}</p>
                   </div>
                   <div>
                     <p className="text-sm text-muted-foreground">Storage</p>
