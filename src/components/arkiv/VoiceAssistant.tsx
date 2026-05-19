@@ -5,34 +5,25 @@ import { Mic, Square, X } from "lucide-react";
 
 /* ── App Mapping ──────────────────────────────────────────────── */
 const APPS: Record<string, string> = {
-  hr: "/dashboard/hris",
-  hris: "/dashboard/hris",
-  hiring: "/dashboard/hris",
-  employee: "/dashboard/hris",
-  payroll: "/dashboard/hris",
-  erp: "/dashboard/erp",
-  purchasing: "/dashboard/purchasing",
-  procurement: "/dashboard/purchasing",
-  inventory: "/dashboard/erp",
-  finance: "/dashboard/finance",
-  accounting: "/dashboard/finance",
-  crm: "/dashboard/crm",
-  customer: "/dashboard/crm",
-  lead: "/dashboard/crm",
+  hr: "/dashboard/hris", hris: "/dashboard/hris", hiring: "/dashboard/hris",
+  employee: "/dashboard/hris", payroll: "/dashboard/hris",
+  erp: "/dashboard/erp", purchasing: "/dashboard/purchasing",
+  procurement: "/dashboard/purchasing", inventory: "/dashboard/erp",
+  finance: "/dashboard/finance", accounting: "/dashboard/finance",
+  crm: "/dashboard/crm", customer: "/dashboard/crm", lead: "/dashboard/crm",
   pipeline: "/dashboard/crm",
   pos: "https://suluinwounderland.com/dashboard/pos/cashier-new",
   cashier: "https://suluinwounderland.com/dashboard/pos/cashier-new",
   order: "https://suluinwounderland.com/dashboard/pos/orders",
   kitchen: "https://suluinwounderland.com/dashboard/pos/kds",
   kds: "https://suluinwounderland.com/dashboard/pos/kds",
-  creative: "/dashboard/creative",
-  design: "/dashboard/creative",
-  render: "/dashboard/render",
-  settings: "/dashboard/settings",
-  profile: "/dashboard/profile",
-  desktop: "/arkiv-os",
-  home: "/arkiv-os",
+  creative: "/dashboard/creative", design: "/dashboard/creative",
+  render: "/dashboard/render", settings: "/dashboard/settings",
+  profile: "/dashboard/profile", desktop: "/arkiv-os", home: "/arkiv-os",
 };
+
+/* ── Types ──────────────────────────────────────────────────────── */
+type ClapState = "idle" | "listening" | "detected";
 
 export function VoiceAssistant() {
   const [isOpen, setIsOpen] = useState(false);
@@ -43,15 +34,23 @@ export function VoiceAssistant() {
   const [thinking, setThinking] = useState(false);
   const [speaking, setSpeaking] = useState(false);
   const [hasMic, setHasMic] = useState(false);
+  const [clapState, setClapState] = useState<ClapState>("idle");
 
   const recognitionRef = useRef<SpeechRecognition | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const finalTranscriptRef = useRef("");
 
-  /* ── Init speech recognition ─────────────────────────────────── */
+  /* ── Clap detection refs ─────────────────────────────────────────── */
+  const audioCtxRef = useRef<AudioContext | null>(null);
+  const analyserRef = useRef<AnalyserNode | null>(null);
+  const micStreamRef = useRef<MediaStream | null>(null);
+  const clapRafRef = useRef<number | null>(null);
+  const clapCooldownRef = useRef(false);
+  const clapBufferRef = useRef<number[]>([]);
+
+  /* ── Speech Recognition Init ─────────────────────────────────────── */
   useEffect(() => {
-    const SpeechRecognition =
-      window.SpeechRecognition || (window as any).webkitSpeechRecognition;
+    const SpeechRecognition = window.SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (!SpeechRecognition) return;
     setHasMic(true);
 
@@ -60,10 +59,7 @@ export function VoiceAssistant() {
     rec.interimResults = true;
     rec.lang = "id-ID";
 
-    rec.onstart = () => {
-      setIsListening(true);
-      setStatus("Mendengarkan...");
-    };
+    rec.onstart = () => { setIsListening(true); setStatus("Mendengarkan..."); };
 
     rec.onresult = (e: SpeechRecognitionEvent) => {
       let interim = "";
@@ -87,18 +83,162 @@ export function VoiceAssistant() {
     };
 
     rec.onend = () => setIsListening(false);
-
     recognitionRef.current = rec;
   }, []);
 
-  /* ── Cleanup on unmount ────────────────────────────────────────── */
+  /* ── Clap Detection ────────────────────────────────────────────── */
+  const startClapDetection = useCallback(async () => {
+    if (!navigator.mediaDevices?.getUserMedia) return;
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+      micStreamRef.current = stream;
+
+      const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+      audioCtxRef.current = audioCtx;
+
+      const analyser = audioCtx.createAnalyser();
+      analyser.fftSize = 256;
+      analyser.smoothingTimeConstant = 0.1;
+      audioCtx.createMediaStreamSource(stream).connect(analyser);
+      analyserRef.current = analyser;
+
+      const dataArray = new Uint8Array(analyser.frequencyBinCount);
+
+      const detect = () => {
+        analyser.getByteFrequencyData(dataArray);
+        // Calculate RMS from frequency data (approx loudness)
+        let sum = 0;
+        for (let i = 0; i < dataArray.length; i++) sum += dataArray[i] * dataArray[i];
+        const rms = Math.sqrt(sum / dataArray.length);
+
+        // Normalize 0-255 → 0-1
+        const normalized = rms / 255;
+
+        clapBufferRef.current.push(normalized);
+        if (clapBufferRef.current.length > 20) clapBufferRef.current.shift();
+
+        const recent = clapBufferRef.current.slice(-5);
+        const peak = Math.max(...recent);
+        const prev = clapBufferRef.current.slice(-10, -5);
+        const prevAvg = prev.length ? prev.reduce((a, b) => a + b, 0) / prev.length : 0;
+
+        // Clap detection: sudden loud peak above threshold with quiet before
+        if (
+          !isOpen &&
+          !clapCooldownRef.current &&
+          peak > 0.55 &&        // loud peak
+          prevAvg < 0.15 &&     // quiet before
+          recent.length >= 2
+        ) {
+          // Double-clap or single clap accepted
+          clapCooldownRef.current = true;
+          setClapState("detected");
+
+          // Open modal and start listening
+          setIsOpen(true);
+          setTranscript("");
+          setResponse("");
+          setStatus("Tepuk tangan terdeteksi! Mendengarkan...");
+
+          setTimeout(() => {
+            if (recognitionRef.current) {
+              recognitionRef.current.start();
+            }
+          }, 400);
+
+          // Cooldown 2s
+          setTimeout(() => {
+            clapCooldownRef.current = false;
+            setClapState("listening");
+          }, 2000);
+        }
+
+        clapRafRef.current = requestAnimationFrame(detect);
+      };
+
+      clapRafRef.current = requestAnimationFrame(detect);
+      setClapState("listening");
+    } catch (e) {
+      console.error("[Clap] Mic access denied:", e);
+    }
+  }, [isOpen]);
+
+  const stopClapDetection = useCallback(() => {
+    if (clapRafRef.current) cancelAnimationFrame(clapRafRef.current);
+    if (micStreamRef.current) {
+      micStreamRef.current.getTracks().forEach((t) => t.stop());
+      micStreamRef.current = null;
+    }
+    if (audioCtxRef.current) {
+      audioCtxRef.current.close();
+      audioCtxRef.current = null;
+    }
+    analyserRef.current = null;
+    setClapState("idle");
+  }, []);
+
+  /* ── Auto-start clap detection on mount ────────────────────────── */
+  useEffect(() => {
+    startClapDetection();
+    return () => stopClapDetection();
+  }, [startClapDetection, stopClapDetection]);
+
+  /* ── Pause clap detection when modal open ────────────────────────── */
+  useEffect(() => {
+    if (isOpen) {
+      // Pause animation frame but keep mic open
+      if (clapRafRef.current) cancelAnimationFrame(clapRafRef.current);
+    } else {
+      // Resume clap detection when modal closes
+      if (micStreamRef.current && !clapRafRef.current) {
+        // restart detection loop
+        const analyser = analyserRef.current;
+        if (!analyser) return;
+        const dataArray = new Uint8Array(analyser.frequencyBinCount);
+        const detect = () => {
+          analyser.getByteFrequencyData(dataArray);
+          let sum = 0;
+          for (let i = 0; i < dataArray.length; i++) sum += dataArray[i] * dataArray[i];
+          const rms = Math.sqrt(sum / dataArray.length) / 255;
+          clapBufferRef.current.push(rms);
+          if (clapBufferRef.current.length > 20) clapBufferRef.current.shift();
+          const recent = clapBufferRef.current.slice(-5);
+          const peak = Math.max(...recent);
+          const prev = clapBufferRef.current.slice(-10, -5);
+          const prevAvg = prev.length ? prev.reduce((a, b) => a + b, 0) / prev.length : 0;
+          if (
+            !isOpen &&
+            !clapCooldownRef.current &&
+            peak > 0.55 &&
+            prevAvg < 0.15
+          ) {
+            clapCooldownRef.current = true;
+            setClapState("detected");
+            setIsOpen(true);
+            setTranscript("");
+            setResponse("");
+            setStatus("Tepuk tangan terdeteksi! Mendengarkan...");
+            setTimeout(() => {
+              if (recognitionRef.current) recognitionRef.current.start();
+            }, 400);
+            setTimeout(() => { clapCooldownRef.current = false; setClapState("listening"); }, 2000);
+          }
+          clapRafRef.current = requestAnimationFrame(detect);
+        };
+        clapRafRef.current = requestAnimationFrame(detect);
+      }
+    }
+  }, [isOpen]);
+
+  /* ── Cleanup ───────────────────────────────────────────────────── */
   useEffect(() => {
     return () => {
+      stopClapDetection();
       if (recognitionRef.current) try { recognitionRef.current.stop(); } catch {}
       if (abortRef.current) abortRef.current.abort();
       window.speechSynthesis.cancel();
     };
-  }, []);
+  }, [stopClapDetection]);
 
   /* ── TTS ───────────────────────────────────────────────────────── */
   const speakText = useCallback((text: string, onEnd?: () => void) => {
@@ -121,9 +261,7 @@ export function VoiceAssistant() {
         lower.includes(`buka aplikasi ${keyword}`) ||
         lower.includes(`pergi ke ${keyword}`) ||
         lower.includes(`ke ${keyword}`)
-      ) {
-        return { type: "open" as const, url, app: keyword };
-      }
+      ) return { type: "open" as const, url, app: keyword };
     }
     if (lower.includes("ke desktop") || lower.includes("ke beranda")) {
       return { type: "open" as const, url: "/arkiv-os", app: "desktop" };
@@ -165,10 +303,7 @@ export function VoiceAssistant() {
           if (!line.trim()) return;
           try {
             const obj = JSON.parse(line);
-            if (obj.response) {
-              full += obj.response;
-              setResponse(full);
-            }
+            if (obj.response) { full += obj.response; setResponse(full); }
           } catch {}
         });
       }
@@ -191,9 +326,7 @@ export function VoiceAssistant() {
     if (cmd.type === "open") {
       const reply = `Baik, membuka aplikasi ${cmd.app}.`;
       setResponse(reply);
-      speakText(reply, () => {
-        window.location.href = cmd.url;
-      });
+      speakText(reply, () => { window.location.href = cmd.url; });
     } else {
       const aiResponse = await askOllama(text);
       if (aiResponse) speakText(aiResponse);
@@ -225,17 +358,24 @@ export function VoiceAssistant() {
     setThinking(false);
   };
 
-  if (!hasMic) return null; // hide if browser unsupported
+  if (!hasMic) return null;
 
   return (
     <>
-      {/* Floating mic button */}
+      {/* Floating mic button with clap pulse ring */}
       <button
         onClick={() => { setIsOpen(true); setTranscript(""); setResponse(""); setStatus("Tekan mikrofon untuk mulai bicara"); }}
         className="fixed bottom-24 right-5 z-50 grid h-14 w-14 place-items-center rounded-full border border-white/15 bg-cyan-400/90 text-black shadow-lg shadow-cyan-400/30 backdrop-blur-md transition hover:scale-110 hover:shadow-cyan-400/50 active:scale-95"
-        title="Arkiv Voice Assistant"
+        title="Arkiv Voice Assistant — Tepuk tangan untuk aktifkan"
       >
         <Mic className="size-6" />
+        {/* Clap listening indicator ring */}
+        {clapState === "listening" && (
+          <span className="absolute inset-0 rounded-full border border-cyan-400/40 animate-ping" style={{ animationDuration: "2s" }} />
+        )}
+        {clapState === "detected" && (
+          <span className="absolute inset-[-8px] rounded-full border-2 border-amber-400 animate-ping" style={{ animationDuration: "0.6s" }} />
+        )}
       </button>
 
       {/* Modal overlay */}
@@ -253,7 +393,7 @@ export function VoiceAssistant() {
                 </div>
                 <div>
                   <h3 className="text-sm font-semibold text-white">Arkiv Voice Assistant</h3>
-                  <p className="text-xs text-white/50">Powered by Ollama · kimi-k2.6:cloud</p>
+                  <p className="text-xs text-white/50">Tepuk tangan atau tekan mikrofon</p>
                 </div>
               </div>
               <button
@@ -316,7 +456,6 @@ export function VoiceAssistant() {
         </div>
       )}
 
-      {/* keyframes injection */}
       <style>{`
         @keyframes voiceWave {
           0%, 100% { transform: scaleY(1); opacity: 0.5; }
