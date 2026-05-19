@@ -25,7 +25,7 @@ const APPS: Record<string, string> = {
 /* ── Types ──────────────────────────────────────────────────────── */
 type ClapState = "idle" | "listening" | "detected";
 
-export function VoiceAssistant({ onOpenNotifications }: { onOpenNotifications: () => void }) {
+export function VoiceAssistant() {
   const [isOpen, setIsOpen] = useState(false);
   const [isListening, setIsListening] = useState(false);
   const [status, setStatus] = useState("Tekan mikrofon untuk mulai bicara");
@@ -33,9 +33,6 @@ export function VoiceAssistant({ onOpenNotifications }: { onOpenNotifications: (
   const [response, setResponse] = useState("");
   const [thinking, setThinking] = useState(false);
   const [speaking, setSpeaking] = useState(false);
-  const onOpenNotificationsRef = useRef(onOpenNotifications);
-  useEffect(() => { onOpenNotificationsRef.current = onOpenNotifications; }, [onOpenNotifications]);
-
   const [hasMic, setHasMic] = useState(false);
   const [clapState, setClapState] = useState<ClapState>("idle");
 
@@ -133,12 +130,13 @@ export function VoiceAssistant({ onOpenNotifications }: { onOpenNotifications: (
           prevAvg < 0.15 &&     // quiet before
           recent.length >= 2
         ) {
-          // Clap detected → open notification center
+          // Clap detected → buka HRIS
           clapCooldownRef.current = true;
           setClapState("detected");
-
-          onOpenNotificationsRef.current();
-          setStatus("Tepuk tangan terdeteksi — membuka Notifikasi");
+          setStatus("Tepuk tangan terdeteksi — membuka HRIS");
+          setTimeout(() => {
+            window.location.href = "/dashboard/hris";
+          }, 300);
 
           // Cooldown 2s
           setTimeout(() => {
@@ -206,10 +204,13 @@ export function VoiceAssistant({ onOpenNotifications }: { onOpenNotifications: (
             peak > 0.55 &&
             prevAvg < 0.15
           ) {
+          // Clap detected → buka HRIS
             clapCooldownRef.current = true;
             setClapState("detected");
-            onOpenNotificationsRef.current();
-            setStatus("Tepuk tangan terdeteksi — membuka Notifikasi");
+            setStatus("Tepuk tangan terdeteksi — membuka HRIS");
+            setTimeout(() => {
+              window.location.href = "/dashboard/hris";
+            }, 300);
             setTimeout(() => { clapCooldownRef.current = false; setClapState("listening"); }, 2000);
           }
           clapRafRef.current = requestAnimationFrame(detect);

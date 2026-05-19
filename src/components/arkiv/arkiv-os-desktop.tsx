@@ -543,7 +543,7 @@ export default function ArkivOsDesktop() {
       )}
       {contextMenu?.module && <ContextMenu x={contextMenu.x} y={contextMenu.y} module={contextMenu.module} onOpen={() => openModule(contextMenu.module!)} onInfo={() => setPreviewModule(contextMenu.module!)} />}
       {contextMenu?.desktop && <DesktopContextMenu x={contextMenu.x} y={contextMenu.y} onArrange={arrangeIcons} onWallpaper={() => setShowWallpaperPicker(true)} onWidgets={() => setShowWidgetSettings(true)} onApps={() => setShowLibrary(true)} onSettings={() => setShowSettings(true)} onAbout={() => setShowAbout(true)} />}
-      <VoiceAssistant onOpenNotifications={() => setShowNotifications(true)} />
+      <VoiceAssistant />
     </main>
   );
 }
