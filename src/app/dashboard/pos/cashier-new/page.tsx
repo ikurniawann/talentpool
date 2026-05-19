@@ -5,7 +5,7 @@ import {
   Search, Utensils, ShoppingBag, Truck, Monitor, Table as TableIcon,
   User, X, Sparkles, Printer, CheckCircle, AlertCircle, Clock,
 } from 'lucide-react';
-import { getCustomerFavoriteProducts, type Product } from '@/lib/pos-api';
+import { getCustomerFavoriteProducts, type Product, openBill } from '@/lib/pos-api';
 import { Button } from '@/components/ui/button';
 import { usePosCart } from '@/hooks/use-pos-cart';
 import { usePosProducts } from '@/hooks/use-pos-products';
@@ -315,6 +315,57 @@ export default function CashierPageNew() {
     setResultPayload(null);
   }, []);
 
+  /* Open Bill */
+  const handleOpenBill = useCallback(async () => {
+    if (cart.items.length === 0) return;
+    if (!hasShift) {
+      alert('Silakan buka shift terlebih dahulu sebelum membuat order.');
+      setShowShiftModal(true);
+      return;
+    }
+    try {
+      setLoadingFav(true);
+      const res = await openBill({
+        order_type: cart.orderType as any,
+        customer_id: selectedCustomer?.id,
+        cashier_id: CASHIER_ID,
+        server_id: undefined,
+        table_id: cart.selectedTable || undefined,
+        shift_id: shift?.id || undefined,
+        items: cart.items.map(item => ({
+          product_id: item.productId,
+          product_name: item.name,
+          product_sku: item.id,
+          variants: item.variantName ? [{ name: item.variantName, group: 'Size', price: item.variantPriceAdj || 0 }] : [],
+          modifiers: item.modifierNames?.map((name, idx) => ({ name, group: `Option-${idx}` })) || [],
+          quantity: Number(item.quantity),
+          unit_price: Number(item.price - (item.variantPriceAdj || 0) - (item.modifierPriceAdj || 0)),
+          variant_price_adjustment: item.variantPriceAdj || 0,
+          modifier_price_adjustment: item.modifierPriceAdj || 0,
+          subtotal: Number(item.price * item.quantity),
+          total_amount: Number(item.price * item.quantity),
+        })),
+        subtotal: cart.subtotal,
+        discount_amount: discountAmount,
+        tax_amount: taxAmount,
+        total_amount: total,
+        notes: cart.notes,
+        membership_discount_pct: selectedCustomer?.discount || 0,
+      });
+
+      if (res.success && res.data) {
+        alert(`Bill berhasil disimpan!\nOrder: ${res.data.order_number}`);
+        cart.clearCart();
+      } else {
+        alert(res.error || 'Gagal menyimpan bill');
+      }
+    } catch (e: any) {
+      alert(e.message || 'Terjadi kesalahan saat menyimpan bill');
+    } finally {
+      setLoadingFav(false);
+    }
+  }, [cart, selectedCustomer, discountAmount, taxAmount, total, hasShift, shift]);
+
   /* Print helpers */
   const handlePrint = useCallback((label: 'KITCHEN' | 'BAR' | 'CUSTOMER') => {
     if (!resultPayload) return;
@@ -550,6 +601,7 @@ export default function CashierPageNew() {
         setIncludeTax={cart.setIncludeTax}
         setShowPaymentModal={() => setShowPayment(true)}
         onSplitBill={() => setShowSplitModal(true)}
+        onOpenBill={handleOpenBill}
         updateQuantity={cart.updateQty}
         removeFromCart={cart.removeItem}
       />

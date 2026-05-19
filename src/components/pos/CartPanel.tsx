@@ -21,6 +21,7 @@ interface CartPanelProps {
   setIncludeTax: (val: boolean) => void;
   setShowPaymentModal: () => void;
   onSplitBill: () => void;
+  onOpenBill: () => void;
   updateQuantity: (id: string, delta: number) => void;
   removeFromCart: (id: string) => void;
 }
@@ -43,6 +44,7 @@ export function CartPanel({
   setIncludeTax,
   setShowPaymentModal,
   onSplitBill,
+  onOpenBill,
   updateQuantity,
   removeFromCart,
 }: CartPanelProps) {
@@ -195,6 +197,13 @@ export function CartPanel({
           className="w-full py-2.5 border-2 border-pink-600 text-pink-600 rounded-lg font-semibold hover:bg-pink-50 disabled:border-gray-300 disabled:text-gray-400 disabled:bg-gray-100 disabled:cursor-not-allowed transition-colors text-sm"
         >
           Split Bill
+        </button>
+        <button
+          onClick={onOpenBill}
+          disabled={cart.length === 0}
+          className="w-full py-2.5 border-2 border-amber-500 text-amber-700 rounded-lg font-semibold hover:bg-amber-50 disabled:border-gray-300 disabled:text-gray-400 disabled:bg-gray-100 disabled:cursor-not-allowed transition-colors text-sm"
+        >
+          Simpan / Buka Bill
         </button>
       </div>
     </div>

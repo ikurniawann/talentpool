@@ -299,7 +299,13 @@ pos_products (1)
 - Komponen: `VoidModal.tsx`, `MoveTableModal.tsx`, `MergeTableModal.tsx`
 - Supervisor PIN required untuk void & merge
 
-## Cara Menjalankan Lengkap
+## 6. Open Bill (Completed)
+
+- API: `POST /api/pos/orders/open-bill` — simpan order tanpa bayar
+- Order status: `pending`, payment_status: `unpaid`
+- Tombol "Simpan / Buka Bill" di CartPanel (warna amber)
+- Bisa dilanjutkan bayar dari Orders page (tombol Bayar untuk pending sudah ada)
+- Tidak menyentuh stock, XP, ARK — hanya menyimpan order + items
 
 ```bash
 # Apply all migrations

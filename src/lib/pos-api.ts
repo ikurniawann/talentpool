@@ -232,6 +232,33 @@ export async function mergeOrders(sourceOrderId: string, targetOrderId: string, 
   });
 }
 
+// ============ OPEN BILL ============
+export interface OpenBillRequest {
+  order_type: 'dine_in' | 'takeaway' | 'delivery' | 'self_order';
+  customer_id?: string;
+  cashier_id?: string;
+  server_id?: string;
+  table_id?: string;
+  shift_id?: string;
+  items: OrderItem[];
+  subtotal: number;
+  discount_amount?: number;
+  discount_reason?: string;
+  tax_amount?: number;
+  service_charge_amount?: number;
+  total_amount: number;
+  notes?: string;
+  special_requests?: string;
+  membership_discount_pct?: number;
+}
+
+export async function openBill(payload: OpenBillRequest) {
+  return fetchAPI<{ success: boolean; data: Order; error?: string }>('/orders/open-bill', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
 // ============ ORDERS ============
 
 export interface OrderItem {
