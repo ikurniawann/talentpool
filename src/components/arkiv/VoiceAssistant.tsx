@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Mic, Square, X } from "lucide-react";
+import { Mic, Square, X, Hand } from "lucide-react";
 
 /* ── App Mapping ──────────────────────────────────────────────── */
 const APPS: Record<string, string> = {
@@ -23,7 +23,7 @@ const APPS: Record<string, string> = {
 };
 
 /* ── Types ──────────────────────────────────────────────────────── */
-type ClapState = "idle" | "listening" | "detected";
+type ClapState = "idle" | "waiting-gesture" | "listening" | "detected";
 
 export function VoiceAssistant() {
   const [isOpen, setIsOpen] = useState(false);
@@ -35,6 +35,7 @@ export function VoiceAssistant() {
   const [speaking, setSpeaking] = useState(false);
   const [hasMic, setHasMic] = useState(false);
   const [clapState, setClapState] = useState<ClapState>("idle");
+  const [debugLevel, setDebugLevel] = useState(0); // 0-100 for debug bar
 
   const recognitionRef = useRef<SpeechRecognition | null>(null);
   const abortRef = useRef<AbortController | null>(null);
@@ -47,6 +48,7 @@ export function VoiceAssistant() {
   const clapRafRef = useRef<number | null>(null);
   const clapCooldownRef = useRef(false);
   const clapBufferRef = useRef<number[]>([]);
+  const lastPeakRef = useRef(0);
 
   /* ── Speech Recognition Init ─────────────────────────────────────── */
   useEffect(() => {
@@ -86,139 +88,122 @@ export function VoiceAssistant() {
     recognitionRef.current = rec;
   }, []);
 
-  /* ── Clap Detection ────────────────────────────────────────────── */
+  /* ── Clap Detection Core ────────────────────────────────────────── */
   const startClapDetection = useCallback(async () => {
-    if (!navigator.mediaDevices?.getUserMedia) return;
+    if (!navigator.mediaDevices?.getUserMedia) {
+      console.error("[Clap] getUserMedia not supported");
+      return;
+    }
     try {
+      console.log("[Clap] Requesting mic access...");
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
       micStreamRef.current = stream;
+      console.log("[Clap] Mic access granted");
 
-      const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+      const audioCtx = new AudioCtx();
       audioCtxRef.current = audioCtx;
 
+      // Handle suspended state (Chrome autoplay policy)
+      if (audioCtx.state === "suspended") {
+        console.log("[Clap] AudioContext suspended, waiting for user gesture...");
+        setClapState("waiting-gesture");
+        return; // Will resume on user click
+      }
+
       const analyser = audioCtx.createAnalyser();
-      analyser.fftSize = 256;
-      analyser.smoothingTimeConstant = 0.1;
-      audioCtx.createMediaStreamSource(stream).connect(analyser);
+      analyser.fftSize = 512; // Higher resolution
+      analyser.smoothingTimeConstant = 0.05; // Less smoothing = more responsive
+      const source = audioCtx.createMediaStreamSource(stream);
+      source.connect(analyser);
       analyserRef.current = analyser;
 
       const dataArray = new Uint8Array(analyser.frequencyBinCount);
 
+      console.log("[Clap] Detection loop started");
+      setClapState("listening");
+
       const detect = () => {
-        analyser.getByteFrequencyData(dataArray);
-        // Calculate RMS from frequency data (approx loudness)
-        let sum = 0;
-        for (let i = 0; i < dataArray.length; i++) sum += dataArray[i] * dataArray[i];
-        const rms = Math.sqrt(sum / dataArray.length);
+        analyser.getByteTimeDomainData(dataArray);
 
-        // Normalize 0-255 → 0-1
-        const normalized = rms / 255;
+        // Calculate peak amplitude from waveform (centered at 128)
+        let peak = 0;
+        for (let i = 0; i < dataArray.length; i++) {
+          const normalized = Math.abs(dataArray[i] - 128) / 128;
+          if (normalized > peak) peak = normalized;
+        }
 
-        clapBufferRef.current.push(normalized);
-        if (clapBufferRef.current.length > 20) clapBufferRef.current.shift();
+        lastPeakRef.current = peak;
+        setDebugLevel(Math.round(peak * 100));
 
-        const recent = clapBufferRef.current.slice(-5);
-        const peak = Math.max(...recent);
-        const prev = clapBufferRef.current.slice(-10, -5);
+        clapBufferRef.current.push(peak);
+        if (clapBufferRef.current.length > 15) clapBufferRef.current.shift();
+
+        const recent = clapBufferRef.current.slice(-4);
+        const maxRecent = Math.max(...recent);
+        const prev = clapBufferRef.current.slice(-8, -4);
         const prevAvg = prev.length ? prev.reduce((a, b) => a + b, 0) / prev.length : 0;
 
-        // Clap detection: sudden loud peak above threshold with quiet before
+        // Clap: sudden HIGH peak after QUIET period
+        // Threshold lowered to 0.35 for better sensitivity
         if (
-          !isOpen &&
           !clapCooldownRef.current &&
-          peak > 0.55 &&        // loud peak
-          prevAvg < 0.15 &&     // quiet before
+          maxRecent > 0.35 &&        // loud peak (0-1 range)
+          prevAvg < 0.08 &&        // quiet before
           recent.length >= 2
         ) {
-          // Clap detected → buka HRIS
+          console.log(`[Clap] DETECTED! peak=${maxRecent.toFixed(3)}, prevAvg=${prevAvg.toFixed(3)}`);
           clapCooldownRef.current = true;
           setClapState("detected");
-          setStatus("Tepuk tangan terdeteksi — membuka HRIS");
+          setStatus("👏 Clap terdeteksi — membuka HRIS...");
+
           setTimeout(() => {
             window.location.href = "/dashboard/hris";
-          }, 300);
+          }, 500);
 
-          // Cooldown 2s
           setTimeout(() => {
             clapCooldownRef.current = false;
             setClapState("listening");
-          }, 2000);
+            console.log("[Clap] Cooldown reset");
+          }, 2500);
         }
 
         clapRafRef.current = requestAnimationFrame(detect);
       };
 
       clapRafRef.current = requestAnimationFrame(detect);
-      setClapState("listening");
-    } catch (e) {
-      console.error("[Clap] Mic access denied:", e);
+    } catch (e: any) {
+      console.error("[Clap] Error:", e.name, e.message);
+      setClapState("idle");
     }
-  }, [isOpen]);
+  }, []);
 
   const stopClapDetection = useCallback(() => {
-    if (clapRafRef.current) cancelAnimationFrame(clapRafRef.current);
-    if (micStreamRef.current) {
-      micStreamRef.current.getTracks().forEach((t) => t.stop());
-      micStreamRef.current = null;
-    }
-    if (audioCtxRef.current) {
-      audioCtxRef.current.close();
-      audioCtxRef.current = null;
-    }
+    console.log("[Clap] Stopping detection...");
+    if (clapRafRef.current) { cancelAnimationFrame(clapRafRef.current); clapRafRef.current = null; }
+    if (micStreamRef.current) { micStreamRef.current.getTracks().forEach((t) => t.stop()); micStreamRef.current = null; }
+    if (audioCtxRef.current) { audioCtxRef.current.close().catch(()=>{}); audioCtxRef.current = null; }
     analyserRef.current = null;
     setClapState("idle");
   }, []);
 
-  /* ── Auto-start clap detection on mount ────────────────────────── */
+  /* ── Resume AudioContext on user click ──────────────────────────── */
+  const enableClapAfterGesture = useCallback(async () => {
+    console.log("[Clap] User gesture received — enabling...");
+    if (audioCtxRef.current?.state === "suspended") {
+      await audioCtxRef.current.resume();
+      console.log("[Clap] AudioContext resumed!");
+    }
+    // Restart detection
+    stopClapDetection();
+    setTimeout(() => startClapDetection(), 100);
+  }, [startClapDetection, stopClapDetection]);
+
+  /* ── Try auto-start on mount (will be suspended until gesture) ──── */
   useEffect(() => {
     startClapDetection();
     return () => stopClapDetection();
   }, [startClapDetection, stopClapDetection]);
-
-  /* ── Pause clap detection when modal open ────────────────────────── */
-  useEffect(() => {
-    if (isOpen) {
-      // Pause animation frame but keep mic open
-      if (clapRafRef.current) cancelAnimationFrame(clapRafRef.current);
-    } else {
-      // Resume clap detection when modal closes
-      if (micStreamRef.current && !clapRafRef.current) {
-        // restart detection loop
-        const analyser = analyserRef.current;
-        if (!analyser) return;
-        const dataArray = new Uint8Array(analyser.frequencyBinCount);
-        const detect = () => {
-          analyser.getByteFrequencyData(dataArray);
-          let sum = 0;
-          for (let i = 0; i < dataArray.length; i++) sum += dataArray[i] * dataArray[i];
-          const rms = Math.sqrt(sum / dataArray.length) / 255;
-          clapBufferRef.current.push(rms);
-          if (clapBufferRef.current.length > 20) clapBufferRef.current.shift();
-          const recent = clapBufferRef.current.slice(-5);
-          const peak = Math.max(...recent);
-          const prev = clapBufferRef.current.slice(-10, -5);
-          const prevAvg = prev.length ? prev.reduce((a, b) => a + b, 0) / prev.length : 0;
-          if (
-            !isOpen &&
-            !clapCooldownRef.current &&
-            peak > 0.55 &&
-            prevAvg < 0.15
-          ) {
-          // Clap detected → buka HRIS
-            clapCooldownRef.current = true;
-            setClapState("detected");
-            setStatus("Tepuk tangan terdeteksi — membuka HRIS");
-            setTimeout(() => {
-              window.location.href = "/dashboard/hris";
-            }, 300);
-            setTimeout(() => { clapCooldownRef.current = false; setClapState("listening"); }, 2000);
-          }
-          clapRafRef.current = requestAnimationFrame(detect);
-        };
-        clapRafRef.current = requestAnimationFrame(detect);
-      }
-    }
-  }, [isOpen]);
 
   /* ── Cleanup ───────────────────────────────────────────────────── */
   useEffect(() => {
@@ -350,15 +335,35 @@ export function VoiceAssistant() {
 
   if (!hasMic) return null;
 
+  const fabClick = () => {
+    if (clapState === "waiting-gesture") {
+      enableClapAfterGesture();
+    }
+    setIsOpen(true);
+    setTranscript("");
+    setResponse("");
+    setStatus("Tekan mikrofon untuk mulai bicara");
+  };
+
   return (
     <>
+      {/* Debug level indicator (tiny bar at bottom-right) */}
+      {clapState === "listening" && (
+        <div className="fixed bottom-20 right-5 z-[55] h-1 w-14 overflow-hidden rounded-full bg-white/10">
+          <div
+            className="h-full rounded-full bg-cyan-400 transition-all"
+            style={{ width: `${Math.min(debugLevel, 100)}%`, opacity: debugLevel > 5 ? 1 : 0.3 }}
+          />
+        </div>
+      )}
+
       {/* Floating mic button with clap pulse ring */}
       <button
-        onClick={() => { setIsOpen(true); setTranscript(""); setResponse(""); setStatus("Tekan mikrofon untuk mulai bicara"); }}
+        onClick={fabClick}
         className="fixed bottom-24 right-5 z-50 grid h-14 w-14 place-items-center rounded-full border border-white/15 bg-cyan-400/90 text-black shadow-lg shadow-cyan-400/30 backdrop-blur-md transition hover:scale-110 hover:shadow-cyan-400/50 active:scale-95"
-        title="Arkiv Voice Assistant — Tepuk tangan untuk aktifkan"
+        title={clapState === "waiting-gesture" ? "Klik untuk aktifkan deteksi tepuk" : "Arkiv Voice Assistant — Tepuk tangan untuk buka HRIS"}
       >
-        <Mic className="size-6" />
+        {clapState === "waiting-gesture" ? <Hand className="size-6" /> : <Mic className="size-6" />}
         {/* Clap listening indicator ring */}
         {clapState === "listening" && (
           <span className="absolute inset-0 rounded-full border border-cyan-400/40 animate-ping" style={{ animationDuration: "2s" }} />
@@ -367,6 +372,13 @@ export function VoiceAssistant() {
           <span className="absolute inset-[-8px] rounded-full border-2 border-amber-400 animate-ping" style={{ animationDuration: "0.6s" }} />
         )}
       </button>
+
+      {/* Waiting-gesture tooltip */}
+      {clapState === "waiting-gesture" && (
+        <div className="fixed bottom-[7.5rem] right-5 z-[55] rounded-xl bg-amber-500/90 px-3 py-1.5 text-xs font-semibold text-black shadow-lg backdrop-blur-md">
+          👆 Klik tombol mic untuk aktifkan deteksi tepuk
+        </div>
+      )}
 
       {/* Modal overlay */}
       {isOpen && (
@@ -383,7 +395,9 @@ export function VoiceAssistant() {
                 </div>
                 <div>
                   <h3 className="text-sm font-semibold text-white">Arkiv Voice Assistant</h3>
-                  <p className="text-xs text-white/50">Tepuk tangan atau tekan mikrofon</p>
+                  <p className="text-xs text-white/50">
+                    {clapState === "listening" ? "👏 Tepuk tangan untuk buka HRIS" : "Tepuk tangan atau tekan mikrofon"}
+                  </p>
                 </div>
               </div>
               <button
