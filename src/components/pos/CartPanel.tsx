@@ -22,6 +22,7 @@ interface CartPanelProps {
   setShowPaymentModal: () => void;
   onSplitBill: () => void;
   onOpenBill: () => void;
+  isSavingBill: boolean;
   updateQuantity: (id: string, delta: number) => void;
   removeFromCart: (id: string) => void;
 }
@@ -45,6 +46,7 @@ export function CartPanel({
   setShowPaymentModal,
   onSplitBill,
   onOpenBill,
+  isSavingBill,
   updateQuantity,
   removeFromCart,
 }: CartPanelProps) {
@@ -200,10 +202,10 @@ export function CartPanel({
         </button>
         <button
           onClick={onOpenBill}
-          disabled={cart.length === 0}
+          disabled={cart.length === 0 || isSavingBill}
           className="w-full py-2.5 border-2 border-amber-500 text-amber-700 rounded-lg font-semibold hover:bg-amber-50 disabled:border-gray-300 disabled:text-gray-400 disabled:bg-gray-100 disabled:cursor-not-allowed transition-colors text-sm"
         >
-          Simpan / Buka Bill
+          {isSavingBill ? 'Menyimpan...' : 'Simpan / Buka Bill'}
         </button>
       </div>
     </div>

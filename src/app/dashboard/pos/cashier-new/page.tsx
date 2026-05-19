@@ -70,6 +70,7 @@ export default function CashierPageNew() {
 
   /* Split Bill */
   const [showSplitModal, setShowSplitModal] = useState(false);
+  const [savingBill, setSavingBill] = useState(false);
   const [splitOrder, setSplitOrder] = useState<any | null>(null);
   const [showSplitPayment, setShowSplitPayment] = useState(false);
 
@@ -317,6 +318,7 @@ export default function CashierPageNew() {
 
   /* Open Bill */
   const handleOpenBill = useCallback(async () => {
+    console.log('[OpenBill] clicked', { items: cart.items.length, hasShift });
     if (cart.items.length === 0) return;
     if (!hasShift) {
       alert('Silakan buka shift terlebih dahulu sebelum membuat order.');
@@ -324,7 +326,8 @@ export default function CashierPageNew() {
       return;
     }
     try {
-      setLoadingFav(true);
+      setSavingBill(true);
+      console.log('[OpenBill] Calling openBill API...');
       const res = await openBill({
         order_type: cart.orderType as any,
         customer_id: selectedCustomer?.id,
@@ -353,16 +356,19 @@ export default function CashierPageNew() {
         membership_discount_pct: selectedCustomer?.discount || 0,
       });
 
+      console.log('[OpenBill] API response:', res);
       if (res.success && res.data) {
         alert(`Bill berhasil disimpan!\nOrder: ${res.data.order_number}`);
         cart.clearCart();
       } else {
+        console.error('[OpenBill] API error:', res.error);
         alert(res.error || 'Gagal menyimpan bill');
       }
     } catch (e: any) {
+      console.error('[OpenBill] Exception:', e);
       alert(e.message || 'Terjadi kesalahan saat menyimpan bill');
     } finally {
-      setLoadingFav(false);
+      setSavingBill(false);
     }
   }, [cart, selectedCustomer, discountAmount, taxAmount, total, hasShift, shift]);
 
@@ -602,6 +608,7 @@ export default function CashierPageNew() {
         setShowPaymentModal={() => setShowPayment(true)}
         onSplitBill={() => setShowSplitModal(true)}
         onOpenBill={handleOpenBill}
+        isSavingBill={savingBill}
         updateQuantity={cart.updateQty}
         removeFromCart={cart.removeItem}
       />
