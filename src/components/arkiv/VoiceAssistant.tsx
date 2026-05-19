@@ -25,7 +25,7 @@ const APPS: Record<string, string> = {
 /* ── Types ──────────────────────────────────────────────────────── */
 type ClapState = "idle" | "listening" | "detected";
 
-export function VoiceAssistant() {
+export function VoiceAssistant({ onOpenNotifications }: { onOpenNotifications: () => void }) {
   const [isOpen, setIsOpen] = useState(false);
   const [isListening, setIsListening] = useState(false);
   const [status, setStatus] = useState("Tekan mikrofon untuk mulai bicara");
@@ -33,6 +33,9 @@ export function VoiceAssistant() {
   const [response, setResponse] = useState("");
   const [thinking, setThinking] = useState(false);
   const [speaking, setSpeaking] = useState(false);
+  const onOpenNotificationsRef = useRef(onOpenNotifications);
+  useEffect(() => { onOpenNotificationsRef.current = onOpenNotifications; }, [onOpenNotifications]);
+
   const [hasMic, setHasMic] = useState(false);
   const [clapState, setClapState] = useState<ClapState>("idle");
 
@@ -130,21 +133,12 @@ export function VoiceAssistant() {
           prevAvg < 0.15 &&     // quiet before
           recent.length >= 2
         ) {
-          // Double-clap or single clap accepted
+          // Clap detected → open notification center
           clapCooldownRef.current = true;
           setClapState("detected");
 
-          // Open modal and start listening
-          setIsOpen(true);
-          setTranscript("");
-          setResponse("");
-          setStatus("Tepuk tangan terdeteksi! Mendengarkan...");
-
-          setTimeout(() => {
-            if (recognitionRef.current) {
-              recognitionRef.current.start();
-            }
-          }, 400);
+          onOpenNotificationsRef.current();
+          setStatus("Tepuk tangan terdeteksi — membuka Notifikasi");
 
           // Cooldown 2s
           setTimeout(() => {
@@ -214,13 +208,8 @@ export function VoiceAssistant() {
           ) {
             clapCooldownRef.current = true;
             setClapState("detected");
-            setIsOpen(true);
-            setTranscript("");
-            setResponse("");
-            setStatus("Tepuk tangan terdeteksi! Mendengarkan...");
-            setTimeout(() => {
-              if (recognitionRef.current) recognitionRef.current.start();
-            }, 400);
+            onOpenNotificationsRef.current();
+            setStatus("Tepuk tangan terdeteksi — membuka Notifikasi");
             setTimeout(() => { clapCooldownRef.current = false; setClapState("listening"); }, 2000);
           }
           clapRafRef.current = requestAnimationFrame(detect);
