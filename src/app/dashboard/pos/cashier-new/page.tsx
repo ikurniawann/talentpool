@@ -3,13 +3,18 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   Search, Utensils, ShoppingBag, Truck, Monitor, Table as TableIcon,
-  User, X, Sparkles, Printer, CheckCircle, AlertCircle
+  User, X, Sparkles, Printer, CheckCircle, AlertCircle, Clock,
 } from 'lucide-react';
 import { getCustomerFavoriteProducts, type Product } from '@/lib/pos-api';
+import { Button } from '@/components/ui/button';
 import { usePosCart } from '@/hooks/use-pos-cart';
 import { usePosProducts } from '@/hooks/use-pos-products';
 import { usePosCustomers } from '@/hooks/use-pos-customers';
 import { usePosCheckout } from '@/hooks/use-pos-checkout';
+import { usePosShift } from '@/hooks/use-pos-shift';
+import { ShiftModal } from '@/components/pos/ShiftModal';
+
+const CASHIER_ID = '00000000-0000-0000-0000-000000000001';
 import { CartPanel } from '@/components/pos/CartPanel';
 import { CustomizationModal, type SelectedCustomization } from '@/components/pos/CustomizationModal';
 import { PaymentModal, type PaymentMethod } from '@/components/pos/PaymentModal';
@@ -71,6 +76,10 @@ export default function CashierPageNew() {
   /* Favorites */
   const [favorites, setFavorites] = useState<Product[]>([]);
   const [loadingFav, setLoadingFav] = useState(false);
+
+  /* Shift */
+  const { shift, isActive: hasShift, openShift, closeShift } = usePosShift(CASHIER_ID);
+  const [showShiftModal, setShowShiftModal] = useState(false);
 
   const selectedCustomer = useMemo(() => {
     if (!cart.selectedCustomerId) return null;
@@ -195,6 +204,11 @@ export default function CashierPageNew() {
   /* Checkout */
   const handleCreateOrder = useCallback(async () => {
     if (cart.items.length === 0) return;
+    if (!hasShift) {
+      alert('Silakan buka shift terlebih dahulu sebelum membuat order.');
+      setShowShiftModal(true);
+      return;
+    }
     if (paymentMethod === 'ark_coin' && !selectedCustomer) { setShowNFC(true); return; }
     if (paymentMethod === 'cash' && (parseFloat(cashReceived) || 0) < totalAfterArk) return;
 
@@ -208,6 +222,7 @@ export default function CashierPageNew() {
       includeTax: cart.includeTax,
       notes: cart.notes,
       arkToUse: paymentMethod === 'ark_coin' ? arkToUseCapped : 0,
+      shiftId: shift?.id || null,
     });
 
     if (res.success) {
@@ -240,15 +255,21 @@ export default function CashierPageNew() {
   /* Split Bill */
   const handleConfirmSplit = useCallback(async (config: SplitConfig) => {
     if (cart.items.length === 0) return;
+    if (!hasShift) {
+      alert('Silakan buka shift terlebih dahulu sebelum membuat order.');
+      setShowShiftModal(true);
+      return;
+    }
     setShowSplitModal(false);
 
     try {
       const res = await createSplitOrder({
         order_type: cart.orderType,
         customer_id: selectedCustomer?.id,
-        cashier_id: '00000000-0000-0000-0000-000000000001',
+        cashier_id: CASHIER_ID,
         server_id: undefined,
         table_id: cart.selectedTable || undefined,
+        shift_id: shift?.id,
         items: cart.items.map(item => ({
           product_id: item.productId,
           product_name: item.name,
@@ -322,6 +343,34 @@ export default function CashierPageNew() {
 
       {/* LEFT PANEL */}
       <div className="flex-1 flex flex-col gap-4 overflow-hidden">
+        {/* Shift Status Bar */}
+        <div className={`flex items-center justify-between px-4 py-2 rounded-lg border text-sm ${
+          hasShift
+            ? 'bg-green-50 border-green-200 text-green-800'
+            : 'bg-amber-50 border-amber-200 text-amber-800'
+        }`}>
+          <div className="flex items-center gap-2">
+            <Clock className="w-4 h-4" />
+            {hasShift ? (
+              <>
+                <span className="font-medium">Shift Aktif:</span>
+                <span className="font-mono font-bold">{shift?.shift_number}</span>
+                <span className="text-xs opacity-75">• {shift?.total_orders} order • {formatCurrency(shift?.total_sales || 0)}</span>
+              </>
+            ) : (
+              <span>Belum ada shift aktif — silakan buka shift terlebih dahulu</span>
+            )}
+          </div>
+          <Button
+            size="sm"
+            variant={hasShift ? "outline" : "default"}
+            onClick={() => setShowShiftModal(true)}
+            className="h-7 text-xs px-2"
+          >
+            {hasShift ? 'Tutup Shift' : 'Buka Shift'}
+          </Button>
+        </div>
+
         {/* Order Type */}
         <div className="bg-white rounded-xl border border-gray-200 p-4">
           <div className="flex flex-wrap gap-2">
@@ -589,6 +638,16 @@ export default function CashierPageNew() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* ── Shift Modal ── */}
+      <ShiftModal
+        open={showShiftModal}
+        shift={shift}
+        onClose={() => setShowShiftModal(false)}
+        onOpenShift={openShift}
+        onCloseShift={closeShift}
+        formatCurrency={formatCurrency}
+      />
 
       {/* ── Split Bill Modal ── */}
       <SplitBillModal

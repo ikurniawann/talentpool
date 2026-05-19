@@ -113,6 +113,11 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ success: false, error: result?.error || 'Split order creation failed' }, { status: 400 });
       }
 
+      // Link shift if provided
+      if (body.shift_id) {
+        await supabase.from('pos_orders').update({ shift_id: body.shift_id }).eq('id', result.order_id);
+      }
+
       // Fetch complete order with relations
       const { data: completeOrder, error: fetchError } = await supabase
         .from('pos_orders')
@@ -163,6 +168,11 @@ export async function POST(request: NextRequest) {
 
     if (!result?.success) {
       return NextResponse.json({ success: false, error: result?.error || 'Order creation failed' }, { status: 400 });
+    }
+
+    // Link shift if provided (single-payment flow)
+    if (body.shift_id) {
+      await supabase.from('pos_orders').update({ shift_id: body.shift_id }).eq('id', result.order_id);
     }
 
     // Fetch complete order with relations for response

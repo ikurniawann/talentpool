@@ -282,17 +282,41 @@ pos_products (1)
 
 ## 8. Cara Menjalankan
 
+---
+
+## 4. Shift Management (A1 — Completed)
+
+- Migration 008: `pos_shifts` table + `pos_orders.shift_id` + trigger auto-totals
+- API: `/pos/shifts`, `/pos/shifts/current`, `/pos/shifts/[id]/close`
+- Hook: `usePosShift.ts` + Komponen: `ShiftModal.tsx`
+- Guard: checkout disabled tanpa shift aktif
+
+## 5. Void + Table Move/Merge (Completed)
+
+- Migration 009: `pos_supervisor` role, `users.pos_pin`, void/merge columns, enum 'voided'/'merged'
+- RPC: `pos_void_order`, `pos_merge_orders`, `pos_move_order_table`
+- API: `POST /orders/[id]/void`, `PATCH /orders/[id]/table`, `POST /orders/[id]/merge`
+- Komponen: `VoidModal.tsx`, `MoveTableModal.tsx`, `MergeTableModal.tsx`
+- Supervisor PIN required untuk void & merge
+
+## Cara Menjalankan Lengkap
+
 ```bash
-# 1. Apply migrations (jika belum)
-cd ~/Desktop/talentpool
+# Apply all migrations
 psql $DATABASE_URL -f migrations/004_pos_transaction_rpc.sql
 psql $DATABASE_URL -f migrations/005_pos_split_bill_schema.sql
+psql $DATABASE_URL -f migrations/006_pos_split_per_item.sql
+psql $DATABASE_URL -f migrations/007_pos_jsonb_guard.sql
+psql $DATABASE_URL -f migrations/008_pos_shift_management.sql
+psql $DATABASE_URL -f migrations/009_pos_void_and_table_management.sql
 
-# 2. Jalankan dev server
+# Buat user supervisor (contoh)
+INSERT INTO users (id, full_name, role, pos_pin) VALUES
+  (gen_random_uuid(), 'Supervisor POS', 'pos_supervisor', '1234')
+ON CONFLICT DO NOTHING;
+
+# Jalankan dev
 npm run dev
-
-# 3. Buka browser
-open http://localhost:3000/dashboard/pos/cashier-new
 ```
 
 ---

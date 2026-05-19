@@ -32,6 +32,7 @@ export function usePosCheckout() {
       includeTax,
       notes,
       arkToUse,
+      shiftId,
     }: {
       cart: PosCartItem[];
       orderType: string;
@@ -42,6 +43,7 @@ export function usePosCheckout() {
       includeTax: boolean;
       notes: string;
       arkToUse: number;
+      shiftId?: string | null;
     }): Promise<PaymentResult> => {
       const snap = {
         snapshotCart: [...cart],
@@ -93,19 +95,13 @@ export function usePosCheckout() {
           tax_amount: tax,
           service_charge_amount: 0,
           total_amount: total,
-          payment_method:
-            paymentMethod === "qris"
-              ? "qris"
-              : paymentMethod === "credit_card"
-              ? "credit"
-              : paymentMethod === "ark_coin"
-              ? "ark_coin"
-              : "cash",
+          payment_method: paymentMethod === "qris" ? "qris" : paymentMethod === "credit_card" ? "credit" : paymentMethod === "ark_coin" ? "ark_coin" : "cash",
           amount_paid: paidAmount,
           include_tax: includeTax,
           membership_discount_pct: discountPct,
           notes,
           ark_coins_used: paymentMethod === "ark_coin" ? arkToUse : 0,
+          shift_id: shiftId || undefined,
         };
 
         const response = await createOrder(payload);

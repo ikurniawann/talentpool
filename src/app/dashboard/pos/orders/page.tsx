@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Clock, CheckCircle, XCircle, ChefHat, Truck, Search, Filter, Eye, User, CreditCard, Coins, Calendar, DollarSign, ScanQrCode } from 'lucide-react';
+import { Clock, CheckCircle, XCircle, ChefHat, Truck, Search, Filter, Eye, User, CreditCard, Coins, Calendar, DollarSign, ScanQrCode, Merge, MoveRight, Ban, Table2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,6 +9,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Badge } from '@/components/ui/badge';
 import { getOrders, updateOrderStatus, getCustomers } from '@/lib/pos-api';
 import type { Order, Customer } from '@/lib/pos-api';
+import { VoidModal } from '@/components/pos/VoidModal';
+import { MoveTableModal } from '@/components/pos/MoveTableModal';
+import { MergeTableModal } from '@/components/pos/MergeTableModal';
 
 const ARK_RATE = 1000; // 1 ARK = Rp 1.000 — balance & ark_coins_used disimpan dalam Rupiah
 const formatArk = (value: number) => `${(value / ARK_RATE).toLocaleString('id-ID')} ARK`;
@@ -45,6 +48,10 @@ const getStatusBadge = (status: string) => {
       return <Badge variant="secondary" className="bg-green-100 text-green-700 hover:bg-green-200"><CheckCircle className="w-3 h-3 mr-1" /> Completed</Badge>;
     case 'cancelled':
       return <Badge variant="secondary" className="bg-red-100 text-red-700 hover:bg-red-200"><XCircle className="w-3 h-3 mr-1" /> Cancelled</Badge>;
+    case 'voided':
+      return <Badge variant="secondary" className="bg-gray-200 text-gray-600 hover:bg-gray-300"><XCircle className="w-3 h-3 mr-1" /> Voided</Badge>;
+    case 'merged':
+      return <Badge variant="secondary" className="bg-indigo-100 text-indigo-700 hover:bg-indigo-200"><Merge className="w-3 h-3 mr-1" /> Merged</Badge>;
     default:
       return <Badge variant="outline">{status}</Badge>;
   }
@@ -151,6 +158,9 @@ export default function OrdersPage() {
   const [arkCoinCustomer, setArkCoinCustomer] = useState<Customer | null>(null);
   const [arkToUse, setArkToUse] = useState<number>(0);
   const [scanningArk, setScanningArk] = useState(false);
+  const [showVoidModal, setShowVoidModal] = useState(false);
+  const [showMoveModal, setShowMoveModal] = useState(false);
+  const [showMergeModal, setShowMergeModal] = useState(false);
 
   useEffect(() => {
     loadOrders();
@@ -443,6 +453,44 @@ export default function OrdersPage() {
                               {selectedOrder && <OrderDetail order={selectedOrder} />}
                             </DialogContent>
                           </Dialog>
+
+                          {order.status && !['completed', 'cancelled', 'voided', 'merged'].includes(order.status) && (
+                            <>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setSelectedOrder(order);
+                                  setShowMoveModal(true);
+                                }}
+                                className="inline-flex items-center rounded-md border border-blue-200 bg-blue-50 px-3 py-1.5 text-sm font-medium text-blue-700 hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                title="Pindah meja / ubah jenis order"
+                              >
+                                <MoveRight className="w-4 h-4 mr-1" /> Pindah
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setSelectedOrder(order);
+                                  setShowMergeModal(true);
+                                }}
+                                className="inline-flex items-center rounded-md border border-indigo-200 bg-indigo-50 px-3 py-1.5 text-sm font-medium text-indigo-700 hover:bg-indigo-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                title="Gabung ke order lain"
+                              >
+                                <Merge className="w-4 h-4 mr-1" /> Gabung
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setSelectedOrder(order);
+                                  setShowVoidModal(true);
+                                }}
+                                className="inline-flex items-center rounded-md border border-red-200 bg-red-50 px-3 py-1.5 text-sm font-medium text-red-700 hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-red-500"
+                                title="Void order"
+                              >
+                                <Ban className="w-4 h-4 mr-1" /> Void
+                              </button>
+                            </>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -638,6 +686,50 @@ export default function OrdersPage() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Void Modal */}
+      <VoidModal
+        open={showVoidModal}
+        order={selectedOrder}
+        onClose={() => {
+          setShowVoidModal(false);
+          setSelectedOrder(null);
+        }}
+        onSuccess={() => {
+          loadOrders();
+          setSelectedOrder(null);
+        }}
+      />
+
+      {/* Move Table Modal */}
+      <MoveTableModal
+        open={showMoveModal}
+        order={selectedOrder}
+        allOrders={orders}
+        onClose={() => {
+          setShowMoveModal(false);
+          setSelectedOrder(null);
+        }}
+        onSuccess={() => {
+          loadOrders();
+          setSelectedOrder(null);
+        }}
+      />
+
+      {/* Merge Table Modal */}
+      <MergeTableModal
+        open={showMergeModal}
+        order={selectedOrder}
+        allOrders={orders}
+        onClose={() => {
+          setShowMergeModal(false);
+          setSelectedOrder(null);
+        }}
+        onSuccess={() => {
+          loadOrders();
+          setSelectedOrder(null);
+        }}
+      />
     </div>
   );
 }
