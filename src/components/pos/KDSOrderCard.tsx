@@ -35,6 +35,13 @@ const STATUS_COLORS: Record<string, { bg: string; border: string; text: string; 
   served: { bg: 'bg-gray-50', border: 'border-gray-300', text: 'text-gray-700', badge: 'bg-gray-100 text-gray-600' },
 };
 
+const ACTION_BUTTON_COLORS: Record<string, string> = {
+  confirmed: 'bg-blue-600 hover:bg-blue-700 text-white',
+  preparing: 'bg-orange-500 hover:bg-orange-600 text-white',
+  ready: 'bg-green-600 hover:bg-green-700 text-white',
+  served: 'bg-pink-600 hover:bg-pink-700 text-white',
+};
+
 function formatWaitTime(seconds: number): string {
   const m = Math.floor(seconds / 60);
   const s = seconds % 60;
@@ -48,6 +55,7 @@ function formatWaitTime(seconds: number): string {
 export function KDSOrderCard({ order, onStatusChange, index }: KDSOrderCardProps) {
   const colors = STATUS_COLORS[order.status] || STATUS_COLORS.pending;
   const nextStatus = STATUS_FLOW[order.status];
+  const actionButtonClass = nextStatus ? ACTION_BUTTON_COLORS[nextStatus] || 'bg-gray-900 hover:bg-gray-800 text-white' : '';
   const [elapsed, setElapsed] = useState(order.wait_seconds);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -129,7 +137,7 @@ export function KDSOrderCard({ order, onStatusChange, index }: KDSOrderCardProps
           <Button
             size="sm"
             onClick={() => onStatusChange(order.id, nextStatus)}
-            className="bg-gray-900 hover:bg-gray-800 text-white text-xs h-8 px-3 gap-1"
+            className={`${actionButtonClass} text-xs h-8 px-3 gap-1 shadow-sm`}
           >
             {nextStatus === 'ready' ? (
               <CheckCircle2 className="w-3.5 h-3.5" />

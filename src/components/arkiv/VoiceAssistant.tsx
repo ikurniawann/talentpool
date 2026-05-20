@@ -244,49 +244,29 @@ export function VoiceAssistant() {
     return { type: "ask" as const, text };
   };
 
-  /* ── Ollama AI ──────────────────────────────────────────────────── */
+  /* ── Arkiv AI Agent ─────────────────────────────────────────────── */
   const askOllama = async (userText: string) => {
     setThinking(true);
     setStatus("Berpikir...");
     abortRef.current = new AbortController();
 
-    const prompt = `Kamu adalah AI Assistant untuk Arkiv OS, operating system bisnis.\nJawab singkat, jelas, dan ramah dalam Bahasa Indonesia (1-3 kalimat).\nModul Arkiv OS: HRIS, ERP, CRM, POS, Purchasing, Creative, Settings.\n\nPertanyaan: "${userText}"\n\nJawaban:`;
-
     try {
-      const res = await fetch("http://localhost:11434/api/generate", {
+      const res = await fetch("/api/ai/assistant", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          model: "kimi-k2.6:cloud",
-          prompt,
-          stream: true,
-          options: { temperature: 0.7 },
-        }),
+        body: JSON.stringify({ message: userText }),
         signal: abortRef.current.signal,
       });
 
-      if (!res.ok) throw new Error("Ollama offline");
-      const reader = res.body!.getReader();
-      const decoder = new TextDecoder();
-      let full = "";
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        const chunk = decoder.decode(value, { stream: true });
-        chunk.split("\\n").forEach((line) => {
-          if (!line.trim()) return;
-          try {
-            const obj = JSON.parse(line);
-            if (obj.response) { full += obj.response; setResponse(full); }
-          } catch {}
-        });
-      }
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || "AI Assistant error");
+      const answer = json.answer || "Maaf, saya belum mendapat jawaban.";
+      setResponse(answer);
       setThinking(false);
-      return full.trim();
+      return answer;
     } catch (e) {
       setThinking(false);
-      const fallback = "Maaf, sistem AI (kimi-k2.6:cloud) sedang offline. Pastikan Ollama berjalan di port 11434.";
+      const fallback = "Maaf, AI Assistant sedang tidak tersedia. Coba lagi sebentar.";
       setResponse(fallback);
       return fallback;
     }

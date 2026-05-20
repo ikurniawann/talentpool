@@ -3,6 +3,7 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import "./blue-theme.css";
 import "./pink-buttons.css";
+import "quill/dist/quill.snow.css";
 import QueryProvider from "@/components/providers/query-provider";
 import { ToastProvider } from "@/components/providers/toast-provider";
 import { ActivityLogProvider } from "@/contexts/ActivityLogContext";

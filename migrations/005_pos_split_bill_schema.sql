@@ -163,7 +163,7 @@ BEGIN
     amount_paid, change_amount, notes, special_requests,
     ordered_at
   ) VALUES (
-    v_order_number, p_order_type, 'pending', 'unpaid',
+    v_order_number, p_order_type::pos_order_type, 'pending', 'unpaid',
     p_customer_id, p_cashier_id, p_server_id, p_branch_id, p_table_id,
     p_subtotal, p_discount_amount, p_discount_reason,
     p_tax_amount, p_service_charge_amount, p_total_amount,
@@ -339,7 +339,7 @@ BEGIN
     WHERE id = v_order_id;
   ELSEIF v_all_paid_count >= 1 THEN
     UPDATE pos_orders
-    SET payment_status = 'partially_paid'
+    SET payment_status = 'partial'
     WHERE id = v_order_id;
   END IF;
 

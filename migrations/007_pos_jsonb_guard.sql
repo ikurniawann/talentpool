@@ -82,7 +82,7 @@ BEGIN
     amount_paid, change_amount, notes, special_requests,
     ordered_at
   ) VALUES (
-    v_order_number, p_order_type, 'pending', 'unpaid',
+    v_order_number, p_order_type::pos_order_type, 'pending', 'unpaid',
     p_customer_id, p_cashier_id, p_server_id,
     p_subtotal, p_discount_amount, p_discount_reason,
     p_tax_amount, p_service_charge_amount, p_total_amount,
@@ -302,7 +302,7 @@ BEGIN
     payment_method, ark_coins_used,
     notes, special_requests
   ) VALUES (
-    generate_order_number(), p_order_type, 'pending', 'unpaid',
+    generate_order_number(), p_order_type::pos_order_type, 'pending', 'unpaid',
     p_customer_id, COALESCE(p_cashier_id, '00000000-0000-0000-0000-000000000001'::uuid), p_server_id,
     v_server_subtotal, v_server_discount, v_server_tax, v_server_service_charge,
     v_server_total, v_server_amount_paid, v_server_change,

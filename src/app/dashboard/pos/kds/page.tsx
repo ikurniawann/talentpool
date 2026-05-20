@@ -24,9 +24,14 @@ export default function KDSPage() {
 
   const handleStatusChange = useCallback(
     async (orderId: string, newStatus: string) => {
-      await updateStatus(orderId, newStatus);
+      const result = await updateStatus(orderId, newStatus);
+      if (!result?.success) {
+        alert(result?.error || 'Gagal update status order');
+        return;
+      }
+      await refresh();
     },
-    [updateStatus]
+    [updateStatus, refresh]
   );
 
   // Group by status for visual ordering

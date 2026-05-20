@@ -16,6 +16,7 @@ const HRIS_MODULES = [
   { href: "/dashboard/hris/leaves", label: "Cuti & Izin" },
   { href: "/dashboard/hris/employees", label: "Karyawan" },
   { href: "/dashboard/hris/payroll", label: "Payroll" },
+  { href: "/dashboard/hris/logbook", label: "Logbook KPI" },
   { href: "/dashboard/hris/salary", label: "Salary" },
   { href: "/dashboard/hris/reports", label: "Reports" },
   { href: "/dashboard/hris/org-chart", label: "Org Chart" },

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { Clock, CheckCircle, XCircle, ChefHat, Truck, Search, Filter, Eye, User, CreditCard, Coins, Calendar, DollarSign, ScanQrCode, Merge, MoveRight, Ban, Table2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -146,6 +147,7 @@ function printReceiptPreview(order: Order) {
 }
 
 export default function OrdersPage() {
+  const router = useRouter();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -427,13 +429,10 @@ export default function OrdersPage() {
                           {order.status === 'pending' && (
                             <button
                               type="button"
-                              onClick={() => {
-                                setSelectedOrder(order);
-                                setShowPaymentModal(true);
-                              }}
-                              className="inline-flex items-center rounded-md bg-amber-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-amber-700 focus:outline-none focus:ring-2 focus:ring-amber-500"
+                              onClick={() => router.push(`/dashboard/pos/cashier-new?orderId=${order.id}`)}
+                              className="inline-flex items-center rounded-md bg-pink-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-pink-700 focus:outline-none focus:ring-2 focus:ring-pink-500"
                             >
-                              <DollarSign className="w-4 h-4 mr-1" /> Bayar
+                              <Eye className="w-4 h-4 mr-1" /> Lihat Pesanan
                             </button>
                           )}
                           <Dialog>
@@ -462,7 +461,7 @@ export default function OrdersPage() {
                                   setSelectedOrder(order);
                                   setShowMoveModal(true);
                                 }}
-                                className="inline-flex items-center rounded-md border border-blue-200 bg-blue-50 px-3 py-1.5 text-sm font-medium text-blue-700 hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                className="inline-flex items-center rounded-md border border-pink-300 bg-pink-100 px-3 py-1.5 text-sm font-medium text-black hover:bg-pink-200 focus:outline-none focus:ring-2 focus:ring-pink-500"
                                 title="Pindah meja / ubah jenis order"
                               >
                                 <MoveRight className="w-4 h-4 mr-1" /> Pindah

@@ -48,7 +48,7 @@ export async function PATCH(
     .from('pos_orders')
     .select('total_amount, amount_paid, ark_coins_used, payment_method')
     .eq('shift_id', shiftId)
-    .in('payment_status', ['paid', 'partially_paid'])
+    .in('payment_status', ['paid', 'partial'])
     .not('status', 'eq', 'cancelled');
 
   if (aggError) {

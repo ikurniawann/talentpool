@@ -27,6 +27,8 @@ export default async function DashboardGroupLayout({
                   { href: "/dashboard/hris/employees", label: "Karyawan", icon: "users" },
                   { href: "/dashboard/hris/payroll", label: "Penggajian", icon: "dollar-sign" },
                   { href: "/dashboard/hris/kpi-templates", label: "KPI Templates", icon: "clipboard" },
+                  { href: "/dashboard/hris/logbook", label: "Logbook", icon: "clipboard" },
+                  { href: "/dashboard/hris/logbook-list", label: "Logbook List", icon: "clipboard" },
                   { href: "/dashboard/hris/performance", label: "Performance Review", icon: "chart" },
                 ],
               },
@@ -99,6 +101,8 @@ export default async function DashboardGroupLayout({
                   { href: "/dashboard/hris/reports", label: "Laporan HRIS", icon: "reports" },
                   { href: "/dashboard/hris/payroll", label: "Penggajian", icon: "dollar-sign" },
                   { href: "/dashboard/hris/salary", label: "Salary", icon: "money" },
+                  { href: "/dashboard/hris/logbook", label: "Logbook", icon: "clipboard" },
+                  { href: "/dashboard/hris/logbook-list", label: "Logbook List", icon: "clipboard" },
                 ],
               },
               {
@@ -108,6 +112,8 @@ export default async function DashboardGroupLayout({
                 children: [
                   { href: "/dashboard/hris/kpi-templates", label: "KPI Templates", icon: "clipboard" },
                   { href: "/dashboard/hris/kpi-templates/new", label: "Buat Template", icon: "plus" },
+                  { href: "/dashboard/hris/logbook", label: "Logbook", icon: "clipboard" },
+                  { href: "/dashboard/hris/logbook-list", label: "Logbook List", icon: "clipboard" },
                   { href: "/dashboard/hris/performance", label: "Performance Review", icon: "chart" },
                   { href: "/dashboard/hris/performance/new", label: "Review Baru", icon: "plus" },
                 ],

@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient as createServiceClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
+import { appendFile, mkdir } from "fs/promises";
+import path from "path";
 
 type SessionMessage = { role: "user" | "assistant" | "system"; content: string };
 type ChatMessage = { role: "user" | "assistant"; content: string };
@@ -78,10 +80,6 @@ export async function POST(request: NextRequest) {
       .eq("id", user.id)
       .single();
 
-    if (profile?.role !== "super_admin") {
-      return NextResponse.json({ error: "AI Assistant hanya tersedia untuk super_admin" }, { status: 403 });
-    }
-
     const admin = createServiceClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.SUPABASE_SERVICE_ROLE_KEY!,
@@ -90,7 +88,7 @@ export async function POST(request: NextRequest) {
 
     intent = detectIntent(prompt);
     const summary = await buildSystemSummary(admin, intent);
-    const fallbackAnswer = generateSummaryAnswer(prompt, summary, profile.full_name ?? user.email ?? "Super Admin", intent);
+    const fallbackAnswer = generateSummaryAnswer(prompt, summary, profile?.full_name ?? user.email ?? "User", intent);
 
     // Create session if none exists (first user message in a fresh chat)
     if (!sessionId) {
@@ -105,12 +103,15 @@ export async function POST(request: NextRequest) {
       await admin.from("ai_assistant_sessions").update({ updated_at: new Date().toISOString() }).eq("id", sessionId);
     }
 
+    const persistedHistory = sessionId ? await loadSessionHistory(admin, sessionId) : [];
+    const mergedHistory = [...persistedHistory, ...history].slice(-20);
+
     const llmResult = await generateWithOllama({
       message: prompt,
-      history,
+      history: mergedHistory,
       summary,
       fallbackAnswer,
-      userName: profile.full_name ?? user.email ?? "Super Admin",
+      userName: profile?.full_name ?? user.email ?? "User",
       intent,
     });
 
@@ -127,6 +128,16 @@ export async function POST(request: NextRequest) {
       ];
       await admin.from("ai_assistant_messages").insert(rows);
     }
+
+    await appendAssistantMarkdown({
+      userId: user.id,
+      userEmail: user.email ?? "unknown",
+      userName: profile?.full_name ?? user.email ?? "User",
+      sessionId,
+      prompt,
+      answer: llmResult.answer,
+      model: llmResult.model,
+    });
 
     await auditAiRequest(admin, {
       user_id: user.id,
@@ -291,38 +302,39 @@ async function generateWithOllama({
   userName: string;
   intent: Intent;
 }): Promise<{ answer: string; mode: string; model: string; status: "live" | "fallback"; fallbackReason?: string; error?: string }> {
-  const baseUrl = (process.env.OLLAMA_API_BASE || process.env.OLLAMA_HOST || "").replace(/\/$/, "");
-  const model = process.env.OLLAMA_MODEL || "qwen2.5-coder:7b";
+  const baseUrl = (process.env.OLLAMA_API_BASE || process.env.OLLAMA_HOST || "http://localhost:11434").replace(/\/$/, "");
+  const model = process.env.OLLAMA_MODEL || "kimi-k2.6:cloud";
   const apiKey = process.env.OLLAMA_API_KEY;
   const timeoutMs = Number(process.env.OLLAMA_TIMEOUT || "120000");
 
-  if (!baseUrl) return { answer: fallbackAnswer, mode: "rule_based_summary_v1", model: "none", status: "fallback", fallbackReason: "LLM belum dikonfigurasi" };
+  if (!baseUrl) return { answer: fallbackAnswer, mode: "rule_based_summary_v1", model: "none", status: "fallback", fallbackReason: "OLLAMA_API_BASE belum dikonfigurasi" };
 
   const systemPrompt = [
-    "Kamu adalah Arkiv OS AI Assistant untuk owner/super_admin.",
-    "Jawab dalam Bahasa Indonesia yang ringkas, jelas, dan actionable.",
-    "Gunakan hanya data JSON summary dan details yang diberikan. Jangan mengarang angka.",
-    "Jika data detail tidak tersedia, sebutkan bahwa saat ini baru tersedia summary agregat.",
-    "Berikan insight, alert, dan next action. Jangan tampilkan error teknis ke user.",
+    "Kamu adalah Arkiv OS AI Assistant untuk semua user Arkiv OS.",
+    "Kamu boleh diajak ngobrol bebas sebagai agent/asisten, tidak terbatas hanya summary dashboard.",
+    "Jawab dalam Bahasa Indonesia yang ramah, jelas, dan actionable.",
+    "Jika user bertanya data bisnis Arkiv OS, gunakan data JSON summary/details yang tersedia dan jangan mengarang angka.",
+    "Jika user meminta ide, strategi, copywriting, SOP, analisis, atau bantuan umum, bantu secara bebas tanpa harus memaksa summary dashboard.",
+    "Ingat konteks percakapan dari history yang diberikan.",
   ].join(" ");
-  const userPrompt = `Nama user: ${userName}\nIntent: ${intent}\nPertanyaan: ${message}\n\nData Arkiv OS:\n${JSON.stringify(summary, null, 2)}\n\nFallback answer:\n${fallbackAnswer}`;
+  const userPrompt = `Nama user: ${userName}\nIntent terdeteksi: ${intent}\nPertanyaan user: ${message}\n\nData Arkiv OS opsional jika relevan:\n${JSON.stringify(summary, null, 2)}`;
   const messages = [
     { role: "system", content: systemPrompt },
     ...history.map((item) => ({ role: item.role, content: item.content })),
     { role: "user", content: userPrompt },
   ];
 
-  const headers = { "Content-Type": "application/json", ...(apiKey ? { Authorization: `Bearer ${apiKey}` } : {}) };
+  const headers = { "Content-Type": "application/json" };
   const errors: string[] = [];
 
   try {
     const response = await fetch(`${baseUrl}/api/chat`, {
       method: "POST",
       headers,
-      body: JSON.stringify({ model, stream: false, options: { temperature: 0.2, num_ctx: 4096, num_gpu: 1 }, messages }),
+      body: JSON.stringify({ model, stream: false, options: { temperature: 0.7, num_ctx: 4096, num_gpu: 1 }, messages }),
       signal: AbortSignal.timeout(timeoutMs),
     });
-    if (!response.ok) throw new Error(`/api/chat ${response.status}`);
+    if (!response.ok) throw new Error(`/api/chat ${response.status}: ${await response.text()}`);
     const json = await response.json() as { message?: { content?: string }; response?: string };
     const answer = json.message?.content || json.response;
     if (!answer) throw new Error("/api/chat response kosong");
@@ -335,10 +347,10 @@ async function generateWithOllama({
     const response = await fetch(`${baseUrl}/v1/chat/completions`, {
       method: "POST",
       headers,
-      body: JSON.stringify({ model, temperature: 0.2, messages }),
+      body: JSON.stringify({ model, temperature: 0.7, messages }),
       signal: AbortSignal.timeout(timeoutMs),
     });
-    if (!response.ok) throw new Error(`/v1/chat/completions ${response.status}`);
+    if (!response.ok) throw new Error(`/v1/chat/completions ${response.status}: ${await response.text()}`);
     const json = await response.json() as { choices?: Array<{ message?: { content?: string } }> };
     const answer = json.choices?.[0]?.message?.content;
     if (!answer) throw new Error("/v1/chat/completions response kosong");
@@ -347,11 +359,54 @@ async function generateWithOllama({
     errors.push(error instanceof Error ? error.message : "unknown /v1 error");
   }
 
-  const reason = errors.some((error) => error.includes("429"))
-    ? "Kuota/rate limit LLM sedang habis. Saya memakai summary internal sementara."
-    : "LLM sedang tidak tersedia. Saya memakai summary internal sementara.";
+  return { answer: fallbackAnswer, mode: "ollama_unavailable_fallback", model, status: "fallback", fallbackReason: "Ollama/Kimi Cloud sedang tidak tersedia. Saya memakai fallback internal sementara.", error: errors.join(" | ") };
+}
 
-  return { answer: fallbackAnswer, mode: "ollama_unavailable_fallback", model, status: "fallback", fallbackReason: reason, error: errors.join(" | ") };
+async function loadSessionHistory(admin: any, sessionId: string): Promise<ChatMessage[]> {
+  try {
+    const { data } = await admin
+      .from("ai_assistant_messages")
+      .select("role, content")
+      .eq("session_id", sessionId)
+      .in("role", ["user", "assistant"])
+      .order("created_at", { ascending: true })
+      .limit(40);
+    return (data ?? []).map((item: any) => ({ role: item.role, content: item.content })) as ChatMessage[];
+  } catch {
+    return [];
+  }
+}
+
+async function appendAssistantMarkdown(payload: {
+  userId: string;
+  userEmail: string;
+  userName: string;
+  sessionId?: string;
+  prompt: string;
+  answer: string;
+  model: string;
+}) {
+  try {
+    const logsDir = path.join(process.cwd(), "assistant-memory");
+    await mkdir(logsDir, { recursive: true });
+    const safeUser = payload.userEmail.replace(/[^a-zA-Z0-9._-]/g, "_");
+    const filePath = path.join(logsDir, `${safeUser}.assistant.md`);
+    const block = [
+      `\n\n---`,
+      `date: ${new Date().toISOString()}`,
+      `user: ${payload.userName} <${payload.userEmail}>`,
+      `user_id: ${payload.userId}`,
+      `session_id: ${payload.sessionId ?? "none"}`,
+      `model: ${payload.model}`,
+      `\n## User`,
+      payload.prompt,
+      `\n## Assistant`,
+      payload.answer,
+    ].join("\n");
+    await appendFile(filePath, block, "utf8");
+  } catch (error) {
+    console.warn("assistant.md write skipped:", error instanceof Error ? error.message : error);
+  }
 }
 
 async function auditAiRequest(admin: any, payload: Record<string, any>) {

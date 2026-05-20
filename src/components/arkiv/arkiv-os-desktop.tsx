@@ -6,27 +6,38 @@ import type { ComponentType, CSSProperties, MouseEvent as ReactMouseEvent } from
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Activity,
+  AlertCircle,
   Bell,
   Bot,
   BriefcaseBusiness,
+  Building2,
   CalendarDays,
+  Camera,
   ChevronLeft,
   ChevronRight,
   Cloud,
   Command,
+  CreditCard,
   Folder,
+  Gamepad2,
   Grid3X3,
   History,
+  Landmark,
   Plus,
   Loader2,
   LogIn,
+  Plug,
   MessageSquareMore,
   MonitorDot,
   Search,
   Send,
+  Server,
   Settings,
+  ShieldCheck,
   ShoppingCart,
+  Scale,
   Volume2,
+  WalletCards,
   VolumeX,
   UserCircle,
   UsersRound,
@@ -84,6 +95,14 @@ const modules: DesktopModule[] = [
     icon: ShoppingCart,
   },
   {
+    name: "Integration",
+    subtitle: "Settings Center",
+    description: "Konfigurasi integrasi Game, Photobox, Payment Gateway, API, webhook, dan automation.",
+    loginHref: "/login?redirect=/dashboard/integration&module=integration",
+    dashboardHref: "/dashboard/integration",
+    icon: Plug,
+  },
+  {
     name: "CRM",
     subtitle: "Coming Soon",
     description: "Customer profile, loyalty, campaign, pipeline, dan service desk.",
@@ -117,7 +136,7 @@ const defaultIconPositions: Record<string, DesktopIconPosition> = {
 };
 
 const defaultWidgetVisibility: WidgetVisibility = {
-  calendar: false,
+  calendar: true,
   system: false,
 };
 
@@ -141,6 +160,7 @@ export default function ArkivOsDesktop() {
   const [showAssistant, setShowAssistant] = useState(false);
   const [showFiles, setShowFiles] = useState(false);
   const [showApplicationFolder, setShowApplicationFolder] = useState(false);
+  const [comingSoonApp, setComingSoonApp] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [userAccount, setUserAccount] = useState<OsUserAccount | null>(null);
   const [showAccount, setShowAccount] = useState(false);
@@ -320,7 +340,14 @@ export default function ArkivOsDesktop() {
         setIconPositions(defaultIconPositions);
       }
       if (savedWallpaper) setWallpaper(wallpapers.find((item) => item.id === savedWallpaper) ?? wallpapers[0]);
-      if (savedWidgets) setWidgetVisibility({ ...defaultWidgetVisibility, ...JSON.parse(savedWidgets) });
+      if (savedWidgets) {
+        const parsedWidgets = JSON.parse(savedWidgets);
+        const nextWidgets = { ...defaultWidgetVisibility, ...parsedWidgets, calendar: true };
+        setWidgetVisibility(nextWidgets);
+        window.localStorage.setItem("arkiv-widget-visibility", JSON.stringify(nextWidgets));
+      } else {
+        window.localStorage.setItem("arkiv-widget-visibility", JSON.stringify(defaultWidgetVisibility));
+      }
       setSoundEnabled(savedSound === "true");
       setToast("Arkiv OS ready · 3 pending approval notifications");
       window.setTimeout(() => setToast(null), 4200);
@@ -499,7 +526,8 @@ export default function ArkivOsDesktop() {
       </nav>
 
       {previewModule && <ModuleWindow module={previewModule} isLoggedIn={isLoggedIn} onClose={() => setPreviewModule(null)} onOpen={() => openModule(previewModule)} />}
-      {showApplicationFolder && <ApplicationFolderModal onClose={() => setShowApplicationFolder(false)} onOpen={openModule} />}
+      {showApplicationFolder && <ApplicationFolderModal onClose={() => setShowApplicationFolder(false)} onOpen={openModule} onComingSoon={setComingSoonApp} />} 
+      {comingSoonApp && <ComingSoonModal title={comingSoonApp} onClose={() => setComingSoonApp(null)} />}
       {showLibrary && <AppLibrary onClose={() => setShowLibrary(false)} onOpen={openModule} />}
       {showCommand && (
         <CommandPalette
@@ -913,8 +941,14 @@ function AppLibrary({ onClose, onOpen }: { onClose: () => void; onOpen: (module:
   );
 }
 
-function ApplicationFolderModal({ onClose, onOpen }: { onClose: () => void; onOpen: (module: DesktopModule) => void }) {
+function ApplicationFolderModal({ onClose, onOpen, onComingSoon }: { onClose: () => void; onOpen: (module: DesktopModule) => void; onComingSoon: (name: string) => void }) {
   const activeModules = modules.filter((m) => !m.disabled);
+  const comingSoonApps = [
+    { name: "Finance", subtitle: "Accounting & Budget", icon: WalletCards },
+    { name: "Legal", subtitle: "Contract & Compliance", icon: Scale },
+    { name: "HAKI", subtitle: "IP Rights", icon: Landmark },
+    { name: "Business", subtitle: "Planning & Strategy", icon: Building2 },
+  ];
   
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center" onClick={onClose}>
@@ -952,8 +986,145 @@ function ApplicationFolderModal({ onClose, onOpen }: { onClose: () => void; onOp
               </button>
             );
           })}
+          {comingSoonApps.map((app) => {
+            const Icon = app.icon;
+            return (
+              <button
+                key={app.name}
+                onClick={() => {
+                  onComingSoon(app.name);
+                  onClose();
+                }}
+                className="group flex flex-col items-center gap-3 rounded-3xl p-4 transition-all duration-200 hover:bg-white/10 hover:shadow-xl hover:shadow-pink-500/20"
+              >
+                <div className="relative grid size-16 place-items-center rounded-3xl bg-gradient-to-br from-pink-400 via-pink-500 to-rose-600 shadow-lg transition-all duration-200 group-hover:scale-110 group-hover:shadow-2xl group-hover:shadow-pink-500/40">
+                  <Icon className="size-8 text-white drop-shadow-lg" />
+                  <span className="absolute -right-1 -top-1 rounded-full border border-white/40 bg-amber-300 px-1.5 py-0.5 text-[9px] font-bold text-slate-950">Soon</span>
+                </div>
+                <div className="text-center">
+                  <div className="text-sm font-medium text-white">{app.name}</div>
+                  <div className="mt-1 text-[11px] text-white/60">{app.subtitle}</div>
+                </div>
+              </button>
+            );
+          })}
         </div>
       </div>
+    </div>
+  );
+}
+
+function ComingSoonModal({ title, onClose }: { title: string; onClose: () => void }) {
+  return (
+    <WindowShell title="Coming Soon" onClose={onClose} className="right-5 top-14 w-[min(390px,calc(100vw-32px))]">
+      <div className="space-y-3 p-4">
+        <div className="rounded-3xl border border-white/10 bg-white/8 p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="text-sm font-semibold">{title}</div>
+              <div className="text-xs text-white/45">Application module</div>
+            </div>
+            <span className="rounded-full bg-pink-500/20 px-3 py-1 text-xs font-semibold text-pink-100">Coming Soon</span>
+          </div>
+        </div>
+        <div className="block w-full rounded-3xl border border-white/10 bg-white/8 p-3 text-left text-sm text-white/72">
+          <div className="flex gap-3">
+            <div className="mt-0.5 size-2.5 rounded-full bg-pink-300" />
+            <div>
+              <div>Module {title} sedang disiapkan dan akan tersedia pada update berikutnya.</div>
+              <div className="mt-1 text-xs text-white/40">Arkiv OS · Coming Soon</div>
+            </div>
+          </div>
+        </div>
+        <button onClick={onClose} className="w-full rounded-2xl bg-pink-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-pink-500">
+          Tutup
+        </button>
+      </div>
+    </WindowShell>
+  );
+}
+
+function IntegrationSettingsNative() {
+  const folders = [
+    { label: "Game", icon: Gamepad2, active: true },
+    { label: "Photobox", icon: Camera },
+    { label: "Payment Gateway", icon: CreditCard },
+    { label: "API & Webhook", icon: Plug },
+    { label: "Security", icon: ShieldCheck },
+    { label: "Keys & Tokens", icon: Command },
+  ];
+
+  const integrations = [
+    { name: "Game", note: "Arcade machine, topup credit, game session, dan status device", icon: Gamepad2, status: "Not connected" },
+    { name: "Photobox", note: "Booking, payment, print queue, dan laporan penjualan photobox", icon: Camera, status: "Not connected" },
+    { name: "Payment Gateway", note: "QRIS, kartu kredit, settlement, virtual account, dan webhook", icon: CreditCard, status: "Draft" },
+    { name: "API & Webhook", note: "Endpoint callback, event subscription, dan automation trigger", icon: Plug, status: "Draft" },
+  ];
+
+  const settings = [
+    "Auto Sync · Off",
+    "Realtime Events · Off",
+    "Webhook Security · Enabled",
+    "Sandbox Server · Enabled",
+  ];
+
+  return (
+    <div className="flex h-full min-h-[420px]">
+      <aside className="w-56 border-r border-white/10 bg-black/12 p-3">
+        <div className="mb-3 px-3 text-[10px] font-semibold uppercase tracking-[0.18em] text-white/35">Integration</div>
+        {folders.map((item) => {
+          const Icon = item.icon;
+          return (
+            <button
+              key={item.label}
+              className={`mb-1 flex w-full items-center gap-3 rounded-2xl px-3 py-2 text-left text-sm transition hover:bg-white/10 ${item.active ? "bg-white/14 text-white" : "text-white/65"}`}
+            >
+              <Icon className="size-4 text-pink-200" /> {item.label}
+            </button>
+          );
+        })}
+        <div className="mt-5 rounded-3xl border border-white/10 bg-white/8 p-3 text-xs leading-5 text-white/50">
+          Native Arkiv OS settings untuk koneksi Game, Photobox, Payment Gateway, API, dan webhook.
+        </div>
+      </aside>
+
+      <section className="min-w-0 flex-1 p-5">
+        <div className="mb-5 flex items-center justify-between">
+          <div>
+            <h2 className="text-xl font-semibold">Integration Center</h2>
+            <p className="text-xs text-white/45">Arkiv OS · native settings</p>
+          </div>
+          <button className="rounded-2xl border border-white/10 bg-white/8 px-3 py-2 text-xs font-semibold text-white/70 hover:bg-white/12">Add Integration</button>
+        </div>
+
+        <div className="grid gap-3 sm:grid-cols-2">
+          {integrations.map((item) => {
+            const Icon = item.icon;
+            return (
+              <button key={item.name} className="flex items-center gap-3 rounded-3xl border border-white/10 bg-white/8 p-4 text-left transition hover:bg-white/12">
+                <div className={`grid size-11 place-items-center rounded-2xl bg-gradient-to-br ${pinkAccent}`}><Icon className="size-5" /></div>
+                <div className="min-w-0 flex-1">
+                  <div className="truncate text-sm font-semibold">{item.name}</div>
+                  <div className="mt-1 text-xs text-white/45">{item.note}</div>
+                </div>
+                <div className="hidden rounded-full bg-white/10 px-2.5 py-1 text-[10px] font-semibold text-white/45 lg:block">{item.status}</div>
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="mt-5 rounded-3xl border border-white/10 bg-white/8 p-4 text-sm leading-6 text-white/55">
+          <div className="mb-3 text-sm font-semibold text-white">System Settings</div>
+          <div className="grid gap-2 sm:grid-cols-2">
+            {settings.map((setting) => (
+              <div key={setting} className="rounded-2xl bg-black/12 px-3 py-2 text-xs text-white/55">{setting}</div>
+            ))}
+          </div>
+          <div className="mt-4 text-xs leading-5 text-white/45">
+            Next phase: connect real credentials, sandbox/production endpoints, device status monitoring, and webhook logs.
+          </div>
+        </div>
+      </section>
     </div>
   );
 }
@@ -962,12 +1133,14 @@ function ApplicationWindow({ module, url, onClose }: { module: DesktopModule; ur
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(false);
   const Icon = module.icon;
+  const isNativeIntegration = module.name === "Integration";
 
   return (
     <WindowShell title={module.name} onClose={onClose} className="left-1/2 top-16 h-[min(700px,calc(100vh-120px))] w-[min(1200px,calc(100vw-32px))] -translate-x-1/2">
       <div className="flex h-full flex-col">
-        {/* Loading/Error States */}
-        {error ? (
+        {isNativeIntegration ? (
+          <IntegrationSettingsNative />
+        ) : error ? (
           <div className="flex h-full flex-col items-center justify-center gap-4">
             <div className="rounded-full bg-red-500/10 p-4">
               <AlertCircle className="size-8 text-red-500" />
@@ -1587,7 +1760,7 @@ function WidgetSettings({ visibility, onChange, onClose }: { visibility: WidgetV
       <div className="space-y-3 p-5">
         <div className="rounded-3xl border border-white/10 bg-white/8 p-4">
           <div className="text-sm font-semibold">Desktop Widgets</div>
-          <div className="mt-1 text-xs leading-5 text-white/50">Default semua widget off. Aktifkan sesuai kebutuhan, lalu drag window widget dari title bar.</div>
+          <div className="mt-1 text-xs leading-5 text-white/50">Calendar Widget aktif secara default. System Widget bisa diaktifkan sesuai kebutuhan, lalu drag window widget dari title bar.</div>
         </div>
         {items.map((item) => {
           const Icon = item.icon;

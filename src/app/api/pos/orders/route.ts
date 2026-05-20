@@ -131,66 +131,114 @@ export async function POST(request: NextRequest) {
       }, { status: 201 });
     }
 
-    // Single-payment flow (original)
-    const rpcPayload = {
-      p_order_type: order_type,
-      p_customer_id: customer_id || null,
-      p_cashier_id: effectiveCashierId,
-      p_server_id: server_id || null,
-      p_table_id: table_id || null,
-      p_notes: notes || null,
-      p_special_requests: special_requests || null,
-      p_client_subtotal: Number(subtotal) || 0,
-      p_client_discount_amount: Number(discount_amount) || 0,
-      p_client_tax_amount: include_tax ? Number(tax_amount) || 0 : 0,
-      p_client_service_charge: Number(service_charge_amount) || 0,
-      p_client_total_amount: Number(total_amount) || 0,
-      p_payment_method: payment_method,
-      p_amount_paid: Number(amount_paid) || 0,
-      p_ark_coins_used: Number(ark_coins_used) || 0,
-      p_membership_discount_pct: Number(membership_discount_pct) || 0,
-      p_items: items,
-    };
-
-    // Call atomic transaction function
-    const { data: rpcResult, error: rpcError } = await supabase.rpc(
-      'pos_create_order_transaction',
-      rpcPayload
-    );
-
-    if (rpcError) {
-      console.error('RPC error:', rpcError);
-      return NextResponse.json({ success: false, error: rpcError.message || 'Transaction failed' }, { status: 500 });
+    // Single-payment flow
+    // Avoid the old DB RPC because some deployed databases still have p_order_type TEXT
+    // inserted into pos_order_type enum without casting.
+    const { data: orderNumData, error: orderNumErr } = await supabase.rpc('generate_order_number');
+    if (orderNumErr) {
+      return NextResponse.json({ success: false, error: orderNumErr.message }, { status: 500 });
     }
 
-    // rpcResult is jsonb; parse if needed
-    const result = typeof rpcResult === 'string' ? JSON.parse(rpcResult) : rpcResult;
+    const orderNumber = typeof orderNumData === 'string' ? orderNumData : String(orderNumData);
+    const serverSubtotal = items.reduce((sum: number, item: any) => {
+      const qty = Number(item.quantity) || 1;
+      const unit = Number(item.unit_price) || 0;
+      const variantAdj = Number(item.variant_price_adjustment) || 0;
+      const modifierAdj = Number(item.modifier_price_adjustment) || 0;
+      return sum + ((unit + variantAdj + modifierAdj) * qty);
+    }, 0);
+    const serverDiscount = Number(discount_amount) || 0;
+    const serverTax = include_tax ? Number(tax_amount) || 0 : 0;
+    const serverServiceCharge = Number(service_charge_amount) || 0;
+    const serverTotal = Number(total_amount) || (serverSubtotal - serverDiscount + serverTax + serverServiceCharge);
+    const paidAmount = Number(amount_paid) || 0;
+    const arkUsed = Number(ark_coins_used) || 0;
 
-    if (!result?.success) {
-      return NextResponse.json({ success: false, error: result?.error || 'Order creation failed' }, { status: 400 });
+    if (paidAmount + arkUsed < serverTotal) {
+      return NextResponse.json({ success: false, error: 'Payment insufficient' }, { status: 400 });
     }
 
-    // Link shift if provided (single-payment flow)
-    if (body.shift_id) {
-      await supabase.from('pos_orders').update({ shift_id: body.shift_id }).eq('id', result.order_id);
-    }
-
-    // Fetch complete order with relations for response
-    const { data: completeOrder, error: fetchError } = await supabase
+    const { data: orderData, error: orderErr } = await supabase
       .from('pos_orders')
-      .select(`*, customer:pos_customers(name, phone), items:pos_order_items(*)`)
-      .eq('id', result.order_id)
+      .insert({
+        order_number: orderNumber,
+        order_type,
+        status: 'completed',
+        payment_status: 'paid',
+        customer_id: customer_id || null,
+        cashier_id: effectiveCashierId,
+        server_id: server_id || null,
+        table_id: table_id || null,
+        shift_id: body.shift_id || null,
+        subtotal: serverSubtotal,
+        discount_amount: serverDiscount,
+        discount_reason: discount_reason || null,
+        tax_amount: serverTax,
+        service_charge_amount: serverServiceCharge,
+        total_amount: serverTotal,
+        amount_paid: paidAmount,
+        change_amount: Math.max(0, paidAmount + arkUsed - serverTotal),
+        payment_method,
+        ark_coins_used: arkUsed,
+        notes: notes || null,
+        special_requests: special_requests || null,
+        ordered_at: new Date().toISOString(),
+        completed_at: new Date().toISOString(),
+      })
+      .select()
       .single();
 
-    if (fetchError) {
-      // Order created but fetch failed - return basic data from RPC result
-      return NextResponse.json({
-        success: true,
-        data: result,
-      }, { status: 201 });
+    if (orderErr || !orderData) {
+      console.error('Order insert error:', orderErr);
+      return NextResponse.json({ success: false, error: orderErr?.message || 'Failed to create order' }, { status: 500 });
     }
 
-    return NextResponse.json({ success: true, data: completeOrder }, { status: 201 });
+    const orderItems = items.map((item: any) => {
+      const qty = Number(item.quantity) || 1;
+      const unitPrice =
+        (Number(item.unit_price) || 0) +
+        (Number(item.variant_price_adjustment) || 0) +
+        (Number(item.modifier_price_adjustment) || 0);
+      const subtotalValue = unitPrice * qty;
+
+      return {
+        order_id: orderData.id,
+        product_id: item.product_id,
+        product_name: item.product_name || 'Unknown',
+        product_sku: String(item.product_sku || item.product_id || '').slice(0, 50),
+        variants: item.variants || [],
+        modifiers: item.modifiers || [],
+        quantity: qty,
+        unit_price: unitPrice,
+        subtotal: subtotalValue,
+        discount_amount: 0,
+        total_amount: subtotalValue,
+        xp_earned: 0,
+        inventory_deducted: false,
+      };
+    });
+
+    const { error: itemsErr } = await supabase.from('pos_order_items').insert(orderItems);
+    if (itemsErr) {
+      console.error('Order items insert error:', itemsErr);
+      return NextResponse.json({ success: false, error: itemsErr.message }, { status: 500 });
+    }
+
+    await supabase.from('pos_order_status_history').insert({
+      order_id: orderData.id,
+      from_status: null,
+      to_status: 'completed',
+      changed_by: effectiveCashierId,
+      notes: 'Order created and paid from cashier',
+    });
+
+    const { data: completeOrder } = await supabase
+      .from('pos_orders')
+      .select(`*, customer:pos_customers(name, phone), items:pos_order_items(*)`)
+      .eq('id', orderData.id)
+      .single();
+
+    return NextResponse.json({ success: true, data: completeOrder || orderData }, { status: 201 });
   } catch (error: any) {
     console.error('Error creating order:', error);
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });

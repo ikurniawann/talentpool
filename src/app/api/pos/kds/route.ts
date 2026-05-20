@@ -35,11 +35,11 @@ export async function GET(request: NextRequest) {
         product_id,
         product_name,
         product_sku,
-        variant_info,
-        modifier_info,
+        variants,
+        modifiers,
         quantity,
         unit_price,
-        notes
+        kitchen_notes
       )
     `)
     .in('status', statusFilter.split(','))
@@ -57,7 +57,22 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }
 
-  let orders = data || [];
+  let orders = (data || [])
+    .map((order: any) => ({
+      ...order,
+      pos_order_items: (order.pos_order_items || []).map((item: any) => ({
+        ...item,
+        variant_info: Array.isArray(item.variants)
+          ? item.variants.map((v: any) => v?.name).filter(Boolean).join(', ')
+          : '',
+        modifier_info: Array.isArray(item.modifiers)
+          ? item.modifiers.map((m: any) => m?.name).filter(Boolean).join(', ')
+          : '',
+        notes: item.kitchen_notes || '',
+      })),
+    }))
+    .filter((order: any) => order.pos_order_items.length > 0);
+
   if (station) {
     orders = orders.filter((order: any) =>
       order.pos_order_items?.some((item: any) => {

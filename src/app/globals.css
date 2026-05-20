@@ -215,3 +215,28 @@ hr {
 .react-datepicker__navigation-icon::before {
   display: none;
 }
+
+/* Logbook fullscreen Quill editor */
+.quill-fullscreen-editor {
+  display: flex;
+  flex-direction: column;
+}
+
+.quill-fullscreen-editor .ql-toolbar {
+  flex-shrink: 0;
+  border-left: 0;
+  border-right: 0;
+  border-top: 0;
+}
+
+.quill-fullscreen-editor .ql-container {
+  flex: 1;
+  min-height: 0;
+  border: 0;
+  font-size: 15px;
+}
+
+.quill-fullscreen-editor .ql-editor {
+  min-height: 100%;
+  padding: 24px;
+}

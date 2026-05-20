@@ -7,9 +7,10 @@ import { createServiceClient } from '@/lib/supabase/service-client';
  */
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: { id: string } | Promise<{ id: string }> }
 ) {
-  const orderId = params.id;
+  const resolvedParams = await params;
+  const orderId = resolvedParams.id;
   if (!orderId) {
     return NextResponse.json({ success: false, error: 'Order ID required' }, { status: 400 });
   }
@@ -35,9 +36,10 @@ export async function PATCH(
   }
 
   const now = new Date().toISOString();
-  const updateData: Record<string, string> = { status };
+  const updateData: Record<string, string> = { status, updated_at: now };
   if (status === 'confirmed') updateData.confirmed_at = now;
   if (status === 'ready') updateData.completed_at = now;
+  if (status === 'served' || status === 'completed') updateData.served_at = now;
 
   const { error: updateError } = await supabase
     .from('pos_orders')
@@ -49,6 +51,24 @@ export async function PATCH(
     return NextResponse.json({ success: false, error: updateError.message }, { status: 500 });
   }
 
+  const kitchenStatusMap: Record<string, string> = {
+    pending: 'pending',
+    confirmed: 'pending',
+    preparing: 'cooking',
+    ready: 'ready',
+    served: 'served',
+    completed: 'served',
+    cancelled: 'cancelled',
+  };
+
+  const kitchenStatus = kitchenStatusMap[status];
+  if (kitchenStatus) {
+    await supabase
+      .from('pos_order_items')
+      .update({ kitchen_status: kitchenStatus, updated_at: now })
+      .eq('order_id', orderId);
+  }
+
   await supabase.from('pos_order_status_history').insert({
     order_id: orderId,
     from_status: currentOrder.status,
@@ -57,5 +77,5 @@ export async function PATCH(
     changed_at: now,
   });
 
-  return NextResponse.json({ success: true, data: { order_id: orderId, status } });
+  return NextResponse.json({ success: true, data: { order_id: orderId, status, kitchen_status: kitchenStatus } });
 }

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Wifi } from "lucide-react";
+import { Loader2, Wifi } from "lucide-react";
 
 export type PaymentMethod = "cash" | "qris" | "credit_card" | "ark_coin";
 
@@ -20,7 +20,8 @@ interface Props {
     method: PaymentMethod;
     cashReceived: string;
     arkToUse: number;
-  }) => void;
+  }) => void | Promise<void>;
+  submitting?: boolean;
   formatCurrency: (v: number) => string;
   formatArk: (v: number) => string;
   onTapNFC: () => void;
@@ -33,6 +34,7 @@ export function PaymentModal({
   selectedCustomer,
   onClose,
   onConfirm,
+  submitting = false,
   formatCurrency,
   formatArk,
   onTapNFC,
@@ -72,7 +74,7 @@ export function PaymentModal({
   })();
 
   return (
-    <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
+    <Dialog open={open} onOpenChange={(v) => !v && !submitting && onClose()}>
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle>Metode Pembayaran</DialogTitle>
@@ -90,6 +92,7 @@ export function PaymentModal({
               <button
                 key={m.key}
                 onClick={() => {
+                  if (submitting) return;
                   setMethod(m.key);
                   if (m.key === "ark_coin" && !selectedCustomer) {
                     onTapNFC();
@@ -113,7 +116,8 @@ export function PaymentModal({
                 placeholder="0"
                 value={cashReceived}
                 onChange={(e) => setCashReceived(e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500"
+                disabled={submitting}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
               />
               <div className="text-sm text-gray-500">Kembalian: {formatCurrency(change)}</div>
             </div>
@@ -125,7 +129,8 @@ export function PaymentModal({
               <div className="text-sm font-semibold text-amber-700">Member belum dipilih</div>
               <button
                 onClick={onTapNFC}
-                className="w-full py-2 bg-amber-500 text-white rounded-lg text-sm font-semibold hover:bg-amber-600"
+                disabled={submitting}
+                className="w-full py-2 bg-amber-500 text-white rounded-lg text-sm font-semibold hover:bg-amber-600 disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 Tap Kartu NFC
               </button>
@@ -163,10 +168,17 @@ export function PaymentModal({
 
           <button
             onClick={() => onConfirm({ method, cashReceived, arkToUse })}
-            disabled={!isValid}
-            className="w-full py-3 bg-pink-600 text-white rounded-lg font-semibold hover:bg-pink-700 disabled:opacity-40 disabled:cursor-not-allowed"
+            disabled={!isValid || submitting}
+            className="w-full py-3 bg-pink-600 text-white rounded-lg font-semibold hover:bg-pink-700 disabled:opacity-40 disabled:cursor-not-allowed inline-flex items-center justify-center gap-2"
           >
-            Konfirmasi Pembayaran
+            {submitting ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Memproses Pembayaran...
+              </>
+            ) : (
+              'Konfirmasi Pembayaran'
+            )}
           </button>
         </div>
       </DialogContent>

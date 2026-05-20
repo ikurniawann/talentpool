@@ -2,10 +2,10 @@
 
 export const dynamic = 'force-dynamic';
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
-import { Mail, Lock, Eye, EyeOff } from "lucide-react";
+import { Eye, EyeOff, Lock, Mail } from "lucide-react";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -16,6 +16,32 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [transitioning, setTransitioning] = useState(false);
+  const [now, setNow] = useState(new Date());
+  const [wallpaper, setWallpaper] = useState("/bg.png");
+
+  const formattedTime = useMemo(
+    () => now.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" }).replace(".", ":"),
+    [now]
+  );
+  const formattedDate = useMemo(
+    () => now.toLocaleDateString("id-ID", { weekday: "long", day: "numeric", month: "long" }),
+    [now]
+  );
+
+  useEffect(() => {
+    const interval = window.setInterval(() => setNow(new Date()), 1000);
+    const wallpapers = {
+      arkiv: "/bg.png",
+      pink: "linear-gradient(135deg,#16091d,#5b1239 45%,#111827)",
+      midnight: "linear-gradient(135deg,#030712,#111827 52%,#1e1b4b)",
+      glass: "linear-gradient(135deg,#082f49,#0f172a 48%,#312e81)",
+    } as const;
+    const saved = window.localStorage.getItem("arkiv-wallpaper") as keyof typeof wallpapers | null;
+    if (saved && wallpapers[saved]) setWallpaper(wallpapers[saved]);
+    return () => window.clearInterval(interval);
+  }, []);
+
   const [requestedRedirect] = useState<string | null>(() => {
     if (typeof window === "undefined") return null;
     const redirect = new URLSearchParams(window.location.search).get("redirect");
@@ -55,209 +81,103 @@ export default function LoginPage() {
         "finance_staff",
       ];
 
-      const hrdEmails = [
-        "demo@aapextechnology.com",
-        "hrd@",
-        "hr@",
-        "humanresources@",
-      ];
+      const hrdEmails = ["demo@aapextechnology.com", "hrd@", "hr@", "humanresources@"];
+      const isHrdEmail = hrdEmails.some((h) => email.toLowerCase().includes(h));
 
-      const isHrdEmail = hrdEmails.some(h => email.toLowerCase().includes(h));
-
-      if (requestedRedirect) {
-        router.replace(requestedRedirect);
-      } else if (profile?.role === "super_admin") {
-        router.replace("/dashboard");
-      } else if (isHrdEmail || profile?.role === "hrd" || profile?.role === "hris") {
-        router.replace("/dashboard/hris");
-      } else if (profile?.role === "pos") {
-        router.replace("/dashboard/pos/cashier-new");
-      } else if (profile && purchasingRoles.includes(profile.role)) {
-        router.replace("/dashboard/purchasing");
-      } else {
-        router.replace("/dashboard");
-      }
+      const target = requestedRedirect || "/arkiv-os";
+      setTransitioning(true);
+      window.setTimeout(() => router.replace(target), 450);
     }
   };
 
   return (
-    <div className="min-h-screen flex">
-      {/* Left Panel - Pink/Black Background */}
-      <div 
-        className="hidden lg:flex lg:w-1/2 relative overflow-hidden"
-        style={{
-          background: 'linear-gradient(135deg, #db2777 0%, #be185d 50%, #000000 100%)',
-        }}
-      >
-        {/* Pattern Overlay */}
-        <div 
-          className="absolute inset-0 opacity-10"
-          style={{
-            backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
-            backgroundSize: '60px 60px',
-          }}
-        />
+    <main className="relative min-h-dvh overflow-hidden bg-[#0b1020] text-white">
+      <div
+        className="absolute inset-0 bg-cover bg-center bg-no-repeat"
+        style={wallpaper.startsWith("/") ? { backgroundImage: `url('${wallpaper}')` } : { background: wallpaper }}
+      />
+      <div className="absolute inset-0 bg-black/20" />
+      <div className="absolute inset-0 opacity-[0.16] transition-transform duration-500 ease-out [background-image:linear-gradient(rgba(255,255,255,.7)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,.7)_1px,transparent_1px)] [background-size:80px_80px]" />
+      <div className="pointer-events-none absolute -left-24 top-24 size-72 rounded-full bg-cyan-300/14 blur-3xl" />
+      <div className="pointer-events-none absolute -right-24 bottom-16 size-80 rounded-full bg-pink-400/14 blur-3xl" />
+      <div className="absolute inset-x-0 top-0 h-72 bg-gradient-to-b from-white/10 to-transparent" />
 
-        <div className="relative z-10 flex flex-col justify-between p-12 w-full">
-          {/* Logo */}
-          <div>
-            <div className="flex items-center gap-2" style={{ color: '#ffffff' }}>
-              <span className="text-4xl font-bold">Arkiv</span>
-              <span className="text-2xl font-light" style={{ opacity: 0.8 }}>OS</span>
-            </div>
+      <section className="relative z-10 flex min-h-dvh flex-col items-center justify-between px-6 py-8 transition-all duration-500" style={{ opacity: transitioning ? 0 : 1, transform: transitioning ? "scale(1.015)" : "scale(1)" }}>
+        <div className="w-full text-center">
+          <div className="text-[72px] font-semibold leading-none tracking-[-0.08em] drop-shadow-2xl sm:text-[104px]">
+            {formattedTime}
           </div>
-
-          {/* Main Content */}
-          <div className="space-y-8">
-            <div>
-              <h1 className="text-4xl font-bold mb-2" style={{ color: '#ffffff' }}>
-                Arkiv Operating System
-              </h1>
-              <p className="text-lg font-medium mb-6" style={{ color: '#fbcfe8' }}>
-                HR System · Purchasing Control · Point of Sales
-              </p>
-              <p className="text-base leading-relaxed max-w-md" style={{ color: '#fce7f3' }}>
-                Platform terintegrasi untuk mengelola sumber daya manusia, 
-                kontrol pembelian, dan penjualan retail dalam satu sistem.
-              </p>
-            </div>
-
-            {/* Stats */}
-            <div className="grid grid-cols-3 gap-8">
-              <div>
-                <div className="text-3xl font-bold" style={{ color: '#ffffff' }}>HR</div>
-                <div className="text-sm mt-1" style={{ color: '#fbcfe8' }}>Human Resources</div>
-              </div>
-              <div>
-                <div className="text-3xl font-bold" style={{ color: '#ffffff' }}>POS</div>
-                <div className="text-sm mt-1" style={{ color: '#fbcfe8' }}>Point of Sales</div>
-              </div>
-              <div>
-                <div className="text-3xl font-bold" style={{ color: '#ffffff' }}>Purchasing</div>
-                <div className="text-sm mt-1" style={{ color: '#fbcfe8' }}>Purchasing Control</div>
-              </div>
-            </div>
-          </div>
-
-          {/* Footer */}
-          <div>
-            <p className="text-sm" style={{ color: '#fbcfe8' }}>
-              © 2026 Arkiv Operating System by ARKIV. All rights reserved.
-            </p>
+          <div className="mt-2 text-sm font-medium capitalize tracking-wide text-white/80 sm:text-base">
+            {formattedDate}
           </div>
         </div>
-      </div>
 
-      {/* Right Panel - Login Form */}
-      <div className="flex-1 flex items-center justify-center bg-gray-50 px-4 sm:px-6 lg:px-8">
-        <div className="w-full max-w-md">
-          {/* Header */}
-          <div className="mb-8">
-            <h2 className="text-3xl font-bold text-gray-900">Selamat Datang</h2>
-            <p className="text-gray-500 mt-2">
-              {requestedModule
-                ? `Silakan login untuk membuka module ${requestedModule.toUpperCase()}`
-                : "Silakan login untuk melanjutkan"}
-            </p>
+        <div className="flex w-full max-w-[420px] flex-col items-center">
+          <div className="mb-5 grid size-24 place-items-center rounded-full border border-white/20 bg-white/15 text-3xl font-semibold shadow-2xl backdrop-blur-2xl">
+            {email ? email.charAt(0).toUpperCase() : "A"}
           </div>
+          <h1 className="text-center text-2xl font-semibold tracking-[-0.03em] drop-shadow-lg">Arkiv OS</h1>
+          <p className="mt-1 text-center text-sm text-white/70">
+            {requestedModule ? `Verifikasi akun untuk membuka ${requestedModule.toUpperCase()}` : "Verifikasi akun untuk masuk ke desktop"}
+          </p>
 
-          {/* Login Card */}
-          <div className="bg-white rounded-2xl shadow-lg p-8">
-            <h3 className="text-xl font-semibold text-gray-900 mb-6">Login Portal</h3>
+          <form
+            onSubmit={handleLogin}
+            className="mt-8 w-full space-y-3 rounded-[28px] border border-white/20 p-4 shadow-2xl"
+            style={{
+              background: "rgba(10, 10, 18, 0.22)",
+              backdropFilter: "blur(28px) saturate(140%)",
+              WebkitBackdropFilter: "blur(28px) saturate(140%)",
+            }}
+          >
+            <div className="group relative">
+              <Mail className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-black" />
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="h-12 w-full rounded-2xl border border-white/20 pl-11 pr-4 text-sm text-black shadow-lg outline-none transition placeholder:text-gray-600 focus:border-pink-400 focus:ring-4 focus:ring-pink-300/30"
+                style={{ background: "rgba(255,255,255,0.82)", backdropFilter: "blur(18px)", WebkitBackdropFilter: "blur(18px)" }}
+                placeholder="Email"
+                autoComplete="email"
+                required
+              />
+            </div>
 
-            <form onSubmit={handleLogin} className="space-y-5">
-              {/* Email Field */}
-              <div>
-                <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">
-                  Email
-                </label>
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <Mail className="h-5 w-5 text-gray-400" />
-                  </div>
-                  <input
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="w-full pl-10 pr-10 py-3 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-transparent transition-all"
-                    placeholder="Masukkan email"
-                    required
-                  />
-                </div>
-              </div>
-
-              {/* Password Field */}
-              <div>
-                <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">
-                  Password
-                </label>
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <Lock className="h-5 w-5 text-gray-400" />
-                  </div>
-                  <input
-                    type={showPassword ? "text" : "password"}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="w-full pl-10 pr-10 py-3 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-transparent transition-all"
-                    placeholder="••••••••"
-                    required
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute inset-y-0 right-0 pr-3 flex items-center"
-                  >
-                    {showPassword ? (
-                      <EyeOff className="h-5 w-5 text-gray-400 hover:text-gray-600" />
-                    ) : (
-                      <Eye className="h-5 w-5 text-gray-400 hover:text-gray-600" />
-                    )}
-                  </button>
-                </div>
-              </div>
-
-              {/* Submit Button */}
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full py-3 px-4 bg-pink-600 text-white rounded-lg text-sm font-medium hover:bg-pink-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-md hover:shadow-lg"
-              >
-                {loading ? "Memproses..." : "Masuk ke Akun"}
+            <div className="group relative">
+              <Lock className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-black" />
+              <input
+                type={showPassword ? "text" : "password"}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="h-12 w-full rounded-2xl border border-white/20 pl-11 pr-12 text-sm text-black shadow-lg outline-none transition placeholder:text-gray-600 focus:border-pink-400 focus:ring-4 focus:ring-pink-300/30"
+                style={{ background: "rgba(255,255,255,0.82)", backdropFilter: "blur(18px)", WebkitBackdropFilter: "blur(18px)" }}
+                placeholder="Password"
+                autoComplete="current-password"
+                required
+              />
+              <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-black transition hover:text-gray-700">
+                {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
               </button>
-            </form>
+            </div>
 
-            {/* Error Message */}
-            {error && (
-              <div className="mt-4 p-3 text-sm text-pink-600 bg-pink-50 rounded-lg border border-pink-100">
-                {error}
-              </div>
-            )}
+            {error && <div className="rounded-2xl border border-red-300/30 bg-red-500/20 px-4 py-3 text-sm text-red-50 backdrop-blur-xl">{error}</div>}
 
-            {/* Terms */}
-            <p className="mt-6 text-xs text-gray-500 text-center leading-relaxed">
-              Dengan masuk, Anda menyetujui{" "}
-              <a href="#" className="text-pink-600 hover:underline">
-                kebijakan privasi
-              </a>{" "}
-              dan{" "}
-              <a href="#" className="text-pink-600 hover:underline">
-                syarat ketentuan
-              </a>
-            </p>
-          </div>
-
-          {/* Powered by */}
-          <div className="mt-8 text-center">
-            <p className="text-sm text-gray-500">
-              Powered by{" "}
-              <a href="https://arkiv.id" target="_blank" rel="noopener noreferrer" className="text-pink-600 hover:underline font-medium">
-                ARKIV
-              </a>
-            </p>
-          </div>
+            <button
+              type="submit"
+              disabled={loading}
+              className="h-12 w-full rounded-2xl border border-pink-300/40 bg-pink-600 text-sm font-semibold text-white shadow-2xl shadow-pink-950/30 transition hover:bg-pink-500 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {loading ? "Memverifikasi..." : "Log In"}
+            </button>
+          </form>
         </div>
-      </div>
-    </div>
+
+        <div className="flex w-full items-center justify-between text-xs text-white/55">
+          <span>Arkiv Operating System</span>
+          <span>Single account session</span>
+        </div>
+      </section>
+    </main>
   );
 }

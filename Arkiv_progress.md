@@ -41,19 +41,55 @@
 - [x] Debug logging + loading state
 - [ ] **Needs testing** — debug logs added for trace
 
+### Dashboard Real Data (A6)
+- [x] `page.tsx` — fetch real data dari `GET /api/pos/dashboard?period=today|week|month`
+- [x] API `dashboard/route.ts` — aggregation top products, low stock (inventory_quantity), revenue/orders change vs previous period
+- [x] Loading, error, empty states
+- [x] Status badges (completed, paid, partially_paid, pending, voided)
+
+### Custom Nominal Split (A7)
+- [x] `SplitBillModal.tsx` — mode selector 3 tab: Equal / Nominal / Per Item
+- [x] Input nominal custom per split dengan validasi sisa = 0
+- [x] Tax/discount prorated otomatis berdasarkan rasio nominal
+- [x] Disable konfirmasi kalau total ≠ order total
+
 ## Pending / Next
-- [ ] Custom Nominal Split
 - [ ] Refund per Split
-- [ ] Offline Mode (service worker + IndexedDB)
+
+### Arkiv OS / Integration Native App (A9)
+- [x] Application folder tambah icon: Finance, Legal, HAKI, Business (Coming Soon modal)
+- [x] Integration menjadi native Arkiv OS window, bukan browser/iframe
+- [x] UI Integration disamakan dengan popup Arkiv Drive (sidebar kiri + cards + info panel)
+- [x] Integration app berisi Game, Photobox, Payment Gateway, API & Webhook, Security, Keys & Tokens
+
+### POS Flow Fixes (A10)
+- [x] Orders: tombol Bayar diubah jadi Lihat Pesanan dan redirect ke cashier-new?orderId=...
+- [x] Cashier: load order existing ke cart tanpa auto-popup payment modal
+- [x] Payment modal: loader Memproses Pembayaran + disable double submit
+- [x] Fix open bill product_sku varchar(50) dan modifier/variant adjustment schema mismatch
+- [x] Fix payment_status enum: pakai partial, bukan partially_paid
+- [x] Fix direct checkout order_type enum dengan mengganti single-payment API flow tanpa RPC lama
+- [x] KDS: tampilkan order aktif, hide order tanpa item, tombol status beda warna
+
+### Offline Mode (A8)
+- [x] `src/lib/pos-db.ts` — IndexedDB utility (products, customers, offline_queue, last_sync)
+- [x] Hook `usePosOnline.ts` — navigator.onLine detection
+- [x] Hook `usePosOffline.ts` — offline queue manager + syncQueue
+- [x] `usePosProducts` / `usePosCustomers` — fallback ke IndexedDB saat offline/error
+- [x] `cashier-new/page.tsx` — guard: jika offline, order di-queue ke IndexedDB (bukan API), receipt tetap tercetak, auto-clear cart
+- [x] `cashier-new/page.tsx` — split bill juga support offline queue
+- [x] UI indicator offline bar + modal antrian offline + tombol sync manual
+- [x] Cart persistence sudah ada (localStorage), diperkuat dengan fallback data dari IndexedDB
 - [ ] POS Reports & Analytics
 
 ## Migrations Checklist
-- [ ] 004_pos_transaction_rpc.sql
-- [ ] 005_pos_split_bill_schema.sql
-- [ ] 006_pos_split_per_item.sql
-- [ ] 007_pos_jsonb_guard.sql
-- [ ] 008_pos_shift_management.sql
-- [ ] 009_pos_void_and_table_management.sql
+- [x] 004_pos_transaction_rpc.sql
+- [x] 005_pos_split_bill_schema.sql
+- [x] 006_pos_split_per_item.sql
+- [x] 007_pos_jsonb_guard.sql
+- [x] 008_pos_shift_management.sql
+- [x] 009_pos_void_and_table_management.sql
+- [x] 010_pos_product_inventory.sql — inventory_quantity/min_stock, simple stock deduction, prevent-negative trigger
 
 ## URLs
 - Production: https://suluinwounderland.com

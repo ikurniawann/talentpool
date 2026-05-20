@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { getCustomers, type Customer } from "@/lib/pos-api";
+import { cacheCustomers, getCachedCustomers, setLastSyncTimestamp } from "@/lib/pos-db";
 
 const TIER_DISCOUNTS: Record<string, number> = {
   platinum: 15,
@@ -18,19 +19,46 @@ export function usePosCustomers() {
   const [customers, setCustomers] = useState<CustomerWithDiscount[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isOfflineFallback, setIsOfflineFallback] = useState(false);
 
   const fetchCustomers = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
+      setIsOfflineFallback(false);
       const res = await getCustomers();
-      const data = (res.data || []).map((c) => ({
+      const data = (res.data || []).map((c: any) => ({
         ...c,
         discount: TIER_DISCOUNTS[c.membership_tier?.toLowerCase()] || 0,
       })) as CustomerWithDiscount[];
       setCustomers(data);
+      // Cache to IndexedDB
+      void cacheCustomers(data.map((c: any) => ({
+        id: c.id,
+        name: c.name,
+        phone: c.phone,
+        membership_tier: c.membership_tier,
+        ark_coin_balance: c.ark_coin_balance,
+        total_xp: c.total_xp,
+        current_xp: c.current_xp,
+        total_spent: c.total_spent,
+        visit_count: c.visit_count,
+        discount: c.discount,
+      })));
+      void setLastSyncTimestamp('customers');
     } catch (err: any) {
-      setError(err.message || "Failed to load customers");
+      try {
+        const cached = await getCachedCustomers();
+        if (cached.length > 0) {
+          setCustomers(cached as CustomerWithDiscount[]);
+          setIsOfflineFallback(true);
+          setError(null);
+        } else {
+          setError(err.message || "Failed to load customers");
+        }
+      } catch {
+        setError(err.message || "Failed to load customers");
+      }
     } finally {
       setLoading(false);
     }
@@ -47,5 +75,5 @@ export function usePosCustomers() {
     [customers]
   );
 
-  return { customers, loading, error, refetch: fetchCustomers, findCustomer };
+  return { customers, loading, error, isOfflineFallback, refetch: fetchCustomers, findCustomer };
 }

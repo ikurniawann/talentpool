@@ -59,7 +59,7 @@ BEGIN
   END IF;
   
   -- Only update on status change to completed, served, or paid payment_status
-  IF NEW.status NOT IN ('completed','served') AND NEW.payment_status NOT IN ('paid','partially_paid') THEN
+  IF NEW.status NOT IN ('completed','served') AND NEW.payment_status NOT IN ('paid','partial') THEN
     RETURN NEW;
   END IF;
   

@@ -78,20 +78,31 @@ export async function POST(request: NextRequest) {
     }
 
     // Insert order items
-    const orderItems = items.map((item: any) => ({
-      order_id: orderData.id,
-      product_id: item.product_id,
-      product_name: item.product_name,
-      product_sku: item.product_sku,
-      variants: item.variants || [],
-      modifiers: item.modifiers || [],
-      quantity: Number(item.quantity),
-      unit_price: Number(item.unit_price),
-      variant_price_adjustment: item.variant_price_adjustment || 0,
-      modifier_price_adjustment: item.modifier_price_adjustment || 0,
-      subtotal: Number(item.subtotal),
-      total_amount: Number(item.total_amount),
-    }));
+    // Note: pos_order_items stores variant/modifier details in JSON columns.
+    // The DB schema does not have separate variant_price_adjustment / modifier_price_adjustment columns,
+    // so adjustments are folded into unit_price/subtotal/total_amount here.
+    const orderItems = items.map((item: any) => {
+      const quantity = Number(item.quantity) || 1;
+      const unitPrice =
+        (Number(item.unit_price) || 0) +
+        (Number(item.variant_price_adjustment) || 0) +
+        (Number(item.modifier_price_adjustment) || 0);
+      const subtotalValue = Number(item.subtotal) || unitPrice * quantity;
+      const totalValue = Number(item.total_amount) || subtotalValue;
+
+      return {
+        order_id: orderData.id,
+        product_id: item.product_id,
+        product_name: item.product_name,
+        product_sku: String(item.product_sku || item.product_id || '').slice(0, 50),
+        variants: item.variants || [],
+        modifiers: item.modifiers || [],
+        quantity,
+        unit_price: unitPrice,
+        subtotal: subtotalValue,
+        total_amount: totalValue,
+      };
+    });
 
     const { error: itemsErr } = await supabase.from('pos_order_items').insert(orderItems);
     if (itemsErr) {

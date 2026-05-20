@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { Suspense, useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import {
   Search, Utensils, ShoppingBag, Truck, Monitor, Table as TableIcon,
   User, X, Sparkles, Printer, CheckCircle, AlertCircle, Clock,
@@ -12,6 +13,8 @@ import { usePosProducts } from '@/hooks/use-pos-products';
 import { usePosCustomers } from '@/hooks/use-pos-customers';
 import { usePosCheckout } from '@/hooks/use-pos-checkout';
 import { usePosShift } from '@/hooks/use-pos-shift';
+import { usePosOnline } from '@/hooks/use-pos-online';
+import { usePosOfflineQueue } from '@/hooks/use-pos-offline';
 import { ShiftModal } from '@/components/pos/ShiftModal';
 
 const CASHIER_ID = '00000000-0000-0000-0000-000000000001';
@@ -37,7 +40,11 @@ const ARK_RATE = 1000;
 const MAX_TABLES = 6;
 
 /* ─── page ────────────────────────────────────────────────────────── */
-export default function CashierPageNew() {
+function CashierPageNewContent() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const paymentOrderId = searchParams.get('orderId');
+  const loadedPaymentOrderRef = useRef<string | null>(null);
   const { products, categories, loading, error } = usePosProducts();
   const { customers, findCustomer } = usePosCustomers();
   const cart = usePosCart();
@@ -55,6 +62,9 @@ export default function CashierPageNew() {
 
   /* Payment */
   const [showPayment, setShowPayment] = useState(false);
+  const [processingPayment, setProcessingPayment] = useState(false);
+  const [loadingPaymentOrder, setLoadingPaymentOrder] = useState(false);
+  const [payingOrderNumber, setPayingOrderNumber] = useState<string | null>(null);
   const [cashReceived, setCashReceived] = useState('');
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('cash');
   const [currentArkToUse, setCurrentArkToUse] = useState(0);
@@ -67,6 +77,12 @@ export default function CashierPageNew() {
 
   /* Result */
   const [resultPayload, setResultPayload] = useState<ReceiptPayload | null>(null);
+
+  /* Offline */
+  const { isOnline } = usePosOnline();
+  const { pendingCount, enqueue, syncQueue, refreshCount } = usePosOfflineQueue();
+  const [showOfflineQueue, setShowOfflineQueue] = useState(false);
+  const [lastResultType, setLastResultType] = useState<'standard' | 'offlined' | null>(null);
 
   /* Split Bill */
   const [showSplitModal, setShowSplitModal] = useState(false);
@@ -86,6 +102,56 @@ export default function CashierPageNew() {
     if (!cart.selectedCustomerId) return null;
     return findCustomer(cart.selectedCustomerId) || null;
   }, [cart.selectedCustomerId, findCustomer]);
+
+  /* Load existing open bill when redirected from Orders */
+  useEffect(() => {
+    if (!paymentOrderId || loadedPaymentOrderRef.current === paymentOrderId) return;
+
+    const loadPaymentOrder = async () => {
+      try {
+        setLoadingPaymentOrder(true);
+        const res = await fetch(`/api/pos/orders/${paymentOrderId}`, { cache: 'no-store' });
+        const json = await res.json();
+        if (!json.success || !json.data) {
+          alert(json.error || 'Gagal memuat pesanan');
+          return;
+        }
+
+        const order = json.data;
+        loadedPaymentOrderRef.current = paymentOrderId;
+        cart.clearCart();
+        cart.setOrderType(order.order_type || 'dine_in');
+        cart.setTable(order.table_id || null);
+        cart.setCustomer(order.customer_id || null);
+        cart.setNotes(order.notes || '');
+
+        (order.items || []).forEach((item: any) => {
+          const qty = Number(item.quantity) || 1;
+          const variants = Array.isArray(item.variants) ? item.variants : [];
+          const modifiers = Array.isArray(item.modifiers) ? item.modifiers : [];
+          cart.addItem({
+            id: item.id,
+            productId: item.product_id,
+            name: item.product_name,
+            price: Number(item.total_amount || item.subtotal || item.unit_price || 0) / qty,
+            quantity: qty,
+            variantName: variants.map((v: any) => v?.name).filter(Boolean).join(', ') || undefined,
+            modifierNames: modifiers.map((m: any) => m?.name).filter(Boolean),
+          });
+        });
+
+        setPayingOrderNumber(order.order_number || null);
+        setPaymentMethod('cash');
+        setCashReceived(String(Number(order.total_amount || 0)));
+      } catch (e: any) {
+        alert(e.message || 'Gagal memuat pesanan');
+      } finally {
+        setLoadingPaymentOrder(false);
+      }
+    };
+
+    loadPaymentOrder();
+  }, [paymentOrderId, cart]);
 
   /* Favorites effect */
   useEffect(() => {
@@ -204,6 +270,7 @@ export default function CashierPageNew() {
 
   /* Checkout */
   const handleCreateOrder = useCallback(async () => {
+    if (processingPayment) return;
     if (cart.items.length === 0) return;
     if (!hasShift) {
       alert('Silakan buka shift terlebih dahulu sebelum membuat order.');
@@ -212,6 +279,111 @@ export default function CashierPageNew() {
     }
     if (paymentMethod === 'ark_coin' && !selectedCustomer) { setShowNFC(true); return; }
     if (paymentMethod === 'cash' && (parseFloat(cashReceived) || 0) < totalAfterArk) return;
+
+    setProcessingPayment(true);
+
+    if (paymentOrderId) {
+      const paymentMethodForApi = paymentMethod === 'credit_card' ? 'credit' : paymentMethod;
+      const paidAmount = paymentMethod === 'cash' ? (parseFloat(cashReceived) || totalAfterArk) : totalAfterArk;
+      const res = await fetch(`/api/pos/orders/${paymentOrderId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          status: 'completed',
+          payment_status: 'paid',
+          payment_method: paymentMethodForApi,
+          amount_paid: paidAmount,
+          ark_coins_used: paymentMethod === 'ark_coin' ? arkToUseCapped : 0,
+        }),
+      });
+      const data = await res.json();
+      if (!data.success) {
+        alert(data.error || 'Pembayaran gagal');
+        setProcessingPayment(false);
+        return;
+      }
+
+      const receipt: ReceiptPayload = {
+        orderId: paymentOrderId,
+        orderNumber: payingOrderNumber || data.data?.order_number || paymentOrderId,
+        orderType: cart.orderType,
+        table: cart.selectedTable,
+        items: [...cart.items],
+        notes: cart.notes,
+        total: totalAfterArk,
+        change: paymentMethod === 'cash' ? (parseFloat(cashReceived) || 0) - totalAfterArk : 0,
+        paymentMethod,
+        customerName: selectedCustomer?.name,
+        discountAmount,
+        taxAmount,
+      };
+      setResultPayload(receipt);
+      setShowPayment(false);
+      setLastResultType('standard');
+      cart.clearCart();
+      setCashReceived('');
+      setPaymentMethod('cash');
+      setCurrentArkToUse(0);
+      loadedPaymentOrderRef.current = null;
+      router.replace('/dashboard/pos/cashier-new');
+      setProcessingPayment(false);
+      return;
+    }
+
+    if (!isOnline) {
+      const cSubtotal = cart.subtotal;
+      const cTotal = cart.total;
+      const payload = {
+        order_type: cart.orderType,
+        customer_id: selectedCustomer?.id,
+        cashier_id: CASHIER_ID,
+        items: cart.items.map(item => ({
+          product_id: item.productId,
+          product_name: item.name,
+          product_sku: item.productId,
+          quantity: item.quantity,
+          unit_price: item.price,
+          subtotal: item.price * item.quantity,
+          total_amount: item.price * item.quantity,
+        })),
+        subtotal: cSubtotal,
+        discount_amount: discountAmount,
+        tax_amount: taxAmount,
+        total_amount: cTotal,
+        payment_method: paymentMethod === 'qris' ? 'qris' : paymentMethod === 'credit_card' ? 'credit' : paymentMethod === 'ark_coin' ? 'ark_coin' : 'cash',
+        amount_paid: paymentMethod === 'cash' ? (parseFloat(cashReceived) || cTotal) : cTotal,
+        include_tax: cart.includeTax,
+        membership_discount_pct: membershipDiscount,
+        notes: cart.notes,
+        ark_coins_used: paymentMethod === 'ark_coin' ? arkToUseCapped : 0,
+        shift_id: shift?.id || undefined,
+      };
+      await enqueue(payload, 'order');
+      const receipt: ReceiptPayload = {
+        orderId: 'OFFLINE-' + Date.now().toString(36).toUpperCase(),
+        orderNumber: 'OFFLINE-' + Date.now().toString(36).toUpperCase(),
+        orderType: cart.orderType,
+        table: cart.selectedTable,
+        items: [...cart.items],
+        notes: cart.notes,
+        total: cTotal,
+        change: paymentMethod === 'cash' ? (parseFloat(cashReceived) || 0) - cTotal : 0,
+        paymentMethod,
+        customerName: selectedCustomer?.name,
+        discountAmount,
+        taxAmount,
+      };
+      setResultPayload(receipt);
+      setShowPayment(false);
+      setLastResultType('offlined');
+      cart.clearCart();
+      setCashReceived('');
+      setPaymentMethod('cash');
+      setCurrentArkToUse(0);
+      await refreshCount();
+      setProcessingPayment(false);
+      return;
+    }
 
     const res = await checkout({
       cart: cart.items,
@@ -243,15 +415,16 @@ export default function CashierPageNew() {
       };
       setResultPayload(receipt);
       setShowPayment(false);
+      setLastResultType('standard');
       cart.clearCart();
       setCashReceived('');
       setPaymentMethod('cash');
       setCurrentArkToUse(0);
     } else {
-      // Show error in simple alert or toast
       alert(res.error || 'Pembayaran gagal');
     }
-  }, [cart, paymentMethod, selectedCustomer, cashReceived, totalAfterArk, checkout, discountAmount, taxAmount, arkToUseCapped]);
+    setProcessingPayment(false);
+  }, [cart, paymentMethod, selectedCustomer, cashReceived, totalAfterArk, checkout, discountAmount, taxAmount, arkToUseCapped, isOnline, enqueue, membershipDiscount, shift, refreshCount, paymentOrderId, payingOrderNumber, router, processingPayment]);
 
   /* Split Bill */
   const handleConfirmSplit = useCallback(async (config: SplitConfig) => {
@@ -262,6 +435,62 @@ export default function CashierPageNew() {
       return;
     }
     setShowSplitModal(false);
+
+    if (!isOnline) {
+      const payload = {
+        order_type: cart.orderType,
+        customer_id: selectedCustomer?.id,
+        cashier_id: CASHIER_ID,
+        server_id: undefined,
+        table_id: cart.selectedTable || undefined,
+        shift_id: shift?.id,
+        items: cart.items.map(item => ({
+          product_id: item.productId,
+          product_name: item.name,
+          product_sku: item.productId,
+          quantity: item.quantity,
+          unit_price: item.price,
+          subtotal: item.price * item.quantity,
+          total_amount: item.price * item.quantity,
+        })),
+        subtotal: cart.subtotal,
+        discount_amount: discountAmount,
+        tax_amount: taxAmount,
+        total_amount: total,
+        notes: cart.notes,
+        include_tax: cart.includeTax,
+        membership_discount_pct: membershipDiscount,
+        splits: config.splits.map(s => ({
+          label: s.label,
+          subtotal: s.subtotal || 0,
+          tax_amount: s.tax_amount || 0,
+          discount_amount: s.discount_amount || 0,
+          total_amount: s.total,
+          customer_id: s.customerId,
+          items: s.items,
+        })),
+      };
+      await enqueue(payload, 'split');
+      const receipt: ReceiptPayload = {
+        orderId: 'OFFLINE-SPLIT-' + Date.now().toString(36).toUpperCase(),
+        orderNumber: 'OFFLINE-SPLIT-' + Date.now().toString(36).toUpperCase(),
+        orderType: cart.orderType,
+        table: cart.selectedTable,
+        items: [...cart.items],
+        notes: cart.notes,
+        total,
+        change: 0,
+        paymentMethod,
+        customerName: selectedCustomer?.name,
+        discountAmount,
+        taxAmount,
+      };
+      setResultPayload(receipt);
+      setLastResultType('offlined');
+      cart.clearCart();
+      await refreshCount();
+      return;
+    }
 
     try {
       const res = await createSplitOrder({
@@ -274,7 +503,7 @@ export default function CashierPageNew() {
         items: cart.items.map(item => ({
           product_id: item.productId,
           product_name: item.name,
-          product_sku: item.id,
+          product_sku: item.productId,
           quantity: item.quantity,
           unit_price: item.price,
           subtotal: item.price * item.quantity,
@@ -308,7 +537,7 @@ export default function CashierPageNew() {
     } catch (e: any) {
       alert(e.message || 'Gagal membuat split order');
     }
-  }, [cart, selectedCustomer, discountAmount, taxAmount, total, membershipDiscount]);
+  }, [cart, selectedCustomer, discountAmount, taxAmount, total, membershipDiscount, isOnline, enqueue, paymentMethod, shift, refreshCount]);
 
   const handleSplitComplete = useCallback(() => {
     setShowSplitPayment(false);
@@ -338,7 +567,7 @@ export default function CashierPageNew() {
         items: cart.items.map(item => ({
           product_id: item.productId,
           product_name: item.name,
-          product_sku: item.id,
+          product_sku: item.productId,
           variants: item.variantName ? [{ name: item.variantName, group: 'Size', price: item.variantPriceAdj || 0 }] : [],
           modifiers: item.modifierNames?.map((name, idx) => ({ name, group: `Option-${idx}` })) || [],
           quantity: Number(item.quantity),
@@ -400,6 +629,17 @@ export default function CashierPageNew() {
 
       {/* LEFT PANEL */}
       <div className="flex-1 flex flex-col gap-4 overflow-hidden">
+        {/* Offline Status Bar */}
+        {!isOnline && (
+          <div className="flex items-center justify-between px-4 py-2 rounded-lg border border-stone-300 bg-stone-100 text-stone-700 text-sm">
+            <div className="flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 text-amber-600" />
+              <span className="font-medium">Mode Offline — Transaksi disimpan lokal</span>
+            </div>
+            <span className="text-xs opacity-75">{pendingCount} pending</span>
+          </div>
+        )}
+
         {/* Shift Status Bar */}
         <div className={`flex items-center justify-between px-4 py-2 rounded-lg border text-sm ${
           hasShift
@@ -643,11 +883,12 @@ export default function CashierPageNew() {
         totalAfterArk={totalAfterArk}
         selectedCustomer={selectedCustomer}
         onClose={() => setShowPayment(false)}
-        onConfirm={({ method, cashReceived, arkToUse }) => {
+        submitting={processingPayment || submitting}
+        onConfirm={async ({ method, cashReceived, arkToUse }) => {
           setPaymentMethod(method);
           setCashReceived(cashReceived);
           setCurrentArkToUse(arkToUse);
-          handleCreateOrder();
+          await handleCreateOrder();
         }}
         formatCurrency={formatCurrency}
         formatArk={formatArk}
@@ -670,31 +911,83 @@ export default function CashierPageNew() {
         <DialogContent className="max-w-sm">
           {resultPayload && (
             <div className="py-4 space-y-6 text-center">
-              <CheckCircle className="w-16 h-16 text-green-500 mx-auto" />
-              <div>
-                <h2 className="text-xl font-bold text-gray-900">Pembayaran Berhasil!</h2>
-                <p className="text-sm text-gray-500 mt-1">Order #{resultPayload.orderNumber?.slice(-8).toUpperCase() || resultPayload.orderId?.slice(-8).toUpperCase()}</p>
-              </div>
-              <div className="bg-gray-50 rounded-xl p-4 space-y-2 text-left">
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-500">Total Bayar</span>
-                  <span className="font-bold text-gray-900">{formatCurrency(resultPayload.total)}</span>
-                </div>
-                {resultPayload.change > 0 && (
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-500">Kembalian</span>
-                    <span className="font-bold text-green-600">{formatCurrency(resultPayload.change)}</span>
+              {lastResultType === 'offlined' ? (
+                <>
+                  <AlertCircle className="w-16 h-16 text-amber-500 mx-auto" />
+                  <div>
+                    <h2 className="text-xl font-bold text-gray-900">Tersimpan Offline</h2>
+                    <p className="text-sm text-gray-500 mt-1">
+                      Order akan di-sync saat koneksi kembali.
+                    </p>
                   </div>
-                )}
-              </div>
+                  <div className="bg-amber-50 rounded-xl p-4 space-y-2 text-left">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-500">Order ID</span>
+                      <span className="font-bold text-gray-900">{resultPayload.orderNumber}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-500">Total</span>
+                      <span className="font-bold text-gray-900">{formatCurrency(resultPayload.total)}</span>
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <CheckCircle className="w-16 h-16 text-green-500 mx-auto" />
+                  <div>
+                    <h2 className="text-xl font-bold text-gray-900">Pembayaran Berhasil!</h2>
+                    <p className="text-sm text-gray-500 mt-1">Order #{resultPayload.orderNumber?.slice(-8).toUpperCase() || resultPayload.orderId?.slice(-8).toUpperCase()}</p>
+                  </div>
+                  <div className="bg-gray-50 rounded-xl p-4 space-y-2 text-left">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-500">Total Bayar</span>
+                      <span className="font-bold text-gray-900">{formatCurrency(resultPayload.total)}</span>
+                    </div>
+                    {resultPayload.change > 0 && (
+                      <div className="flex justify-between text-sm">
+                        <span className="text-gray-500">Kembalian</span>
+                        <span className="font-bold text-green-600">{formatCurrency(resultPayload.change)}</span>
+                      </div>
+                    )}
+                  </div>
+                </>
+              )}
               <div className="grid grid-cols-3 gap-2">
                 <button onClick={() => handlePrint('KITCHEN')} className="flex items-center justify-center gap-1.5 py-2.5 border-2 border-orange-400 text-orange-600 rounded-lg text-sm font-semibold hover:bg-orange-50"><Printer className="w-4 h-4" /> Kitchen</button>
-                <button onClick={() => handlePrint('BAR')} className="flex items-center justify-center gap-1.5 py-2.5 border-2 border-blue-400 text-blue-600 rounded-lg text-sm font-semibold hover:bg-blue-50"><Printer className="w-4 h-4" /> Bar</button>
+                <button onClick={() => handlePrint('BAR')} className="flex items-center justify-center gap-1.5 py-2.5 border-2 border-pink-400 text-pink-600 rounded-lg text-sm font-semibold hover:bg-pink-50"><Printer className="w-4 h-4" /> Bar</button>
                 <button onClick={() => handlePrint('CUSTOMER')} className="flex items-center justify-center gap-1.5 py-2.5 border-2 border-purple-400 text-purple-600 rounded-lg text-sm font-semibold hover:bg-purple-50"><Printer className="w-4 h-4" /> Struk</button>
               </div>
               <button onClick={() => setResultPayload(null)} className="w-full py-3 bg-pink-600 text-white rounded-lg font-semibold hover:bg-pink-700">Transaksi Baru</button>
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Offline Queue Modal ── */}
+      <Dialog open={showOfflineQueue} onOpenChange={() => setShowOfflineQueue(false)}>
+        <DialogContent className="max-w-sm">
+          <div className="py-4 space-y-4">
+            <h2 className="text-lg font-bold text-gray-900 text-center">Antrian Offline</h2>
+            <p className="text-sm text-gray-500 text-center">{pendingCount} order menunggu sync</p>
+            <div className="flex gap-2">
+              <button
+                onClick={async () => {
+                  const { synced, failed } = await syncQueue();
+                  alert(`Sync selesai: ${synced} berhasil, ${failed} gagal`);
+                }}
+                disabled={!isOnline || pendingCount === 0}
+                className="flex-1 py-2.5 bg-pink-600 text-white rounded-lg text-sm font-semibold hover:bg-pink-700 disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                Sync Sekarang
+              </button>
+              <button
+                onClick={() => setShowOfflineQueue(false)}
+                className="flex-1 py-2.5 border border-gray-300 rounded-lg text-sm font-semibold hover:bg-gray-50"
+              >
+                Tutup
+              </button>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
 
@@ -743,5 +1036,13 @@ export default function CashierPageNew() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function CashierPageNew() {
+  return (
+    <Suspense fallback={<div className="p-6 text-sm text-gray-500">Memuat kasir...</div>}>
+      <CashierPageNewContent />
+    </Suspense>
   );
 }

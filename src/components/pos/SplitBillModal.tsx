@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect } from 'react';
 import {
-  Users, Minus, Plus, AlertCircle, CheckCircle, Split, UtensilsCrossed, Equal,
+  Users, Minus, Plus, AlertCircle, CheckCircle, Split, UtensilsCrossed, Equal, Hash,
 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -18,7 +18,7 @@ export interface SplitItemMapping {
 }
 
 export interface SplitConfig {
-  mode: 'equal' | 'per-item';
+  mode: 'equal' | 'per-item' | 'custom';
   count: number;
   splits: {
     label: string;
@@ -47,12 +47,15 @@ export function SplitBillModal({
   open, total, subtotal, taxAmount, discountAmount, cartItems,
   onClose, onConfirm, formatCurrency,
 }: SplitBillModalProps) {
-  const [mode, setMode] = useState<'equal' | 'per-item'>('equal');
+  const [mode, setMode] = useState<'equal' | 'per-item' | 'custom'>('equal');
   const [count, setCount] = useState(2);
   const [labels, setLabels] = useState<string[]>(['', '']);
 
   // per-item assignments: itemId -> [qty_split1, qty_split2, ...]
   const [assignments, setAssignments] = useState<Record<string, number[]>>({});
+
+  // custom nominal per split
+  const [customNominals, setCustomNominals] = useState<number[]>([0, 0]);
 
   // Initialize / sync assignments when items or count changes
   useEffect(() => {
@@ -71,7 +74,23 @@ export function SplitBillModal({
       });
       return next;
     });
-  }, [cartItems, count]);
+    // Keep labels and customNominals in sync with count
+    setLabels((prev) => {
+      const next = [...prev];
+      while (next.length < count) next.push('');
+      while (next.length > count) next.pop();
+      return next;
+    });
+    setCustomNominals((prev) => {
+      const next = [...prev];
+      while (next.length < count) {
+        const remainder = total - next.reduce((a, b) => a + b, 0);
+        next.push(Math.max(0, Math.floor(remainder)));
+      }
+      while (next.length > count) next.pop();
+      return next;
+    });
+  }, [cartItems, count, total]);
 
   // ---- EQUAL MODE calculations ----
   const equalSplits = useMemo(() => {
@@ -119,6 +138,25 @@ export function SplitBillModal({
     });
   }, [count, cartItems, assignments, taxAmount, discountAmount, labels]);
 
+  // ---- CUSTOM MODE calculations ----
+  const customSplits = useMemo(() => {
+    return Array.from({ length: count }, (_, i) => {
+      const rawTotal = customNominals[i] || 0;
+      // Distribute tax/discount proportionally based on nominal vs total
+      const ratio = total > 0 ? rawTotal / total : 0;
+      const splitTax = Math.round(taxAmount * ratio);
+      const splitDisc = Math.round(discountAmount * ratio);
+      const splitSubtotal = rawTotal - splitTax + splitDisc;
+      return {
+        label: labels[i] || `Orang ${i + 1}`,
+        total: rawTotal,
+        subtotal: splitSubtotal,
+        tax: splitTax,
+        discount: splitDisc,
+      };
+    });
+  }, [count, customNominals, labels, total, taxAmount, discountAmount]);
+
   // ---- Unassigned calculation ----
   const unassignedTotal = useMemo(() => {
     if (mode !== 'per-item') return 0;
@@ -130,11 +168,22 @@ export function SplitBillModal({
     return u;
   }, [mode, cartItems, assignments]);
 
+  // ---- Custom remainder ----
+  const customRemainder = useMemo(() => {
+    if (mode !== 'custom') return 0;
+    const sum = customNominals.reduce((a, b) => a + b, 0);
+    return total - sum;
+  }, [mode, customNominals, total]);
+
   // ---- Handlers ----
   const handleDecrease = () => setCount((c) => Math.max(2, c - 1));
   const handleIncrease = () => {
     setCount((c) => c + 1);
     setLabels((prev) => [...prev, '']);
+    setCustomNominals((prev) => {
+      const sum = prev.reduce((a, b) => a + b, 0);
+      return [...prev, Math.max(0, total - sum)];
+    });
   };
 
   const handleLabelChange = (idx: number, val: string) => {
@@ -172,18 +221,38 @@ export function SplitBillModal({
     });
   };
 
+  const handleCustomNominalChange = (idx: number, rawVal: string) => {
+    const val = parseFloat(rawVal.replace(/[^0-9]/g, '')) || 0;
+    setCustomNominals((prev) => {
+      const next = [...prev];
+      next[idx] = Math.max(0, val);
+      return next;
+    });
+  };
+
   const handleConfirm = () => {
     if (mode === 'equal') {
       onConfirm({
         mode: 'equal',
         count,
-        splits: equalSplits.map((s, i) => ({
+        splits: equalSplits.map((s) => ({
           label: s.label,
           total: s.total,
           subtotal: s.total - s.tax + s.discount,
           tax_amount: s.tax,
           discount_amount: s.discount,
-          customerId: undefined,
+        })),
+      });
+    } else if (mode === 'custom') {
+      onConfirm({
+        mode: 'custom',
+        count,
+        splits: customSplits.map((s) => ({
+          label: s.label,
+          total: s.total,
+          subtotal: s.subtotal,
+          tax_amount: s.tax,
+          discount_amount: s.discount,
         })),
       });
     } else {
@@ -207,7 +276,6 @@ export function SplitBillModal({
           tax_amount: s.tax,
           discount_amount: s.discount,
           total: s.total,
-          customerId: undefined,
           items,
         };
       });
@@ -219,10 +287,13 @@ export function SplitBillModal({
     if (mode === 'equal') {
       return equalSplits.reduce((sum, s) => sum + s.total, 0) === total;
     }
+    if (mode === 'custom') {
+      return customRemainder === 0;
+    }
     return unassignedTotal === 0;
-  }, [mode, equalSplits, total, unassignedTotal]);
+  }, [mode, equalSplits, total, customRemainder, unassignedTotal]);
 
-  const splitsToRender = mode === 'equal' ? equalSplits : perItemSplits;
+  const splitsToRender = mode === 'equal' ? equalSplits : mode === 'custom' ? customSplits : perItemSplits;
   const splitTotalSum = splitsToRender.reduce((sum, s) => sum + s.total, 0);
 
   return (
@@ -246,6 +317,14 @@ export function SplitBillModal({
               <Equal className="w-4 h-4" /> Sama Rata
             </button>
             <button
+              onClick={() => setMode('custom')}
+              className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-md text-sm font-medium transition-all ${
+                mode === 'custom' ? 'bg-white shadow-sm text-pink-600' : 'text-gray-500'
+              }`}
+            >
+              <Hash className="w-4 h-4" /> Nominal
+            </button>
+            <button
               onClick={() => setMode('per-item')}
               className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-md text-sm font-medium transition-all ${
                 mode === 'per-item' ? 'bg-white shadow-sm text-pink-600' : 'text-gray-500'
@@ -262,7 +341,11 @@ export function SplitBillModal({
               <div>
                 <p className="text-sm font-medium text-gray-900">Jumlah Orang</p>
                 <p className="text-xs text-gray-500">
-                  {mode === 'equal' ? 'Bagikan sama rata' : 'Atur item per orang'}
+                  {mode === 'equal'
+                    ? 'Bagikan sama rata'
+                    : mode === 'custom'
+                    ? 'Atur nominal per orang'
+                    : 'Atur item per orang'}
                 </p>
               </div>
             </div>
@@ -283,6 +366,52 @@ export function SplitBillModal({
               </button>
             </div>
           </div>
+
+          {/* Custom Nominal Inputs */}
+          {mode === 'custom' && (
+            <div className="space-y-3">
+              {Array.from({ length: count }, (_, idx) => (
+                <div key={idx} className="flex items-center gap-3 bg-gray-50 rounded-lg p-3">
+                  <div className="w-6 h-6 rounded-full bg-pink-600 text-white text-xs font-bold flex items-center justify-center flex-shrink-0">
+                    {idx + 1}
+                  </div>
+                  <div className="flex-1">
+                    <Input
+                      placeholder={`Nama orang ${idx + 1}`}
+                      value={labels[idx] || ''}
+                      onChange={(e) => handleLabelChange(idx, e.target.value)}
+                      className="h-8 text-sm border-gray-200 bg-white mb-2"
+                    />
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-gray-500">Nominal</span>
+                      <Input
+                        type="number"
+                        min={0}
+                        value={customNominals[idx] || 0}
+                        onChange={(e) => handleCustomNominalChange(idx, e.target.value)}
+                        className="h-8 text-sm border-gray-200 bg-white flex-1"
+                      />
+                    </div>
+                  </div>
+                  <div className="text-right text-sm font-bold text-gray-900">
+                    {formatCurrency(customNominals[idx] || 0)}
+                  </div>
+                </div>
+              ))}
+              <div className="flex items-center justify-between px-1 text-sm">
+                <span className="text-gray-500">Sisa</span>
+                <span className={`font-bold ${customRemainder !== 0 ? 'text-red-600' : 'text-green-600'}`}>
+                  {formatCurrency(Math.abs(customRemainder))}
+                </span>
+              </div>
+              {customRemainder !== 0 && (
+                <div className="flex items-center gap-2 bg-red-50 text-red-700 text-xs px-3 py-2 rounded-lg">
+                  <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                  Total nominal ({formatCurrency(splitTotalSum)}) harus sama dengan total order ({formatCurrency(total)}).
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Per-Item Assignment UI */}
           {mode === 'per-item' && (
@@ -357,37 +486,39 @@ export function SplitBillModal({
             </div>
           )}
 
-          {/* Split labels & Totals */}
-          <div className="space-y-2">
-            {Array.from({ length: count }, (_, idx) => {
-              const s = splitsToRender[idx];
-              return (
-                <div key={idx} className="flex items-center gap-3 bg-gray-50 rounded-lg p-3">
-                  <div className="w-6 h-6 rounded-full bg-pink-600 text-white text-xs font-bold flex items-center justify-center flex-shrink-0">
-                    {idx + 1}
+          {/* Split labels & Totals (Equal or Per-Item) */}
+          {mode !== 'custom' && (
+            <div className="space-y-2">
+              {Array.from({ length: count }, (_, idx) => {
+                const s = splitsToRender[idx];
+                return (
+                  <div key={idx} className="flex items-center gap-3 bg-gray-50 rounded-lg p-3">
+                    <div className="w-6 h-6 rounded-full bg-pink-600 text-white text-xs font-bold flex items-center justify-center flex-shrink-0">
+                      {idx + 1}
+                    </div>
+                    <div className="flex-1">
+                      <Input
+                        placeholder={`Nama orang ${idx + 1}`}
+                        value={labels[idx] || ''}
+                        onChange={(e) => handleLabelChange(idx, e.target.value)}
+                        className="h-8 text-sm border-gray-200 bg-white"
+                      />
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm font-bold text-pink-600">{formatCurrency(s.total)}</p>
+                      <p className="text-[10px] text-gray-500">
+                        {mode === 'per-item' ? (
+                          <>Sub {formatCurrency(s.subtotal)} · Tax {formatCurrency(s.tax)} · Disc {formatCurrency(s.discount)}</>
+                        ) : (
+                          <>Tax {formatCurrency(s.tax)} · Disc {formatCurrency(s.discount)}</>
+                        )}
+                      </p>
+                    </div>
                   </div>
-                  <div className="flex-1">
-                    <Input
-                      placeholder={`Nama orang ${idx + 1}`}
-                      value={labels[idx] || ''}
-                      onChange={(e) => handleLabelChange(idx, e.target.value)}
-                      className="h-8 text-sm border-gray-200 bg-white"
-                    />
-                  </div>
-                  <div className="text-right">
-                    <p className="text-sm font-bold text-pink-600">{formatCurrency(s.total)}</p>
-                    <p className="text-[10px] text-gray-500">
-                      {mode === 'per-item' ? (
-                        <>Sub {formatCurrency(s.subtotal)} · Tax {formatCurrency(s.tax)} · Disc {formatCurrency(s.discount)}</>
-                      ) : (
-                        <>Tax {formatCurrency(s.tax)} · Disc {formatCurrency(s.discount)}</>
-                      )}
-                    </p>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+                );
+              })}
+            </div>
+          )}
 
           {/* Total check */}
           <div className="flex items-center justify-between text-sm px-1">

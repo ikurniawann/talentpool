@@ -1,5 +1,16 @@
 import ArkivOsDesktop from "@/components/arkiv/arkiv-os-desktop";
+import { createClient } from "@/lib/supabase/server";
+import { redirect } from "next/navigation";
 
-export default function HomePage() {
+export default async function HomePage() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    redirect("/login");
+  }
+
   return <ArkivOsDesktop />;
 }

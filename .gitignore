@@ -42,3 +42,6 @@ next-env.d.ts
 .env*.local
 Panduan/
 .aider*
+server.log
+assistant-memory/
+supabase/.temp/
