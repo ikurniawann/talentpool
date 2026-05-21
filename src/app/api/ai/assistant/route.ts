@@ -4,10 +4,33 @@ import { createClient } from "@/lib/supabase/server";
 import { appendFile, mkdir } from "fs/promises";
 import path from "path";
 
-type SessionMessage = { role: "user" | "assistant" | "system"; content: string };
 type ChatMessage = { role: "user" | "assistant"; content: string };
 type Intent = "all" | "hris" | "procurement" | "pos" | "inventory";
 type DetailRow = Record<string, unknown>;
+type SupabaseQueryResult = { data?: unknown[] | null; error?: unknown; count?: number | null };
+type SupabaseQuery = PromiseLike<SupabaseQueryResult> & {
+  eq(column: string, value: unknown): SupabaseQuery;
+  gte(column: string, value: unknown): SupabaseQuery;
+  lt(column: string, value: unknown): SupabaseQuery;
+  in(column: string, values: readonly unknown[]): SupabaseQuery;
+  order(column: string, options?: { ascending?: boolean }): SupabaseQuery;
+  limit(count: number): SupabaseQuery;
+};
+type SupabaseAdmin = {
+  from(table: string): {
+    select(columns?: string, options?: Record<string, unknown>): SupabaseQuery;
+    insert(values: unknown): SupabaseQuery;
+  };
+};
+type LlmResult = {
+  answer: string;
+  mode: string;
+  model: string;
+  status: "live" | "fallback";
+  provider?: "ollama" | "internal";
+  fallbackReason?: string;
+  error?: string;
+};
 type Summary = {
   hris: Record<string, number>;
   procurement: Record<string, number>;
@@ -87,7 +110,7 @@ export async function POST(request: NextRequest) {
     );
 
     intent = detectIntent(prompt);
-    const summary = await buildSystemSummary(admin, intent);
+    const summary = await buildSystemSummary(admin as unknown as SupabaseAdmin, intent);
     const fallbackAnswer = generateSummaryAnswer(prompt, summary, profile?.full_name ?? user.email ?? "User", intent);
 
     // Create session if none exists (first user message in a fresh chat)
@@ -103,8 +126,8 @@ export async function POST(request: NextRequest) {
       await admin.from("ai_assistant_sessions").update({ updated_at: new Date().toISOString() }).eq("id", sessionId);
     }
 
-    const persistedHistory = sessionId ? await loadSessionHistory(admin, sessionId) : [];
-    const mergedHistory = [...persistedHistory, ...history].slice(-20);
+    const persistedHistory = sessionId ? await loadSessionHistory(admin as unknown as SupabaseAdmin, sessionId) : [];
+    const mergedHistory = compactChatHistory([...persistedHistory, ...history]);
 
     const llmResult = await generateWithOllama({
       message: prompt,
@@ -139,7 +162,7 @@ export async function POST(request: NextRequest) {
       model: llmResult.model,
     });
 
-    await auditAiRequest(admin, {
+    await auditAiRequest(admin as unknown as SupabaseAdmin, {
       user_id: user.id,
       user_email: user.email,
       prompt,
@@ -178,14 +201,31 @@ function detectIntent(message: string): Intent {
   return "all";
 }
 
+function compactChatHistory(history: ChatMessage[]): ChatMessage[] {
+  const compacted: ChatMessage[] = [];
+  let budget = 5000;
+
+  for (const item of history.slice(-12).reverse()) {
+    const maxLength = item.role === "assistant" ? 900 : 700;
+    const content = item.content.replace(/\s+/g, " ").trim().slice(0, maxLength);
+    if (!content) continue;
+
+    budget -= content.length;
+    if (budget < 0) break;
+    compacted.push({ role: item.role, content });
+  }
+
+  return compacted.reverse();
+}
+
 async function safeCount(
-  admin: ReturnType<typeof createServiceClient>,
+  admin: SupabaseAdmin,
   table: string,
-  filter?: (query: any) => any,
+  filter?: (query: SupabaseQuery) => SupabaseQuery,
 ): Promise<number> {
   try {
-    let query = admin.from(table).select("id", { count: "exact", head: true });
-    if (filter) query = filter(query) as typeof query;
+    let query = admin.from(table).select("id", { count: "exact", head: true }) as unknown as SupabaseQuery;
+    if (filter) query = filter(query);
     const { count, error } = await query;
     if (error) return 0;
     return count ?? 0;
@@ -195,18 +235,18 @@ async function safeCount(
 }
 
 async function safeRows(
-  admin: ReturnType<typeof createServiceClient>,
+  admin: SupabaseAdmin,
   table: string,
   columns: string,
   options?: {
-    filter?: (query: any) => any;
+    filter?: (query: SupabaseQuery) => SupabaseQuery;
     order?: { column: string; ascending?: boolean };
     limit?: number;
   },
 ): Promise<DetailRow[]> {
   try {
-    let query = admin.from(table).select(columns);
-    if (options?.filter) query = options.filter(query) as typeof query;
+    let query = admin.from(table).select(columns) as unknown as SupabaseQuery;
+    if (options?.filter) query = options.filter(query);
     if (options?.order) query = query.order(options.order.column, { ascending: options.order.ascending ?? false });
     if (options?.limit) query = query.limit(options.limit);
     const { data, error } = await query;
@@ -217,7 +257,7 @@ async function safeRows(
   }
 }
 
-async function buildSystemSummary(admin: any, intent: Intent): Promise<Summary> {
+async function buildSystemSummary(admin: SupabaseAdmin, intent: Intent): Promise<Summary> {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const todayIso = today.toISOString();
@@ -301,13 +341,13 @@ async function generateWithOllama({
   fallbackAnswer: string;
   userName: string;
   intent: Intent;
-}): Promise<{ answer: string; mode: string; model: string; status: "live" | "fallback"; fallbackReason?: string; error?: string }> {
-  const baseUrl = (process.env.OLLAMA_API_BASE || process.env.OLLAMA_HOST || "http://localhost:11434").replace(/\/$/, "");
+}): Promise<LlmResult> {
+  const baseUrl = (process.env.AI_ASSISTANT_OLLAMA_API_BASE || "http://127.0.0.1:11434")
+    .replace(/^http:\/\/localhost(?=:|\/|$)/, "http://127.0.0.1")
+    .replace(/\/$/, "");
   const model = process.env.OLLAMA_MODEL || "kimi-k2.6:cloud";
   const apiKey = process.env.OLLAMA_API_KEY;
   const timeoutMs = Number(process.env.OLLAMA_TIMEOUT || "120000");
-
-  if (!baseUrl) return { answer: fallbackAnswer, mode: "rule_based_summary_v1", model: "none", status: "fallback", fallbackReason: "OLLAMA_API_BASE belum dikonfigurasi" };
 
   const systemPrompt = [
     "Kamu adalah Arkiv OS AI Assistant untuk semua user Arkiv OS.",
@@ -324,9 +364,20 @@ async function generateWithOllama({
     { role: "user", content: userPrompt },
   ];
 
-  const headers = { "Content-Type": "application/json" };
   const errors: string[] = [];
 
+  if (!baseUrl) {
+    return {
+      answer: fallbackAnswer,
+      mode: "rule_based_summary_v1",
+      model: "none",
+      provider: "internal",
+      status: "fallback",
+      fallbackReason: "OLLAMA_API_BASE belum dikonfigurasi",
+    };
+  }
+
+  const headers = buildOllamaHeaders(baseUrl, apiKey);
   try {
     const response = await fetch(`${baseUrl}/api/chat`, {
       method: "POST",
@@ -338,9 +389,9 @@ async function generateWithOllama({
     const json = await response.json() as { message?: { content?: string }; response?: string };
     const answer = json.message?.content || json.response;
     if (!answer) throw new Error("/api/chat response kosong");
-    return { answer, mode: "ollama_api_chat_live", model, status: "live" };
+    return { answer, mode: "ollama_api_chat_live", model, provider: "ollama", status: "live" };
   } catch (error) {
-    errors.push(error instanceof Error ? error.message : "unknown /api/chat error");
+    errors.push(formatProviderError(error, "/api/chat"));
   }
 
   try {
@@ -354,15 +405,39 @@ async function generateWithOllama({
     const json = await response.json() as { choices?: Array<{ message?: { content?: string } }> };
     const answer = json.choices?.[0]?.message?.content;
     if (!answer) throw new Error("/v1/chat/completions response kosong");
-    return { answer, mode: "ollama_openai_compatible_live", model, status: "live" };
+    return { answer, mode: "ollama_chat_completions_live", model, provider: "ollama", status: "live" };
   } catch (error) {
-    errors.push(error instanceof Error ? error.message : "unknown /v1 error");
+    errors.push(formatProviderError(error, "/v1"));
   }
 
-  return { answer: fallbackAnswer, mode: "ollama_unavailable_fallback", model, status: "fallback", fallbackReason: "Ollama/Kimi Cloud sedang tidak tersedia. Saya memakai fallback internal sementara.", error: errors.join(" | ") };
+  console.warn("AI assistant Ollama fallback:", errors.join(" | "));
+
+  return {
+    answer: fallbackAnswer,
+    mode: "ollama_unavailable_fallback",
+    model,
+    provider: "internal",
+    status: "fallback",
+    fallbackReason: "Ollama sedang tidak tersedia. Saya memakai fallback internal sementara.",
+    error: errors.join(" | "),
+  };
 }
 
-async function loadSessionHistory(admin: any, sessionId: string): Promise<ChatMessage[]> {
+function buildOllamaHeaders(baseUrl: string, apiKey?: string): Record<string, string> {
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  const isLocal = /^https?:\/\/(localhost|127\.0\.0\.1|\[::1\])(?::|\/|$)/i.test(baseUrl);
+  if (apiKey && !isLocal) headers.Authorization = `Bearer ${apiKey}`;
+  return headers;
+}
+
+function formatProviderError(error: unknown, endpoint: string): string {
+  if (!(error instanceof Error)) return `${endpoint}: unknown error`;
+  const cause = error.cause as { code?: string; address?: string; port?: number; message?: string } | undefined;
+  const causeText = cause ? ` cause=${JSON.stringify({ code: cause.code, address: cause.address, port: cause.port, message: cause.message })}` : "";
+  return `${endpoint}: ${error.name}: ${error.message}${causeText}`;
+}
+
+async function loadSessionHistory(admin: SupabaseAdmin, sessionId: string): Promise<ChatMessage[]> {
   try {
     const { data } = await admin
       .from("ai_assistant_messages")
@@ -371,7 +446,9 @@ async function loadSessionHistory(admin: any, sessionId: string): Promise<ChatMe
       .in("role", ["user", "assistant"])
       .order("created_at", { ascending: true })
       .limit(40);
-    return (data ?? []).map((item: any) => ({ role: item.role, content: item.content })) as ChatMessage[];
+    return ((data ?? []) as Array<{ role?: string; content?: unknown }>)
+      .filter((item): item is ChatMessage => (item.role === "user" || item.role === "assistant") && typeof item.content === "string")
+      .map((item) => ({ role: item.role, content: item.content }));
   } catch {
     return [];
   }
@@ -409,7 +486,7 @@ async function appendAssistantMarkdown(payload: {
   }
 }
 
-async function auditAiRequest(admin: any, payload: Record<string, any>) {
+async function auditAiRequest(admin: SupabaseAdmin, payload: Record<string, unknown>) {
   try {
     await admin.from("ai_assistant_logs").insert(payload);
   } catch (error) {

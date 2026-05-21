@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { ComponentType, CSSProperties, MouseEvent as ReactMouseEvent } from "react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Activity,
   AlertCircle,
@@ -1282,11 +1282,13 @@ function NotificationCenter({ onClose }: { onClose: () => void }) {
 }
 
 function AiAssistantWindow({ account, onClose }: { account: OsUserAccount | null; onClose: () => void }) {
-  const [messages, setMessages] = useState<Array<{ role: "user" | "assistant"; content: string }>>([]);
+  type AssistantMessage = { role: "user" | "assistant"; content: string; meta?: { status?: string; model?: string; fallbackReason?: string } };
+
+  const [messages, setMessages] = useState<AssistantMessage[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [assistantStatus, setAssistantStatus] = useState<"ready" | "live" | "fallback">("ready");
-  const [statusNote, setStatusNote] = useState("Rule-based fallback aktif");
+  const [statusNote, setStatusNote] = useState("Ollama siap. Kirim pesan untuk mulai.");
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [sessions, setSessions] = useState<Array<{ id: string; title: string; updated_at: string }>>([]);
   const [showHistory, setShowHistory] = useState(false);
@@ -1294,6 +1296,16 @@ function AiAssistantWindow({ account, onClose }: { account: OsUserAccount | null
   const isAllowed = account?.role === "super_admin";
 
   const quickPrompts = ["Summary semua module", "Ringkas HRIS", "PO pending", "Inventory low stock", "Summary POS"];
+  const applyAssistantMeta = useCallback((meta?: AssistantMessage["meta"]) => {
+    if (meta?.status === "live") {
+      setAssistantStatus("live");
+      setStatusNote(`Live: ${meta.model ?? "Ollama"}`);
+      return;
+    }
+
+    setAssistantStatus("ready");
+    setStatusNote("Ollama siap. Kirim pesan baru untuk cek status live.");
+  }, []);
 
   // On mount: fetch sessions + restore active session if any
   useEffect(() => {
@@ -1313,14 +1325,15 @@ function AiAssistantWindow({ account, onClose }: { account: OsUserAccount | null
           if (data.messages?.length) {
             const mapped = data.messages
               .filter((m: { role: string }) => m.role === "user" || m.role === "assistant")
-              .map((m: { role: "user" | "assistant"; content: string }) => ({ role: m.role, content: m.content }));
+              .map((m: AssistantMessage) => ({ role: m.role, content: m.content, meta: m.meta }));
             setMessages(mapped);
+            applyAssistantMeta(mapped.filter((m: AssistantMessage) => m.role === "assistant").at(-1)?.meta);
             setView("chat");
           }
         })
         .catch(() => {});
     }
-  }, [isAllowed]);
+  }, [applyAssistantMeta, isAllowed]);
 
   const enterLanding = () => {
     setView("landing");
@@ -1339,6 +1352,8 @@ function AiAssistantWindow({ account, onClose }: { account: OsUserAccount | null
         content: "Halo, saya Arkiv AI Assistant. Fitur ini khusus super_admin. Saya bisa bantu ringkas HRIS, Procurement, POS, dan Inventory.",
       },
     ]);
+    setAssistantStatus("ready");
+    setStatusNote("Ollama siap. Kirim pesan untuk mulai.");
     setView("chat");
     if (typeof window !== "undefined") localStorage.removeItem("arkiv-ai-session");
   };
@@ -1351,10 +1366,13 @@ function AiAssistantWindow({ account, onClose }: { account: OsUserAccount | null
     if (data.messages?.length) {
       const mapped = data.messages
         .filter((m: { role: string }) => m.role === "user" || m.role === "assistant")
-        .map((m: { role: "user" | "assistant"; content: string }) => ({ role: m.role, content: m.content }));
+        .map((m: AssistantMessage) => ({ role: m.role, content: m.content, meta: m.meta }));
       setMessages(mapped);
+      applyAssistantMeta(mapped.filter((m: AssistantMessage) => m.role === "assistant").at(-1)?.meta);
     } else {
       setMessages([]);
+      setAssistantStatus("ready");
+      setStatusNote("Ollama siap. Kirim pesan untuk mulai.");
     }
     setView("chat");
   };
