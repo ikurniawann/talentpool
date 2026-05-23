@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase/service-client';
 import { getPosSession } from '@/lib/api/auth';
+import { awardCrmXpForSplitPayment } from '@/lib/crm/loyalty-engine';
+
+function getErrorMessage(error: unknown) {
+  return error instanceof Error ? error.message : 'Unknown error';
+}
 
 // POST /api/pos/orders/{id}/splits/{splitId}/pay
 export async function POST(
@@ -27,7 +32,7 @@ export async function POST(
     }
 
     const supabase = createServiceClient();
-    const cashierId = await resolveCashierId(sessionUserId);
+    const cashierId = await resolveCashierId();
 
     const { data: split, error: splitError } = await supabase
       .from('pos_order_splits')
@@ -150,6 +155,14 @@ export async function POST(
       changed_at: new Date().toISOString(),
     });
 
+    const crmXp = await awardCrmXpForSplitPayment(supabase, {
+      orderId,
+      splitId,
+      customerId: split.customer_id || null,
+      totalAmount: splitTotal,
+      outletId: split.branch_id || null,
+    });
+
     return NextResponse.json({
       success: true,
       data: {
@@ -159,14 +172,15 @@ export async function POST(
         paid_splits: paidSplits || 0,
         total_splits: totalSplits || 0,
         payment_status: paymentStatus,
+        crm_xp: crmXp,
       },
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error paying split:', error);
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    return NextResponse.json({ success: false, error: getErrorMessage(error) }, { status: 500 });
   }
 }
 
-async function resolveCashierId(sessionUserId: string): Promise<string> {
+async function resolveCashierId(): Promise<string> {
   return '00000000-0000-0000-0000-000000000001';
 }

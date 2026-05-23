@@ -12,6 +12,11 @@ export interface KDSOrderItem {
   quantity: number;
   unit_price: number;
   notes?: string;
+  station?: string;
+  kitchen_status?: string;
+  kitchen_started_at?: string;
+  kitchen_ready_at?: string;
+  served_at?: string;
 }
 
 export interface KDSOrder {
@@ -21,6 +26,7 @@ export interface KDSOrder {
   payment_status: string;
   order_type: string;
   table_id?: string;
+  table_label?: string | null;
   notes?: string;
   special_requests?: string;
   ordered_at: string;
@@ -36,6 +42,8 @@ interface UseKDSOptions {
   status?: string[];
   station?: string;
   branchId?: string;
+  dateFrom?: string;
+  dateTo?: string;
   limit?: number;
   pollInterval?: number;
 }
@@ -45,6 +53,8 @@ export function useKDS(options: UseKDSOptions = {}) {
     status = ['pending', 'confirmed', 'preparing', 'ready'],
     station,
     branchId,
+    dateFrom,
+    dateTo,
     limit = 50,
     pollInterval = 3000,
   } = options;
@@ -61,6 +71,8 @@ export function useKDS(options: UseKDSOptions = {}) {
       params.set('status', status.join(','));
       if (station) params.set('station', station);
       if (branchId) params.set('branch_id', branchId);
+      if (dateFrom) params.set('date_from', dateFrom);
+      if (dateTo) params.set('date_to', dateTo);
       params.set('limit', String(limit));
 
       const res = await fetch(`/api/pos/kds?${params.toString()}`, {
@@ -85,12 +97,12 @@ export function useKDS(options: UseKDSOptions = {}) {
       prevOrderIds.current = new Set(fetched.map((o) => o.id));
       setOrders(fetched);
       setError(null);
-    } catch (e: any) {
-      setError(e.message || 'Network error');
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Network error');
     } finally {
       setLoading(false);
     }
-  }, [status, station, branchId, limit, soundEnabled]);
+  }, [status, station, branchId, dateFrom, dateTo, limit, soundEnabled]);
 
   useEffect(() => {
     fetchOrders();
@@ -113,8 +125,8 @@ export function useKDS(options: UseKDSOptions = {}) {
       }
 
       return data;
-    } catch (e: any) {
-      return { success: false, error: e.message };
+    } catch (e: unknown) {
+      return { success: false, error: e instanceof Error ? e.message : 'Network error' };
     }
   }, [fetchOrders]);
 
@@ -131,7 +143,9 @@ export function useKDS(options: UseKDSOptions = {}) {
 
 function playNotificationSound() {
   try {
-    const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+    const AudioContextClass = window.AudioContext || (window as Window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+    if (!AudioContextClass) return;
+    const audioCtx = new AudioContextClass();
     const oscillator = audioCtx.createOscillator();
     const gainNode = audioCtx.createGain();
 

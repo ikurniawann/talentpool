@@ -3,6 +3,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { getCurrentShift, openShift, closeShift, type PosShift } from '@/lib/pos-api';
 
+const SHIFT_CHANGED_EVENT = 'pos-shift-changed';
+
 export function usePosShift(cashierId: string) {
   const [shift, setShift] = useState<PosShift | null>(null);
   const [loading, setLoading] = useState(true);
@@ -31,7 +33,20 @@ export function usePosShift(cashierId: string) {
   }, [cashierId]);
 
   useEffect(() => {
-    fetchCurrent();
+    const timer = window.setTimeout(() => {
+      void fetchCurrent();
+    }, 0);
+
+    return () => window.clearTimeout(timer);
+  }, [fetchCurrent]);
+
+  useEffect(() => {
+    const handleShiftChanged = () => {
+      void fetchCurrent();
+    };
+
+    window.addEventListener(SHIFT_CHANGED_EVENT, handleShiftChanged);
+    return () => window.removeEventListener(SHIFT_CHANGED_EVENT, handleShiftChanged);
   }, [fetchCurrent]);
 
   const doOpen = useCallback(
@@ -40,6 +55,7 @@ export function usePosShift(cashierId: string) {
       if (res.success && res.data) {
         setShift(res.data);
         setError(null);
+        window.dispatchEvent(new CustomEvent(SHIFT_CHANGED_EVENT));
       }
       return res;
     },
@@ -53,6 +69,7 @@ export function usePosShift(cashierId: string) {
       if (res.success) {
         setShift(null);
         setError(null);
+        window.dispatchEvent(new CustomEvent(SHIFT_CHANGED_EVENT));
       }
       return res;
     },

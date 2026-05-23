@@ -24,6 +24,14 @@ const APPS: Record<string, string> = {
 
 /* ── Types ──────────────────────────────────────────────────────── */
 type ClapState = "idle" | "waiting-gesture" | "listening" | "detected";
+type SpeechRecognitionConstructor = new () => SpeechRecognition;
+type BrowserWindowWithSpeech = Window & typeof globalThis & { webkitSpeechRecognition?: SpeechRecognitionConstructor };
+type BrowserWindowWithAudio = Window & typeof globalThis & { webkitAudioContext?: typeof AudioContext };
+
+function getErrorDetails(error: unknown) {
+  if (error instanceof Error) return { name: error.name, message: error.message };
+  return { name: "Error", message: String(error) };
+}
 
 export function VoiceAssistant() {
   const [isOpen, setIsOpen] = useState(false);
@@ -52,7 +60,7 @@ export function VoiceAssistant() {
 
   /* ── Speech Recognition Init ─────────────────────────────────────── */
   useEffect(() => {
-    const SpeechRecognition = window.SpeechRecognition || (window as any).webkitSpeechRecognition;
+    const SpeechRecognition = window.SpeechRecognition || (window as BrowserWindowWithSpeech).webkitSpeechRecognition;
     if (!SpeechRecognition) return;
     setHasMic(true);
 
@@ -100,7 +108,7 @@ export function VoiceAssistant() {
       micStreamRef.current = stream;
       console.log("[Clap] Mic access granted");
 
-      const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+      const AudioCtx = window.AudioContext || (window as BrowserWindowWithAudio).webkitAudioContext;
       const audioCtx = new AudioCtx();
       audioCtxRef.current = audioCtx;
 
@@ -172,8 +180,9 @@ export function VoiceAssistant() {
       };
 
       clapRafRef.current = requestAnimationFrame(detect);
-    } catch (e: any) {
-      console.error("[Clap] Error:", e.name, e.message);
+    } catch (error: unknown) {
+      const details = getErrorDetails(error);
+      console.warn("[Clap] Error:", details.name, details.message);
       setClapState("idle");
     }
   }, []);
@@ -264,7 +273,7 @@ export function VoiceAssistant() {
       setResponse(answer);
       setThinking(false);
       return answer;
-    } catch (e) {
+    } catch {
       setThinking(false);
       const fallback = "Maaf, AI Assistant sedang tidak tersedia. Coba lagi sebentar.";
       setResponse(fallback);

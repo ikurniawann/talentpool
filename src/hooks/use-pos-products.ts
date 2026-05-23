@@ -34,6 +34,7 @@ export function usePosProducts() {
         variants: p.variants,
         modifiers: p.modifiers,
         xp: p.xp,
+        station: p.station,
       })));
       void setLastSyncTimestamp('products');
     } catch (err: any) {

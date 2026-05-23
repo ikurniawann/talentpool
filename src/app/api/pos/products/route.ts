@@ -1,6 +1,62 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase/service-client';
 
+type ProductVariantPayload = {
+  name?: string;
+  group_name?: string;
+  price_adjustment?: number | string;
+  display_order?: number | string;
+};
+
+type ProductModifierPayload = {
+  name?: string;
+  price_adjustment?: number | string;
+  display_order?: number | string;
+};
+
+type ProductModifierGroupPayload = {
+  name?: string;
+  min_selection?: number | string;
+  max_selection?: number | string;
+  display_order?: number | string;
+  modifiers?: ProductModifierPayload[];
+};
+
+type ProductCreatePayload = {
+  sku?: string;
+  name?: string;
+  description?: string;
+  category_id?: string;
+  base_price?: number | string;
+  cost_price?: number | string;
+  xp?: number | string;
+  xp_points?: number | string;
+  station?: string;
+  is_active?: boolean;
+  variants?: ProductVariantPayload[];
+  modifierGroups?: ProductModifierGroupPayload[];
+};
+
+function getErrorMessage(error: unknown) {
+  return error instanceof Error ? error.message : 'Unknown error';
+}
+
+function withProductXpAlias<T extends Record<string, unknown>>(product: T) {
+  return {
+    ...product,
+    xp: Number(product.xp_points ?? product.xp ?? 0),
+    station: typeof product.station === 'string' ? product.station : 'kitchen',
+  };
+}
+
+function normalizeStation(value?: string) {
+  const station = String(value || '').trim().toLowerCase();
+  if (['kitchen', 'bar', 'bakery', 'dessert', 'merchandise', 'photobooth'].includes(station)) {
+    return station;
+  }
+  return 'kitchen';
+}
+
 // Initialize Supabase client (service role for admin access)
 // GET /api/pos/products - List all active products
 export async function GET(request: NextRequest) {
@@ -9,6 +65,7 @@ export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams;
     const category = searchParams.get('category');
     const search = searchParams.get('search');
+    const includeInactive = searchParams.get('include_inactive') === 'true';
 
     let query = supabase
       .from('pos_products')
@@ -23,9 +80,11 @@ export async function GET(request: NextRequest) {
           )
         )
       `)
-      .eq('is_active', true)
-      .eq('is_available', true)
       .order('name');
+
+    if (!includeInactive) {
+      query = query.eq('is_active', true).eq('is_available', true);
+    }
 
     if (category) {
       query = query.eq('category_id', category);
@@ -39,11 +98,15 @@ export async function GET(request: NextRequest) {
 
     if (error) throw error;
 
-    return NextResponse.json({ success: true, data });
-  } catch (error: any) {
+    const normalizedProducts = (data ?? []).map((product) =>
+      withProductXpAlias(product as Record<string, unknown>)
+    );
+
+    return NextResponse.json({ success: true, data: normalizedProducts });
+  } catch (error: unknown) {
     console.error('Error fetching products:', error);
     return NextResponse.json(
-      { success: false, error: error.message },
+      { success: false, error: getErrorMessage(error) },
       { status: 500 }
     );
   }
@@ -53,7 +116,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const supabase = createServiceClient();
-    const body = await request.json();
+    const body = (await request.json()) as ProductCreatePayload;
     const {
       sku,
       name,
@@ -61,6 +124,9 @@ export async function POST(request: NextRequest) {
       category_id,
       base_price,
       cost_price,
+      xp = 0,
+      xp_points,
+      station,
       is_active = true,
       variants = [],
       modifierGroups = []
@@ -75,25 +141,59 @@ export async function POST(request: NextRequest) {
     }
 
     // Insert product
-    const { data: product, error: productError } = await supabase
+    const productPayload = {
+      sku,
+      name,
+      description,
+      category_id,
+      base_price,
+      cost_price: cost_price || 0,
+      xp_points: Math.max(0, Number(xp_points ?? xp) || 0),
+      station: normalizeStation(station),
+      is_active
+    };
+
+    let { data: product, error: productError } = await supabase
       .from('pos_products')
-      .insert({
-        sku,
-        name,
-        description,
-        category_id,
-        base_price,
-        cost_price: cost_price || 0,
-        is_active
-      })
+      .insert(productPayload)
       .select()
       .single();
 
+    if (productError?.code === '42703') {
+      const legacyPayload: Omit<typeof productPayload, 'xp_points' | 'station'> & { xp?: number; station?: string } = { ...productPayload };
+      legacyPayload.xp = productPayload.xp_points;
+      delete (legacyPayload as { xp_points?: number }).xp_points;
+      delete (legacyPayload as { station?: string }).station;
+
+      const legacyRetry = await supabase
+        .from('pos_products')
+        .insert(legacyPayload)
+        .select()
+        .single();
+
+      if (legacyRetry.error?.code === '42703') {
+        const payloadWithoutXp: Omit<typeof productPayload, 'xp_points' | 'station'> = { ...productPayload };
+        delete (payloadWithoutXp as { xp_points?: number }).xp_points;
+        delete (payloadWithoutXp as { station?: string }).station;
+        const plainRetry = await supabase
+          .from('pos_products')
+          .insert(payloadWithoutXp)
+          .select()
+          .single();
+        product = plainRetry.data;
+        productError = plainRetry.error;
+      } else {
+        product = legacyRetry.data;
+        productError = legacyRetry.error;
+      }
+    }
+
     if (productError) throw productError;
+    if (!product) throw new Error('Failed to create product');
 
     // Insert variants if provided
     if (variants.length > 0) {
-      const variantsData = variants.map((v: any) => ({
+      const variantsData = variants.map((v: ProductVariantPayload) => ({
         product_id: product.id,
         name: v.name,
         group_name: v.group_name,
@@ -136,7 +236,7 @@ export async function POST(request: NextRequest) {
 
       // Insert modifiers
       if (group.modifiers && group.modifiers.length > 0) {
-        const modifiersData = group.modifiers.map((m: any) => ({
+        const modifiersData = group.modifiers.map((m: ProductModifierPayload) => ({
           group_id: modifierGroup.id,
           name: m.name,
           price_adjustment: m.price_adjustment || 0,
@@ -167,11 +267,14 @@ export async function POST(request: NextRequest) {
       .eq('id', product.id)
       .single();
 
-    return NextResponse.json({ success: true, data: completeProduct });
-  } catch (error: any) {
+    return NextResponse.json({
+      success: true,
+      data: completeProduct ? withProductXpAlias(completeProduct as Record<string, unknown>) : null,
+    });
+  } catch (error: unknown) {
     console.error('Error creating product:', error);
     return NextResponse.json(
-      { success: false, error: error.message },
+      { success: false, error: getErrorMessage(error) },
       { status: 500 }
     );
   }

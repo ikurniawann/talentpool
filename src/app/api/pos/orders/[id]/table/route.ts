@@ -4,7 +4,7 @@ import { getPosSession } from '@/lib/api/auth';
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const sessionUserId = await getPosSession();
   if (!sessionUserId) {
@@ -14,7 +14,7 @@ export async function PATCH(
   try {
     const body = await request.json();
     const { table_id, order_type } = body;
-    const orderId = params.id;
+    const { id: orderId } = await params;
 
     const supabase = createServiceClient();
 
@@ -52,7 +52,7 @@ export async function PATCH(
     }
 
     // 3. Update order
-    const updatePayload: Record<string, any> = { updated_at: new Date().toISOString() };
+    const updatePayload: Record<string, string | null> = { updated_at: new Date().toISOString() };
     if (newTableId !== undefined) updatePayload.table_id = newTableId;
     if (order_type) updatePayload.order_type = order_type;
 
@@ -72,8 +72,8 @@ export async function PATCH(
         message: 'Order moved successfully',
       },
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Move table error:', error);
-    return Response.json({ success: false, error: error.message }, { status: 500 });
+    return Response.json({ success: false, error: error instanceof Error ? error.message : 'Move table failed' }, { status: 500 });
   }
 }

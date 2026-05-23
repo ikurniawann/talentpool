@@ -1,7 +1,7 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { Clock, ChefHat, CheckCircle2, ArrowRight, Utensils, Flame, AlertTriangle } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { ChefHat, CheckCircle2, ArrowRight, Utensils, Flame } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 import type { KDSOrder } from '@/hooks/use-pos-kds';
@@ -42,6 +42,15 @@ const ACTION_BUTTON_COLORS: Record<string, string> = {
   served: 'bg-pink-600 hover:bg-pink-700 text-white',
 };
 
+const STATION_LABELS: Record<string, string> = {
+  kitchen: 'Kitchen',
+  bar: 'Bar',
+  bakery: 'Bakery',
+  dessert: 'Dessert',
+  merchandise: 'Merch',
+  photobooth: 'Photo',
+};
+
 function formatWaitTime(seconds: number): string {
   const m = Math.floor(seconds / 60);
   const s = seconds % 60;
@@ -60,6 +69,8 @@ export function KDSOrderCard({ order, onStatusChange, index }: KDSOrderCardProps
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
+    // Keep the kitchen ticket timer aligned when polling returns a fresh wait value.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setElapsed(order.wait_seconds);
     timerRef.current = setInterval(() => {
       setElapsed((prev) => prev + 1);
@@ -105,13 +116,18 @@ export function KDSOrderCard({ order, onStatusChange, index }: KDSOrderCardProps
               </span>
               <div>
                 <p className="font-semibold text-gray-900 leading-tight">{item.product_name}</p>
+                {item.station && (
+                  <span className="mt-1 inline-flex rounded-full bg-gray-900/5 px-2 py-0.5 text-[10px] font-medium text-gray-600">
+                    {STATION_LABELS[item.station] || item.station}
+                  </span>
+                )}
                 {(item.variant_info || item.modifier_info) && (
                   <p className="text-[10px] text-gray-500 mt-0.5">
                     {item.variant_info} {item.modifier_info}
                   </p>
                 )}
                 {item.notes && (
-                  <p className="text-[10px] text-amber-600 italic mt-0.5">"{item.notes}"</p>
+                  <p className="text-[10px] text-amber-600 italic mt-0.5">&quot;{item.notes}&quot;</p>
                 )}
               </div>
             </div>
@@ -128,8 +144,8 @@ export function KDSOrderCard({ order, onStatusChange, index }: KDSOrderCardProps
             <ChefHat className="w-3.5 h-3.5" />
           )}
           <span className="capitalize">{order.order_type.replace('_', ' ')}</span>
-          {order.table_id && (
-            <span className="text-gray-400">· Meja {order.table_id.slice(0, 8)}</span>
+          {(order.table_label || order.table_id) && (
+            <span className="text-gray-400">· {order.table_label || `Meja ${order.table_id?.slice(0, 8)}`}</span>
           )}
         </div>
 

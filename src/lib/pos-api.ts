@@ -39,6 +39,7 @@ export interface Product {
   is_available: boolean;
   image_url?: string;
   xp?: number;
+  station?: string;
   variants?: ProductVariant[];
   modifiers?: ProductModifier[];
 };
@@ -93,7 +94,7 @@ export async function getCustomers(params?: { search?: string; phone?: string })
   return fetchAPI<{ success: boolean; data: Customer[] }>(`/customers${queryString ? '?' + queryString : ''}`);
 }
 
-export async function saveCustomer(customer: Partial<Customer> & { phone: string }) {
+export async function saveCustomer(customer: Partial<Customer> & { phone: string; enroll_member?: boolean }) {
   return fetchAPI<{ success: boolean; data: Customer; message: string }>('/customers', {
     method: 'POST',
     body: JSON.stringify(customer),
@@ -181,6 +182,18 @@ export async function getOrderSplits(orderId: string) {
       paid_count: number;
     }
   }>(`/orders/${orderId}/splits`);
+}
+
+export async function createOrderSplits(
+  orderId: string,
+  payload: {
+    splits: SplitWithItems[];
+  }
+) {
+  return fetchAPI<{ success: boolean; data: any; error?: string }>(`/orders/${orderId}/splits`, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
 }
 
 export async function paySplit(
@@ -282,6 +295,7 @@ export interface Order {
   payment_method?: string;
   customer?: Customer;
   customer_id?: string;
+  table?: { table_number?: string | null; qr_code?: string | null } | null;
   cashier_id?: string;
   server_id?: string;
   table_id?: string;
@@ -296,6 +310,7 @@ export interface Order {
   ordered_at?: string;
   completed_at?: string;
   notes?: string;
+  special_requests?: string;
   items?: any[];
   splits?: any[];
   /** Void tracking */
@@ -340,9 +355,40 @@ export async function createOrder(order: CreateOrderRequest) {
   });
 }
 
-export async function getOrders(params?: { status?: string; customer_id?: string; limit?: number }) {
+export async function getOrders(params?: {
+  status?: string;
+  customer_id?: string;
+  payment_status?: string;
+  order_type?: string;
+  active_only?: boolean;
+  limit?: number;
+}) {
   const queryString = params ? new URLSearchParams(params as any).toString() : '';
   return fetchAPI<{ success: boolean; data: any[] }>(`/orders${queryString ? '?' + queryString : ''}`);
+}
+
+export interface PosTable {
+  id: string;
+  table_number: string;
+  name: string;
+  label: string;
+  capacity: number;
+  area: string;
+  status: 'available' | 'occupied' | 'reserved' | 'maintenance' | string;
+  qr_code?: string | null;
+  is_active: boolean;
+  active_order?: {
+    id: string;
+    order_number?: string;
+    status?: string;
+    payment_status?: string;
+    total_amount: number;
+  } | null;
+}
+
+export async function getPOSTables(params?: { include_inactive?: boolean }) {
+  const queryString = params ? new URLSearchParams(params as any).toString() : '';
+  return fetchAPI<{ success: boolean; data: PosTable[]; error?: string }>(`/tables${queryString ? '?' + queryString : ''}`);
 }
 
 export async function getCustomerFavoriteProducts(customerId: string, products: Product[] = []) {
@@ -386,6 +432,27 @@ export async function updateOrderStatus(
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({ status, ...additionalData }),
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.error || `API error: ${response.status}`);
+  }
+
+  return data;
+}
+
+export async function updateOrderPayment(
+  orderId: string,
+  payload: { payment_status: string; payment_method?: string; amount_paid?: number; ark_coins_used?: number }
+) {
+  const response = await fetch(`/api/pos/orders/${orderId}`, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(payload),
   });
 
   const data = await response.json();

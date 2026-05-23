@@ -106,6 +106,12 @@ hr {
   background: white !important;
 }
 
+[role="listbox"][data-arkiv-ai-listbox="true"] {
+  background-color: rgba(9, 9, 11, 0.96) !important;
+  background: rgba(9, 9, 11, 0.96) !important;
+  color: #ffffff !important;
+}
+
 /* Custom react-datepicker styles */
 .react-datepicker {
   font-family: inherit;

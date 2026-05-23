@@ -1,6 +1,71 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase/service-client';
 import { getPosSession } from '@/lib/api/auth';
+import { awardCrmXpForPosOrder } from '@/lib/crm/loyalty-engine';
+
+type PosOrderItemRequest = {
+  product_id?: string;
+  product_name?: string;
+  product_sku?: string;
+  quantity?: number | string;
+  unit_price?: number | string;
+  variant_price_adjustment?: number | string;
+  modifier_price_adjustment?: number | string;
+  variants?: unknown[];
+  modifiers?: unknown[];
+  station?: string;
+};
+
+type PosOrderBody = {
+  order_type?: string;
+  customer_id?: string;
+  cashier_id?: string;
+  server_id?: string;
+  table_id?: string;
+  items?: PosOrderItemRequest[];
+  subtotal?: number | string;
+  discount_amount?: number | string;
+  discount_reason?: string;
+  tax_amount?: number | string;
+  service_charge_amount?: number | string;
+  total_amount?: number | string;
+  payment_method?: string;
+  amount_paid?: number | string;
+  notes?: string;
+  special_requests?: string;
+  ark_coins_used?: number | string;
+  include_tax?: boolean;
+  splits?: unknown[];
+  branch_id?: string;
+  shift_id?: string;
+};
+
+type PosOrderRow = {
+  table_id?: string | null;
+  [key: string]: unknown;
+};
+
+type PosTableRow = {
+  id: string;
+  table_number?: string | null;
+  qr_code?: string | null;
+};
+
+function getErrorMessage(error: unknown) {
+  return error instanceof Error ? error.message : 'Unknown error';
+}
+
+function isUuid(value: string) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+}
+
+function normalizeStation(value?: string) {
+  const station = String(value || '').trim().toLowerCase();
+  if (['kitchen', 'bar', 'bakery', 'dessert', 'merchandise', 'photobooth'].includes(station)) {
+    return station;
+  }
+  return 'kitchen';
+}
 
 // GET /api/pos/orders — list orders with filters
 export async function GET(request: NextRequest) {
@@ -14,6 +79,9 @@ export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams;
     const status = searchParams.get('status');
     const customerId = searchParams.get('customer_id');
+    const paymentStatus = searchParams.get('payment_status');
+    const orderType = searchParams.get('order_type');
+    const activeOnly = searchParams.get('active_only') === 'true';
     const limit = parseInt(searchParams.get('limit') || '50');
 
     let query = supabase
@@ -28,14 +96,46 @@ export async function GET(request: NextRequest) {
 
     if (status) query = query.eq('status', status);
     if (customerId) query = query.eq('customer_id', customerId);
+    if (paymentStatus) query = query.eq('payment_status', paymentStatus);
+    if (orderType) query = query.eq('order_type', orderType);
+    if (activeOnly) query = query.not('status', 'in', '("completed","cancelled","voided","merged")');
 
     const { data, error } = await query;
     if (error) throw error;
 
-    return NextResponse.json({ success: true, data });
-  } catch (error: any) {
+    const orderRows = (data || []) as PosOrderRow[];
+    const tableIds = Array.from(
+      new Set(
+        orderRows
+          .map((order) => order.table_id)
+          .filter((value): value is string => typeof value === 'string' && isUuid(value))
+      )
+    );
+    let tableById = new Map<string, { table_number?: string | null; qr_code?: string | null }>();
+    if (tableIds.length > 0) {
+      const { data: tables, error: tableError } = await supabase
+        .from('pos_tables')
+        .select('id, table_number, qr_code')
+        .in('id', tableIds);
+
+      if (tableError) throw tableError;
+      tableById = new Map(
+        ((tables || []) as PosTableRow[]).map((table) => [
+          String(table.id),
+          { table_number: table.table_number, qr_code: table.qr_code },
+        ])
+      );
+    }
+
+    const ordersWithTables = orderRows.map((order) => ({
+      ...order,
+      table: order.table_id ? tableById.get(order.table_id) || null : null,
+    }));
+
+    return NextResponse.json({ success: true, data: ordersWithTables });
+  } catch (error: unknown) {
     console.error('Error fetching orders:', error);
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    return NextResponse.json({ success: false, error: getErrorMessage(error) }, { status: 500 });
   }
 }
 
@@ -47,7 +147,7 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const body = await request.json();
+    const body = (await request.json()) as PosOrderBody;
     const {
       order_type = 'dine_in',
       customer_id,
@@ -67,15 +167,14 @@ export async function POST(request: NextRequest) {
       special_requests,
       ark_coins_used = 0,
       include_tax = false,
-      membership_discount_pct = 0,
     } = body;
 
     if (!Array.isArray(items) || items.length === 0) {
       return NextResponse.json({ success: false, error: 'Items and total amount are required' }, { status: 400 });
     }
 
-    const effectiveCashierId = cashier_id || await resolveCashierId(sessionUserId);
-    const splits = body.splits as any[];
+    const effectiveCashierId = cashier_id || await resolveCashierId();
+    const splits = Array.isArray(body.splits) ? body.splits : [];
 
     const supabase = createServiceClient();
 
@@ -97,7 +196,7 @@ export async function POST(request: NextRequest) {
         p_special_requests: special_requests || null,
         p_items: items,
         p_splits: splits,
-        p_branch_id: (body.branch_id as string) || null,
+        p_branch_id: body.branch_id || null,
       };
 
       const { data: rpcResult, error: rpcError } = await supabase.rpc(
@@ -119,7 +218,7 @@ export async function POST(request: NextRequest) {
       }
 
       // Fetch complete order with relations
-      const { data: completeOrder, error: fetchError } = await supabase
+      const { data: completeOrder } = await supabase
         .from('pos_orders')
         .select(`*, customer:pos_customers(name, phone), items:pos_order_items(*), splits:pos_order_splits(*)`)
         .eq('id', result.order_id)
@@ -140,7 +239,7 @@ export async function POST(request: NextRequest) {
     }
 
     const orderNumber = typeof orderNumData === 'string' ? orderNumData : String(orderNumData);
-    const serverSubtotal = items.reduce((sum: number, item: any) => {
+    const serverSubtotal = items.reduce((sum: number, item: PosOrderItemRequest) => {
       const qty = Number(item.quantity) || 1;
       const unit = Number(item.unit_price) || 0;
       const variantAdj = Number(item.variant_price_adjustment) || 0;
@@ -193,7 +292,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: orderErr?.message || 'Failed to create order' }, { status: 500 });
     }
 
-    const orderItems = items.map((item: any) => {
+    const orderItems = items.map((item: PosOrderItemRequest) => {
       const qty = Number(item.quantity) || 1;
       const unitPrice =
         (Number(item.unit_price) || 0) +
@@ -214,11 +313,23 @@ export async function POST(request: NextRequest) {
         discount_amount: 0,
         total_amount: subtotalValue,
         xp_earned: 0,
+        station: normalizeStation(item.station),
+        kitchen_status: 'pending',
         inventory_deducted: false,
       };
     });
 
-    const { error: itemsErr } = await supabase.from('pos_order_items').insert(orderItems);
+    let { error: itemsErr } = await supabase.from('pos_order_items').insert(orderItems);
+    if (itemsErr?.code === '42703' || itemsErr?.code === 'PGRST204') {
+      const legacyItems = orderItems.map((item) => {
+        const legacyItem = { ...item } as Partial<typeof item>;
+        delete legacyItem.station;
+        delete legacyItem.kitchen_status;
+        return legacyItem;
+      });
+      const legacyResult = await supabase.from('pos_order_items').insert(legacyItems);
+      itemsErr = legacyResult.error;
+    }
     if (itemsErr) {
       console.error('Order items insert error:', itemsErr);
       return NextResponse.json({ success: false, error: itemsErr.message }, { status: 500 });
@@ -232,20 +343,28 @@ export async function POST(request: NextRequest) {
       notes: 'Order created and paid from cashier',
     });
 
+    const crmXp = await awardCrmXpForPosOrder(supabase, {
+      orderId: orderData.id,
+      customerId: customer_id || null,
+      totalAmount: serverTotal,
+      items: orderItems,
+      outletId: body.branch_id || null,
+    });
+
     const { data: completeOrder } = await supabase
       .from('pos_orders')
       .select(`*, customer:pos_customers(name, phone), items:pos_order_items(*)`)
       .eq('id', orderData.id)
       .single();
 
-    return NextResponse.json({ success: true, data: completeOrder || orderData }, { status: 201 });
-  } catch (error: any) {
+    return NextResponse.json({ success: true, data: completeOrder || orderData, crm_xp: crmXp }, { status: 201 });
+  } catch (error: unknown) {
     console.error('Error creating order:', error);
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    return NextResponse.json({ success: false, error: getErrorMessage(error) }, { status: 500 });
   }
 }
 
-async function resolveCashierId(sessionUserId: string): Promise<string> {
+async function resolveCashierId(): Promise<string> {
   // In production, map session user to hrd.employees.id
   // For now, return a fallback/demo ID
   return '00000000-0000-0000-0000-000000000001';

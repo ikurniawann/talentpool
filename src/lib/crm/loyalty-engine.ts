@@ -1,0 +1,599 @@
+import type { SupabaseClient } from "@supabase/supabase-js";
+import { isMissingCrmSchema, toNumber } from "@/lib/crm/server";
+
+type DbClient = SupabaseClient;
+
+type PosOrderItemInput = {
+  product_id?: string | null;
+  productId?: string | null;
+  quantity?: number | string | null;
+  total_amount?: number | string | null;
+  subtotal?: number | string | null;
+  unit_price?: number | string | null;
+};
+
+type CrmTier = {
+  id: string;
+  code: string;
+  name: string;
+  rank: number;
+  min_lifetime_xp: number | string;
+  min_total_spend: number | string;
+  xp_multiplier: number | string;
+};
+
+type CrmMemberProfile = {
+  id: string;
+  customer_id: string;
+  tier_id: string;
+  current_xp: number | string;
+  lifetime_xp: number | string;
+  spent_xp: number | string;
+  loyalty_score: number | string;
+  tier?: Pick<CrmTier, "id" | "code" | "name" | "rank" | "xp_multiplier"> | null;
+};
+
+type PosCustomerLoyaltyRow = {
+  id: string;
+  phone?: string | null;
+  membership_tier?: string | null;
+  total_xp?: number | string | null;
+  current_xp?: number | string | null;
+  total_spent?: number | string | null;
+  visit_count?: number | string | null;
+};
+
+type ProductXpRow = {
+  id: string;
+  xp_points?: number | string | null;
+  xp?: number | string | null;
+};
+
+type CrmXpRule = {
+  id: string;
+  source_channel: string;
+  source_type: string;
+  source_id: string | null;
+  outlet_scope: "all" | "specific";
+  outlet_id: string | null;
+  xp_mode: "fixed" | "per_item" | "per_amount" | "multiplier" | "percentage";
+  xp_value: number | string;
+  amount_step: number | string;
+  min_amount: number | string;
+  max_xp_per_event: number | string | null;
+  tier_multiplier_enabled: boolean;
+  priority: number;
+  starts_at: string | null;
+  ends_at: string | null;
+  is_active: boolean;
+};
+
+export type CrmXpAwardResult = {
+  status: "posted" | "skipped" | "duplicate" | "error";
+  xpAwarded: number;
+  reason?: string;
+  ledgerIds?: string[];
+  details?: unknown;
+};
+
+type PostXpEventInput = {
+  customerId: string;
+  sourceType: string;
+  sourceId?: string | null;
+  outletId?: string | null;
+  xpAmount: number;
+  ruleId?: string | null;
+  referenceTable: string;
+  referenceId: string;
+  idempotencyKey: string;
+  description: string;
+  metadata?: Record<string, unknown>;
+};
+
+export async function awardCrmXpForPosOrder(
+  supabase: DbClient,
+  payload: {
+    orderId: string;
+    customerId?: string | null;
+    totalAmount: number;
+    items: PosOrderItemInput[];
+    outletId?: string | null;
+  }
+): Promise<CrmXpAwardResult> {
+  if (!payload.customerId) {
+    return { status: "skipped", xpAwarded: 0, reason: "no_customer" };
+  }
+
+  try {
+    const rules = await loadPosXpRules(supabase);
+    if (!rules.ready) return rules.result;
+
+    const productIds = payload.items
+      .map((item) => item.product_id ?? item.productId ?? null)
+      .filter((value): value is string => Boolean(value));
+    const productXp = await loadProductXpMap(supabase, productIds);
+
+    const ledgerIds: string[] = [];
+    let xpAwarded = 0;
+    let productXpPosted = false;
+    let duplicateCount = 0;
+
+    for (const [index, item] of payload.items.entries()) {
+      const productId = item.product_id ?? item.productId ?? null;
+      if (!productId) continue;
+
+      const quantity = Math.max(1, toNumber(item.quantity) || 1);
+      const amount = itemAmount(item);
+      const rule = findBestRule(rules.data, {
+        sourceType: "product",
+        sourceId: productId,
+        outletId: payload.outletId ?? null,
+        amount,
+      });
+      const configuredProductXp = productXp.get(productId) ?? 0;
+
+      let xp = 0;
+      let ruleId: string | null = null;
+      if (rule) {
+        xp = calculateXp(rule, { amount, quantity });
+        ruleId = rule.id;
+      } else if (configuredProductXp > 0) {
+        xp = Math.floor(configuredProductXp * quantity);
+      }
+
+      if (xp <= 0) continue;
+
+      productXpPosted = true;
+      const posted = await postXpEvent(supabase, {
+        customerId: payload.customerId,
+        sourceType: "product",
+        sourceId: productId,
+        outletId: payload.outletId,
+        xpAmount: xp,
+        ruleId,
+        referenceTable: "pos_orders",
+        referenceId: payload.orderId,
+        idempotencyKey: `pos:order:${payload.orderId}:product:${productId}:${index}`,
+        description: `XP produk POS untuk order ${payload.orderId}`,
+        metadata: { amount, quantity, product_id: productId },
+      });
+
+      if (posted.status === "duplicate") duplicateCount += 1;
+      xpAwarded += posted.xpAwarded;
+      ledgerIds.push(...(posted.ledgerIds ?? []));
+    }
+
+    if (!productXpPosted) {
+      const orderRule = findBestRule(rules.data, {
+        sourceType: "order_amount",
+        sourceId: null,
+        outletId: payload.outletId ?? null,
+        amount: payload.totalAmount,
+      });
+
+      if (orderRule) {
+        const xp = calculateXp(orderRule, { amount: payload.totalAmount, quantity: 1 });
+        const posted = await postXpEvent(supabase, {
+          customerId: payload.customerId,
+          sourceType: "order_amount",
+          sourceId: null,
+          outletId: payload.outletId,
+          xpAmount: xp,
+          ruleId: orderRule.id,
+          referenceTable: "pos_orders",
+          referenceId: payload.orderId,
+          idempotencyKey: `pos:order:${payload.orderId}:order_amount`,
+          description: `XP transaksi POS untuk order ${payload.orderId}`,
+          metadata: { amount: payload.totalAmount },
+        });
+
+        if (posted.status === "duplicate") duplicateCount += 1;
+        xpAwarded += posted.xpAwarded;
+        ledgerIds.push(...(posted.ledgerIds ?? []));
+      }
+    }
+
+    if (xpAwarded > 0) {
+      await syncPosCustomerAfterEarn(supabase, payload.customerId, xpAwarded, payload.totalAmount);
+      await syncTierAfterEarn(supabase, payload.customerId);
+      return { status: "posted", xpAwarded, ledgerIds };
+    }
+
+    if (duplicateCount > 0) {
+      return { status: "duplicate", xpAwarded: 0, ledgerIds };
+    }
+
+    return { status: "skipped", xpAwarded: 0, reason: "no_matching_xp_rule" };
+  } catch (error) {
+    if (isMissingCrmSchema(error)) {
+      return { status: "skipped", xpAwarded: 0, reason: "crm_schema_not_ready" };
+    }
+
+    console.error("CRM XP order award failed:", error);
+    return {
+      status: "error",
+      xpAwarded: 0,
+      reason: error instanceof Error ? error.message : "crm_xp_error",
+    };
+  }
+}
+
+export async function awardCrmXpForSplitPayment(
+  supabase: DbClient,
+  payload: {
+    orderId: string;
+    splitId: string;
+    customerId?: string | null;
+    totalAmount: number;
+    outletId?: string | null;
+  }
+): Promise<CrmXpAwardResult> {
+  if (!payload.customerId) {
+    return { status: "skipped", xpAwarded: 0, reason: "no_customer" };
+  }
+
+  try {
+    const rules = await loadPosXpRules(supabase);
+    if (!rules.ready) return rules.result;
+
+    const orderRule = findBestRule(rules.data, {
+      sourceType: "order_amount",
+      sourceId: null,
+      outletId: payload.outletId ?? null,
+      amount: payload.totalAmount,
+    });
+
+    if (!orderRule) {
+      return { status: "skipped", xpAwarded: 0, reason: "no_matching_xp_rule" };
+    }
+
+    const xp = calculateXp(orderRule, { amount: payload.totalAmount, quantity: 1 });
+    const posted = await postXpEvent(supabase, {
+      customerId: payload.customerId,
+      sourceType: "split_payment",
+      sourceId: payload.splitId,
+      outletId: payload.outletId,
+      xpAmount: xp,
+      ruleId: orderRule.id,
+      referenceTable: "pos_order_splits",
+      referenceId: payload.splitId,
+      idempotencyKey: `pos:split:${payload.splitId}:order_amount`,
+      description: `XP split payment POS untuk order ${payload.orderId}`,
+      metadata: { amount: payload.totalAmount, order_id: payload.orderId, split_id: payload.splitId },
+    });
+
+    if (posted.xpAwarded > 0) {
+      await syncPosCustomerAfterEarn(supabase, payload.customerId, posted.xpAwarded, payload.totalAmount);
+      await syncTierAfterEarn(supabase, payload.customerId);
+    }
+
+    return posted;
+  } catch (error) {
+    if (isMissingCrmSchema(error)) {
+      return { status: "skipped", xpAwarded: 0, reason: "crm_schema_not_ready" };
+    }
+
+    console.error("CRM XP split award failed:", error);
+    return {
+      status: "error",
+      xpAwarded: 0,
+      reason: error instanceof Error ? error.message : "crm_xp_error",
+    };
+  }
+}
+
+async function loadPosXpRules(supabase: DbClient): Promise<
+  | { ready: true; data: CrmXpRule[] }
+  | { ready: false; result: CrmXpAwardResult }
+> {
+  const { data, error } = await supabase
+    .from("crm_xp_rules")
+    .select("*")
+    .eq("source_channel", "pos")
+    .eq("is_active", true)
+    .order("priority", { ascending: true });
+
+  if (error) {
+    if (isMissingCrmSchema(error)) {
+      return { ready: false, result: { status: "skipped", xpAwarded: 0, reason: "crm_schema_not_ready" } };
+    }
+    throw error;
+  }
+
+  return { ready: true, data: (data ?? []) as CrmXpRule[] };
+}
+
+async function loadProductXpMap(supabase: DbClient, productIds: string[]) {
+  const map = new Map<string, number>();
+  if (productIds.length === 0) return map;
+
+  let { data, error } = await supabase
+    .from("pos_products")
+    .select("id, xp_points")
+    .in("id", Array.from(new Set(productIds)));
+
+  if (error) {
+    if (error.code !== "42703") throw error;
+
+    const fallback = await supabase
+      .from("pos_products")
+      .select("id, xp")
+      .in("id", Array.from(new Set(productIds)));
+
+    if (fallback.error) {
+      if (fallback.error.code === "42703") return map;
+      throw fallback.error;
+    }
+
+    data = fallback.data;
+    error = fallback.error;
+  }
+
+  ((data ?? []) as ProductXpRow[]).forEach((product) => {
+    map.set(product.id, toNumber(product.xp_points ?? product.xp));
+  });
+
+  return map;
+}
+
+function findBestRule(
+  rules: CrmXpRule[],
+  input: { sourceType: string; sourceId: string | null; outletId: string | null; amount: number }
+) {
+  const now = Date.now();
+
+  return rules.find((rule) => {
+    if (rule.source_type !== input.sourceType) return false;
+    if ((rule.source_id ?? null) !== (input.sourceId ?? null)) return false;
+    if (rule.outlet_scope === "specific" && rule.outlet_id !== input.outletId) return false;
+    if (rule.starts_at && new Date(rule.starts_at).getTime() > now) return false;
+    if (rule.ends_at && new Date(rule.ends_at).getTime() < now) return false;
+    if (input.amount < toNumber(rule.min_amount)) return false;
+    return true;
+  });
+}
+
+function calculateXp(rule: CrmXpRule, input: { amount: number; quantity: number }) {
+  const value = toNumber(rule.xp_value);
+  const amountStep = Math.max(1, toNumber(rule.amount_step) || 1);
+  let xp = 0;
+
+  if (rule.xp_mode === "fixed") xp = value;
+  if (rule.xp_mode === "per_item") xp = value * input.quantity;
+  if (rule.xp_mode === "per_amount") xp = Math.floor(input.amount / amountStep) * value;
+  if (rule.xp_mode === "multiplier") xp = input.amount * value;
+  if (rule.xp_mode === "percentage") xp = input.amount * (value / 100);
+
+  const capped = rule.max_xp_per_event != null ? Math.min(xp, toNumber(rule.max_xp_per_event)) : xp;
+  return Math.max(0, Math.floor(capped));
+}
+
+async function postXpEvent(supabase: DbClient, input: PostXpEventInput): Promise<CrmXpAwardResult> {
+  if (input.xpAmount <= 0) {
+    return { status: "skipped", xpAwarded: 0, reason: "zero_xp" };
+  }
+
+  const existing = await supabase
+    .from("crm_xp_ledger")
+    .select("id, xp_delta")
+    .eq("idempotency_key", input.idempotencyKey)
+    .maybeSingle();
+
+  if (existing.error && !isMissingCrmSchema(existing.error)) throw existing.error;
+  if (existing.data) {
+    return { status: "duplicate", xpAwarded: 0, ledgerIds: [existing.data.id] };
+  }
+
+  const member = await ensureMemberProfile(supabase, input.customerId);
+  if (!member) return { status: "skipped", xpAwarded: 0, reason: "member_profile_unavailable" };
+
+  const tierMultiplier = input.ruleId ? await getTierMultiplierForRule(supabase, input.ruleId, member) : toNumber(member.tier?.xp_multiplier) || 1;
+  const xpDelta = Math.max(0, Math.floor(input.xpAmount * tierMultiplier));
+  if (xpDelta <= 0) return { status: "skipped", xpAwarded: 0, reason: "zero_xp" };
+
+  const balanceBefore = toNumber(member.current_xp);
+  const lifetimeBefore = toNumber(member.lifetime_xp);
+  const balanceAfter = balanceBefore + xpDelta;
+  const lifetimeAfter = lifetimeBefore + xpDelta;
+
+  const { data: ledger, error: ledgerError } = await supabase
+    .from("crm_xp_ledger")
+    .insert({
+      member_id: member.id,
+      customer_id: input.customerId,
+      direction: "earn",
+      source_channel: "pos",
+      source_type: input.sourceType,
+      source_id: input.sourceId ?? null,
+      outlet_id: input.outletId ?? null,
+      xp_delta: xpDelta,
+      balance_before: balanceBefore,
+      balance_after: balanceAfter,
+      lifetime_before: lifetimeBefore,
+      lifetime_after: lifetimeAfter,
+      rule_id: input.ruleId ?? null,
+      reference_table: input.referenceTable,
+      reference_id: input.referenceId,
+      idempotency_key: input.idempotencyKey,
+      description: input.description,
+      metadata: input.metadata ?? {},
+    })
+    .select("id")
+    .single();
+
+  if (ledgerError) {
+    if (ledgerError.code === "23505") return { status: "duplicate", xpAwarded: 0 };
+    throw ledgerError;
+  }
+
+  const { error: profileError } = await supabase
+    .from("crm_member_profiles")
+    .update({
+      current_xp: balanceAfter,
+      lifetime_xp: lifetimeAfter,
+      loyalty_score: lifetimeAfter,
+      last_activity_at: new Date().toISOString(),
+    })
+    .eq("id", member.id);
+
+  if (profileError) throw profileError;
+
+  return { status: "posted", xpAwarded: xpDelta, ledgerIds: ledger?.id ? [ledger.id] : [] };
+}
+
+async function ensureMemberProfile(supabase: DbClient, customerId: string): Promise<CrmMemberProfile | null> {
+  const existing = await supabase
+    .from("crm_member_profiles")
+    .select("*, tier:crm_membership_tiers(id, code, name, rank, xp_multiplier)")
+    .eq("customer_id", customerId)
+    .maybeSingle();
+
+  if (existing.error && !isMissingCrmSchema(existing.error)) throw existing.error;
+  if (existing.data) return existing.data as CrmMemberProfile;
+
+  const { data: customer, error: customerError } = await supabase
+    .from("pos_customers")
+    .select("id, phone, membership_tier, total_xp, current_xp, total_spent")
+    .eq("id", customerId)
+    .maybeSingle();
+
+  if (customerError) throw customerError;
+  if (!customer) return null;
+
+  const customerRow = customer as PosCustomerLoyaltyRow;
+  const tierCode = String(customerRow.membership_tier || "bronze").toLowerCase();
+  let tier = await findTierByCode(supabase, tierCode);
+  if (!tier) tier = await findTierByCode(supabase, "bronze");
+  if (!tier) return null;
+
+  const memberPayload: Record<string, unknown> = {
+    customer_id: customerId,
+    tier_id: tier.id,
+    current_xp: toNumber(customerRow.current_xp),
+    lifetime_xp: toNumber(customerRow.total_xp),
+    loyalty_score: toNumber(customerRow.total_xp),
+    status: "active",
+    metadata: { enrolled_by: "pos_checkout" },
+    last_activity_at: new Date().toISOString(),
+  };
+  if (customerRow.phone) {
+    memberPayload.member_code = `ARK-${String(customerRow.phone).replace(/\D/g, "").slice(-10)}`;
+  }
+
+  const { data: inserted, error: insertError } = await supabase
+    .from("crm_member_profiles")
+    .insert(memberPayload)
+    .select("*, tier:crm_membership_tiers(id, code, name, rank, xp_multiplier)")
+    .single();
+
+  if (insertError) {
+    if (insertError.code === "23505") {
+      const retry = await supabase
+        .from("crm_member_profiles")
+        .select("*, tier:crm_membership_tiers(id, code, name, rank, xp_multiplier)")
+        .eq("customer_id", customerId)
+        .maybeSingle();
+      if (retry.error) throw retry.error;
+      return retry.data as CrmMemberProfile | null;
+    }
+    throw insertError;
+  }
+
+  return inserted as CrmMemberProfile;
+}
+
+async function findTierByCode(supabase: DbClient, code: string): Promise<CrmTier | null> {
+  const { data, error } = await supabase
+    .from("crm_membership_tiers")
+    .select("*")
+    .eq("code", code)
+    .eq("is_active", true)
+    .maybeSingle();
+
+  if (error && !isMissingCrmSchema(error)) throw error;
+  return (data as CrmTier | null) ?? null;
+}
+
+async function getTierMultiplierForRule(supabase: DbClient, ruleId: string, member: CrmMemberProfile) {
+  const { data: rule } = await supabase
+    .from("crm_xp_rules")
+    .select("tier_multiplier_enabled")
+    .eq("id", ruleId)
+    .maybeSingle();
+
+  if (!rule?.tier_multiplier_enabled) return 1;
+  return toNumber(member.tier?.xp_multiplier) || 1;
+}
+
+async function syncPosCustomerAfterEarn(supabase: DbClient, customerId: string, xpAwarded: number, amount: number) {
+  const { data: customer, error } = await supabase
+    .from("pos_customers")
+    .select("total_xp, current_xp, total_spent, visit_count")
+    .eq("id", customerId)
+    .maybeSingle();
+
+  if (error || !customer) return;
+
+  await supabase
+    .from("pos_customers")
+    .update({
+      total_xp: toNumber((customer as PosCustomerLoyaltyRow).total_xp) + xpAwarded,
+      current_xp: toNumber((customer as PosCustomerLoyaltyRow).current_xp) + xpAwarded,
+      total_spent: toNumber((customer as PosCustomerLoyaltyRow).total_spent) + amount,
+      visit_count: toNumber((customer as PosCustomerLoyaltyRow).visit_count) + 1,
+      last_visit: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", customerId);
+}
+
+async function syncTierAfterEarn(supabase: DbClient, customerId: string) {
+  const { data: profile, error: profileError } = await supabase
+    .from("crm_member_profiles")
+    .select("id, tier_id, lifetime_xp")
+    .eq("customer_id", customerId)
+    .maybeSingle();
+
+  if (profileError || !profile) return;
+
+  const { data: customer } = await supabase
+    .from("pos_customers")
+    .select("total_spent")
+    .eq("id", customerId)
+    .maybeSingle();
+
+  const { data: tiers, error: tiersError } = await supabase
+    .from("crm_membership_tiers")
+    .select("*")
+    .eq("is_active", true)
+    .order("rank", { ascending: false });
+
+  if (tiersError || !tiers?.length) return;
+
+  const profileRow = profile as Pick<CrmMemberProfile, "id" | "tier_id" | "lifetime_xp">;
+  const customerRow = customer as Pick<PosCustomerLoyaltyRow, "total_spent"> | null;
+  const lifetimeXp = toNumber(profileRow.lifetime_xp);
+  const totalSpend = toNumber(customerRow?.total_spent);
+  const nextTier = (tiers as CrmTier[]).find(
+    (tier) => lifetimeXp >= toNumber(tier.min_lifetime_xp) || totalSpend >= toNumber(tier.min_total_spend)
+  );
+
+  if (nextTier && nextTier.id !== profileRow.tier_id) {
+    await supabase
+      .from("crm_member_profiles")
+      .update({ tier_id: nextTier.id })
+      .eq("id", profileRow.id);
+
+    await supabase
+      .from("pos_customers")
+      .update({ membership_tier: nextTier.code, updated_at: new Date().toISOString() })
+      .eq("id", customerId);
+  }
+}
+
+function itemAmount(item: PosOrderItemInput) {
+  const quantity = Math.max(1, toNumber(item.quantity) || 1);
+  if (item.total_amount != null) return toNumber(item.total_amount);
+  if (item.subtotal != null) return toNumber(item.subtotal);
+  return toNumber(item.unit_price) * quantity;
+}

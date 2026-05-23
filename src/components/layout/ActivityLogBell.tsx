@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Bell, Trash2, CheckCheck, Package, Truck, Users, DollarSign, FileText, Archive, AlertCircle } from "lucide-react";
+import { Bell, Trash2, CheckCheck, Package, Truck, Users, DollarSign, FileText, Archive, Lock, Unlock } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { id } from "date-fns/locale";
 import {
@@ -10,9 +10,18 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { useActivityLog } from "@/contexts/ActivityLogContext";
 import { cn } from "@/lib/utils";
+
+type PosShiftBellInfo = {
+  isActive: boolean;
+  loading?: boolean;
+  shiftNumber?: string | null;
+  totalOrders?: number;
+  totalSales?: number;
+  onClick: () => void;
+  formatCurrency: (value: number) => string;
+};
 
 const MODULE_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
   PO: FileText,
@@ -35,7 +44,7 @@ const TYPE_COLORS: Record<string, string> = {
   REJECT: "bg-gray-100 text-gray-700",
 };
 
-export function ActivityLogBell() {
+export function ActivityLogBell({ posShift }: { posShift?: PosShiftBellInfo }) {
   const { logs, unreadCount, markAsRead, markAllAsRead, clearAll } = useActivityLog();
   const [open, setOpen] = useState(false);
 
@@ -54,22 +63,21 @@ export function ActivityLogBell() {
 
   return (
     <DropdownMenu open={open} onOpenChange={setOpen}>
-      <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="icon" className="relative h-9 w-9">
+      <DropdownMenuTrigger
+        aria-label="Notifikasi"
+        className="relative inline-flex h-9 w-9 items-center justify-center rounded-md text-gray-700 transition hover:bg-gray-100"
+      >
           <Bell className="h-5 w-5" />
           {unreadCount > 0 && (
             <span className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center rounded-full bg-red-500 text-white text-xs font-medium">
               {unreadCount > 99 ? "99+" : unreadCount}
             </span>
           )}
-        </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent 
         align="end" 
         className="w-80 max-h-[500px] p-0 z-50 shadow-2xl border-gray-200 bg-white" 
         sideOffset={8}
-        avoidCollisions
-        collisionPadding={16}
       >
         {/* Header */}
         <div className="flex items-center justify-between p-3 border-b bg-gray-50 sticky top-0 z-10">
@@ -104,6 +112,45 @@ export function ActivityLogBell() {
             )}
           </div>
         </div>
+
+        {posShift && (
+          <button
+            type="button"
+            onClick={() => {
+              posShift.onClick();
+              setOpen(false);
+            }}
+            className={cn(
+              "flex w-full items-start gap-3 border-b p-3 text-left transition-colors hover:bg-gray-50",
+              posShift.isActive ? "bg-green-50/60" : "bg-amber-50/60"
+            )}
+          >
+            <div className={cn(
+              "flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full",
+              posShift.isActive ? "bg-green-100 text-green-700" : "bg-amber-100 text-amber-700"
+            )}>
+              {posShift.isActive ? <Unlock className="h-4 w-4" /> : <Lock className="h-4 w-4" />}
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center justify-between gap-2">
+                <p className="truncate text-sm font-semibold text-gray-900">
+                  {posShift.loading ? "Memuat shift..." : posShift.isActive ? "Shift POS aktif" : "Shift POS belum dibuka"}
+                </p>
+                <span className={cn(
+                  "rounded-full px-2 py-0.5 text-[10px] font-bold",
+                  posShift.isActive ? "bg-green-100 text-green-700" : "bg-amber-100 text-amber-700"
+                )}>
+                  {posShift.isActive ? "Aktif" : "Tutup"}
+                </span>
+              </div>
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                {posShift.isActive
+                  ? `${posShift.shiftNumber || "Shift"} · ${posShift.totalOrders || 0} order · ${posShift.formatCurrency(posShift.totalSales || 0)}`
+                  : "Klik untuk membuka shift kasir."}
+              </p>
+            </div>
+          </button>
+        )}
 
         {/* Logs List */}
         <div className="max-h-[400px] overflow-y-auto bg-white">

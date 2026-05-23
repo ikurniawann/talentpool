@@ -2,6 +2,14 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase/service-client';
 import { getPosSession } from '@/lib/api/auth';
 
+function getErrorMessage(error: unknown) {
+  return error instanceof Error ? error.message : 'Unknown error';
+}
+
+function normalizePhone(value: string) {
+  return value.replace(/[^\d+]/g, '').trim();
+}
+
 // GET /api/pos/customers - List customers with search
 export async function GET(request: NextRequest) {
   const sessionUserId = await getPosSession();
@@ -40,10 +48,10 @@ export async function GET(request: NextRequest) {
     if (error) throw error;
 
     return NextResponse.json({ success: true, data });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error fetching customers:', error);
     return NextResponse.json(
-      { success: false, error: error.message },
+      { success: false, error: getErrorMessage(error) },
       { status: 500 }
     );
   }
@@ -64,13 +72,18 @@ export async function POST(request: NextRequest) {
       name,
       email,
       membership_tier = 'bronze',
-      notes
+      notes,
+      enroll_member = false,
     } = body;
+    const normalizedPhone = normalizePhone(String(phone || ''));
+    const normalizedName = String(name || '').trim();
+    const normalizedEmail = String(email || '').trim();
+    const tierCode = String(membership_tier || 'bronze').trim().toLowerCase();
 
     // Validate required fields
-    if (!phone) {
+    if (!normalizedPhone) {
       return NextResponse.json(
-        { success: false, error: 'Phone number is required' },
+        { success: false, error: 'Nomor HP wajib diisi' },
         { status: 400 }
       );
     }
@@ -79,17 +92,18 @@ export async function POST(request: NextRequest) {
     const { data: existingCustomer } = await supabase
       .from('pos_customers')
       .select('*')
-      .eq('phone', phone)
+      .eq('phone', normalizedPhone)
       .maybeSingle();
 
+    let savedCustomer;
     if (existingCustomer) {
       // Update existing customer
       const { data, error } = await supabase
         .from('pos_customers')
         .update({
-          name: name || existingCustomer.name,
-          email: email || existingCustomer.email,
-          membership_tier,
+          name: normalizedName || existingCustomer.name,
+          email: normalizedEmail || existingCustomer.email,
+          membership_tier: tierCode,
           notes: notes || existingCustomer.notes
         })
         .eq('id', existingCustomer.id)
@@ -97,30 +111,81 @@ export async function POST(request: NextRequest) {
         .single();
 
       if (error) throw error;
-
-      return NextResponse.json({ success: true, data, message: 'Customer updated' });
+      savedCustomer = data;
     } else {
       // Create new customer
       const { data, error } = await supabase
         .from('pos_customers')
         .insert({
-          phone,
-          name: name || '',
-          email: email || null,
-          membership_tier,
+          phone: normalizedPhone,
+          name: normalizedName || '',
+          email: normalizedEmail || null,
+          membership_tier: tierCode,
           notes: notes || null
         })
         .select()
         .single();
 
       if (error) throw error;
-
-      return NextResponse.json({ success: true, data, message: 'Customer created' }, { status: 201 });
+      savedCustomer = data;
     }
-  } catch (error: any) {
+
+    if (enroll_member && savedCustomer?.id) {
+      try {
+        const { data: tier } = await supabase
+          .from('crm_membership_tiers')
+          .select('id')
+          .eq('code', tierCode)
+          .maybeSingle();
+
+        let tierId = tier?.id || null;
+        if (!tierId) {
+          const { data: fallbackTier } = await supabase
+            .from('crm_membership_tiers')
+            .select('id')
+            .eq('code', 'bronze')
+            .maybeSingle();
+          tierId = fallbackTier?.id || null;
+        }
+
+        if (tierId) {
+          await supabase
+            .from('crm_member_profiles')
+            .upsert(
+              {
+                customer_id: savedCustomer.id,
+                tier_id: tierId,
+                current_xp: Number(savedCustomer.current_xp || 0),
+                lifetime_xp: Number(savedCustomer.total_xp || 0),
+                spent_xp: 0,
+                loyalty_score: Number(savedCustomer.total_xp || 0) + Number(savedCustomer.total_spent || 0) / 10000,
+                status: 'active',
+                metadata: {
+                  source: 'pos_customer_modal',
+                  enrolled_by: sessionUserId,
+                },
+                last_activity_at: new Date().toISOString(),
+              },
+              { onConflict: 'customer_id' }
+            );
+        }
+      } catch (crmError) {
+        console.warn('CRM member enrollment skipped:', crmError);
+      }
+    }
+
+    return NextResponse.json(
+      {
+        success: true,
+        data: savedCustomer,
+        message: existingCustomer ? 'Customer updated' : 'Customer created',
+      },
+      { status: existingCustomer ? 200 : 201 }
+    );
+  } catch (error: unknown) {
     console.error('Error saving customer:', error);
     return NextResponse.json(
-      { success: false, error: error.message },
+      { success: false, error: getErrorMessage(error) },
       { status: 500 }
     );
   }

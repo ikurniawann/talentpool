@@ -61,6 +61,16 @@ export default async function DashboardGroupLayout({
                 ],
               },
               {
+                href: "/dashboard/crm",
+                label: "CRM",
+                icon: "star",
+                children: [
+                  { href: "/dashboard/crm", label: "Membership", icon: "users" },
+                  { href: "/dashboard/crm/members", label: "Members", icon: "users" },
+                  { href: "/dashboard/crm/rewards", label: "Rewards", icon: "star" },
+                ],
+              },
+              {
                 href: "/dashboard/master",
                 label: "Master Data",
                 icon: "database",

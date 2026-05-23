@@ -1,11 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient as createServiceClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
+import {
+  type AiAssistantModel,
+  type AiAssistantScope,
+  resolveAiAssistantModel,
+  resolveAiAssistantScope,
+} from "@/lib/ai-assistant-config";
 import { appendFile, mkdir } from "fs/promises";
 import path from "path";
 
 type ChatMessage = { role: "user" | "assistant"; content: string };
-type Intent = "all" | "hris" | "procurement" | "pos" | "inventory";
+type Intent = "all" | "hris" | "procurement" | "pos" | "inventory" | "performance" | "payroll" | "integration" | "master";
 type DetailRow = Record<string, unknown>;
 type SupabaseQueryResult = { data?: unknown[] | null; error?: unknown; count?: number | null };
 type SupabaseQuery = PromiseLike<SupabaseQueryResult> & {
@@ -15,11 +21,15 @@ type SupabaseQuery = PromiseLike<SupabaseQueryResult> & {
   in(column: string, values: readonly unknown[]): SupabaseQuery;
   order(column: string, options?: { ascending?: boolean }): SupabaseQuery;
   limit(count: number): SupabaseQuery;
+  select(columns?: string): SupabaseQuery;
+  single(): PromiseLike<{ data?: Record<string, unknown> | null; error?: unknown }>;
 };
 type SupabaseAdmin = {
   from(table: string): {
     select(columns?: string, options?: Record<string, unknown>): SupabaseQuery;
     insert(values: unknown): SupabaseQuery;
+    update(values: unknown): SupabaseQuery;
+    delete(): SupabaseQuery;
   };
 };
 type LlmResult = {
@@ -32,10 +42,16 @@ type LlmResult = {
   error?: string;
 };
 type Summary = {
+  generatedAt: string;
   hris: Record<string, number>;
+  performance: Record<string, number>;
+  payroll: Record<string, number>;
   procurement: Record<string, number>;
   pos: Record<string, number>;
   inventory: Record<string, number>;
+  master: Record<string, number>;
+  integration: Record<string, number>;
+  modules: Record<string, { label: string; metrics: Record<string, number> }>;
   details: Partial<Record<Intent, DetailRow[]>>;
 };
 
@@ -79,16 +95,58 @@ export async function GET(request: NextRequest) {
   }
 }
 
+export async function DELETE(request: NextRequest) {
+  try {
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) return NextResponse.json({ error: "Login required" }, { status: 401 });
+
+    const { searchParams } = new URL(request.url);
+    const sessionId = searchParams.get("session_id");
+    if (!sessionId) return NextResponse.json({ error: "session_id required" }, { status: 400 });
+
+    const admin = createServiceClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!,
+      { auth: { persistSession: false, autoRefreshToken: false } },
+    );
+
+    const { error } = await admin
+      .from("ai_assistant_sessions")
+      .delete()
+      .eq("id", sessionId)
+      .eq("user_id", user.id);
+    if (error) throw error;
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error("AI assistant DELETE error:", error);
+    return NextResponse.json({ error: "Gagal menghapus session" }, { status: 500 });
+  }
+}
+
 export async function POST(request: NextRequest) {
   const startedAt = Date.now();
   let prompt = "";
   let intent: Intent = "all";
 
   try {
-    const body = (await request.json()) as { message?: string; history?: ChatMessage[]; session_id?: string };
+    const body = (await request.json()) as {
+      message?: string;
+      history?: ChatMessage[];
+      session_id?: string;
+      model?: string;
+      scope?: string;
+    };
     prompt = body.message ?? "Summary semua module";
     let sessionId = body.session_id;
     const history = (body.history ?? []).slice(-8);
+    const model = resolveAiAssistantModel(body.model, process.env.OLLAMA_MODEL);
+    const scope = resolveAiAssistantScope(body.scope);
+    const includeProjectData = scope !== "general";
 
     const supabase = await createClient();
     const {
@@ -109,9 +167,13 @@ export async function POST(request: NextRequest) {
       { auth: { persistSession: false, autoRefreshToken: false } },
     );
 
-    intent = detectIntent(prompt);
-    const summary = await buildSystemSummary(admin as unknown as SupabaseAdmin, intent);
-    const fallbackAnswer = generateSummaryAnswer(prompt, summary, profile?.full_name ?? user.email ?? "User", intent);
+    intent = includeProjectData ? detectIntent(prompt) : "all";
+    const summary = includeProjectData
+      ? await buildSystemSummary(admin as unknown as SupabaseAdmin, intent)
+      : createEmptySystemSummary();
+    const fallbackAnswer = includeProjectData
+      ? generateSummaryAnswer(prompt, summary, profile?.full_name ?? user.email ?? "User", intent)
+      : "AI Assistant belum bisa menghubungi model Ollama saat ini. Coba lagi sebentar atau pilih model lain di Arkiv OS Settings.";
 
     // Create session if none exists (first user message in a fresh chat)
     if (!sessionId) {
@@ -120,7 +182,7 @@ export async function POST(request: NextRequest) {
         .insert({ user_id: user.id, title: prompt.slice(0, 120) })
         .select("id")
         .single();
-      if (!se && newSession) sessionId = newSession.id;
+      if (!se && typeof newSession?.id === "string") sessionId = newSession.id;
     } else {
       // Update session timestamp on activity
       await admin.from("ai_assistant_sessions").update({ updated_at: new Date().toISOString() }).eq("id", sessionId);
@@ -136,6 +198,8 @@ export async function POST(request: NextRequest) {
       fallbackAnswer,
       userName: profile?.full_name ?? user.email ?? "User",
       intent,
+      scope,
+      model,
     });
 
     // Persist messages
@@ -146,7 +210,7 @@ export async function POST(request: NextRequest) {
           session_id: sessionId,
           role: "assistant",
           content: llmResult.answer,
-          meta: { mode: llmResult.mode, model: llmResult.model, status: llmResult.status, intent },
+          meta: { mode: llmResult.mode, model: llmResult.model, status: llmResult.status, intent, scope },
         },
       ];
       await admin.from("ai_assistant_messages").insert(rows);
@@ -160,6 +224,7 @@ export async function POST(request: NextRequest) {
       prompt,
       answer: llmResult.answer,
       model: llmResult.model,
+      scope,
     });
 
     await auditAiRequest(admin as unknown as SupabaseAdmin, {
@@ -181,6 +246,7 @@ export async function POST(request: NextRequest) {
         mode: llmResult.mode,
         model: llmResult.model,
         intent,
+        scope,
         status: llmResult.status,
         fallbackReason: llmResult.fallbackReason,
         user: user.email,
@@ -194,7 +260,11 @@ export async function POST(request: NextRequest) {
 
 function detectIntent(message: string): Intent {
   const lower = message.toLowerCase();
-  if (lower.includes("hr") || lower.includes("kandidat") || lower.includes("employee") || lower.includes("karyawan")) return "hris";
+  if (lower.includes("kpi") || lower.includes("performance") || lower.includes("review") || lower.includes("penilaian")) return "performance";
+  if (lower.includes("payroll") || lower.includes("gaji") || lower.includes("salary") || lower.includes("benefit") || lower.includes("loan")) return "payroll";
+  if (lower.includes("integration") || lower.includes("integrasi") || lower.includes("webhook") || lower.includes("api") || lower.includes("ai assistant")) return "integration";
+  if (lower.includes("master") || lower.includes("department") || lower.includes("departemen") || lower.includes("position") || lower.includes("jabatan")) return "master";
+  if (lower.includes("hr") || lower.includes("kandidat") || lower.includes("candidate") || lower.includes("employee") || lower.includes("karyawan") || lower.includes("attendance") || lower.includes("absen") || lower.includes("leave") || lower.includes("cuti")) return "hris";
   if (lower.includes("procurement") || lower.includes("purchasing") || lower.includes("po") || lower.includes("pr") || lower.includes("supplier")) return "procurement";
   if (lower.includes("pos") || lower.includes("sales") || lower.includes("order") || lower.includes("reservasi")) return "pos";
   if (lower.includes("stock") || lower.includes("stok") || lower.includes("inventory") || lower.includes("bahan")) return "inventory";
@@ -267,32 +337,90 @@ async function buildSystemSummary(admin: SupabaseAdmin, intent: Intent): Promise
     candidatesToday,
     candidatesNew,
     employeesTotal,
+    attendanceToday,
+    leavesTotal,
+    jobOpeningsTotal,
+    performanceReviewsTotal,
+    employeeKpisTotal,
+    kpiTemplatesTotal,
+    developmentPlansTotal,
+    payrollRunsTotal,
+    payrollDetailsTotal,
+    employeeSalaryTotal,
+    benefitsTotal,
+    loansTotal,
     purchaseRequestsTotal,
     purchaseOrdersTotal,
     purchaseOrdersPending,
+    suppliersTotal,
     rawMaterialsTotal,
     inventoryItems,
     lowStockItems,
+    inventoryMovementsTotal,
+    productsTotal,
     posOrdersTotal,
     posReservationsTotal,
+    posCustomersTotal,
+    posShiftsTotal,
+    departmentsTotal,
+    positionsTotal,
+    employmentStatusesTotal,
+    usersTotal,
+    notificationsTotal,
+    aiAssistantLogsTotal,
   ] = await Promise.all([
     safeCount(admin, "candidates"),
     safeCount(admin, "candidates", (q) => q.gte("created_at", todayIso)),
     safeCount(admin, "candidates", (q) => q.eq("status", "new")),
     safeCount(admin, "employees"),
+    safeCount(admin, "attendance", (q) => q.gte("created_at", todayIso)),
+    safeCount(admin, "leaves"),
+    safeCount(admin, "job_openings"),
+    safeCount(admin, "performance_reviews"),
+    safeCount(admin, "employee_kpis"),
+    safeCount(admin, "kpi_templates"),
+    safeCount(admin, "development_plans"),
+    safeCount(admin, "payroll_runs"),
+    safeCount(admin, "payroll_details"),
+    safeCount(admin, "employee_salary"),
+    safeCount(admin, "benefits"),
+    safeCount(admin, "loans"),
     safeCount(admin, "purchase_requests"),
     safeCount(admin, "purchase_orders"),
     safeCount(admin, "purchase_orders", (q) => q.in("status", ["draft", "pending", "pending_approval", "sent", "pending_head", "pending_finance", "pending_direksi"])),
+    safeCount(admin, "suppliers"),
     safeCount(admin, "raw_materials"),
     safeCount(admin, "inventory"),
     safeCount(admin, "inventory", (q) => q.lt("current_stock", 1)),
+    safeCount(admin, "inventory_movements"),
+    safeCount(admin, "products"),
     safeCount(admin, "pos_orders"),
     safeCount(admin, "pos_reservations"),
+    safeCount(admin, "pos_customers"),
+    safeCount(admin, "pos_shifts"),
+    safeCount(admin, "departments"),
+    safeCount(admin, "positions"),
+    safeCount(admin, "employment_statuses"),
+    safeCount(admin, "users"),
+    safeCount(admin, "notifications"),
+    safeCount(admin, "ai_assistant_logs"),
   ]);
 
   const details: Summary["details"] = {};
   if (intent === "all" || intent === "hris") {
     details.hris = await safeRows(admin, "candidates", "id, full_name, status, source, created_at", {
+      order: { column: "created_at", ascending: false },
+      limit: 5,
+    });
+  }
+  if (intent === "all" || intent === "performance") {
+    details.performance = await safeRows(admin, "performance_reviews", "id, period_label, status, grand_total_score, created_at", {
+      order: { column: "created_at", ascending: false },
+      limit: 5,
+    });
+  }
+  if (intent === "all" || intent === "payroll") {
+    details.payroll = await safeRows(admin, "payroll_runs", "id, period_start, period_end, status, created_at", {
       order: { column: "created_at", ascending: false },
       limit: 5,
     });
@@ -317,13 +445,66 @@ async function buildSystemSummary(admin: SupabaseAdmin, intent: Intent): Promise
       limit: 5,
     });
   }
+  if (intent === "all" || intent === "integration") {
+    details.integration = await safeRows(admin, "ai_assistant_logs", "id, user_email, intent, model, latency_ms, created_at", {
+      order: { column: "created_at", ascending: false },
+      limit: 5,
+    });
+  }
+  if (intent === "all" || intent === "master") {
+    details.master = await safeRows(admin, "departments", "id, name, created_at", {
+      order: { column: "created_at", ascending: false },
+      limit: 5,
+    });
+  }
+
+  const hris = { candidatesTotal, candidatesToday, candidatesNew, employeesTotal, attendanceToday, leavesTotal, jobOpeningsTotal };
+  const performance = { performanceReviewsTotal, employeeKpisTotal, kpiTemplatesTotal, developmentPlansTotal };
+  const payroll = { payrollRunsTotal, payrollDetailsTotal, employeeSalaryTotal, benefitsTotal, loansTotal };
+  const procurement = { purchaseRequestsTotal, purchaseOrdersTotal, purchaseOrdersPending, suppliersTotal, rawMaterialsTotal };
+  const inventory = { inventoryItems, lowStockItems, inventoryMovementsTotal, productsTotal };
+  const pos = { posOrdersTotal, posReservationsTotal, posCustomersTotal, posShiftsTotal };
+  const master = { departmentsTotal, positionsTotal, employmentStatusesTotal, usersTotal };
+  const integration = { notificationsTotal, aiAssistantLogsTotal };
 
   return {
-    hris: { candidatesTotal, candidatesToday, candidatesNew, employeesTotal },
-    procurement: { purchaseRequestsTotal, purchaseOrdersTotal, purchaseOrdersPending, rawMaterialsTotal },
-    pos: { posOrdersTotal, posReservationsTotal },
-    inventory: { inventoryItems, lowStockItems },
+    generatedAt: new Date().toISOString(),
+    hris,
+    performance,
+    payroll,
+    procurement,
+    pos,
+    inventory,
+    master,
+    integration,
+    modules: {
+      hris: { label: "HRIS", metrics: hris },
+      performance: { label: "Performance", metrics: performance },
+      payroll: { label: "Payroll", metrics: payroll },
+      procurement: { label: "Procurement", metrics: procurement },
+      inventory: { label: "Inventory", metrics: inventory },
+      pos: { label: "POS", metrics: pos },
+      master: { label: "Master Data", metrics: master },
+      integration: { label: "Integration", metrics: integration },
+    },
     details,
+  };
+}
+
+function createEmptySystemSummary(): Summary {
+  const empty: Record<string, number> = {};
+  return {
+    generatedAt: new Date().toISOString(),
+    hris: empty,
+    performance: empty,
+    payroll: empty,
+    procurement: empty,
+    pos: empty,
+    inventory: empty,
+    master: empty,
+    integration: empty,
+    modules: {},
+    details: {},
   };
 }
 
@@ -334,6 +515,8 @@ async function generateWithOllama({
   fallbackAnswer,
   userName,
   intent,
+  scope,
+  model,
 }: {
   message: string;
   history: ChatMessage[];
@@ -341,23 +524,35 @@ async function generateWithOllama({
   fallbackAnswer: string;
   userName: string;
   intent: Intent;
+  scope: AiAssistantScope;
+  model: AiAssistantModel;
 }): Promise<LlmResult> {
   const baseUrl = (process.env.AI_ASSISTANT_OLLAMA_API_BASE || "http://127.0.0.1:11434")
+    .trim()
     .replace(/^http:\/\/localhost(?=:|\/|$)/, "http://127.0.0.1")
     .replace(/\/$/, "");
-  const model = process.env.OLLAMA_MODEL || "kimi-k2.6:cloud";
-  const apiKey = process.env.OLLAMA_API_KEY;
+  const apiKey = process.env.OLLAMA_API_KEY?.trim();
   const timeoutMs = Number(process.env.OLLAMA_TIMEOUT || "120000");
+  const includeProjectData = scope !== "general";
+  const scopeInstruction = buildScopeInstruction(scope);
 
   const systemPrompt = [
     "Kamu adalah Arkiv OS AI Assistant untuk semua user Arkiv OS.",
-    "Kamu boleh diajak ngobrol bebas sebagai agent/asisten, tidak terbatas hanya summary dashboard.",
+    scopeInstruction,
     "Jawab dalam Bahasa Indonesia yang ramah, jelas, dan actionable.",
     "Jika user bertanya data bisnis Arkiv OS, gunakan data JSON summary/details yang tersedia dan jangan mengarang angka.",
-    "Jika user meminta ide, strategi, copywriting, SOP, analisis, atau bantuan umum, bantu secara bebas tanpa harus memaksa summary dashboard.",
+    "Jika data yang diperlukan tidak tersedia di JSON, katakan data belum tersedia dan sarankan module atau filter yang perlu dibuka.",
     "Ingat konteks percakapan dari history yang diberikan.",
+    "Gunakan teks polos saja. Jangan gunakan markdown untuk bold, italic, heading, blockquote, atau tabel.",
   ].join(" ");
-  const userPrompt = `Nama user: ${userName}\nIntent terdeteksi: ${intent}\nPertanyaan user: ${message}\n\nData Arkiv OS opsional jika relevan:\n${JSON.stringify(summary, null, 2)}`;
+  const userPrompt = [
+    `Nama user: ${userName}`,
+    `Mode konteks: ${scope}`,
+    `Model: ${model}`,
+    `Intent terdeteksi: ${intent}`,
+    `Pertanyaan user: ${message}`,
+    includeProjectData ? `\nData Arkiv OS yang tersedia jika relevan:\n${JSON.stringify(summary, null, 2)}` : "\nData Arkiv OS tidak dikirim untuk mode General Chat.",
+  ].join("\n");
   const messages = [
     { role: "system", content: systemPrompt },
     ...history.map((item) => ({ role: item.role, content: item.content })),
@@ -387,7 +582,7 @@ async function generateWithOllama({
     });
     if (!response.ok) throw new Error(`/api/chat ${response.status}: ${await response.text()}`);
     const json = await response.json() as { message?: { content?: string }; response?: string };
-    const answer = json.message?.content || json.response;
+    const answer = normalizePlainTextAnswer(json.message?.content || json.response);
     if (!answer) throw new Error("/api/chat response kosong");
     return { answer, mode: "ollama_api_chat_live", model, provider: "ollama", status: "live" };
   } catch (error) {
@@ -403,7 +598,7 @@ async function generateWithOllama({
     });
     if (!response.ok) throw new Error(`/v1/chat/completions ${response.status}: ${await response.text()}`);
     const json = await response.json() as { choices?: Array<{ message?: { content?: string } }> };
-    const answer = json.choices?.[0]?.message?.content;
+    const answer = normalizePlainTextAnswer(json.choices?.[0]?.message?.content);
     if (!answer) throw new Error("/v1/chat/completions response kosong");
     return { answer, mode: "ollama_chat_completions_live", model, provider: "ollama", status: "live" };
   } catch (error) {
@@ -421,6 +616,42 @@ async function generateWithOllama({
     fallbackReason: "Ollama sedang tidak tersedia. Saya memakai fallback internal sementara.",
     error: errors.join(" | "),
   };
+}
+
+function buildScopeInstruction(scope: AiAssistantScope): string {
+  if (scope === "project_only") {
+    return [
+      "Mode Project Only aktif.",
+      "Jawab hanya berdasarkan konteks Talentpool/Arkiv OS, history percakapan, dan data JSON yang diberikan.",
+      "Jika user bertanya pengetahuan umum atau hal di luar project, jelaskan singkat bahwa mode Project Only sedang aktif dan minta user mengganti mode di Arkiv OS Settings.",
+    ].join(" ");
+  }
+
+  if (scope === "general") {
+    return [
+      "Mode General Chat aktif.",
+      "Jawab seperti assistant umum dengan knowledge model.",
+      "Jangan mengklaim sedang membaca data operasional Talentpool karena data project tidak dikirim pada mode ini.",
+    ].join(" ");
+  }
+
+  return [
+    "Mode Project + General aktif.",
+    "Untuk pertanyaan operasional Talentpool/Arkiv OS, prioritaskan data JSON yang diberikan.",
+    "Untuk ide, strategi, copywriting, SOP, analisis, coding, dan pertanyaan umum, jawab bebas dengan knowledge model tanpa memaksa data dashboard.",
+  ].join(" ");
+}
+
+function normalizePlainTextAnswer(value: unknown): string {
+  if (typeof value !== "string") return "";
+  return value
+    .replace(/\*\*([^*]+)\*\*/g, "$1")
+    .replace(/__([^_]+)__/g, "$1")
+    .replace(/^#{1,6}\s+/gm, "")
+    .replace(/^\s*\*\s+/gm, "- ")
+    .replace(/^\s*>\s?/gm, "")
+    .replace(/`([^`\n]+)`/g, "$1")
+    .trim();
 }
 
 function buildOllamaHeaders(baseUrl: string, apiKey?: string): Record<string, string> {
@@ -462,7 +693,10 @@ async function appendAssistantMarkdown(payload: {
   prompt: string;
   answer: string;
   model: string;
+  scope: AiAssistantScope;
 }) {
+  if (process.env.VERCEL === "1") return;
+
   try {
     const logsDir = path.join(process.cwd(), "assistant-memory");
     await mkdir(logsDir, { recursive: true });
@@ -475,6 +709,7 @@ async function appendAssistantMarkdown(payload: {
       `user_id: ${payload.userId}`,
       `session_id: ${payload.sessionId ?? "none"}`,
       `model: ${payload.model}`,
+      `scope: ${payload.scope}`,
       `\n## User`,
       payload.prompt,
       `\n## Assistant`,
@@ -502,36 +737,69 @@ function generateSummaryAnswer(message: string, summary: Summary, name: string, 
   if (includeAll) {
     sections.push(`Halo ${name}, berikut ringkasan Arkiv OS saat ini:`);
     sections.push(formatHris(summary));
+    sections.push(formatPerformance(summary));
+    sections.push(formatPayroll(summary));
     sections.push(formatProcurement(summary));
-    sections.push(formatPos(summary));
     sections.push(formatInventory(summary));
+    sections.push(formatPos(summary));
+    sections.push(formatMaster(summary));
+    sections.push(formatIntegration(summary));
     sections.push(formatDetails(summary));
-    sections.push("Prioritas: cek kandidat baru, PO pending, dan item inventory low stock.");
+    sections.push("Prioritas: cek kandidat baru, review performance, PO pending, inventory low stock, dan aktivitas POS terbaru.");
     return sections.filter(Boolean).join("\n\n");
   }
 
   if (intent === "hris") return [formatHris(summary), formatDetails(summary, "hris")].filter(Boolean).join("\n\n");
+  if (intent === "performance") return [formatPerformance(summary), formatDetails(summary, "performance")].filter(Boolean).join("\n\n");
+  if (intent === "payroll") return [formatPayroll(summary), formatDetails(summary, "payroll")].filter(Boolean).join("\n\n");
   if (intent === "procurement") return [formatProcurement(summary), formatDetails(summary, "procurement")].filter(Boolean).join("\n\n");
   if (intent === "pos") return [formatPos(summary), formatDetails(summary, "pos")].filter(Boolean).join("\n\n");
   if (intent === "inventory") return [formatInventory(summary), formatDetails(summary, "inventory")].filter(Boolean).join("\n\n");
+  if (intent === "master") return [formatMaster(summary), formatDetails(summary, "master")].filter(Boolean).join("\n\n");
+  if (intent === "integration") return [formatIntegration(summary), formatDetails(summary, "integration")].filter(Boolean).join("\n\n");
 
-  return [formatHris(summary), formatProcurement(summary), formatPos(summary), formatInventory(summary)].join("\n\n");
+  return [
+    formatHris(summary),
+    formatPerformance(summary),
+    formatPayroll(summary),
+    formatProcurement(summary),
+    formatInventory(summary),
+    formatPos(summary),
+    formatMaster(summary),
+    formatIntegration(summary),
+  ].join("\n\n");
 }
 
 function formatHris(summary: Summary) {
-  return `HRIS: ${summary.hris.candidatesTotal} total kandidat, ${summary.hris.candidatesToday} kandidat masuk hari ini, ${summary.hris.candidatesNew} kandidat status new, ${summary.hris.employeesTotal} karyawan tercatat.`;
+  return `HRIS: ${summary.hris.candidatesTotal ?? 0} total kandidat, ${summary.hris.candidatesToday ?? 0} kandidat masuk hari ini, ${summary.hris.candidatesNew ?? 0} kandidat status new, ${summary.hris.employeesTotal ?? 0} karyawan, ${summary.hris.attendanceToday ?? 0} attendance hari ini, ${summary.hris.leavesTotal ?? 0} leave request, ${summary.hris.jobOpeningsTotal ?? 0} job opening.`;
+}
+
+function formatPerformance(summary: Summary) {
+  return `Performance: ${summary.performance.performanceReviewsTotal ?? 0} review, ${summary.performance.employeeKpisTotal ?? 0} employee KPI, ${summary.performance.kpiTemplatesTotal ?? 0} template KPI, ${summary.performance.developmentPlansTotal ?? 0} development plan.`;
+}
+
+function formatPayroll(summary: Summary) {
+  return `Payroll: ${summary.payroll.payrollRunsTotal ?? 0} payroll run, ${summary.payroll.payrollDetailsTotal ?? 0} payroll detail, ${summary.payroll.employeeSalaryTotal ?? 0} salary record, ${summary.payroll.benefitsTotal ?? 0} benefit, ${summary.payroll.loansTotal ?? 0} loan.`;
 }
 
 function formatProcurement(summary: Summary) {
-  return `Procurement: ${summary.procurement.purchaseRequestsTotal} PR, ${summary.procurement.purchaseOrdersTotal} PO, ${summary.procurement.purchaseOrdersPending} PO perlu perhatian, ${summary.procurement.rawMaterialsTotal} raw material.`;
+  return `Procurement: ${summary.procurement.purchaseRequestsTotal ?? 0} PR, ${summary.procurement.purchaseOrdersTotal ?? 0} PO, ${summary.procurement.purchaseOrdersPending ?? 0} PO perlu perhatian, ${summary.procurement.suppliersTotal ?? 0} supplier, ${summary.procurement.rawMaterialsTotal ?? 0} raw material.`;
 }
 
 function formatPos(summary: Summary) {
-  return `POS: ${summary.pos.posOrdersTotal} order tercatat dan ${summary.pos.posReservationsTotal} reservasi.`;
+  return `POS: ${summary.pos.posOrdersTotal ?? 0} order, ${summary.pos.posReservationsTotal ?? 0} reservasi, ${summary.pos.posCustomersTotal ?? 0} customer, ${summary.pos.posShiftsTotal ?? 0} shift.`;
 }
 
 function formatInventory(summary: Summary) {
-  return `Inventory: ${summary.inventory.inventoryItems} item inventory, ${summary.inventory.lowStockItems} item low/empty stock.`;
+  return `Inventory: ${summary.inventory.inventoryItems ?? 0} item inventory, ${summary.inventory.lowStockItems ?? 0} item low/empty stock, ${summary.inventory.inventoryMovementsTotal ?? 0} movement, ${summary.inventory.productsTotal ?? 0} product.`;
+}
+
+function formatMaster(summary: Summary) {
+  return `Master Data: ${summary.master.departmentsTotal ?? 0} department, ${summary.master.positionsTotal ?? 0} position, ${summary.master.employmentStatusesTotal ?? 0} employment status, ${summary.master.usersTotal ?? 0} user.`;
+}
+
+function formatIntegration(summary: Summary) {
+  return `Integration: ${summary.integration.notificationsTotal ?? 0} notification, ${summary.integration.aiAssistantLogsTotal ?? 0} AI assistant log.`;
 }
 
 function formatDetails(summary: Summary, only?: Intent) {
@@ -541,8 +809,12 @@ function formatDetails(summary: Summary, only?: Intent) {
     lines.push(`${label}: ${rows.slice(0, 5).map((row) => Object.values(row).filter(Boolean).slice(0, 4).join(" | ")).join("; ")}`);
   };
   if (!only || only === "hris") add("Kandidat terbaru", summary.details.hris);
+  if (!only || only === "performance") add("Performance review terbaru", summary.details.performance);
+  if (!only || only === "payroll") add("Payroll run terbaru", summary.details.payroll);
   if (!only || only === "procurement") add("PO pending terbaru", summary.details.procurement);
   if (!only || only === "inventory") add("Inventory low stock", summary.details.inventory);
   if (!only || only === "pos") add("POS order terbaru", summary.details.pos);
+  if (!only || only === "master") add("Master data terbaru", summary.details.master);
+  if (!only || only === "integration") add("AI assistant activity", summary.details.integration);
   return lines.join("\n");
 }

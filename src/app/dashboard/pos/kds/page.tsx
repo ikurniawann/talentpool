@@ -2,7 +2,7 @@
 
 import { useState, useCallback } from 'react';
 import {
-  ChefHat, Volume2, VolumeX, RefreshCw, Monitor, Coffee, UtensilsCrossed,
+  ChefHat, Volume2, VolumeX, RefreshCw, Monitor, Coffee, UtensilsCrossed, IceCreamBowl,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useKDS } from '@/hooks/use-pos-kds';
@@ -13,12 +13,28 @@ const STATIONS = [
   { key: 'kitchen', label: 'Kitchen', icon: ChefHat },
   { key: 'bar', label: 'Bar', icon: Coffee },
   { key: 'bakery', label: 'Bakery', icon: UtensilsCrossed },
+  { key: 'dessert', label: 'Dessert', icon: IceCreamBowl },
 ];
+
+function getTodayRange() {
+  const start = new Date();
+  start.setHours(0, 0, 0, 0);
+  const end = new Date(start);
+  end.setDate(end.getDate() + 1);
+  return {
+    dateFrom: start.toISOString(),
+    dateTo: end.toISOString(),
+  };
+}
 
 export default function KDSPage() {
   const [station, setStation] = useState('all');
+  const [dateScope, setDateScope] = useState<'today' | 'all'>('today');
+  const todayRange = dateScope === 'today' ? getTodayRange() : { dateFrom: undefined, dateTo: undefined };
   const { orders, loading, error, soundEnabled, setSoundEnabled, refresh, updateStatus } = useKDS({
     station: station === 'all' ? undefined : station,
+    dateFrom: todayRange.dateFrom,
+    dateTo: todayRange.dateTo,
     pollInterval: 3000,
   });
 
@@ -78,6 +94,26 @@ export default function KDSPage() {
                 >
                   <Icon className="w-3.5 h-3.5" />
                   {s.label}
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="flex bg-gray-800 rounded-lg p-0.5">
+            {[
+              { key: 'today', label: 'Hari ini' },
+              { key: 'all', label: 'Semua' },
+            ].map((scope) => {
+              const active = dateScope === scope.key;
+              return (
+                <button
+                  key={scope.key}
+                  onClick={() => setDateScope(scope.key as 'today' | 'all')}
+                  className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
+                    active ? 'bg-pink-600 text-white' : 'text-gray-400 hover:text-gray-200'
+                  }`}
+                >
+                  {scope.label}
                 </button>
               );
             })}

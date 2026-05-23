@@ -4,7 +4,7 @@ import { getPosSession } from '@/lib/api/auth';
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const sessionUserId = await getPosSession();
   if (!sessionUserId) {
@@ -14,7 +14,7 @@ export async function POST(
   try {
     const body = await request.json();
     const { target_order_id, supervisor_pin } = body;
-    const sourceOrderId = params.id;
+    const { id: sourceOrderId } = await params;
 
     if (!target_order_id || !supervisor_pin) {
       return Response.json({ success: false, error: 'Target order and supervisor PIN required' }, { status: 400 });
@@ -123,8 +123,8 @@ export async function POST(
         message: 'Orders merged successfully',
       },
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Merge error:', error);
-    return Response.json({ success: false, error: error.message }, { status: 500 });
+    return Response.json({ success: false, error: error instanceof Error ? error.message : 'Merge failed' }, { status: 500 });
   }
 }

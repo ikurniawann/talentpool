@@ -20,7 +20,6 @@ interface CartPanelProps {
   formatArk: (value: number) => string;
   setIncludeTax: (val: boolean) => void;
   setShowPaymentModal: () => void;
-  onSplitBill: () => void;
   onOpenBill: () => void;
   isSavingBill: boolean;
   updateQuantity: (id: string, delta: number) => void;
@@ -44,7 +43,6 @@ export function CartPanel({
   formatArk,
   setIncludeTax,
   setShowPaymentModal,
-  onSplitBill,
   onOpenBill,
   isSavingBill,
   updateQuantity,
@@ -192,13 +190,6 @@ export function CartPanel({
           className="w-full py-3 bg-pink-600 text-white rounded-lg font-semibold hover:bg-pink-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
         >
           Bayar {formatCurrency(total)}
-        </button>
-        <button
-          onClick={onSplitBill}
-          disabled={cart.length === 0}
-          className="w-full py-2.5 border-2 border-pink-600 text-pink-600 rounded-lg font-semibold hover:bg-pink-50 disabled:border-gray-300 disabled:text-gray-400 disabled:bg-gray-100 disabled:cursor-not-allowed transition-colors text-sm"
-        >
-          Split Bill
         </button>
         <button
           onClick={onOpenBill}

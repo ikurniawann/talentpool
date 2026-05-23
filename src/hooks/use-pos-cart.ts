@@ -14,6 +14,7 @@ export interface PosCartItem {
   modifierNames?: string[];
   modifierPriceAdj?: number;
   imageUrl?: string;
+  station?: string;
 }
 
 interface CartState {

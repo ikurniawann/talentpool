@@ -2,6 +2,111 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase/service-client';
 import { getPosSession } from '@/lib/api/auth';
 
+const STATIONS = ['kitchen', 'bar', 'bakery', 'dessert', 'merchandise', 'photobooth'];
+
+type OpenBillItem = {
+  product_id?: string;
+  product_name?: string;
+  product_sku?: string;
+  variants?: unknown[];
+  modifiers?: unknown[];
+  quantity?: number | string;
+  unit_price?: number | string;
+  variant_price_adjustment?: number | string;
+  modifier_price_adjustment?: number | string;
+  subtotal?: number | string;
+  total_amount?: number | string;
+  station?: string | null;
+  kitchen_notes?: string | null;
+  notes?: string | null;
+};
+
+type OpenBillBody = {
+  order_type?: string;
+  customer_id?: string;
+  cashier_id?: string;
+  server_id?: string;
+  table_id?: string;
+  shift_id?: string;
+  items?: OpenBillItem[];
+  subtotal?: number | string;
+  discount_amount?: number | string;
+  discount_reason?: string;
+  tax_amount?: number | string;
+  service_charge_amount?: number | string;
+  total_amount?: number | string;
+  notes?: string;
+  special_requests?: string;
+};
+
+type PrintJobItem = {
+  id?: string;
+  product_id?: string;
+  product_name?: string;
+  product_sku?: string;
+  variants?: unknown;
+  modifiers?: unknown;
+  quantity?: number | string;
+  unit_price?: number | string;
+  total_amount?: number | string;
+  station?: string | null;
+  kitchen_notes?: string | null;
+};
+
+function getErrorMessage(error: unknown) {
+  return error instanceof Error ? error.message : 'Unknown error';
+}
+
+function normalizeStation(value?: string | null, productName = '', kitchenNotes = '') {
+  const lower = String(value || '').trim().toLowerCase();
+  if (STATIONS.includes(lower)) return lower;
+
+  const haystack = `${productName} ${kitchenNotes}`.toLowerCase();
+  if (/kopi|coffee|tea|teh|minuman|drink|juice|jus|soda|es|latte|cappuccino|mocktail|milkshake|bar/.test(haystack)) {
+    return 'bar';
+  }
+  if (/roti|bread|pastry|cake|kue|croissant|donut|dessert|ice cream|gelato|bakery/.test(haystack)) {
+    return 'bakery';
+  }
+  return 'kitchen';
+}
+
+function buildPrintJobs(order: Record<string, unknown>, insertedItems: PrintJobItem[]) {
+  const stationGroups = new Map<string, PrintJobItem[]>();
+
+  insertedItems.forEach((item) => {
+    const station = normalizeStation(item.station, item.product_name || '', item.kitchen_notes || '');
+    stationGroups.set(station, [...(stationGroups.get(station) || []), item]);
+  });
+
+  return Array.from(stationGroups.entries()).map(([station, stationItems]) => ({
+    order_id: order.id,
+    station,
+    job_type: station === 'bar' ? 'bar_ticket' : 'kitchen_ticket',
+    status: 'pending',
+    payload: {
+      order_id: order.id,
+      order_number: order.order_number,
+      order_type: order.order_type,
+      table_id: order.table_id,
+      station,
+      requested_at: new Date().toISOString(),
+      items: stationItems.map((item) => ({
+        id: item.id,
+        product_id: item.product_id,
+        product_name: item.product_name,
+        product_sku: item.product_sku,
+        variants: item.variants || [],
+        modifiers: item.modifiers || [],
+        quantity: Number(item.quantity) || 1,
+        unit_price: Number(item.unit_price) || 0,
+        total_amount: Number(item.total_amount) || 0,
+        notes: item.kitchen_notes || '',
+      })),
+    },
+  }));
+}
+
 export async function POST(request: NextRequest) {
   const sessionUserId = await getPosSession();
   if (!sessionUserId) {
@@ -9,7 +114,7 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const body = await request.json();
+    const body = (await request.json()) as OpenBillBody;
     const {
       order_type = 'dine_in',
       customer_id,
@@ -26,7 +131,6 @@ export async function POST(request: NextRequest) {
       total_amount,
       notes,
       special_requests,
-      membership_discount_pct = 0,
     } = body;
 
     if (!Array.isArray(items) || items.length === 0) {
@@ -81,7 +185,7 @@ export async function POST(request: NextRequest) {
     // Note: pos_order_items stores variant/modifier details in JSON columns.
     // The DB schema does not have separate variant_price_adjustment / modifier_price_adjustment columns,
     // so adjustments are folded into unit_price/subtotal/total_amount here.
-    const orderItems = items.map((item: any) => {
+    const orderItems = items.map((item) => {
       const quantity = Number(item.quantity) || 1;
       const unitPrice =
         (Number(item.unit_price) || 0) +
@@ -89,11 +193,13 @@ export async function POST(request: NextRequest) {
         (Number(item.modifier_price_adjustment) || 0);
       const subtotalValue = Number(item.subtotal) || unitPrice * quantity;
       const totalValue = Number(item.total_amount) || subtotalValue;
+      const productName = String(item.product_name || 'Unknown');
+      const kitchenNotes = String(item.kitchen_notes || item.notes || '');
 
       return {
         order_id: orderData.id,
         product_id: item.product_id,
-        product_name: item.product_name,
+        product_name: productName,
         product_sku: String(item.product_sku || item.product_id || '').slice(0, 50),
         variants: item.variants || [],
         modifiers: item.modifiers || [],
@@ -101,23 +207,66 @@ export async function POST(request: NextRequest) {
         unit_price: unitPrice,
         subtotal: subtotalValue,
         total_amount: totalValue,
+        station: normalizeStation(item.station, productName, kitchenNotes),
+        kitchen_status: 'pending',
+        kitchen_notes: kitchenNotes || null,
       };
     });
 
-    const { error: itemsErr } = await supabase.from('pos_order_items').insert(orderItems);
+    let insertedItems: PrintJobItem[] | null = null;
+    const insertResult = await supabase
+      .from('pos_order_items')
+      .insert(orderItems)
+      .select('id, product_id, product_name, product_sku, variants, modifiers, quantity, unit_price, total_amount, station, kitchen_notes');
+    insertedItems = insertResult.data as PrintJobItem[] | null;
+    let itemsErr = insertResult.error;
+    if (itemsErr?.code === '42703' || itemsErr?.code === 'PGRST204') {
+      const legacyItems = orderItems.map((item) => {
+        const legacyItem = { ...item } as Partial<typeof item>;
+        delete legacyItem.station;
+        delete legacyItem.kitchen_status;
+        delete legacyItem.kitchen_notes;
+        return legacyItem;
+      });
+      const legacyResult = await supabase
+        .from('pos_order_items')
+        .insert(legacyItems)
+        .select('id, product_id, product_name, product_sku, variants, modifiers, quantity, unit_price, total_amount');
+      insertedItems = legacyResult.data as PrintJobItem[] | null;
+      itemsErr = legacyResult.error;
+    }
     if (itemsErr) {
       console.error('Open bill items error:', itemsErr);
       // Best-effort: we leave the order without items rather than crashing
       return NextResponse.json({ success: false, error: itemsErr.message }, { status: 500 });
     }
 
+    const printJobs = buildPrintJobs(orderData, (insertedItems || orderItems) as PrintJobItem[]);
+    if (printJobs.length > 0) {
+      const { error: printJobError } = await supabase
+        .from('pos_print_jobs')
+        .insert(printJobs);
+
+      if (printJobError && printJobError.code !== '42P01' && printJobError.code !== 'PGRST205') {
+        console.warn('Open bill print jobs warning:', printJobError.message);
+      }
+    }
+
+    await supabase.from('pos_order_status_history').insert({
+      order_id: orderData.id,
+      from_status: null,
+      to_status: 'pending',
+      changed_by: cashier_id || sessionUserId,
+      notes: 'Open bill created from cashier',
+    });
+
     return NextResponse.json({
       success: true,
       data: orderData,
       message: 'Open bill created successfully',
     }, { status: 201 });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Open bill error:', error);
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    return NextResponse.json({ success: false, error: getErrorMessage(error) }, { status: 500 });
   }
 }

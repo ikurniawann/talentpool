@@ -41,10 +41,22 @@ export async function PATCH(
   if (status === 'ready') updateData.completed_at = now;
   if (status === 'served' || status === 'completed') updateData.served_at = now;
 
-  const { error: updateError } = await supabase
+  let { error: updateError } = await supabase
     .from('pos_orders')
     .update(updateData)
     .eq('id', orderId);
+
+  if (updateError?.code === '42703' || updateError?.code === 'PGRST204') {
+    const legacyUpdate = { ...updateData };
+    delete legacyUpdate.served_at;
+
+    const legacyResult = await supabase
+      .from('pos_orders')
+      .update(legacyUpdate)
+      .eq('id', orderId);
+
+    updateError = legacyResult.error;
+  }
 
   if (updateError) {
     console.error('Status update error:', updateError);
@@ -54,7 +66,7 @@ export async function PATCH(
   const kitchenStatusMap: Record<string, string> = {
     pending: 'pending',
     confirmed: 'pending',
-    preparing: 'cooking',
+    preparing: 'preparing',
     ready: 'ready',
     served: 'served',
     completed: 'served',
@@ -63,10 +75,23 @@ export async function PATCH(
 
   const kitchenStatus = kitchenStatusMap[status];
   if (kitchenStatus) {
-    await supabase
+    const itemUpdate: Record<string, string | null> = {
+      kitchen_status: kitchenStatus,
+      updated_at: now,
+    };
+
+    if (status === 'preparing') itemUpdate.kitchen_started_at = now;
+    if (status === 'ready') itemUpdate.kitchen_ready_at = now;
+    if (status === 'served' || status === 'completed') itemUpdate.served_at = now;
+
+    const { error: itemStatusError } = await supabase
       .from('pos_order_items')
-      .update({ kitchen_status: kitchenStatus, updated_at: now })
+      .update(itemUpdate)
       .eq('order_id', orderId);
+
+    if (itemStatusError && itemStatusError.code !== '42703' && itemStatusError.code !== 'PGRST204') {
+      console.warn('Order item kitchen status update warning:', itemStatusError.message);
+    }
   }
 
   await supabase.from('pos_order_status_history').insert({

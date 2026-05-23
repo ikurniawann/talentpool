@@ -1,19 +1,35 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase/service-client';
+import { awardCrmXpForPosOrder } from '@/lib/crm/loyalty-engine';
+
+type OrderPatchBody = {
+  status?: string;
+  payment_status?: string;
+  payment_method?: string;
+  amount_paid?: number | string;
+  ark_coins_used?: number | string;
+  notes?: string;
+  changed_by?: string;
+  status_notes?: string;
+};
+
+function getErrorMessage(error: unknown) {
+  return error instanceof Error ? error.message : 'Unknown error';
+}
 
 // PATCH /api/pos/orders/:id - Update order status and payment
 export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const supabase = createServiceClient();
     const { id: orderId } = await params;
-    const body = await request.json();
+    const body = (await request.json()) as OrderPatchBody;
     const { status, payment_status, payment_method, amount_paid, ark_coins_used, notes } = body;
 
     // Convert to numbers
     const numericAmountPaid = Number(amount_paid) || 0;
     const numericArkUsed = Number(ark_coins_used) || 0;
 
-    const updateData: any = {};
+    const updateData: Record<string, string | number> = {};
     if (status) updateData.status = status;
     if (payment_status) updateData.payment_status = payment_status;
     if (payment_method) updateData.payment_method = payment_method;
@@ -58,11 +74,27 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       });
     }
 
-    return NextResponse.json({ success: true, data });
-  } catch (error: any) {
+    let crmXp = null;
+    if (data.customer_id && (status === 'completed' || payment_status === 'paid')) {
+      const { data: orderItems } = await supabase
+        .from('pos_order_items')
+        .select('product_id, quantity, unit_price, subtotal, total_amount')
+        .eq('order_id', orderId);
+
+      crmXp = await awardCrmXpForPosOrder(supabase, {
+        orderId,
+        customerId: data.customer_id,
+        totalAmount: Number(data.total_amount || 0),
+        items: orderItems || [],
+        outletId: data.branch_id || null,
+      });
+    }
+
+    return NextResponse.json({ success: true, data, crm_xp: crmXp });
+  } catch (error: unknown) {
     console.error('Error updating order:', error);
     return NextResponse.json(
-      { success: false, error: error.message },
+      { success: false, error: getErrorMessage(error) },
       { status: 500 }
     );
   }
@@ -87,10 +119,10 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     if (error) throw error;
 
     return NextResponse.json({ success: true, data });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error fetching order:', error);
     return NextResponse.json(
-      { success: false, error: error.message },
+      { success: false, error: getErrorMessage(error) },
       { status: 500 }
     );
   }

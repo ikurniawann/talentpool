@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { 
   Plus, 
   Search, 
@@ -11,12 +11,11 @@ import {
   Sparkles,
   ToggleLeft,
   ToggleRight,
-  X,
   Save,
   PlusCircle,
   MinusCircle,
 } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { 
@@ -27,189 +26,76 @@ import {
   DialogFooter 
 } from '@/components/ui/dialog';
 
-// ============== MOCK DATA ==============
-const mockProducts = [
-  { 
-    id: 1, 
-    name: 'Nasi Goreng Special', 
-    category: 'Makanan', 
-    price: 50000, 
-    cost: 25000,
-    margin: 50,
-    status: 'active',
-    hasVariants: true,
-    hasModifiers: true,
-    variants: [
-      { id: 'v1', name: 'Small', sku: 'NF-SM', priceAdj: -10000, active: true },
-      { id: 'v2', name: 'Medium', sku: 'NF-MD', priceAdj: 0, active: true },
-      { id: 'v3', name: 'Large', sku: 'NF-LG', priceAdj: 15000, active: true },
-    ],
-    modifierGroups: [
-      { id: 'mg1', name: 'Sugar Level', required: true, maxSelect: 1, active: true, modifiers: [
-        { id: 'm1', name: 'No Sugar', priceAdj: 0, active: true },
-        { id: 'm2', name: 'Less Sugar (25%)', priceAdj: 0, active: true },
-        { id: 'm3', name: 'Half Sweet (50%)', priceAdj: 0, active: true },
-        { id: 'm4', name: 'Full Sweet (100%)', priceAdj: 0, active: true },
-      ]},
-      { id: 'mg2', name: 'Toppings', required: false, maxSelect: 3, active: true, modifiers: [
-        { id: 'm5', name: 'Extra Egg', priceAdj: 5000, active: true },
-        { id: 'm6', name: 'Extra Chicken', priceAdj: 10000, active: true },
-        { id: 'm7', name: 'Extra Rice', priceAdj: 5000, active: true },
-      ]},
-    ],
-  },
-  { 
-    id: 2, 
-    name: 'Ayam Bakar Madu', 
-    category: 'Makanan', 
-    price: 55000, 
-    cost: 28000,
-    margin: 49,
-    status: 'active',
-    hasVariants: true,
-    hasModifiers: false,
-    variants: [
-      { id: 'v4', name: 'Paha', sku: 'AB-PH', priceAdj: 0, active: true },
-      { id: 'v5', name: 'Dada', sku: 'AB-DD', priceAdj: 5000, active: true },
-      { id: 'v6', name: 'Sayap', sku: 'AB-SW', priceAdj: -5000, active: true },
-    ],
-    modifierGroups: [],
-  },
-  { 
-    id: 3, 
-    name: 'Mie Goreng Jawa', 
-    category: 'Makanan', 
-    price: 45000, 
-    cost: 22000,
-    margin: 51,
-    status: 'active',
-    hasVariants: false,
-    hasModifiers: true,
-    variants: [],
-    modifierGroups: [
-      { id: 'mg3', name: 'Spice Level', required: true, maxSelect: 1, active: true, modifiers: [
-        { id: 'm8', name: 'No Spice', priceAdj: 0, active: true },
-        { id: 'm9', name: 'Less Spice', priceAdj: 0, active: true },
-        { id: 'm10', name: 'Normal Spice', priceAdj: 0, active: true },
-        { id: 'm11', name: 'Extra Spice', priceAdj: 0, active: true },
-      ]},
-    ],
-  },
-  { 
-    id: 4, 
-    name: 'Es Teh Manis', 
-    category: 'Minuman', 
-    price: 5000, 
-    cost: 2000,
-    margin: 60,
-    status: 'active',
-    hasVariants: true,
-    hasModifiers: true,
-    variants: [
-      { id: 'v7', name: 'Hot', sku: 'ET-H', priceAdj: 0, active: true },
-      { id: 'v8', name: 'Ice', sku: 'ET-I', priceAdj: 1000, active: true },
-      { id: 'v9', name: 'Regular', sku: 'ET-R', priceAdj: 0, active: true },
-    ],
-    modifierGroups: [
-      { id: 'mg4', name: 'Sugar Level', required: true, maxSelect: 1, active: true, modifiers: [
-        { id: 'm12', name: 'No Sugar', priceAdj: 0, active: true },
-        { id: 'm13', name: 'Less Sweet', priceAdj: 0, active: true },
-        { id: 'm14', name: 'Normal', priceAdj: 0, active: true },
-      ]},
-    ],
-  },
-  { 
-    id: 5, 
-    name: 'Kopi Susu Gula Aren', 
-    category: 'Minuman', 
-    price: 18000, 
-    cost: 8000,
-    margin: 56,
-    status: 'active',
-    hasVariants: true,
-    hasModifiers: true,
-    variants: [
-      { id: 'v10', name: 'Hot', sku: 'KS-H', priceAdj: 0, active: true },
-      { id: 'v11', name: 'Ice', sku: 'KS-I', priceAdj: 2000, active: true },
-    ],
-    modifierGroups: [
-      { id: 'mg6', name: 'Sugar Level', required: true, maxSelect: 1, active: true, modifiers: [
-        { id: 'm18', name: 'No Sugar', priceAdj: 0, active: true },
-        { id: 'm19', name: 'Less Sugar', priceAdj: 0, active: true },
-        { id: 'm20', name: 'Half Sweet', priceAdj: 0, active: true },
-        { id: 'm21', name: 'Full Sweet', priceAdj: 0, active: true },
-      ]},
-    ],
-  },
-  { 
-    id: 6, 
-    name: 'Jus Alpukat', 
-    category: 'Minuman', 
-    price: 15000, 
-    cost: 7000,
-    margin: 53,
-    status: 'inactive',
-    hasVariants: false,
-    hasModifiers: true,
-    variants: [],
-    modifierGroups: [
-      { id: 'mg7', name: 'Toppings', required: false, maxSelect: 5, active: true, modifiers: [
-        { id: 'm22', name: 'Chocolate', priceAdj: 3000, active: true },
-        { id: 'm23', name: 'Caramel', priceAdj: 3000, active: true },
-        { id: 'm24', name: 'Whipped Cream', priceAdj: 5000, active: true },
-      ]},
-    ],
-  },
-  { 
-    id: 7, 
-    name: 'Kentang Goreng', 
-    category: 'Snack', 
-    price: 12000, 
-    cost: 5000,
-    margin: 58,
-    status: 'active',
-    hasVariants: false,
-    hasModifiers: true,
-    variants: [],
-    modifierGroups: [
-      { id: 'mg8', name: 'Seasoning', required: false, maxSelect: 2, active: true, modifiers: [
-        { id: 'm25', name: 'Extra Salt', priceAdj: 0, active: true },
-        { id: 'm26', name: 'Cheese Sauce', priceAdj: 5000, active: true },
-      ]},
-    ],
-  },
-  { 
-    id: 8, 
-    name: 'Roti Bakar', 
-    category: 'Snack', 
-    price: 20000, 
-    cost: 10000,
-    margin: 50,
-    status: 'active',
-    hasVariants: true,
-    hasModifiers: true,
-    variants: [
-      { id: 'v12', name: 'Small', sku: 'RB-S', priceAdj: -5000, active: true },
-      { id: 'v13', name: 'Medium', sku: 'RB-M', priceAdj: 0, active: true },
-      { id: 'v14', name: 'Large', sku: 'RB-L', priceAdj: 8000, active: true },
-    ],
-    modifierGroups: [
-      { id: 'mg9', name: 'Sugar Level', required: true, maxSelect: 1, active: true, modifiers: [
-        { id: 'm27', name: 'No Sugar', priceAdj: 0, active: true },
-        { id: 'm28', name: 'Less Sweet', priceAdj: 0, active: true },
-        { id: 'm29', name: 'Normal Sweet', priceAdj: 0, active: true },
-      ]},
-    ],
-  },
-];
-
-const categories = ['Semua', 'Makanan', 'Minuman', 'Snack', 'Dessert'];
-
 // ============== TYPES ==============
-type Product = typeof mockProducts[0];
-type Variant = Product['variants'][0];
-type ModifierGroup = Product['modifierGroups'][0];
-type Modifier = ModifierGroup['modifiers'][0];
+type Variant = {
+  id: string;
+  name: string;
+  sku: string;
+  priceAdj: number;
+  active: boolean;
+};
+
+type Modifier = {
+  id: string;
+  name: string;
+  priceAdj: number;
+  active: boolean;
+};
+
+type ModifierGroup = {
+  id: string;
+  name: string;
+  required: boolean;
+  maxSelect: number;
+  active: boolean;
+  modifiers: Modifier[];
+};
+
+type Product = {
+  id: string;
+  name: string;
+  category: string;
+  price: number;
+  cost: number;
+  margin: number;
+  status: 'active' | 'inactive';
+  station: string;
+  hasVariants: boolean;
+  hasModifiers: boolean;
+  variants: Variant[];
+  modifierGroups: ModifierGroup[];
+};
+
+type APIProduct = {
+  id: string;
+  sku?: string | null;
+  name?: string | null;
+  category?: { name?: string | null } | { name?: string | null }[] | string | null;
+  base_price?: number | string | null;
+  cost_price?: number | string | null;
+  station?: string | null;
+  is_active?: boolean | null;
+  variants?: Array<{
+    id?: string;
+    name?: string | null;
+    sku?: string | null;
+    price_adjustment?: number | string | null;
+    is_active?: boolean | null;
+  }> | null;
+  modifiers?: Array<{
+    modifier_group?: {
+      name?: string | null;
+      min_selection?: number | string | null;
+      max_selection?: number | string | null;
+      modifiers?: Array<{
+        id?: string;
+        name?: string | null;
+        price_adjustment?: number | string | null;
+        is_active?: boolean | null;
+      }> | null;
+    } | null;
+  }> | null;
+};
 
 // ============== HELPERS ==============
 const formatCurrency = (value: number) => {
@@ -222,11 +108,93 @@ const formatCurrency = (value: number) => {
 
 const generateId = () => Math.random().toString(36).substr(2, 9);
 
+const toNumber = (value: unknown) => {
+  const numeric = Number(value);
+  return Number.isFinite(numeric) ? numeric : 0;
+};
+
+const stationOptions = [
+  { value: 'kitchen', label: 'Kitchen' },
+  { value: 'bar', label: 'Bar' },
+  { value: 'bakery', label: 'Bakery' },
+  { value: 'dessert', label: 'Dessert' },
+  { value: 'merchandise', label: 'Merchandise' },
+  { value: 'photobooth', label: 'Photobooth' },
+];
+
+function inferStation(product: Product) {
+  const explicit = product.station;
+  if (explicit) return explicit;
+  if (/drink|minuman|kopi|coffee|tea|teh|juice|soda|latte|cappuccino/i.test(`${product.category} ${product.name}`)) {
+    return 'bar';
+  }
+  if (/dessert|cake|kue|roti|bread|pastry|donut|bakery/i.test(`${product.category} ${product.name}`)) {
+    return 'bakery';
+  }
+  return 'kitchen';
+}
+
+function normalizeCategory(category: APIProduct['category']) {
+  if (typeof category === 'string') return category || 'Uncategorized';
+  const row = Array.isArray(category) ? category[0] : category;
+  return row?.name || 'Uncategorized';
+}
+
+function normalizeProduct(product: APIProduct): Product {
+  const price = toNumber(product.base_price);
+  const cost = toNumber(product.cost_price);
+  const margin = price > 0 ? Math.round(((price - cost) / price) * 100) : 0;
+  const variants = (product.variants ?? []).map((variant) => ({
+    id: variant.id || generateId(),
+    name: variant.name || 'Regular',
+    sku: variant.sku || '',
+    priceAdj: toNumber(variant.price_adjustment),
+    active: variant.is_active !== false,
+  }));
+  const modifierGroups = (product.modifiers ?? [])
+    .map((link, index) => {
+      const group = link.modifier_group;
+      if (!group) return null;
+      return {
+        id: `${product.id}-mg-${index}`,
+        name: group.name || `Modifier ${index + 1}`,
+        required: toNumber(group.min_selection) > 0,
+        maxSelect: Math.max(1, toNumber(group.max_selection) || 1),
+        active: true,
+        modifiers: (group.modifiers ?? []).map((modifier) => ({
+          id: modifier.id || generateId(),
+          name: modifier.name || 'Modifier',
+          priceAdj: toNumber(modifier.price_adjustment),
+          active: modifier.is_active !== false,
+        })),
+      };
+    })
+    .filter((group): group is ModifierGroup => Boolean(group));
+
+  return {
+    id: product.id,
+    name: product.name || 'Untitled Product',
+    category: normalizeCategory(product.category),
+    price,
+    cost,
+    margin,
+    status: product.is_active === false ? 'inactive' : 'active',
+    station: product.station || 'kitchen',
+    hasVariants: variants.length > 0,
+    hasModifiers: modifierGroups.length > 0,
+    variants,
+    modifierGroups,
+  };
+}
+
 // ============== MAIN COMPONENT ==============
 export default function ProductsPage() {
-  const [products, setProducts] = useState<Product[]>(mockProducts);
+  const [products, setProducts] = useState<Product[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('Semua');
+  const [loading, setLoading] = useState(true);
+  const [savingProductId, setSavingProductId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
   
   // Variants Modal
   const [variantModalProduct, setVariantModalProduct] = useState<Product | null>(null);
@@ -235,6 +203,42 @@ export default function ProductsPage() {
   // Modifiers Modal
   const [modifierModalProduct, setModifierModalProduct] = useState<Product | null>(null);
   const [modifierModalData, setModifierModalData] = useState<ModifierGroup[]>([]);
+
+  useEffect(() => {
+    let mounted = true;
+
+    async function loadProducts() {
+      setLoading(true);
+      setError(null);
+      try {
+        const response = await fetch('/api/pos/products?include_inactive=true', { cache: 'no-store' });
+        const json = await response.json();
+        if (!response.ok || !json.success) {
+          throw new Error(json.error || 'Gagal memuat produk');
+        }
+        if (mounted) {
+          setProducts(((json.data || []) as APIProduct[]).map(normalizeProduct));
+        }
+      } catch (err) {
+        if (mounted) {
+          setError(err instanceof Error ? err.message : 'Gagal memuat produk');
+          setProducts([]);
+        }
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    }
+
+    loadProducts();
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  const categories = useMemo(() => {
+    const unique = Array.from(new Set(products.map((product) => product.category).filter(Boolean)));
+    return ['Semua', ...unique];
+  }, [products]);
 
   // Filter products
   const filteredProducts = products.filter((product) => {
@@ -378,10 +382,67 @@ export default function ProductsPage() {
   };
 
   // Toggle Product Status
-  const toggleProductStatus = (id: number) => {
-    setProducts(prev => prev.map(p => 
-      p.id === id ? { ...p, status: p.status === 'active' ? 'inactive' : 'active' } : p
+  const toggleProductStatus = async (id: string) => {
+    const currentProduct = products.find((product) => product.id === id);
+    if (!currentProduct || savingProductId) return;
+
+    const nextStatus = currentProduct.status === 'active' ? 'inactive' : 'active';
+    setSavingProductId(id);
+    setProducts(prev => prev.map(p =>
+      p.id === id ? { ...p, status: nextStatus } : p
     ));
+
+    try {
+      const response = await fetch(`/api/pos/products/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ is_active: nextStatus === 'active' }),
+      });
+      const json = await response.json();
+      if (!response.ok || !json.success) {
+        throw new Error(json.error || 'Gagal menyimpan status produk');
+      }
+    } catch (err) {
+      setProducts(prev => prev.map(p =>
+        p.id === id ? { ...p, status: currentProduct.status } : p
+      ));
+      setError(err instanceof Error ? err.message : 'Gagal menyimpan status produk');
+    } finally {
+      setSavingProductId(null);
+    }
+  };
+
+  const updateProductStation = async (id: string, station: string) => {
+    const currentProduct = products.find((product) => product.id === id);
+    if (!currentProduct || savingProductId) return;
+
+    setSavingProductId(id);
+    setProducts(prev => prev.map(p =>
+      p.id === id ? { ...p, station } : p
+    ));
+
+    try {
+      const response = await fetch(`/api/pos/products/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ station }),
+      });
+      const json = await response.json();
+      if (!response.ok || !json.success) {
+        throw new Error(json.error || 'Gagal menyimpan station produk');
+      }
+      const updated = json.data ? normalizeProduct(json.data as APIProduct) : null;
+      if (updated) {
+        setProducts(prev => prev.map(p => (p.id === id ? { ...p, station: updated.station } : p)));
+      }
+    } catch (err) {
+      setProducts(prev => prev.map(p =>
+        p.id === id ? { ...p, station: currentProduct.station } : p
+      ));
+      setError(err instanceof Error ? err.message : 'Gagal menyimpan station produk');
+    } finally {
+      setSavingProductId(null);
+    }
   };
 
   return (
@@ -397,6 +458,12 @@ export default function ProductsPage() {
           Tambah Produk
         </Button>
       </div>
+
+      {error && (
+        <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          {error}
+        </div>
+      )}
 
       {/* Filters */}
       <Card>
@@ -438,6 +505,7 @@ export default function ProductsPage() {
                   <th className="p-4 font-medium">Kategori</th>
                   <th className="p-4 font-medium">Harga</th>
                   <th className="p-4 font-medium">Margin</th>
+                  <th className="p-4 font-medium">Station</th>
                   <th className="p-4 font-medium">Varian</th>
                   <th className="p-4 font-medium">Modifiers</th>
                   <th className="p-4 font-medium">Status</th>
@@ -470,6 +538,20 @@ export default function ProductsPage() {
                       <span className="text-green-600 font-medium">{product.margin}%</span>
                     </td>
                     <td className="p-4">
+                      <select
+                        value={inferStation(product)}
+                        onChange={(event) => updateProductStation(product.id, event.target.value)}
+                        disabled={savingProductId === product.id}
+                        className="h-9 rounded-lg border border-gray-200 bg-white px-3 text-xs font-medium text-gray-700 outline-none transition focus:border-pink-400 focus:ring-2 focus:ring-pink-100"
+                      >
+                        {stationOptions.map((option) => (
+                          <option key={option.value} value={option.value}>
+                            {option.label}
+                          </option>
+                        ))}
+                      </select>
+                    </td>
+                    <td className="p-4">
                       <Button
                         variant={product.hasVariants ? "outline" : "ghost"}
                         size="sm"
@@ -496,6 +578,7 @@ export default function ProductsPage() {
                         variant="ghost"
                         size="sm"
                         onClick={() => toggleProductStatus(product.id)}
+                        disabled={savingProductId === product.id}
                         className={product.status === 'active' ? "text-green-600" : "text-red-600"}
                       >
                         {product.status === 'active' ? (
@@ -508,10 +591,10 @@ export default function ProductsPage() {
                     </td>
                     <td className="p-4">
                       <div className="flex items-center gap-1">
-                        <Button variant="ghost" size="icon-sm">
+                        <Button variant="ghost" size="icon" className="h-8 w-8">
                           <Edit className="w-4 h-4 text-gray-500" />
                         </Button>
-                        <Button variant="ghost" size="icon-sm">
+                        <Button variant="ghost" size="icon" className="h-8 w-8">
                           <Trash2 className="w-4 h-4 text-red-500" />
                         </Button>
                       </div>
@@ -522,7 +605,14 @@ export default function ProductsPage() {
             </table>
           </div>
           
-          {filteredProducts.length === 0 && (
+          {loading && (
+            <div className="text-center py-12 text-gray-400">
+              <Package className="w-16 h-16 mx-auto mb-4 opacity-50 animate-pulse" />
+              <p>Memuat produk...</p>
+            </div>
+          )}
+
+          {!loading && filteredProducts.length === 0 && (
             <div className="text-center py-12 text-gray-400">
               <Package className="w-16 h-16 mx-auto mb-4 opacity-50" />
               <p>Tidak ada produk ditemukan</p>
@@ -553,7 +643,7 @@ export default function ProductsPage() {
                     >
                       {variant.active ? 'Aktif' : 'Nonaktif'}
                     </Button>
-                    <Button variant="ghost" size="icon-sm" onClick={() => removeVariant(variant.id)}>
+                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => removeVariant(variant.id)}>
                       <Trash2 className="w-4 h-4 text-red-500" />
                     </Button>
                   </div>
@@ -649,7 +739,7 @@ export default function ProductsPage() {
                       </Button>
                     </div>
                   </div>
-                  <Button variant="ghost" size="icon-sm" onClick={() => removeModifierGroup(group.id)} className="mt-6">
+                  <Button variant="ghost" size="icon" onClick={() => removeModifierGroup(group.id)} className="mt-6 h-8 w-8">
                     <Trash2 className="w-4 h-4 text-red-500" />
                   </Button>
                 </div>
@@ -686,7 +776,7 @@ export default function ProductsPage() {
                           placeholder="Harga adj."
                         />
                       </div>
-                      <Button variant="ghost" size="icon-sm" onClick={() => removeModifier(group.id, modifier.id)}>
+                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => removeModifier(group.id, modifier.id)}>
                         <MinusCircle className="w-4 h-4 text-red-500" />
                       </Button>
                     </div>

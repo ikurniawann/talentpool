@@ -89,6 +89,7 @@ export function usePosCheckout() {
           order_type: orderType as any,
           customer_id: selectedCustomer?.id,
           cashier_id: "00000000-0000-0000-0000-000000000001",
+          table_id: selectedTable || undefined,
           items,
           subtotal,
           discount_amount: discountAmount,

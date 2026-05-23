@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { ComponentType, CSSProperties, MouseEvent as ReactMouseEvent } from "react";
@@ -13,6 +14,8 @@ import {
   Building2,
   CalendarDays,
   Camera,
+  Check,
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
   Cloud,
@@ -31,11 +34,11 @@ import {
   MonitorDot,
   Search,
   Send,
-  Server,
   Settings,
   ShieldCheck,
   ShoppingCart,
   Scale,
+  Trash2,
   Volume2,
   WalletCards,
   VolumeX,
@@ -45,6 +48,15 @@ import {
   X,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import {
+  AI_ASSISTANT_MODELS,
+  AI_ASSISTANT_SCOPES,
+  AI_ASSISTANT_SETTINGS_STORAGE_KEY,
+  DEFAULT_AI_ASSISTANT_SETTINGS,
+  type AiAssistantSettings,
+  resolveAiAssistantModel,
+  resolveAiAssistantScope,
+} from "@/lib/ai-assistant-config";
 import { VoiceAssistant } from "./VoiceAssistant";
 
 type OsUserAccount = {
@@ -104,12 +116,11 @@ const modules: DesktopModule[] = [
   },
   {
     name: "CRM",
-    subtitle: "Coming Soon",
-    description: "Customer profile, loyalty, campaign, pipeline, dan service desk.",
-    loginHref: "#",
-    dashboardHref: "#",
+    subtitle: "Membership & Loyalty",
+    description: "Customer profile, membership tier, XP, reward, avatar collectible, dan loyalty analytics.",
+    loginHref: "/login?redirect=/dashboard/crm&module=crm",
+    dashboardHref: "/dashboard/crm",
     icon: MessageSquareMore,
-    disabled: true,
   },
 ];
 
@@ -117,7 +128,7 @@ const notifications = [
   "5 kandidat baru menunggu review HRIS",
   "3 PO perlu approval Procurement",
   "POS outlet siap digunakan",
-  "CRM module sedang disiapkan",
+  "CRM membership foundation aktif",
 ];
 
 const wallpapers = [
@@ -173,6 +184,7 @@ export default function ArkivOsDesktop() {
   const [iconPositions, setIconPositions] = useState(defaultIconPositions);
   const [widgetVisibility, setWidgetVisibility] = useState<WidgetVisibility>(defaultWidgetVisibility);
   const [soundEnabled, setSoundEnabled] = useState(false);
+  const [assistantSettings, setAssistantSettings] = useState<AiAssistantSettings>(DEFAULT_AI_ASSISTANT_SETTINGS);
   const [toast, setToast] = useState<string | null>(null);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; module?: DesktopModule; desktop?: boolean } | null>(null);
   const iconDragRef = useRef<{ id: string; offsetX: number; offsetY: number; moved: boolean } | null>(null);
@@ -273,6 +285,12 @@ export default function ArkivOsDesktop() {
     window.localStorage.setItem("arkiv-sound-enabled", String(value));
   };
 
+  const updateAssistantSettings = (next: Partial<AiAssistantSettings>) => {
+    const settings = { ...assistantSettings, ...next };
+    setAssistantSettings(settings);
+    window.localStorage.setItem(AI_ASSISTANT_SETTINGS_STORAGE_KEY, JSON.stringify(settings));
+  };
+
   const playClickSound = () => {
     if (!soundEnabled) return;
     try {
@@ -332,6 +350,7 @@ export default function ArkivOsDesktop() {
       const savedWallpaper = window.localStorage.getItem("arkiv-wallpaper");
       const savedWidgets = window.localStorage.getItem("arkiv-widget-visibility");
       const savedSound = window.localStorage.getItem("arkiv-sound-enabled");
+      const savedAssistantSettings = window.localStorage.getItem(AI_ASSISTANT_SETTINGS_STORAGE_KEY);
       if (savedPositions && savedLayoutVersion === desktopLayoutVersion) {
         setIconPositions({ ...defaultIconPositions, ...JSON.parse(savedPositions) });
       } else {
@@ -349,6 +368,21 @@ export default function ArkivOsDesktop() {
         window.localStorage.setItem("arkiv-widget-visibility", JSON.stringify(defaultWidgetVisibility));
       }
       setSoundEnabled(savedSound === "true");
+      if (savedAssistantSettings) {
+        try {
+          const parsed = JSON.parse(savedAssistantSettings) as Partial<AiAssistantSettings>;
+          const nextSettings = {
+            model: resolveAiAssistantModel(parsed.model),
+            scope: resolveAiAssistantScope(parsed.scope),
+          };
+          setAssistantSettings(nextSettings);
+          window.localStorage.setItem(AI_ASSISTANT_SETTINGS_STORAGE_KEY, JSON.stringify(nextSettings));
+        } catch {
+          window.localStorage.setItem(AI_ASSISTANT_SETTINGS_STORAGE_KEY, JSON.stringify(DEFAULT_AI_ASSISTANT_SETTINGS));
+        }
+      } else {
+        window.localStorage.setItem(AI_ASSISTANT_SETTINGS_STORAGE_KEY, JSON.stringify(DEFAULT_AI_ASSISTANT_SETTINGS));
+      }
       setToast("Arkiv OS ready · 3 pending approval notifications");
       window.setTimeout(() => setToast(null), 4200);
     }, 0);
@@ -551,14 +585,16 @@ export default function ArkivOsDesktop() {
       {showSettings && (
         <SystemSettings
           soundEnabled={soundEnabled}
+          assistantSettings={assistantSettings}
           onSoundChange={updateSoundEnabled}
+          onAssistantSettingsChange={updateAssistantSettings}
           onOpenWallpaper={() => setShowWallpaperPicker(true)}
           onOpenWidgets={() => setShowWidgetSettings(true)}
           onClose={() => setShowSettings(false)}
         />
       )}
       {showAbout && <AboutArkiv onClose={() => setShowAbout(false)} />}
-      {showAssistant && <AiAssistantWindow account={userAccount} onClose={() => setShowAssistant(false)} />}
+      {showAssistant && <AiAssistantWindow account={userAccount} settings={assistantSettings} onClose={() => setShowAssistant(false)} />}
       {openAppModule && <ApplicationWindow module={openAppModule} url={moduleHref(openAppModule)} onClose={() => setOpenAppModule(null)} />}
       {toast && <ToastNotification message={toast} onOpen={() => setShowNotifications(true)} onClose={() => setToast(null)} />}
       {showAccount && (
@@ -1132,7 +1168,6 @@ function IntegrationSettingsNative() {
 function ApplicationWindow({ module, url, onClose }: { module: DesktopModule; url: string; onClose: () => void }) {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(false);
-  const Icon = module.icon;
   const isNativeIntegration = module.name === "Integration";
 
   return (
@@ -1281,8 +1316,8 @@ function NotificationCenter({ onClose }: { onClose: () => void }) {
   );
 }
 
-function AiAssistantWindow({ account, onClose }: { account: OsUserAccount | null; onClose: () => void }) {
-  type AssistantMessage = { role: "user" | "assistant"; content: string; meta?: { status?: string; model?: string; fallbackReason?: string } };
+function AiAssistantWindow({ account, settings, onClose }: { account: OsUserAccount | null; settings: AiAssistantSettings; onClose: () => void }) {
+  type AssistantMessage = { role: "user" | "assistant"; content: string; meta?: { status?: string; model?: string; scope?: string; fallbackReason?: string } };
 
   const [messages, setMessages] = useState<AssistantMessage[]>([]);
   const [input, setInput] = useState("");
@@ -1294,27 +1329,31 @@ function AiAssistantWindow({ account, onClose }: { account: OsUserAccount | null
   const [showHistory, setShowHistory] = useState(false);
   const [view, setView] = useState<"landing" | "chat">("landing");
   const isAllowed = account?.role === "super_admin";
+  const activeScope = AI_ASSISTANT_SCOPES.find((item) => item.id === settings.scope) ?? AI_ASSISTANT_SCOPES[0];
+  const activeModel = AI_ASSISTANT_MODELS.find((item) => item.id === settings.model) ?? AI_ASSISTANT_MODELS[0];
 
-  const quickPrompts = ["Summary semua module", "Ringkas HRIS", "PO pending", "Inventory low stock", "Summary POS"];
+  const refreshSessions = useCallback(() => {
+    fetch("/api/ai/assistant?list=true")
+      .then((r) => r.json())
+      .then((data) => setSessions(data.sessions ?? []))
+      .catch(() => {});
+  }, []);
+
   const applyAssistantMeta = useCallback((meta?: AssistantMessage["meta"]) => {
-    if (meta?.status === "live") {
+    if (meta?.status === "live" && meta.model === activeModel.id) {
       setAssistantStatus("live");
       setStatusNote(`Live: ${meta.model ?? "Ollama"}`);
       return;
     }
 
     setAssistantStatus("ready");
-    setStatusNote("Ollama siap. Kirim pesan baru untuk cek status live.");
-  }, []);
+    setStatusNote(`Ollama siap · ${activeModel.id}`);
+  }, [activeModel.id]);
 
   // On mount: fetch sessions + restore active session if any
   useEffect(() => {
     if (!isAllowed) return;
-    // Always fetch session list
-    fetch("/api/ai/assistant?list=true")
-      .then((r) => r.json())
-      .then((data) => setSessions(data.sessions ?? []))
-      .catch(() => {});
+    refreshSessions();
 
     const saved = typeof window !== "undefined" ? localStorage.getItem("arkiv-ai-session") : null;
     if (saved) {
@@ -1333,15 +1372,17 @@ function AiAssistantWindow({ account, onClose }: { account: OsUserAccount | null
         })
         .catch(() => {});
     }
-  }, [applyAssistantMeta, isAllowed]);
+  }, [applyAssistantMeta, isAllowed, refreshSessions]);
+
+  useEffect(() => {
+    if (assistantStatus === "ready") {
+      setStatusNote(`Ollama siap · ${activeModel.id}`);
+    }
+  }, [activeModel.id, assistantStatus]);
 
   const enterLanding = () => {
     setView("landing");
-    // Refresh session list
-    fetch("/api/ai/assistant?list=true")
-      .then((r) => r.json())
-      .then((data) => setSessions(data.sessions ?? []))
-      .catch(() => {});
+    refreshSessions();
   };
 
   const startNewChat = () => {
@@ -1349,11 +1390,11 @@ function AiAssistantWindow({ account, onClose }: { account: OsUserAccount | null
     setMessages([
       {
         role: "assistant",
-        content: "Halo, saya Arkiv AI Assistant. Fitur ini khusus super_admin. Saya bisa bantu ringkas HRIS, Procurement, POS, dan Inventory.",
+        content: `Halo, saya Arkiv AI Assistant. Mode aktif: ${activeScope.label}. Model: ${activeModel.label}.`,
       },
     ]);
     setAssistantStatus("ready");
-    setStatusNote("Ollama siap. Kirim pesan untuk mulai.");
+    setStatusNote(`Ollama siap · ${activeModel.id}`);
     setView("chat");
     if (typeof window !== "undefined") localStorage.removeItem("arkiv-ai-session");
   };
@@ -1377,6 +1418,29 @@ function AiAssistantWindow({ account, onClose }: { account: OsUserAccount | null
     setView("chat");
   };
 
+  const deleteSession = async (id: string) => {
+    const confirmed = typeof window === "undefined" || window.confirm("Hapus session chat ini?");
+    if (!confirmed) return;
+
+    try {
+      const response = await fetch(`/api/ai/assistant?session_id=${encodeURIComponent(id)}`, { method: "DELETE" });
+      const json = (await response.json().catch(() => ({}))) as { error?: string };
+      if (!response.ok) throw new Error(json.error || "Gagal menghapus session");
+
+      setSessions((prev) => prev.filter((session) => session.id !== id));
+      if (sessionId === id) {
+        setSessionId(null);
+        setMessages([]);
+        setAssistantStatus("ready");
+        setStatusNote(`Ollama siap · ${activeModel.id}`);
+        setView("landing");
+        if (typeof window !== "undefined") localStorage.removeItem("arkiv-ai-session");
+      }
+    } catch (error) {
+      setStatusNote(error instanceof Error ? error.message : "Gagal menghapus session");
+    }
+  };
+
   const sendMessage = async (text = input) => {
     const message = text.trim();
     if (!message || loading) return;
@@ -1392,7 +1456,7 @@ function AiAssistantWindow({ account, onClose }: { account: OsUserAccount | null
       const response = await fetch("/api/ai/assistant", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message, history, session_id: sessionId }),
+        body: JSON.stringify({ message, history, session_id: sessionId, model: settings.model, scope: settings.scope }),
       });
       const json = await response.json();
 
@@ -1407,13 +1471,9 @@ function AiAssistantWindow({ account, onClose }: { account: OsUserAccount | null
 
       setAssistantStatus(json.meta?.status === "live" ? "live" : "fallback");
       setStatusNote(json.meta?.status === "live" ? `Live: ${json.meta?.model ?? "Ollama"}` : json.meta?.fallbackReason ?? "Fallback aktif");
-      setMessages((prev) => [...prev, { role: "assistant", content: json.answer }]);
+      setMessages((prev) => [...prev, { role: "assistant", content: json.answer, meta: json.meta }]);
 
-      // Refresh sessions list
-      fetch("/api/ai/assistant?list=true")
-        .then((r) => r.json())
-        .then((data) => setSessions(data.sessions ?? []))
-        .catch(() => {});
+      refreshSessions();
     } catch (error) {
       setMessages((prev) => [
         ...prev,
@@ -1438,19 +1498,30 @@ function AiAssistantWindow({ account, onClose }: { account: OsUserAccount | null
             </div>
             <div className="flex-1 space-y-1 overflow-y-auto">
               {sessions.map((s) => (
-                <button
+                <div
                   key={s.id}
-                  onClick={() => { setShowHistory(false); loadSession(s.id); }}
-                  className={`w-full rounded-xl px-3 py-2 text-left text-xs transition ${sessionId === s.id ? "bg-white/15 text-white" : "text-white/60 hover:bg-white/10"}`}
+                  className={`group flex w-full items-center rounded-xl text-xs transition ${sessionId === s.id ? "bg-white/15 text-white" : "text-white/60 hover:bg-white/10"}`}
                 >
-                  <div className="flex items-center gap-2">
-                    <MessageSquareMore className="size-3.5 shrink-0" />
-                    <span className="truncate">{s.title || "Chat session"}</span>
-                  </div>
-                  <div className="mt-0.5 text-[10px] text-white/35">
-                    {new Date(s.updated_at).toLocaleDateString("id-ID", { day: "numeric", month: "short" })}
-                  </div>
-                </button>
+                  <button
+                    onClick={() => { setShowHistory(false); loadSession(s.id); }}
+                    className="min-w-0 flex-1 px-3 py-2 text-left"
+                  >
+                    <div className="flex items-center gap-2">
+                      <MessageSquareMore className="size-3.5 shrink-0" />
+                      <span className="truncate">{s.title || "Chat session"}</span>
+                    </div>
+                    <div className="mt-0.5 text-[10px] text-white/35">
+                      {new Date(s.updated_at).toLocaleDateString("id-ID", { day: "numeric", month: "short" })}
+                    </div>
+                  </button>
+                  <button
+                    onClick={() => deleteSession(s.id)}
+                    className="mr-1 grid size-7 shrink-0 place-items-center rounded-lg text-white/35 transition hover:bg-rose-500/16 hover:text-rose-200"
+                    title="Hapus session"
+                  >
+                    <Trash2 className="size-3.5" />
+                  </button>
+                </div>
               ))}
               {sessions.length === 0 && (
                 <div className="px-2 py-4 text-center text-[10px] text-white/30">Belum ada riwayat chat</div>
@@ -1460,7 +1531,7 @@ function AiAssistantWindow({ account, onClose }: { account: OsUserAccount | null
         )}
 
         <div className="flex flex-1 flex-col overflow-hidden">
-          <div className="border-b border-white/10 p-4">
+          <div className="border-b border-white/10 p-3">
             <div className="flex items-center gap-3">
               <div className={`grid size-11 place-items-center rounded-2xl bg-gradient-to-br ${pinkAccent}`}>
                 <Bot className="size-6" />
@@ -1468,7 +1539,7 @@ function AiAssistantWindow({ account, onClose }: { account: OsUserAccount | null
               <div className="min-w-0 flex-1">
                 <div className="font-semibold">Arkiv AI Assistant</div>
                 <div className="truncate text-xs text-white/50">
-                  {isAllowed ? `Active as ${account?.email}` : account ? "Only super_admin can use this assistant" : "Login as super_admin required"}
+                  {isAllowed ? `${activeScope.label} · ${activeModel.id}` : account ? "Only super_admin can use this assistant" : "Login as super_admin required"}
                 </div>
               </div>
               {view === "chat" && (
@@ -1511,7 +1582,7 @@ function AiAssistantWindow({ account, onClose }: { account: OsUserAccount | null
               </div>
               <h3 className="text-xl font-bold text-white/90">Arkiv AI Assistant</h3>
               <p className="mt-2 max-w-sm text-sm leading-6 text-white/55">
-                Assistant cerdas untuk super_admin. Ringkas HRIS, Procurement, POS, dan Inventory dalam satu percakapan.
+                Assistant cerdas untuk super_admin. Mode {activeScope.label} memakai {activeModel.label}.
               </p>
               <button
                 onClick={startNewChat}
@@ -1528,20 +1599,31 @@ function AiAssistantWindow({ account, onClose }: { account: OsUserAccount | null
                   </div>
                   <div className="space-y-1">
                     {sessions.map((s) => (
-                      <button
+                      <div
                         key={s.id}
-                        onClick={() => loadSession(s.id)}
-                        className="flex w-full items-center gap-2 rounded-xl bg-white/5 px-3 py-2.5 text-left text-xs text-white/60 transition hover:bg-white/10"
+                        className="flex w-full items-center rounded-xl bg-white/5 text-left text-xs text-white/60 transition hover:bg-white/10"
                       >
-                        <MessageSquareMore className="size-3.5 shrink-0 text-white/40" />
-                        <div className="min-w-0 flex-1">
-                          <div className="truncate">{s.title || "Chat session"}</div>
-                          <div className="mt-0.5 text-[10px] text-white/30">
-                            {new Date(s.updated_at).toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" })} · {new Date(s.updated_at).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })}
+                        <button
+                          onClick={() => loadSession(s.id)}
+                          className="flex min-w-0 flex-1 items-center gap-2 px-3 py-2.5 text-left"
+                        >
+                          <MessageSquareMore className="size-3.5 shrink-0 text-white/40" />
+                          <div className="min-w-0 flex-1">
+                            <div className="truncate">{s.title || "Chat session"}</div>
+                            <div className="mt-0.5 text-[10px] text-white/30">
+                              {new Date(s.updated_at).toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" })} · {new Date(s.updated_at).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })}
+                            </div>
                           </div>
-                        </div>
-                        <ChevronRight className="size-3 text-white/30" />
-                      </button>
+                          <ChevronRight className="size-3 text-white/30" />
+                        </button>
+                        <button
+                          onClick={() => deleteSession(s.id)}
+                          className="mr-2 grid size-8 shrink-0 place-items-center rounded-lg text-white/35 transition hover:bg-rose-500/16 hover:text-rose-200"
+                          title="Hapus session"
+                        >
+                          <Trash2 className="size-3.5" />
+                        </button>
+                      </div>
                     ))}
                   </div>
                 </div>
@@ -1556,37 +1638,30 @@ function AiAssistantWindow({ account, onClose }: { account: OsUserAccount | null
               <div className="flex-1 space-y-3 overflow-y-auto p-4">
                 {messages.map((message, index) => (
                   <div key={index} className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}>
-                    <div className={`max-w-[85%] whitespace-pre-line rounded-2xl px-4 py-3 text-sm leading-6 ${message.role === "user" ? "bg-pink-600 text-white" : "bg-white/10 text-white/78"}`}>
-                      {message.content}
+                    <div className={`max-w-[85%] whitespace-pre-line rounded-2xl px-4 py-3 text-sm font-normal leading-6 ${message.role === "user" ? "bg-pink-600 text-white" : "bg-white/10 text-white/78"}`}>
+                      {formatPlainChatText(message.content)}
                     </div>
                   </div>
                 ))}
                 {loading && (
                   <div className="flex justify-start">
                     <div className="flex items-center gap-2 rounded-2xl bg-white/10 px-4 py-3 text-sm text-white/70">
-                      <Loader2 className="size-4 animate-spin" /> Membaca data system...
+                      <Loader2 className="size-4 animate-spin" /> Memproses dengan {activeModel.id}...
                     </div>
                   </div>
                 )}
               </div>
 
-              <div className="border-t border-white/10 p-4">
+              <div className="border-t border-white/10 p-3">
                 <div className="mb-2 flex items-center justify-between">
-                  <div className="rounded-2xl border border-white/10 bg-white/8 px-3 py-2 text-xs text-white/55">
+                  <div className="truncate rounded-xl border border-white/10 bg-white/8 px-2.5 py-1.5 text-[11px] text-white/55">
                     {statusNote}
                   </div>
                   {sessionId && (
-                    <button onClick={enterLanding} className="rounded-xl bg-white/8 px-3 py-2 text-xs text-white/60 hover:bg-white/12">
+                    <button onClick={enterLanding} className="ml-2 shrink-0 rounded-xl bg-white/8 px-2.5 py-1.5 text-[11px] text-white/60 hover:bg-white/12">
                       Back to Sessions
                     </button>
                   )}
-                </div>
-                <div className="mb-3 flex flex-wrap gap-2">
-                  {quickPrompts.map((prompt) => (
-                    <button key={prompt} onClick={() => sendMessage(prompt)} className="rounded-full border border-white/10 bg-white/8 px-3 py-1 text-xs text-white/70 transition hover:bg-white/14">
-                      {prompt}
-                    </button>
-                  ))}
                 </div>
                 <form
                   onSubmit={(event) => {
@@ -1598,10 +1673,10 @@ function AiAssistantWindow({ account, onClose }: { account: OsUserAccount | null
                   <input
                     value={input}
                     onChange={(event) => setInput(event.target.value)}
-                    placeholder="Tanyakan summary report..."
-                    className="min-w-0 flex-1 rounded-2xl border border-white/20 bg-white px-4 py-3 text-sm text-black outline-none placeholder:text-gray-600 focus:border-pink-300/70"
+                    placeholder={settings.scope === "general" ? "Tanyakan apapun..." : "Tanyakan data Talentpool atau hal umum..."}
+                    className="min-w-0 flex-1 rounded-xl border border-white/20 bg-white px-3 py-2 text-sm text-black outline-none placeholder:text-gray-600 focus:border-pink-300/70"
                   />
-                  <button disabled={loading || !input.trim()} className="grid size-12 place-items-center rounded-2xl bg-pink-600 transition hover:bg-pink-500 disabled:opacity-50">
+                  <button disabled={loading || !input.trim()} className="grid size-10 shrink-0 place-items-center rounded-xl bg-pink-600 transition hover:bg-pink-500 disabled:opacity-50">
                     <Send className="size-4" />
                   </button>
                 </form>
@@ -1612,6 +1687,17 @@ function AiAssistantWindow({ account, onClose }: { account: OsUserAccount | null
       </div>
     </WindowShell>
   );
+}
+
+function formatPlainChatText(value: string) {
+  return value
+    .replace(/\*\*([^*]+)\*\*/g, "$1")
+    .replace(/__([^_]+)__/g, "$1")
+    .replace(/^#{1,6}\s+/gm, "")
+    .replace(/^\s*\*\s+/gm, "- ")
+    .replace(/^\s*>\s?/gm, "")
+    .replace(/`([^`\n]+)`/g, "$1")
+    .trim();
 }
 
 function OsAccountPopup({
@@ -1712,15 +1798,41 @@ function ToggleSwitch({ enabled, onChange, label }: { enabled: boolean; onChange
   );
 }
 
+function LlmModelLogo({
+  model,
+  className = "size-8",
+  imageClassName = "size-6",
+}: {
+  model: (typeof AI_ASSISTANT_MODELS)[number];
+  className?: string;
+  imageClassName?: string;
+}) {
+  return (
+    <span className={`grid ${className} shrink-0 place-items-center overflow-hidden rounded-xl border border-white/12 bg-white shadow-[inset_0_1px_0_rgba(255,255,255,.34)]`}>
+      {model.logoSrc ? (
+        <Image src={model.logoSrc} alt={`${model.label} logo`} width={28} height={28} className={`${imageClassName} object-contain`} />
+      ) : (
+        <span className={`grid h-full w-full place-items-center bg-gradient-to-br ${model.logoClassName} text-[10px] font-black`}>
+          {model.logo}
+        </span>
+      )}
+    </span>
+  );
+}
+
 function SystemSettings({
   soundEnabled,
+  assistantSettings,
   onSoundChange,
+  onAssistantSettingsChange,
   onOpenWallpaper,
   onOpenWidgets,
   onClose,
 }: {
   soundEnabled: boolean;
+  assistantSettings: AiAssistantSettings;
   onSoundChange: (value: boolean) => void;
+  onAssistantSettingsChange: (next: Partial<AiAssistantSettings>) => void;
   onOpenWallpaper: () => void;
   onOpenWidgets: () => void;
   onClose: () => void;
@@ -1730,16 +1842,90 @@ function SystemSettings({
     { title: "Widgets", description: "Atur Calendar dan System Widgets.", icon: Activity, action: onOpenWidgets },
   ];
   const SoundIcon = soundEnabled ? Volume2 : VolumeX;
+  const [showModelMenu, setShowModelMenu] = useState(false);
+  const activeModel = AI_ASSISTANT_MODELS.find((model) => model.id === assistantSettings.model) ?? AI_ASSISTANT_MODELS[0];
 
   return (
-    <WindowShell title="System Settings" onClose={onClose} className="left-1/2 top-16 w-[min(680px,calc(100vw-32px))] -translate-x-1/2">
+    <WindowShell title="System Settings" onClose={onClose} className="left-1/2 top-16 w-[min(760px,calc(100vw-32px))] -translate-x-1/2">
       <div className="grid gap-4 p-5 md:grid-cols-[220px_1fr]">
         <aside className="rounded-3xl border border-white/10 bg-white/8 p-4">
           <div className={`mb-4 grid size-12 place-items-center rounded-2xl bg-gradient-to-br ${pinkAccent}`}><Settings className="size-6" /></div>
           <div className="font-semibold">Arkiv OS Settings</div>
-          <div className="mt-1 text-xs leading-5 text-white/50">Theme, widgets, sound, account, dan desktop preferences.</div>
+          <div className="mt-1 text-xs leading-5 text-white/50">Theme, widgets, sound, AI Assistant, dan desktop preferences.</div>
         </aside>
         <section className="space-y-3">
+          <div className="rounded-3xl border border-white/10 bg-white/8 p-4">
+            <div className="mb-4 flex items-center gap-3">
+              <div className={`grid size-11 place-items-center rounded-2xl bg-gradient-to-br ${pinkAccent}`}><Bot className="size-5" /></div>
+              <div className="min-w-0 flex-1">
+                <div className="text-sm font-semibold">AI Assistant</div>
+                <div className="truncate text-xs leading-5 text-white/45">{assistantSettings.model}</div>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <div className="text-xs font-semibold uppercase tracking-wide text-white/40">Context</div>
+              <div className="grid gap-2 sm:grid-cols-3">
+                {AI_ASSISTANT_SCOPES.map((scope) => (
+                  <button
+                    key={scope.id}
+                    onClick={() => onAssistantSettingsChange({ scope: scope.id })}
+                    className={`min-h-11 rounded-2xl border px-3 py-2 text-center text-xs font-semibold transition ${assistantSettings.scope === scope.id ? "border-pink-300/60 bg-pink-500/18 text-white shadow-[inset_0_1px_0_rgba(255,255,255,.14)]" : "border-white/10 bg-black/15 text-white/60 hover:bg-white/10"}`}
+                    title={scope.description}
+                  >
+                    {scope.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="relative mt-4">
+              <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-white/40">LLM Model</div>
+              <button
+                type="button"
+                onClick={() => setShowModelMenu((value) => !value)}
+                className="flex w-full items-center gap-3 rounded-2xl border border-white/12 bg-zinc-950/45 px-3 py-3 text-left text-white shadow-[inset_0_1px_0_rgba(255,255,255,.12),0_12px_32px_rgba(0,0,0,.24)] outline-none transition hover:border-white/20 hover:bg-zinc-900/60 active:bg-zinc-950/80 focus-visible:bg-zinc-950/70 focus-visible:ring-2 focus-visible:ring-white/16"
+                aria-haspopup="listbox"
+                aria-expanded={showModelMenu}
+              >
+                <LlmModelLogo model={activeModel} />
+                <div className="min-w-0 flex-1">
+                  <div className="truncate text-sm font-semibold">{activeModel.label}</div>
+                  <div className="truncate text-[11px] text-white/55">{activeModel.id}</div>
+                </div>
+                <ChevronDown className={`size-4 text-white/55 transition ${showModelMenu ? "rotate-180" : ""}`} />
+              </button>
+
+              {showModelMenu && (
+                <div className="absolute left-0 right-0 top-[calc(100%+8px)] z-[90] overflow-hidden rounded-2xl border border-white/12 bg-zinc-950/95 p-1.5 text-white shadow-[0_24px_70px_rgba(0,0,0,.46)] backdrop-blur-2xl ring-1 ring-black/30" role="listbox" data-arkiv-ai-listbox="true">
+                  {AI_ASSISTANT_MODELS.map((model) => {
+                    const selected = assistantSettings.model === model.id;
+                    return (
+                      <button
+                        key={model.id}
+                        type="button"
+                        onClick={() => {
+                          onAssistantSettingsChange({ model: resolveAiAssistantModel(model.id) });
+                          setShowModelMenu(false);
+                        }}
+                        className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left transition active:bg-zinc-800/80 focus-visible:bg-zinc-800/70 focus-visible:outline-none ${selected ? "bg-white/[0.14] text-white shadow-[inset_0_1px_0_rgba(255,255,255,.08)]" : "text-white/72 hover:bg-white/[0.08] hover:text-white"}`}
+                        role="option"
+                        aria-selected={selected}
+                      >
+                        <LlmModelLogo model={model} />
+                        <span className="min-w-0 flex-1">
+                          <span className="block truncate text-sm font-semibold">{model.label}</span>
+                          <span className="block truncate text-[11px] text-white/52">{model.id}</span>
+                        </span>
+                        {selected && <Check className="size-4 shrink-0 text-white/75" />}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+
           {settings.map((item) => {
             const Icon = item.icon;
             return (
