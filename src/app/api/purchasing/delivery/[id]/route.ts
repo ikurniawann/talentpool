@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { z } from "zod";
 import {
   requireApiRole,
@@ -8,7 +8,6 @@ import {
 } from "@/lib/api/auth";
 import {
   validateDeliveryTransition,
-  validateDeliveryForGRN,
   DeliveryStatus,
 } from "@/lib/purchasing/delivery";
 
@@ -38,20 +37,7 @@ export async function GET(
 
     const { data: delivery, error } = await supabase
       .from("deliveries")
-      .select(
-        `
-        *,
-        supplier:supplier_id(id, kode, nama),
-        purchase_order:purchase_order_id(
-          id, po_number, status, supplier_id,
-          items:po_items(
-            id, bahan_baku_id, description, qty, qty_received,
-            satuan:satuan_id(id, kode, nama),
-            bahan_baku:bahan_baku_id(id, kode, nama)
-          )
-        )
-      `
-      )
+      .select("*")
       .eq("id", id)
       .single();
 
@@ -59,7 +45,41 @@ export async function GET(
       throw ApiError.notFound("Delivery tidak ditemukan");
     }
 
-    return successResponse(delivery, "Delivery retrieved");
+    const [supplierResult, poResult] = await Promise.all([
+      delivery.supplier_id
+        ? supabase.from("suppliers").select("*").eq("id", delivery.supplier_id).maybeSingle()
+        : Promise.resolve({ data: null, error: null }),
+      delivery.purchase_order_id
+        ? supabase.from("purchase_orders").select("*").eq("id", delivery.purchase_order_id).maybeSingle()
+        : Promise.resolve({ data: null, error: null }),
+    ]);
+
+    if (supplierResult.error) throw supplierResult.error;
+    if (poResult.error) throw poResult.error;
+
+    const supplier = supplierResult.data as Record<string, unknown> | null;
+    const purchaseOrder = poResult.data as Record<string, unknown> | null;
+
+    return successResponse(
+      {
+        ...delivery,
+        supplier: supplier
+          ? {
+              id: supplier.id,
+              nama: supplier.nama_supplier || supplier.nama || "-",
+              kode: supplier.kode_supplier || supplier.kode || "",
+            }
+          : null,
+        purchase_order: purchaseOrder
+          ? {
+              id: purchaseOrder.id,
+              po_number: purchaseOrder.nomor_po || purchaseOrder.po_number || "-",
+              status: purchaseOrder.status || "",
+            }
+          : null,
+      },
+      "Delivery retrieved"
+    );
   } catch (error) {
     if (error instanceof ApiError) return error.toResponse();
     console.error("Error fetching delivery:", error);

@@ -11,7 +11,6 @@ import {
   SupplierPOSummary,
   PaginatedResponse,
 } from "@/types/supplier";
-import { createClient } from "@/lib/supabase/client";
 
 const BASE = "/api/purchasing";
 
@@ -30,7 +29,7 @@ async function fetchApi<T>(
   const json = await res.json();
 
   if (!res.ok) {
-    throw new Error(json.error || `HTTP ${res.status}`);
+    throw new Error(json.message || json.error || `HTTP ${res.status}`);
   }
 
   return json as T;

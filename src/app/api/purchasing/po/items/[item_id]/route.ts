@@ -14,6 +14,10 @@ const poItemSchema = z.object({
   catatan: z.string().optional().nullable(),
 });
 
+function getErrorMessage(error: unknown, fallback: string) {
+  return error instanceof Error ? error.message : fallback;
+}
+
 // PUT /api/purchasing/po/items/:item_id
 export async function PUT(
   request: NextRequest,
@@ -45,9 +49,9 @@ export async function PUT(
     }
 
     // Cek status PO - hanya bisa edit jika DRAFT
-    if (item.purchase_order.status !== "DRAFT") {
+    if (String(item.purchase_order.status).toLowerCase() !== "draft") {
       return Response.json(
-        { success: false, message: "Item hanya bisa diedit saat PO status DRAFT" },
+        { success: false, message: "Item hanya bisa diedit saat PO status draft" },
         { status: 400 }
       );
     }
@@ -70,7 +74,7 @@ export async function PUT(
       data,
       message: "Item berhasil diupdate",
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error updating PO item:", error);
 
     if (error instanceof z.ZodError) {
@@ -85,7 +89,7 @@ export async function PUT(
     }
 
     return Response.json(
-      { success: false, message: error.message || "Gagal mengupdate item PO" },
+      { success: false, message: getErrorMessage(error, "Gagal mengupdate item PO") },
       { status: 500 }
     );
   }
@@ -118,9 +122,9 @@ export async function DELETE(
     }
 
     // Cek status PO - hanya bisa hapus jika DRAFT
-    if (item.purchase_order.status !== "DRAFT") {
+    if (String(item.purchase_order.status).toLowerCase() !== "draft") {
       return Response.json(
-        { success: false, message: "Item hanya bisa dihapus saat PO status DRAFT" },
+        { success: false, message: "Item hanya bisa dihapus saat PO status draft" },
         { status: 400 }
       );
     }
@@ -137,10 +141,10 @@ export async function DELETE(
       success: true,
       message: "Item berhasil dihapus dari PO",
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error deleting PO item:", error);
     return Response.json(
-      { success: false, message: error.message || "Gagal menghapus item PO" },
+      { success: false, message: getErrorMessage(error, "Gagal menghapus item PO") },
       { status: 500 }
     );
   }

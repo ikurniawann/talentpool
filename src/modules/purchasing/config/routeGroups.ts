@@ -66,11 +66,12 @@ export const PURCHASING_ROUTES: RouteGroup = {
     // ── Receiving ───────────────────────────────────────────
     {
       path: "receiving",
-      label: "Penerimaan",
+      label: "Barang Masuk",
       badge: "pending_grn",
       children: [
         { path: "receiving/new", label: "Terima Barang" },
         { path: "receiving/[id]", label: "Detail GRN" },
+        { path: "delivery/[id]", label: "Detail Pengiriman" },
       ],
     },
 
@@ -81,16 +82,6 @@ export const PURCHASING_ROUTES: RouteGroup = {
       badge: "pending_qc",
       children: [
         { path: "qc/[id]", label: "Detail QC" },
-      ],
-    },
-
-    // ── Delivery ────────────────────────────────────────────
-    {
-      path: "delivery",
-      label: "Pengiriman",
-      badge: null,
-      children: [
-        { path: "delivery/[id]", label: "Detail Pengiriman" },
       ],
     },
 

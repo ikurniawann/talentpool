@@ -351,7 +351,7 @@ export default function ContinueGrnPage() {
         items={[
           { label: "Dashboard", href: "/dashboard" },
           { label: "Purchasing", href: "/dashboard/purchasing" },
-          { label: "Penerimaan", href: "/dashboard/purchasing/grn" },
+          { label: "Barang Masuk", href: "/dashboard/purchasing/grn" },
           { label: "Lanjutkan GRN", href: "/dashboard/purchasing/grn/continue" },
           { label: grnData.nomor_grn },
         ]}

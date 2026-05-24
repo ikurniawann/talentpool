@@ -16,6 +16,10 @@ import { Supplier } from "@/types/supplier";
 import { RawMaterialWithStock, Unit, SupplierPriceListFormData } from "@/types/purchasing";
 import { listSuppliers, listRawMaterials, listUnits, createPriceList } from "@/lib/purchasing";
 
+function getErrorMessage(error: unknown, fallback: string) {
+  return error instanceof Error ? error.message : fallback;
+}
+
 export default function NewPriceListPage() {
   const router = useRouter();
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
@@ -48,14 +52,9 @@ export default function NewPriceListPage() {
         listRawMaterials({ limit: 100, is_active: true }),
         listUnits(),
       ]);
-      // Handle paginated responses
-      const suppliersData: any = Array.isArray(suppliersRes) ? suppliersRes : ((suppliersRes as any).data || []);
-      const materialsData: any = materialsRes.data;
-      const unitsData: any = Array.isArray(unitsRes) ? unitsRes : ((unitsRes as any).data || []);
-      
-      setSuppliers(suppliersData);
-      setMaterials(materialsData);
-      setUnits(unitsData);
+      setSuppliers(suppliersRes as Supplier[]);
+      setMaterials(materialsRes.data);
+      setUnits(unitsRes.data || []);
     } catch (error) {
       console.error("Error loading data:", error);
       toast.error("Gagal memuat data");
@@ -81,13 +80,14 @@ export default function NewPriceListPage() {
     }
 
     // Ensure numeric fields are numbers and omit empty optional fields
-    const payload: any = {
+    const payload: SupplierPriceListFormData = {
       supplier_id: formData.supplier_id,
       bahan_baku_id: formData.bahan_baku_id,
       harga: Number(formData.harga),
       satuan_id: formData.satuan_id || undefined,
       minimum_qty: Number(formData.minimum_qty),
       lead_time_days: Number(formData.lead_time_days),
+      is_preferred: formData.is_preferred,
     };
 
     // Add optional fields only if they have values
@@ -104,22 +104,14 @@ export default function NewPriceListPage() {
       payload.catatan = formData.catatan.trim();
     }
 
-    console.log("Submitting price list payload:", payload);
-
     setIsSubmitting(true);
     try {
       await createPriceList(payload);
       toast.success("Price list berhasil ditambahkan");
       router.push("/dashboard/purchasing/price-list");
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error creating price list:", error);
-      if (error.response) {
-        const errorData = await error.response.json();
-        console.error("API Error details:", errorData);
-        toast.error(errorData.message || "Gagal menambahkan price list");
-      } else {
-        toast.error(error.message || "Gagal menambahkan price list");
-      }
+      toast.error(getErrorMessage(error, "Gagal menambahkan price list"));
     } finally {
       setIsSubmitting(false);
     }

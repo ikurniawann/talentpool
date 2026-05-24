@@ -4,6 +4,7 @@
 
 import { NextRequest } from "next/server";
 import { createServiceClient } from "@/lib/supabase/service-client";
+import { adjustInventoryOnOrder } from "@/lib/inventory";
 import { z } from "zod";
 
 const poSchema = z.object({
@@ -16,6 +17,10 @@ const poSchema = z.object({
   diskon_nominal: z.number().min(0).optional(),
   ppn_persen: z.number().min(0).max(100).optional(),
 });
+
+function getErrorMessage(error: unknown, fallback: string) {
+  return error instanceof Error ? error.message : fallback;
+}
 
 // GET /api/purchasing/po/:id
 export async function GET(
@@ -57,8 +62,6 @@ export async function GET(
 
     if (itemsError) throw itemsError;
 
-    if (itemsError) throw itemsError;
-
     return Response.json({
       success: true,
       data: {
@@ -66,10 +69,10 @@ export async function GET(
         items: items || [],
       },
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error fetching PO:", error);
     return Response.json(
-      { success: false, message: error.message || "Gagal mengambil data PO" },
+      { success: false, message: getErrorMessage(error, "Gagal mengambil data PO") },
       { status: 500 }
     );
   }
@@ -102,9 +105,9 @@ export async function PUT(
       );
     }
 
-    if (po.status !== "DRAFT") {
+    if (String(po.status).toLowerCase() !== "draft") {
       return Response.json(
-        { success: false, message: "PO hanya bisa diedit saat status DRAFT" },
+        { success: false, message: "PO hanya bisa diedit saat status draft" },
         { status: 400 }
       );
     }
@@ -127,7 +130,7 @@ export async function PUT(
       data,
       message: "PO berhasil diupdate",
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error updating PO:", error);
 
     if (error instanceof z.ZodError) {
@@ -142,7 +145,7 @@ export async function PUT(
     }
 
     return Response.json(
-      { success: false, message: error.message || "Gagal mengupdate PO" },
+      { success: false, message: getErrorMessage(error, "Gagal mengupdate PO") },
       { status: 500 }
     );
   }
@@ -172,18 +175,31 @@ export async function DELETE(
     }
 
     // Hanya bisa hapus/cancel jika belum received
-    if (po.status === "RECEIVED") {
+    const normalizedStatus = String(po.status).toLowerCase();
+
+    if (normalizedStatus === "received") {
       return Response.json(
         { success: false, message: "PO yang sudah diterima tidak bisa dibatalkan" },
         { status: 400 }
       );
     }
 
+    const shouldReleaseOnOrder = normalizedStatus === "sent" || normalizedStatus === "partial" || normalizedStatus === "partially_received";
+    const { data: items, error: itemsError } = shouldReleaseOnOrder
+      ? await supabase
+          .from("purchase_order_items")
+          .select("raw_material_id, qty_ordered, qty_received")
+          .eq("purchase_order_id", id)
+          .eq("is_active", true)
+      : { data: [], error: null };
+
+    if (itemsError) throw itemsError;
+
     // Soft delete / cancel
     const { error } = await supabase
       .from("purchase_orders")
       .update({
-        status: "CANCELLED",
+        status: "cancelled",
         is_active: false,
         cancelled_at: new Date().toISOString(),
       })
@@ -191,14 +207,23 @@ export async function DELETE(
 
     if (error) throw error;
 
+    if (shouldReleaseOnOrder) {
+      for (const item of items || []) {
+        const remainingQty = Math.max(0, Number(item.qty_ordered || 0) - Number(item.qty_received || 0));
+        if (item.raw_material_id && remainingQty > 0) {
+          await adjustInventoryOnOrder(supabase, item.raw_material_id, -remainingQty);
+        }
+      }
+    }
+
     return Response.json({
       success: true,
       message: "PO berhasil dibatalkan",
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error cancelling PO:", error);
     return Response.json(
-      { success: false, message: error.message || "Gagal membatalkan PO" },
+      { success: false, message: getErrorMessage(error, "Gagal membatalkan PO") },
       { status: 500 }
     );
   }

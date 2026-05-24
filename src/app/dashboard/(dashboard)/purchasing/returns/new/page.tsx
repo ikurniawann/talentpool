@@ -35,7 +35,11 @@ import {
 import { ArrowLeft, Save, Plus, Trash2, AlertCircle } from "lucide-react";
 import { formatRupiah } from "@/lib/purchasing/utils";
 import { toast } from "sonner";
-import { Supplier } from "@/types/supplier";
+import { Supplier } from "@/types/purchasing";
+
+function getErrorMessage(error: unknown, fallback: string) {
+  return error instanceof Error ? error.message : fallback;
+}
 
 interface ReturnItem extends ReturnableItem {
   selected: boolean;
@@ -191,9 +195,9 @@ export default function NewReturnPage() {
       await createReturn(returnData);
       toast.success("Return berhasil dibuat dan menunggu persetujuan");
       router.push("/dashboard/purchasing/returns");
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error creating return:", error);
-      toast.error(error.message || "Gagal membuat return");
+      toast.error(getErrorMessage(error, "Gagal membuat return"));
     } finally {
       setIsSubmitting(false);
     }

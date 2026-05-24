@@ -12,6 +12,10 @@ const adjustmentSchema = z.object({
   notes: z.string().optional(),
 });
 
+function getErrorMessage(error: unknown, fallback: string) {
+  return error instanceof Error ? error.message : fallback;
+}
+
 // POST /api/purchasing/inventory/adjustment
 export async function POST(request: NextRequest) {
   try {
@@ -36,13 +40,15 @@ export async function POST(request: NextRequest) {
     }
 
     // Hitung selisih
-    const qtyDiff = validated.qty_actual - currentInv.qty_onhand;
+    const qtyBefore = Number(currentInv.qty_available || 0);
+    const qtyDiff = validated.qty_actual - qtyBefore;
 
     // Update inventory
     const { data: updatedInv, error: updateError } = await supabase
       .from("inventory")
       .update({
-        qty_onhand: validated.qty_actual,
+        qty_available: validated.qty_actual,
+        last_movement_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       })
       .eq("raw_material_id", validated.raw_material_id)
@@ -56,11 +62,16 @@ export async function POST(request: NextRequest) {
       const { error: movementError } = await supabase
         .from("inventory_movements")
         .insert({
+          inventory_id: currentInv.id,
           raw_material_id: validated.raw_material_id,
-          movement_type: "ADJUSTMENT",
-          qty: qtyDiff,
-          reference_type: "ADJUSTMENT",
-          notes: validated.notes || `Stok opname: ${qtyDiff > 0 ? "+" : ""}${qtyDiff}`,
+          tipe: "adjustment",
+          jumlah: Math.abs(qtyDiff),
+          qty_before: qtyBefore,
+          qty_after: validated.qty_actual,
+          unit_cost: currentInv.unit_cost || 0,
+          total_cost: Math.abs(qtyDiff) * Number(currentInv.unit_cost || 0),
+          reference_type: "adjustment",
+          alasan: validated.notes || `Stok opname: ${qtyDiff > 0 ? "+" : ""}${qtyDiff}`,
         });
 
       if (movementError) throw movementError;
@@ -71,12 +82,12 @@ export async function POST(request: NextRequest) {
       data: updatedInv,
       message: "Stok berhasil disesuaikan",
       adjustment: {
-        qty_before: currentInv.qty_onhand,
+        qty_before: qtyBefore,
         qty_after: validated.qty_actual,
         qty_diff: qtyDiff,
       },
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error adjusting inventory:", error);
 
     if (error instanceof z.ZodError) {
@@ -91,7 +102,7 @@ export async function POST(request: NextRequest) {
     }
 
     return Response.json(
-      { success: false, message: error.message || "Gagal menyesuaikan stok" },
+      { success: false, message: getErrorMessage(error, "Gagal menyesuaikan stok") },
       { status: 500 }
     );
   }

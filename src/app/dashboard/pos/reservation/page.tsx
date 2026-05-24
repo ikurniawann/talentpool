@@ -1,62 +1,44 @@
 'use client';
 
-import { useState } from 'react';
-import { 
-  Calendar, Clock, Users, Phone, User, Search, Check, X, 
-  ArrowLeft, MessageSquare, CreditCard, Bell, MapPin, ChevronRight, Plus
-} from 'lucide-react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { AlertCircle, Calendar, Clock, Loader2, MessageSquare, Phone, Plus, Search, User, Users, X } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 type ReservationStatus = 'pending' | 'confirmed' | 'seated' | 'completed' | 'cancelled' | 'no_show';
 type OrderType = 'dine_in' | 'takeaway' | 'delivery';
 
-interface Reservation {
+interface ReservationRow {
   id: string;
-  customerName: string;
-  customerPhone: string;
-  date: string;
-  time: string;
-  guestCount: number;
-  tableId: string | null;
-  tableName: string | null;
-  notes: string;
+  table_id: string | null;
+  customer_id: string | null;
+  customer_name?: string | null;
+  customer_phone?: string | null;
+  reservation_date: string;
+  time_slot: string;
+  duration_minutes?: number | null;
+  pax_count: number;
+  special_requests?: string | null;
+  deposit_amount?: number | string | null;
+  notes?: string | null;
   status: ReservationStatus;
-  deposit: number;
-  orderType: OrderType;
+  table?: { table_number?: string | null } | null;
+  customer?: { name?: string | null; phone?: string | null } | null;
 }
 
 interface Customer {
   id: string;
-  name: string;
+  name?: string | null;
   phone: string;
-  visitCount: number;
+  visit_count?: number | null;
 }
 
-const mockReservations: Reservation[] = [
-  { id: 'r1', customerName: 'Ahmad Wijaya', customerPhone: '081234567890', date: '2026-04-27', time: '12:00', guestCount: 4, tableId: 't1', tableName: 'Meja 1', notes: 'Ulang tahun anak', status: 'confirmed', deposit: 50000, orderType: 'dine_in' },
-  { id: 'r2', customerName: 'Siti Rahayu', customerPhone: '081234567891', date: '2026-04-27', time: '13:00', guestCount: 2, tableId: 't3', tableName: 'Meja 3', notes: '', status: 'pending', deposit: 0, orderType: 'dine_in' },
-  { id: 'r3', customerName: 'Budi Santoso', customerPhone: '081234567892', date: '2026-04-28', time: '19:00', guestCount: 8, tableId: null, tableName: null, notes: 'Meeting kantor', status: 'pending', deposit: 100000, orderType: 'dine_in' },
-  { id: 'r4', customerName: 'Warung Kopi Nusantara', customerPhone: '081234567893', date: '2026-04-27', time: '18:00', guestCount: 6, tableId: 't5', tableName: 'Meja 5', notes: 'K耗团建', status: 'confirmed', deposit: 75000, orderType: 'dine_in' },
-];
-
-const mockCustomers: Customer[] = [
-  { id: 'c1', name: 'Ahmad Wijaya', phone: '081234567890', visitCount: 12 },
-  { id: 'c2', name: 'Siti Rahayu', phone: '081234567891', visitCount: 5 },
-  { id: 'c3', name: 'Budi Santoso', phone: '081234567892', visitCount: 8 },
-  { id: 'c4', name: 'Warung Kopi Nusantara', phone: '081234567893', visitCount: 20 },
-  { id: 'c5', name: 'H. Abdullah Trading', phone: '081234567894', visitCount: 15 },
-];
-
-const tables = [
-  { id: 't1', name: 'Meja 1', capacity: 4, status: 'occupied' },
-  { id: 't2', name: 'Meja 2', capacity: 4, status: 'available' },
-  { id: 't3', name: 'Meja 3', capacity: 6, status: 'reserved' },
-  { id: 't4', name: 'Meja 4', capacity: 2, status: 'available' },
-  { id: 't5', name: 'Meja 5', capacity: 8, status: 'occupied' },
-  { id: 't6', name: 'Meja 6', capacity: 10, status: 'available' },
-  { id: 't7', name: 'Meja 7', capacity: 4, status: 'available' },
-  { id: 't8', name: 'VIP Room 1', capacity: 12, status: 'available' },
-];
+interface TableRow {
+  id: string;
+  table_number?: string | null;
+  label?: string | null;
+  capacity?: number;
+  status?: string | null;
+}
 
 const timeSlots = [
   '10:00', '10:30', '11:00', '11:30', '12:00', '12:30', '13:00', '13:30',
@@ -64,31 +46,48 @@ const timeSlots = [
   '18:00', '18:30', '19:00', '19:30', '20:00', '20:30', '21:00'
 ];
 
-const formatCurrency = (value: number) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(value);
-
-const getStatusBadge = (status: ReservationStatus) => {
-  switch (status) {
-    case 'pending': return { label: 'Pending', class: 'bg-yellow-100 text-yellow-700 border-yellow-200' };
-    case 'confirmed': return { label: 'Dikonfirmasi', class: 'bg-blue-100 text-blue-700 border-blue-200' };
-    case 'seated': return { label: 'Ditempati', class: 'bg-green-100 text-green-700 border-green-200' };
-    case 'completed': return { label: 'Selesai', class: 'bg-gray-100 text-gray-700 border-gray-200' };
-    case 'cancelled': return { label: 'Dibatalkan', class: 'bg-red-100 text-red-700 border-red-200' };
-    case 'no_show': return { label: 'No Show', class: 'bg-red-100 text-red-700 border-red-200' };
-  }
-};
+const formatCurrency = (value: number) =>
+  new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(value || 0);
 
 const getToday = () => new Date().toISOString().split('T')[0];
 
+function getStatusBadge(status: ReservationStatus) {
+  switch (status) {
+    case 'pending': return { label: 'Pending', className: 'bg-yellow-100 text-yellow-700 border-yellow-200' };
+    case 'confirmed': return { label: 'Dikonfirmasi', className: 'bg-blue-100 text-blue-700 border-blue-200' };
+    case 'seated': return { label: 'Ditempati', className: 'bg-green-100 text-green-700 border-green-200' };
+    case 'completed': return { label: 'Selesai', className: 'bg-gray-100 text-gray-700 border-gray-200' };
+    case 'cancelled': return { label: 'Dibatalkan', className: 'bg-red-100 text-red-700 border-red-200' };
+    case 'no_show': return { label: 'No Show', className: 'bg-red-100 text-red-700 border-red-200' };
+  }
+}
+
+function reservationName(row: ReservationRow) {
+  return row.customer?.name || row.customer_name || 'Tanpa Nama';
+}
+
+function reservationPhone(row: ReservationRow) {
+  return row.customer?.phone || row.customer_phone || '-';
+}
+
 export default function ReservationPage() {
-  const [reservations, setReservations] = useState<Reservation[]>(mockReservations);
+  const [reservations, setReservations] = useState<ReservationRow[]>([]);
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [tables, setTables] = useState<TableRow[]>([]);
   const [showNewForm, setShowNewForm] = useState(false);
   const [showCustomerSearch, setShowCustomerSearch] = useState(false);
   const [customerSearch, setCustomerSearch] = useState('');
   const [selectedDate, setSelectedDate] = useState(getToday());
   const [filterStatus, setFilterStatus] = useState<ReservationStatus | 'all'>('all');
-  
-  // New reservation form
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState('');
+  const [showWhatsAppDialog, setShowWhatsAppDialog] = useState(false);
+  const [whatsAppReservation, setWhatsAppReservation] = useState<ReservationRow | null>(null);
+  const [whatsAppType, setWhatsAppType] = useState<'reminder' | 'confirmation'>('reminder');
+
   const [formData, setFormData] = useState({
+    customerId: null as string | null,
     customerName: '',
     customerPhone: '',
     date: getToday(),
@@ -100,113 +99,74 @@ export default function ReservationPage() {
     orderType: 'dine_in' as OrderType,
   });
 
-  // WhatsApp state
-  const [showWhatsAppDialog, setShowWhatsAppDialog] = useState(false);
-  const [whatsAppReservation, setWhatsAppReservation] = useState<Reservation | null>(null);
-  const [whatsAppType, setWhatsAppType] = useState<'reminder' | 'confirmation' | 'custom'>('reminder');
-
-  const generateWhatsAppMessage = (reservation: Reservation, type: 'reminder' | 'confirmation') => {
-    const dateObj = new Date(reservation.date + 'T00:00:00');
-    const formattedDate = dateObj.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
-    
-    if (type === 'confirmation') {
-      return `Halo ${reservation.customerName}! 👋
-
-Reservasi Anda telah *dikonfirmasi*:
-
-📅 *${formattedDate}*
-🕐 *${reservation.time}*
-👥 *${reservation.guestCount} orang*
-${reservation.tableName ? `🪑 *${reservation.tableName}*` : ''}
-${reservation.notes ? `📝 *${reservation.notes}*` : ''}
-
-Kami tunggu kedatangannya! 🙏
-
-*Prologue Wonderland*`;
+  const loadReservations = useCallback(async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const params = new URLSearchParams({ date: selectedDate });
+      if (filterStatus !== 'all') params.set('status', filterStatus);
+      const response = await fetch(`/api/pos/reservations?${params.toString()}`, { cache: 'no-store' });
+      const json = await response.json();
+      if (!response.ok || json.success === false) throw new Error(json.error || 'Gagal memuat reservasi');
+      setReservations((json.data || []) as ReservationRow[]);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Gagal memuat reservasi');
+    } finally {
+      setLoading(false);
     }
+  }, [filterStatus, selectedDate]);
 
-    return `Halo ${reservation.customerName}! 👋
+  async function loadCustomers() {
+    const response = await fetch('/api/pos/customers', { cache: 'no-store' });
+    const json = await response.json();
+    if (!response.ok || !json.success) throw new Error(json.error || 'Gagal memuat pelanggan');
+    setCustomers((json.data || []) as Customer[]);
+  }
 
-Ini adalah *reminder* untuk reservasi Anda:
+  async function loadTables() {
+    const response = await fetch('/api/pos/tables', { cache: 'no-store' });
+    const json = await response.json();
+    if (!response.ok || !json.success) throw new Error(json.error || 'Gagal memuat meja');
+    setTables((json.data || []) as TableRow[]);
+  }
 
-📅 *${formattedDate}*
-🕐 *${reservation.time}*
-👥 *${reservation.guestCount} orang*
-${reservation.tableName ? `🪑 *${reservation.tableName}*` : ''}
+  useEffect(() => {
+    void loadReservations();
+  }, [loadReservations]);
 
-Mohon tiba 10 menit sebelum waktu reservasi.
+  useEffect(() => {
+    Promise.all([loadCustomers(), loadTables()]).catch((err) => {
+      setError(err instanceof Error ? err.message : 'Gagal memuat data pendukung');
+    });
+  }, []);
 
-Jika ada perubahan, silakan hubungi kami.
+  const filteredCustomers = useMemo(() => {
+    const query = customerSearch.trim().toLowerCase();
+    if (!query) return customers;
+    return customers.filter((customer) => `${customer.name || ''} ${customer.phone}`.toLowerCase().includes(query));
+  }, [customerSearch, customers]);
 
-*Prologue Wonderland*`;
-  };
+  const sortedReservations = useMemo(() => (
+    [...reservations].sort((a, b) => String(a.time_slot || '').localeCompare(String(b.time_slot || '')))
+  ), [reservations]);
 
-  const openWhatsApp = (reservation: Reservation, type: 'reminder' | 'confirmation') => {
-    setWhatsAppReservation(reservation);
-    setWhatsAppType(type);
-    setShowWhatsAppDialog(true);
-  };
-
-  const sendWhatsApp = () => {
-    if (!whatsAppReservation) return;
-    const message = generateWhatsAppMessage(whatsAppReservation, whatsAppType);
-    const phone = whatsAppReservation.customerPhone.replace(/[^0-9]/g, '');
-    const waLink = `https://wa.me/62${phone.slice(1)}?text=${encodeURIComponent(message)}`;
-    window.open(waLink, '_blank');
-    setShowWhatsAppDialog(false);
-  };
-
-  const filteredCustomers = mockCustomers.filter(c => 
-    c.name.toLowerCase().includes(customerSearch.toLowerCase()) || c.phone.includes(customerSearch)
-  );
-
-  const filteredReservations = reservations
-    .filter(r => r.date === selectedDate)
-    .filter(r => filterStatus === 'all' || r.status === filterStatus)
-    .sort((a, b) => a.time.localeCompare(b.time));
-
-  const selectCustomer = (customer: Customer) => {
-    setFormData(prev => ({
+  function selectCustomer(customer: Customer) {
+    setFormData((prev) => ({
       ...prev,
-      customerName: customer.name,
+      customerId: customer.id,
+      customerName: customer.name || '',
       customerPhone: customer.phone,
     }));
     setShowCustomerSearch(false);
     setCustomerSearch('');
-  };
+  }
 
-  const handleTableSelect = (tableId: string) => {
-    setFormData(prev => ({
-      ...prev,
-      tableId: prev.tableId === tableId ? null : tableId,
-    }));
-  };
-
-  const submitReservation = () => {
-    if (!formData.customerName || !formData.date || !formData.time) return;
-    
-    const table = tables.find(t => t.id === formData.tableId);
-    const newReservation: Reservation = {
-      id: `r${Date.now()}`,
-      customerName: formData.customerName,
-      customerPhone: formData.customerPhone,
-      date: formData.date,
-      time: formData.time,
-      guestCount: formData.guestCount,
-      tableId: formData.tableId,
-      tableName: table?.name || null,
-      notes: formData.notes,
-      status: formData.deposit > 0 ? 'confirmed' : 'pending',
-      deposit: formData.deposit,
-      orderType: formData.orderType,
-    };
-    
-    setReservations(prev => [...prev, newReservation]);
-    setShowNewForm(false);
+  function resetForm() {
     setFormData({
+      customerId: null,
       customerName: '',
       customerPhone: '',
-      date: getToday(),
+      date: selectedDate,
       time: '12:00',
       guestCount: 2,
       tableId: null,
@@ -214,163 +174,185 @@ Jika ada perubahan, silakan hubungi kami.
       deposit: 0,
       orderType: 'dine_in',
     });
-  };
+  }
 
-  const updateStatus = (id: string, newStatus: ReservationStatus) => {
-    setReservations(prev => prev.map(r => r.id === id ? { ...r, status: newStatus } : r));
-  };
+  async function submitReservation() {
+    if (!formData.customerName || !formData.date || !formData.time) return;
+    setSubmitting(true);
+    setError('');
+    try {
+      const response = await fetch('/api/pos/reservations', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          table_id: formData.tableId,
+          customer_id: formData.customerId,
+          customer_name: formData.customerName,
+          customer_phone: formData.customerPhone,
+          reservation_date: formData.date,
+          time_slot: formData.time,
+          pax_count: formData.guestCount,
+          special_requests: formData.orderType,
+          deposit_amount: formData.deposit,
+          notes: formData.notes,
+        }),
+      });
+      const json = await response.json();
+      if (!response.ok || !json.success) throw new Error(json.error || 'Gagal menyimpan reservasi');
+      setShowNewForm(false);
+      resetForm();
+      await loadReservations();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Gagal menyimpan reservasi');
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  async function updateStatus(id: string, status: ReservationStatus) {
+    setError('');
+    try {
+      const response = await fetch(`/api/pos/reservations/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status }),
+      });
+      const json = await response.json();
+      if (!response.ok || !json.success) throw new Error(json.error || 'Gagal update reservasi');
+      await loadReservations();
+      await loadTables();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Gagal update reservasi');
+    }
+  }
+
+  function generateWhatsAppMessage(reservation: ReservationRow, type: 'reminder' | 'confirmation') {
+    const dateObj = new Date(`${reservation.reservation_date}T00:00:00`);
+    const formattedDate = dateObj.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+    const intro = type === 'confirmation' ? 'Reservasi Anda telah dikonfirmasi:' : 'Ini adalah reminder untuk reservasi Anda:';
+    return `Halo ${reservationName(reservation)}!\n\n${intro}\n\nTanggal: ${formattedDate}\nJam: ${reservation.time_slot}\nJumlah tamu: ${reservation.pax_count} orang\n${reservation.table?.table_number ? `Meja: ${reservation.table.table_number}\n` : ''}${reservation.notes ? `Catatan: ${reservation.notes}\n` : ''}\nMohon tiba 10 menit sebelum waktu reservasi.\n\nPrologue Wonderland`;
+  }
+
+  function openWhatsApp(reservation: ReservationRow, type: 'reminder' | 'confirmation') {
+    setWhatsAppReservation(reservation);
+    setWhatsAppType(type);
+    setShowWhatsAppDialog(true);
+  }
+
+  function sendWhatsApp() {
+    if (!whatsAppReservation) return;
+    const phone = reservationPhone(whatsAppReservation).replace(/[^0-9]/g, '');
+    const normalizedPhone = phone.startsWith('0') ? `62${phone.slice(1)}` : phone;
+    const message = generateWhatsAppMessage(whatsAppReservation, whatsAppType);
+    window.open(`https://wa.me/${normalizedPhone}?text=${encodeURIComponent(message)}`, '_blank');
+    setShowWhatsAppDialog(false);
+  }
 
   return (
-    <div className="h-[calc(100vh-8rem)] flex flex-col">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2">
-            <Calendar className="w-5 h-5 text-pink-600" />
-            <h1 className="text-lg font-bold text-gray-900">Reservasi</h1>
-          </div>
+    <div className="flex h-[calc(100vh-8rem)] flex-col">
+      <div className="mb-4 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Calendar className="h-5 w-5 text-pink-600" />
+          <h1 className="text-lg font-bold text-gray-900">Reservasi</h1>
         </div>
         <button
-          onClick={() => setShowNewForm(true)}
-          className="px-4 py-2 bg-pink-600 text-white text-sm font-medium rounded-lg hover:bg-pink-700 flex items-center gap-2"
+          onClick={() => { resetForm(); setShowNewForm(true); }}
+          className="flex items-center gap-2 rounded-lg bg-pink-600 px-4 py-2 text-sm font-medium text-white hover:bg-pink-700"
         >
-          <Plus className="w-4 h-4" /> Reservasi Baru
+          <Plus className="h-4 w-4" />
+          Reservasi Baru
         </button>
       </div>
 
-      {/* Date Filter */}
-      <div className="flex items-center gap-4 mb-4">
-        <div className="flex items-center gap-2">
-          <Calendar className="w-4 h-4 text-gray-500" />
-          <input
-            type="date"
-            value={selectedDate}
-            onChange={(e) => setSelectedDate(e.target.value)}
-            className="px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-500"
-          />
+      {error && (
+        <div className="mb-3 flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm font-semibold text-red-700">
+          <AlertCircle className="h-4 w-4" />
+          {error}
         </div>
-        <div className="flex gap-1">
-          {(['all', 'pending', 'confirmed', 'seated', 'completed'] as const).map(status => (
+      )}
+
+      <div className="mb-4 flex flex-wrap items-center gap-3">
+        <input
+          type="date"
+          value={selectedDate}
+          onChange={(event) => setSelectedDate(event.target.value)}
+          className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-pink-500"
+        />
+        <div className="flex gap-1 overflow-x-auto">
+          {(['all', 'pending', 'confirmed', 'seated', 'completed'] as const).map((status) => (
             <button
               key={status}
               onClick={() => setFilterStatus(status)}
-              className={`px-3 py-1 rounded-lg text-xs font-medium transition-all ${
-                filterStatus === status 
-                  ? 'bg-pink-600 text-white' 
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              className={`rounded-lg px-3 py-1 text-xs font-medium transition-all ${
+                filterStatus === status ? 'bg-pink-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
               }`}
             >
-              {status === 'all' ? 'Semua' : status === 'pending' ? 'Pending' : status === 'confirmed' ? 'Confirmed' : status === 'seated' ? 'Seated' : 'Completed'}
+              {status === 'all' ? 'Semua' : status}
             </button>
           ))}
         </div>
       </div>
 
-      {/* Reservations List */}
-      <div className="flex-1 overflow-y-auto space-y-2">
-        {filteredReservations.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-64 text-gray-400">
-            <Calendar className="w-12 h-12 mb-2 opacity-50" />
+      <div className="flex-1 space-y-2 overflow-y-auto">
+        {loading ? (
+          <div className="flex h-64 items-center justify-center gap-2 text-sm text-gray-500">
+            <Loader2 className="h-5 w-5 animate-spin" />
+            Memuat reservasi...
+          </div>
+        ) : sortedReservations.length === 0 ? (
+          <div className="flex h-64 flex-col items-center justify-center text-gray-400">
+            <Calendar className="mb-2 h-12 w-12 opacity-50" />
             <p className="text-sm">Tidak ada reservasi</p>
           </div>
         ) : (
-          filteredReservations.map(reservation => {
+          sortedReservations.map((reservation) => {
             const statusBadge = getStatusBadge(reservation.status);
             return (
-              <div key={reservation.id} className="bg-white rounded-xl border border-gray-200 p-4">
-                <div className="flex items-start justify-between mb-3">
+              <div key={reservation.id} className="rounded-xl border border-gray-200 bg-white p-4">
+                <div className="mb-3 flex items-start justify-between">
                   <div>
-                    <div className="flex items-center gap-2 mb-1">
-                      <h3 className="font-semibold text-gray-900">{reservation.customerName}</h3>
-                      <span className={`px-2 py-0.5 rounded-full text-xs font-medium border ${statusBadge.class}`}>
+                    <div className="mb-1 flex items-center gap-2">
+                      <h3 className="font-semibold text-gray-900">{reservationName(reservation)}</h3>
+                      <span className={`rounded-full border px-2 py-0.5 text-xs font-medium ${statusBadge.className}`}>
                         {statusBadge.label}
                       </span>
                     </div>
-                    <div className="flex items-center gap-3 text-xs text-gray-500">
-                      <span className="flex items-center gap-1">
-                        <Phone className="w-3 h-3" /> {reservation.customerPhone}
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <Users className="w-3 h-3" /> {reservation.guestCount} org
-                      </span>
+                    <div className="flex flex-wrap items-center gap-3 text-xs text-gray-500">
+                      <span className="flex items-center gap-1"><Phone className="h-3 w-3" /> {reservationPhone(reservation)}</span>
+                      <span className="flex items-center gap-1"><Users className="h-3 w-3" /> {reservation.pax_count} org</span>
                     </div>
                   </div>
                   <div className="text-right">
                     <div className="flex items-center gap-1 text-sm font-medium text-gray-900">
-                      <Clock className="w-4 h-4 text-gray-500" />
-                      {reservation.time}
+                      <Clock className="h-4 w-4 text-gray-500" />
+                      {reservation.time_slot}
                     </div>
-                    {reservation.tableName && (
-                      <div className="text-xs text-gray-500 mt-0.5">{reservation.tableName}</div>
-                    )}
+                    {reservation.table?.table_number && <div className="mt-0.5 text-xs text-gray-500">{reservation.table.table_number}</div>}
                   </div>
                 </div>
 
-                {reservation.notes && (
-                  <div className="text-xs text-gray-600 bg-gray-50 rounded-lg p-2 mb-3">
-                    {reservation.notes}
-                  </div>
+                {reservation.notes && <div className="mb-3 rounded-lg bg-gray-50 p-2 text-xs text-gray-600">{reservation.notes}</div>}
+                {Number(reservation.deposit_amount || 0) > 0 && (
+                  <div className="mb-3 text-xs font-medium text-green-600">Deposit: {formatCurrency(Number(reservation.deposit_amount))}</div>
                 )}
 
-                {reservation.deposit > 0 && (
-                  <div className="text-xs text-green-600 font-medium mb-3">
-                    Deposit: {formatCurrency(reservation.deposit)}
-                  </div>
-                )}
-
-                {/* Action Buttons */}
-                <div className="flex gap-2 pt-2 border-t border-gray-100">
+                <div className="flex gap-2 border-t border-gray-100 pt-2">
                   {reservation.status === 'pending' && (
                     <>
-                      <button 
-                        onClick={() => updateStatus(reservation.id, 'confirmed')}
-                        className="flex-1 py-1.5 bg-blue-50 text-blue-600 text-xs font-medium rounded-lg hover:bg-blue-100"
-                      >
-                        Konfirmasi
-                      </button>
-                      <button 
-                        onClick={() => openWhatsApp(reservation, 'confirmation')}
-                        className="flex-1 py-1.5 bg-green-50 text-green-600 text-xs font-medium rounded-lg hover:bg-green-100 flex items-center justify-center gap-1"
-                      >
-                        <MessageSquare className="w-3 h-3" /> WA Konfirmasi
-                      </button>
-                      <button 
-                        onClick={() => updateStatus(reservation.id, 'cancelled')}
-                        className="py-1.5 px-2 bg-red-50 text-red-600 text-xs font-medium rounded-lg hover:bg-red-100"
-                      >
-                        <X className="w-3 h-3" />
-                      </button>
+                      <button onClick={() => updateStatus(reservation.id, 'confirmed')} className="flex-1 rounded-lg bg-blue-50 py-1.5 text-xs font-medium text-blue-600 hover:bg-blue-100">Konfirmasi</button>
+                      <button onClick={() => openWhatsApp(reservation, 'confirmation')} className="flex flex-1 items-center justify-center gap-1 rounded-lg bg-green-50 py-1.5 text-xs font-medium text-green-600 hover:bg-green-100"><MessageSquare className="h-3 w-3" /> WA</button>
+                      <button onClick={() => updateStatus(reservation.id, 'cancelled')} className="rounded-lg bg-red-50 px-2 py-1.5 text-xs font-medium text-red-600 hover:bg-red-100"><X className="h-3 w-3" /></button>
                     </>
                   )}
                   {reservation.status === 'confirmed' && (
                     <>
-                      <button 
-                        onClick={() => updateStatus(reservation.id, 'seated')}
-                        className="flex-1 py-1.5 bg-green-50 text-green-600 text-xs font-medium rounded-lg hover:bg-green-100"
-                      >
-                        Tempati Meja
-                      </button>
-                      <button 
-                        onClick={() => openWhatsApp(reservation, 'reminder')}
-                        className="flex-1 py-1.5 bg-green-50 text-green-600 text-xs font-medium rounded-lg hover:bg-green-100 flex items-center justify-center gap-1"
-                      >
-                        <MessageSquare className="w-3 h-3" /> WA Reminder
-                      </button>
-                      <button 
-                        onClick={() => updateStatus(reservation.id, 'no_show')}
-                        className="py-1.5 px-2 bg-gray-50 text-gray-600 text-xs font-medium rounded-lg hover:bg-gray-100"
-                      >
-                        No Show
-                      </button>
+                      <button onClick={() => updateStatus(reservation.id, 'seated')} className="flex-1 rounded-lg bg-green-50 py-1.5 text-xs font-medium text-green-600 hover:bg-green-100">Tempati Meja</button>
+                      <button onClick={() => openWhatsApp(reservation, 'reminder')} className="flex flex-1 items-center justify-center gap-1 rounded-lg bg-green-50 py-1.5 text-xs font-medium text-green-600 hover:bg-green-100"><MessageSquare className="h-3 w-3" /> Reminder</button>
+                      <button onClick={() => updateStatus(reservation.id, 'no_show')} className="rounded-lg bg-gray-50 px-2 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-100">No Show</button>
                     </>
                   )}
                   {reservation.status === 'seated' && (
-                    <button 
-                      onClick={() => updateStatus(reservation.id, 'completed')}
-                      className="flex-1 py-1.5 bg-gray-100 text-gray-700 text-xs font-medium rounded-lg hover:bg-gray-200"
-                    >
-                      Selesaikan
-                    </button>
+                    <button onClick={() => updateStatus(reservation.id, 'completed')} className="flex-1 rounded-lg bg-gray-100 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-200">Selesaikan</button>
                   )}
                 </div>
               </div>
@@ -379,220 +361,97 @@ Jika ada perubahan, silakan hubungi kami.
         )}
       </div>
 
-      {/* New Reservation Modal */}
-      <Dialog open={showNewForm} onOpenChange={(o) => !o && setShowNewForm(false)}>
-        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+      <Dialog open={showNewForm} onOpenChange={(open) => !open && setShowNewForm(false)}>
+        <DialogContent className="max-h-[90vh] max-w-lg overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-base font-semibold">Reservasi Baru</DialogTitle>
           </DialogHeader>
-          
           <div className="space-y-4 py-2">
-            {/* Customer Selection */}
             <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1.5">Pelanggan</label>
-              <button
-                onClick={() => setShowCustomerSearch(true)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-left flex items-center justify-between hover:bg-gray-50"
-              >
-                <span className={formData.customerName ? 'text-gray-900' : 'text-gray-400'}>
-                  {formData.customerName || 'Cari pelanggan...'}
-                </span>
-                <Search className="w-4 h-4 text-gray-400" />
+              <label className="mb-1.5 block text-xs font-medium text-gray-700">Pelanggan</label>
+              <button onClick={() => setShowCustomerSearch(true)} className="flex w-full items-center justify-between rounded-lg border border-gray-300 px-3 py-2 text-left text-sm hover:bg-gray-50">
+                <span className={formData.customerName ? 'text-gray-900' : 'text-gray-400'}>{formData.customerName || 'Cari pelanggan...'}</span>
+                <Search className="h-4 w-4 text-gray-400" />
               </button>
             </div>
 
-            {/* Date & Time */}
             <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1.5">Tanggal</label>
-                <div className="relative">
-                  <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                  <input
-                    type="date"
-                    value={formData.date}
-                    onChange={(e) => setFormData(prev => ({ ...prev, date: e.target.value }))}
-                    className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-500"
-                  />
-                </div>
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1.5">Waktu</label>
-                <select
-                  value={formData.time}
-                  onChange={(e) => setFormData(prev => ({ ...prev, time: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-500"
-                >
-                  {timeSlots.map(slot => (
-                    <option key={slot} value={slot}>{slot}</option>
-                  ))}
-                </select>
-              </div>
+              <Field label="Tanggal"><input type="date" value={formData.date} onChange={(event) => setFormData((prev) => ({ ...prev, date: event.target.value }))} className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-pink-500" /></Field>
+              <Field label="Waktu"><select value={formData.time} onChange={(event) => setFormData((prev) => ({ ...prev, time: event.target.value }))} className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-pink-500">{timeSlots.map((slot) => <option key={slot}>{slot}</option>)}</select></Field>
             </div>
 
-            {/* Guest Count */}
-            <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1.5">Jumlah Tamu</label>
-              <div className="flex items-center gap-3">
-                <button
-                  onClick={() => setFormData(prev => ({ ...prev, guestCount: Math.max(1, prev.guestCount - 1) }))}
-                  className="w-10 h-10 rounded-lg border border-gray-300 flex items-center justify-center hover:bg-gray-100"
-                >
-                  <Users className="w-4 h-4" />
-                </button>
-                <span className="text-lg font-semibold text-gray-900 w-12 text-center">{formData.guestCount}</span>
-                <button
-                  onClick={() => setFormData(prev => ({ ...prev, guestCount: prev.guestCount + 1 }))}
-                  className="w-10 h-10 rounded-lg border border-gray-300 flex items-center justify-center hover:bg-gray-100"
-                >
-                  <Plus className="w-4 h-4" />
-                </button>
-              </div>
-            </div>
+            <Field label="Jumlah Tamu">
+              <input type="number" min={1} value={formData.guestCount} onChange={(event) => setFormData((prev) => ({ ...prev, guestCount: Math.max(1, Number(event.target.value) || 1) }))} className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-pink-500" />
+            </Field>
 
-            {/* Table Selection */}
-            <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1.5">Pilih Meja (opsional)</label>
+            <Field label="Pilih Meja">
               <div className="grid grid-cols-4 gap-2">
-                {tables.map(table => (
+                {tables.map((table) => (
                   <button
                     key={table.id}
-                    onClick={() => handleTableSelect(table.id)}
-                    disabled={table.status === 'occupied'}
-                    className={`p-2 rounded-lg border-2 text-xs font-medium transition-all ${
-                      formData.tableId === table.id
-                        ? 'border-pink-600 bg-pink-50 text-pink-700'
-                        : table.status === 'occupied'
-                        ? 'border-gray-200 bg-gray-100 text-gray-400 cursor-not-allowed'
-                        : 'border-gray-200 hover:border-pink-400 text-gray-700'
+                    onClick={() => setFormData((prev) => ({ ...prev, tableId: prev.tableId === table.id ? null : table.id }))}
+                    className={`rounded-lg border-2 p-2 text-xs font-medium transition-all ${
+                      formData.tableId === table.id ? 'border-pink-600 bg-pink-50 text-pink-700' : 'border-gray-200 text-gray-700 hover:border-pink-400'
                     }`}
                   >
-                    <div>{table.name}</div>
-                    <div className="text-xs opacity-70">{table.capacity} org</div>
+                    <div>{table.table_number || table.label || table.id.slice(0, 6)}</div>
+                    <div className="opacity-70">{table.capacity || 4} org</div>
                   </button>
                 ))}
               </div>
-            </div>
+            </Field>
 
-            {/* Order Type */}
-            <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1.5">Tipe Pesanan</label>
+            <Field label="Tipe Pesanan">
               <div className="flex gap-2">
-                {(['dine_in', 'takeaway', 'delivery'] as OrderType[]).map(type => (
-                  <button
-                    key={type}
-                    onClick={() => setFormData(prev => ({ ...prev, orderType: type }))}
-                    className={`flex-1 py-2 rounded-lg border-2 text-xs font-medium transition-all ${
-                      formData.orderType === type
-                        ? 'border-pink-600 bg-pink-50 text-pink-700'
-                        : 'border-gray-200 text-gray-700 hover:border-pink-400'
-                    }`}
-                  >
+                {(['dine_in', 'takeaway', 'delivery'] as OrderType[]).map((type) => (
+                  <button key={type} onClick={() => setFormData((prev) => ({ ...prev, orderType: type }))} className={`flex-1 rounded-lg border-2 py-2 text-xs font-medium ${formData.orderType === type ? 'border-pink-600 bg-pink-50 text-pink-700' : 'border-gray-200 text-gray-700 hover:border-pink-400'}`}>
                     {type === 'dine_in' ? 'Dine-in' : type === 'takeaway' ? 'Takeaway' : 'Delivery'}
                   </button>
                 ))}
               </div>
-            </div>
+            </Field>
 
-            {/* Deposit */}
-            <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1.5">Deposit (opsional)</label>
+            <Field label="Deposit">
               <div className="flex gap-2">
-                {[0, 25000, 50000, 100000].map(amount => (
-                  <button
-                    key={amount}
-                    onClick={() => setFormData(prev => ({ ...prev, deposit: amount }))}
-                    className={`flex-1 py-2 rounded-lg border-2 text-xs font-medium transition-all ${
-                      formData.deposit === amount
-                        ? 'border-pink-600 bg-pink-50 text-pink-700'
-                        : 'border-gray-200 text-gray-700 hover:border-pink-400'
-                    }`}
-                  >
+                {[0, 25000, 50000, 100000].map((amount) => (
+                  <button key={amount} onClick={() => setFormData((prev) => ({ ...prev, deposit: amount }))} className={`flex-1 rounded-lg border-2 py-2 text-xs font-medium ${formData.deposit === amount ? 'border-pink-600 bg-pink-50 text-pink-700' : 'border-gray-200 text-gray-700 hover:border-pink-400'}`}>
                     {amount === 0 ? 'Tanpa' : formatCurrency(amount)}
                   </button>
                 ))}
               </div>
-            </div>
+            </Field>
 
-            {/* Notes */}
-            <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1.5">Catatan</label>
-              <textarea
-                value={formData.notes}
-                onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
-                placeholder="Contoh: Ultah anak, meeting kantor..."
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 resize-none"
-                rows={2}
-              />
-            </div>
+            <Field label="Catatan">
+              <textarea value={formData.notes} onChange={(event) => setFormData((prev) => ({ ...prev, notes: event.target.value }))} placeholder="Contoh: Ultah anak, meeting kantor..." className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 min-h-16 resize-none" />
+            </Field>
           </div>
-
-          {/* Submit */}
-          <div className="flex gap-3 pt-3 border-t">
-            <button
-              onClick={() => setShowNewForm(false)}
-              className="flex-1 py-2.5 bg-gray-100 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-200"
-            >
-              Batal
-            </button>
-            <button
-              onClick={submitReservation}
-              disabled={!formData.customerName || !formData.date || !formData.time}
-              className="flex-1 py-2.5 bg-pink-600 text-white text-sm font-medium rounded-lg hover:bg-pink-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
-            >
-              Simpan Reservasi
+          <div className="flex gap-3 border-t pt-3">
+            <button onClick={() => setShowNewForm(false)} className="flex-1 rounded-lg bg-gray-100 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-200">Batal</button>
+            <button onClick={submitReservation} disabled={submitting || !formData.customerName || !formData.date || !formData.time} className="flex-1 rounded-lg bg-pink-600 py-2.5 text-sm font-medium text-white hover:bg-pink-700 disabled:bg-gray-300">
+              {submitting ? 'Menyimpan...' : 'Simpan Reservasi'}
             </button>
           </div>
         </DialogContent>
       </Dialog>
 
-      {/* Customer Search Modal */}
-      <Dialog open={showCustomerSearch} onOpenChange={(o) => !o && setShowCustomerSearch(false)}>
+      <Dialog open={showCustomerSearch} onOpenChange={(open) => !open && setShowCustomerSearch(false)}>
         <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle className="text-sm font-semibold">Cari Pelanggan</DialogTitle>
-          </DialogHeader>
+          <DialogHeader><DialogTitle className="text-sm font-semibold">Cari Pelanggan</DialogTitle></DialogHeader>
           <div className="py-2">
             <div className="relative mb-3">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
-              <input
-                type="text"
-                placeholder="Nama atau telepon..."
-                value={customerSearch}
-                onChange={(e) => setCustomerSearch(e.target.value)}
-                autoFocus
-                className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-500"
-              />
+              <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400" />
+              <input value={customerSearch} onChange={(event) => setCustomerSearch(event.target.value)} placeholder="Nama atau telepon..." autoFocus className="w-full rounded-lg border border-gray-300 py-2 pl-9 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-pink-500" />
             </div>
-            <div className="space-y-1 max-h-64 overflow-y-auto">
-              <button
-                onClick={() => {
-                  setFormData(prev => ({ ...prev, customerName: '', customerPhone: '' }));
-                  setShowCustomerSearch(false);
-                }}
-                className="w-full p-3 text-left rounded-lg hover:bg-gray-50 flex items-center gap-3"
-              >
-                <div className="w-9 h-9 bg-gray-100 rounded-full flex items-center justify-center">
-                  <User className="w-4 h-4 text-gray-500" />
-                </div>
-                <div>
-                  <div className="text-sm font-medium text-gray-900">Pelanggan Baru</div>
-                  <div className="text-xs text-gray-500">Tidak terdaftar</div>
-                </div>
+            <div className="max-h-64 space-y-1 overflow-y-auto">
+              <button onClick={() => { setFormData((prev) => ({ ...prev, customerId: null, customerName: '', customerPhone: '' })); setShowCustomerSearch(false); }} className="flex w-full items-center gap-3 rounded-lg p-3 text-left hover:bg-gray-50">
+                <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gray-100"><User className="h-4 w-4 text-gray-500" /></div>
+                <div><div className="text-sm font-medium text-gray-900">Pelanggan Baru</div><div className="text-xs text-gray-500">Input manual di catatan nanti</div></div>
               </button>
-              {filteredCustomers.map(customer => (
-                <button
-                  key={customer.id}
-                  onClick={() => selectCustomer(customer)}
-                  className="w-full p-3 text-left rounded-lg hover:bg-pink-50 flex items-center gap-3"
-                >
-                  <div className="w-9 h-9 bg-pink-100 rounded-full flex items-center justify-center">
-                    <span className="text-pink-600 font-bold text-sm">{customer.name.charAt(0)}</span>
-                  </div>
-                  <div className="flex-1">
-                    <div className="text-sm font-medium text-gray-900">{customer.name}</div>
-                    <div className="text-xs text-gray-500">{customer.phone}</div>
-                  </div>
-                  <div className="text-xs text-gray-400">{customer.visitCount}x</div>
+              {filteredCustomers.map((customer) => (
+                <button key={customer.id} onClick={() => selectCustomer(customer)} className="flex w-full items-center gap-3 rounded-lg p-3 text-left hover:bg-pink-50">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-full bg-pink-100"><span className="text-sm font-bold text-pink-600">{(customer.name || customer.phone).charAt(0)}</span></div>
+                  <div className="flex-1"><div className="text-sm font-medium text-gray-900">{customer.name || 'Tanpa Nama'}</div><div className="text-xs text-gray-500">{customer.phone}</div></div>
+                  <div className="text-xs text-gray-400">{customer.visit_count || 0}x</div>
                 </button>
               ))}
             </div>
@@ -600,77 +459,18 @@ Jika ada perubahan, silakan hubungi kami.
         </DialogContent>
       </Dialog>
 
-      {/* WhatsApp Reminder Dialog */}
-      <Dialog open={showWhatsAppDialog} onOpenChange={(o) => !o && setShowWhatsAppDialog(false)}>
+      <Dialog open={showWhatsAppDialog} onOpenChange={(open) => !open && setShowWhatsAppDialog(false)}>
         <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle className="text-sm font-semibold flex items-center gap-2">
-              <MessageSquare className="w-4 h-4 text-green-600" />
-              Kirim WhatsApp
-            </DialogTitle>
-          </DialogHeader>
-          
+          <DialogHeader><DialogTitle className="flex items-center gap-2 text-sm font-semibold"><MessageSquare className="h-4 w-4 text-green-600" />Kirim WhatsApp</DialogTitle></DialogHeader>
           {whatsAppReservation && (
-            <div className="py-3 space-y-4">
-              {/* Recipient Info */}
-              <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
-                <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
-                  <span className="text-green-600 font-bold">{whatsAppReservation.customerName.charAt(0)}</span>
-                </div>
-                <div>
-                  <div className="font-medium text-gray-900 text-sm">{whatsAppReservation.customerName}</div>
-                  <div className="text-xs text-gray-500">{whatsAppReservation.customerPhone}</div>
-                </div>
+            <div className="space-y-4 py-3">
+              <div className="rounded-lg border border-green-200 bg-green-50 p-3 text-xs text-gray-700 whitespace-pre-line">
+                {generateWhatsAppMessage(whatsAppReservation, whatsAppType)}
               </div>
-
-              {/* Message Type */}
-              <div>
-                <label className="block text-xs font-medium text-gray-700 mb-2">Jenis Pesan</label>
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => setWhatsAppType('reminder')}
-                    className={`flex-1 py-2 px-3 rounded-lg border-2 text-xs font-medium transition-all ${
-                      whatsAppType === 'reminder'
-                        ? 'border-green-600 bg-green-50 text-green-700'
-                        : 'border-gray-200 text-gray-600 hover:border-green-400'
-                    }`}
-                  >
-                    Reminder
-                  </button>
-                  <button
-                    onClick={() => setWhatsAppType('confirmation')}
-                    className={`flex-1 py-2 px-3 rounded-lg border-2 text-xs font-medium transition-all ${
-                      whatsAppType === 'confirmation'
-                        ? 'border-green-600 bg-green-50 text-green-700'
-                        : 'border-gray-200 text-gray-600 hover:border-green-400'
-                    }`}
-                  >
-                    Konfirmasi
-                  </button>
-                </div>
-              </div>
-
-              {/* Message Preview */}
-              <div>
-                <label className="block text-xs font-medium text-gray-700 mb-2">Preview Pesan</label>
-                <div className="p-3 bg-green-50 rounded-lg border border-green-200 text-xs text-gray-700 whitespace-pre-line max-h-48 overflow-y-auto">
-                  {generateWhatsAppMessage(whatsAppReservation, whatsAppType)}
-                </div>
-              </div>
-
-              {/* Actions */}
-              <div className="flex gap-3 pt-2">
-                <button
-                  onClick={() => setShowWhatsAppDialog(false)}
-                  className="flex-1 py-2.5 bg-gray-100 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-200"
-                >
-                  Batal
-                </button>
-                <button
-                  onClick={sendWhatsApp}
-                  className="flex-1 py-2.5 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 flex items-center justify-center gap-2"
-                >
-                  <MessageSquare className="w-4 h-4" />
+              <div className="flex gap-3">
+                <button onClick={() => setShowWhatsAppDialog(false)} className="flex-1 rounded-lg bg-gray-100 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-200">Batal</button>
+                <button onClick={sendWhatsApp} className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-green-600 py-2.5 text-sm font-medium text-white hover:bg-green-700">
+                  <MessageSquare className="h-4 w-4" />
                   Kirim via WhatsApp
                 </button>
               </div>
@@ -678,6 +478,15 @@ Jika ada perubahan, silakan hubungi kami.
           )}
         </DialogContent>
       </Dialog>
+    </div>
+  );
+}
+
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <label className="mb-1.5 block text-xs font-medium text-gray-700">{label}</label>
+      {children}
     </div>
   );
 }

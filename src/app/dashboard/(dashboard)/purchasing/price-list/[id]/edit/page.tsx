@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -14,6 +14,10 @@ import { Combobox } from "@/components/ui/combobox";
 import { DatePicker } from "@/components/ui/datepicker";
 import { Supplier, RawMaterialWithStock, Unit, SupplierPriceListFormData } from "@/types/purchasing";
 import { listSuppliers, listRawMaterials, listUnits, getPriceList, updatePriceList } from "@/lib/purchasing";
+
+function getErrorMessage(error: unknown, fallback: string) {
+  return error instanceof Error ? error.message : fallback;
+}
 
 export default function EditPriceListPage() {
   const router = useRouter();
@@ -39,11 +43,7 @@ export default function EditPriceListPage() {
     catatan: "",
   });
 
-  useEffect(() => {
-    loadData();
-  }, [priceListId]);
-
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     try {
       const [suppliersData, materialsData, unitsData, priceList] = await Promise.all([
         listSuppliers({ is_active: true }),
@@ -73,7 +73,11 @@ export default function EditPriceListPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [priceListId]);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -96,9 +100,9 @@ export default function EditPriceListPage() {
       await updatePriceList(priceListId, formData);
       toast.success("Price list berhasil diupdate");
       router.push("/dashboard/purchasing/price-list");
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error updating price list:", error);
-      toast.error(error.message || "Gagal mengupdate price list");
+      toast.error(getErrorMessage(error, "Gagal mengupdate price list"));
     } finally {
       setIsSubmitting(false);
     }

@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase/service-client';
 import { getPosSession } from '@/lib/api/auth';
 
+function getErrorMessage(error: unknown) {
+  return error instanceof Error ? error.message : 'Unknown error';
+}
+
 // GET /api/pos/topup/history - Get customer topup history
 export async function GET(request: NextRequest) {
   const sessionUserId = await getPosSession();
@@ -34,10 +38,10 @@ export async function GET(request: NextRequest) {
     if (error) throw error;
 
     return NextResponse.json({ success: true, data });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error fetching topup history:', error);
     return NextResponse.json(
-      { success: false, error: error.message },
+      { success: false, error: getErrorMessage(error) },
       { status: 500 }
     );
   }
@@ -68,8 +72,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Calculate Ark Coin amount (1 ARK = 1000 IDR)
-    const arkCoins = amount / 1000;
+    // Balance is stored as Rupiah-equivalent; UI displays ARK with 1 ARK = Rp 1,000.
+    const amountValue = Number(amount) || 0;
+    const arkCoins = amountValue / 1000;
 
     // Get current customer balance and total_spent
     const { data: customer, error: customerError } = await supabase
@@ -86,8 +91,8 @@ export async function POST(request: NextRequest) {
     }
 
     const balanceBefore = Number(customer.ark_coin_balance) || 0;
-    const balanceAfter = balanceBefore + arkCoins;
-    const totalSpentAfter = Number(customer.total_spent || 0) + amount;
+    const balanceAfter = balanceBefore + amountValue;
+    const totalSpentAfter = Number(customer.total_spent || 0) + amountValue;
 
     // Start transaction
     // 1. Update customer balance
@@ -108,7 +113,7 @@ export async function POST(request: NextRequest) {
       .insert({
         customer_id,
         type: 'topup',
-        amount: amount,
+        amount: amountValue,
         ark_coins: arkCoins,
         balance_before: balanceBefore,
         balance_after: balanceAfter,
@@ -139,10 +144,10 @@ export async function POST(request: NextRequest) {
         qr_code_url: qrCodeUrl
       }
     }, { status: 201 });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error processing topup:', error);
     return NextResponse.json(
-      { success: false, error: error.message },
+      { success: false, error: getErrorMessage(error) },
       { status: 500 }
     );
   }

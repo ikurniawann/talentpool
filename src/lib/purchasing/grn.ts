@@ -7,6 +7,23 @@ import { SupabaseClient } from "@supabase/supabase-js";
 
 export type GrnStatus = "pending" | "partially_received" | "received" | "rejected";
 
+type DeliveryForGrn = {
+  id: string;
+  purchase_order_id: string;
+  status: string;
+};
+
+type POItemForGrn = {
+  id: string;
+  raw_material_id: string;
+  qty_ordered: number;
+  qty_received: number;
+  raw_material?: {
+    id: string;
+    nama: string;
+  } | null;
+};
+
 export const GRN_TRANSITIONS: Record<GrnStatus, GrnStatus[]> = {
   pending: ["received", "partially_received", "rejected"],
   partially_received: ["received"],
@@ -47,7 +64,7 @@ export async function generateGrnNumber(supabase: SupabaseClient): Promise<strin
 export async function validateDeliveryCanReceive(
   supabase: SupabaseClient,
   deliveryId: string
-): Promise<{ valid: boolean; errors: string[]; delivery?: any; items?: any[] }> {
+): Promise<{ valid: boolean; errors: string[]; delivery?: DeliveryForGrn; items?: POItemForGrn[] }> {
   const errors: string[] = [];
 
   // Get delivery details
@@ -93,7 +110,16 @@ export async function validateDeliveryCanReceive(
     .eq("purchase_order_id", delivery.purchase_order_id)
     .eq("is_active", true);
 
-  return { valid: errors.length === 0, errors, delivery, items: poItems || [] };
+  if (poItemsError) {
+    errors.push(poItemsError.message);
+  }
+
+  return {
+    valid: errors.length === 0,
+    errors,
+    delivery: delivery as DeliveryForGrn,
+    items: (poItems || []) as POItemForGrn[],
+  };
 }
 
 // ============================================================
@@ -186,11 +212,11 @@ export async function updatePOStatusAfterGrn(
   // Determine new status
   let newStatus: string;
   if (totalReceived === 0) {
-    newStatus = "SENT"; // Belum diterima sama sekali
+    newStatus = "sent"; // Belum diterima sama sekali
   } else if (totalReceived >= totalOrdered) {
-    newStatus = "RECEIVED"; // Sudah diterima semua
+    newStatus = "received"; // Sudah diterima semua
   } else {
-    newStatus = "PARTIAL"; // Diterima sebagian
+    newStatus = "partially_received"; // Diterima sebagian
   }
 
   // Update PO status

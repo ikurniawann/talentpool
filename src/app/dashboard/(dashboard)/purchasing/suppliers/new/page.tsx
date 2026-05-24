@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Combobox } from "@/components/ui/combobox";
-import { ArrowLeft, Save, Building2, User, FileText, MapPin, Phone, Mail } from "lucide-react";
+import { ArrowLeft, Save, Building2, User, FileText, Phone } from "lucide-react";
 import {
   SupplierFormData,
   PaymentTerms,
@@ -22,6 +22,10 @@ import {
 } from "@/types/supplier";
 import { createSupplier } from "@/lib/purchasing/supplier";
 import { toast } from "sonner";
+
+function getErrorMessage(error: unknown, fallback: string) {
+  return error instanceof Error ? error.message : fallback;
+}
 
 export default function NewSupplierPage() {
   const router = useRouter();
@@ -59,11 +63,11 @@ export default function NewSupplierPage() {
     }
 
     // Mapping field dari form ke API schema
-    const payload: any = {
+    const payload: SupplierFormData & { status: string } = {
       nama_supplier: formData.nama_supplier,
       kota: formData.kota,
-      payment_terms: formData.payment_terms as PaymentTerms,
-      currency: formData.currency as Currency,
+      payment_terms: formData.payment_terms,
+      currency: formData.currency,
       status: saveAsDraft ? "draft" : "active", // Add status field
     };
 
@@ -77,6 +81,12 @@ export default function NewSupplierPage() {
     if (formData.pic_phone && formData.pic_phone.trim()) {
       payload.pic_phone = formData.pic_phone.trim();
     }
+    if (formData.pic_email && formData.pic_email.trim()) {
+      payload.pic_email = formData.pic_email.trim();
+    }
+    if (formData.telepon && formData.telepon.trim()) {
+      payload.telepon = formData.telepon.trim();
+    }
     if (formData.email && formData.email.trim()) {
       payload.email = formData.email.trim();
     }
@@ -86,23 +96,18 @@ export default function NewSupplierPage() {
     if (formData.npwp && formData.npwp.trim()) {
       payload.npwp = formData.npwp.trim();
     }
+    if (formData.catatan && formData.catatan.trim()) {
+      payload.catatan = formData.catatan.trim();
+    }
 
     setLoading(true);
     try {
-      console.log("Submitting supplier payload:", payload);
       await createSupplier(payload);
       toast.success(saveAsDraft ? "Draft supplier berhasil disimpan" : "Supplier berhasil ditambahkan");
       router.push("/dashboard/purchasing/suppliers");
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error creating supplier:", error);
-      // Log detailed error if available
-      if (error.response) {
-        const errorData = await error.response.json();
-        console.error("API Error details:", errorData);
-        toast.error(errorData.message || errorData.error || "Gagal menambahkan supplier");
-      } else {
-        toast.error(error.message || "Gagal menambahkan supplier");
-      }
+      toast.error(getErrorMessage(error, "Gagal menambahkan supplier"));
     } finally {
       setLoading(false);
     }

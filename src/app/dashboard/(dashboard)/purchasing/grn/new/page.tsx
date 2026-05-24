@@ -1,8 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
-import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -16,7 +15,6 @@ import {
   Command,
   CommandEmpty,
   CommandGroup,
-  CommandInput,
   CommandItem,
   CommandList,
 } from "@/components/ui/command";
@@ -44,6 +42,8 @@ interface Delivery {
   tanggal_estimasi_tiba: string;
   supplier_name?: string;
   po_number?: string;
+  po_id?: string;
+  search_text?: string;
 }
 
 interface POItem {
@@ -54,6 +54,23 @@ interface POItem {
   qty_received: number;
   satuan?: string;
 }
+
+type POItemApiRow = {
+  id: string;
+  raw_material_id: string;
+  nama_bahan?: string;
+  qty_ordered?: number;
+  qty_received?: number;
+  raw_material?: {
+    nama?: string;
+  } | null;
+  satuan?: string | {
+    nama?: string;
+  } | null;
+  unit?: {
+    nama?: string;
+  } | null;
+};
 
 interface GrnItem {
   id: string;
@@ -68,9 +85,10 @@ interface GrnItem {
 
 export default function CreateGrnPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
-  const [fetchingDeliveries, setFetchingDeliveries] = useState(true);
+  const [, setFetchingDeliveries] = useState(true);
   const [deliveries, setDeliveries] = useState<Delivery[]>([]);
   const [selectedDelivery, setSelectedDelivery] = useState<Delivery | null>(null);
   const [poItems, setPoItems] = useState<POItem[]>([]);
@@ -96,10 +114,15 @@ export default function CreateGrnPage() {
       console.log('Deliveries API response:', data);
       if (data.data && Array.isArray(data.data)) {
         // Enhance delivery data with searchable text and safe defaults
-        const enhanced = data.data.map((d: any) => ({
+        const enhanced = (data.data as Array<Partial<Delivery> & {
+          po_id?: string;
+          delivery_number?: string;
+          ekspedisi?: string;
+          vendor_name?: string;
+        }>).map((d) => ({
           id: d.id,
-          no_resi: d.no_resi || d.nomor_resi || '',
-          nomor_resi: d.nomor_resi || d.no_resi || '',
+          no_resi: d.no_resi || d.nomor_resi || d.delivery_number || '',
+          nomor_resi: d.nomor_resi || d.no_resi || d.delivery_number || '',
           no_surat_jalan: d.no_surat_jalan || '',
           kurir: d.kurir || d.ekspedisi || d.vendor_name || '',
           status: d.status || 'pending',
@@ -111,7 +134,7 @@ export default function CreateGrnPage() {
           supplier_name: d.supplier_name || d.kurir || d.ekspedisi || d.no_surat_jalan || d.no_resi || 'Unknown',
           po_number: d.po_number || d.nomor_resi || d.no_resi || '',
           search_text: `${d.no_resi || ''} ${d.nomor_resi || ''} ${d.no_surat_jalan || ''} ${d.kurir || ''} ${d.ekspedisi || ''}`.toLowerCase(),
-        }));
+        })) as Delivery[];
         console.log('Enhanced deliveries:', enhanced);
         setDeliveries(enhanced);
       }
@@ -126,6 +149,16 @@ export default function CreateGrnPage() {
       setFetchingDeliveries(false);
     }
   }
+
+  useEffect(() => {
+    const deliveryId = searchParams.get("delivery_id");
+    if (!deliveryId || selectedDelivery || deliveries.length === 0) return;
+    const delivery = deliveries.find((item) => item.id === deliveryId);
+    if (delivery) {
+      setSelectedDelivery(delivery);
+      setFormData((prev) => ({ ...prev, delivery_id: delivery.id }));
+    }
+  }, [deliveries, searchParams, selectedDelivery]);
 
   // Fetch PO items when delivery selected
   useEffect(() => {
@@ -146,13 +179,13 @@ export default function CreateGrnPage() {
       console.log('PO Items response:', data);
       if (data.data && Array.isArray(data.data)) {
         // Extract only the fields we need to avoid rendering complex objects
-        const simplifiedPoItems: POItem[] = data.data.map((item: any) => ({
+        const simplifiedPoItems: POItem[] = (data.data as POItemApiRow[]).map((item) => ({
           id: item.id,
           raw_material_id: item.raw_material_id,
           nama_bahan: typeof item.nama_bahan === 'string' ? item.nama_bahan : (item.raw_material?.nama || 'Unknown'),
           qty_ordered: typeof item.qty_ordered === 'number' ? item.qty_ordered : 0,
           qty_received: typeof item.qty_received === 'number' ? item.qty_received : 0,
-          satuan: typeof item.satuan === 'string' ? item.satuan : (item.unit?.nama || 'pcs'),
+          satuan: typeof item.satuan === 'string' ? item.satuan : (item.satuan?.nama || item.unit?.nama || 'pcs'),
         }));
         setPoItems(simplifiedPoItems);
         // Initialize GRN items from PO items
@@ -161,7 +194,7 @@ export default function CreateGrnPage() {
           purchase_order_item_id: item.id,
           raw_material_id: item.raw_material_id,
           nama_bahan: item.nama_bahan,
-          qty_diterima: 0,
+          qty_diterima: Math.max(0, item.qty_ordered - item.qty_received),
           qty_ditolak: 0,
           kondisi: "baik" as const,
           catatan: "",
@@ -197,9 +230,19 @@ export default function CreateGrnPage() {
     setGrnItems(grnItems.filter((item) => item.id !== id));
   };
 
-  const handleUpdateItem = (id: string, field: keyof GrnItem, value: any) => {
+  const handleUpdateItem = (id: string, field: keyof GrnItem, value: GrnItem[keyof GrnItem]) => {
     setGrnItems(
       grnItems.map((item) => (item.id === id ? { ...item, [field]: value } : item))
+    );
+  };
+
+  const fillAllRemaining = () => {
+    setGrnItems((items) =>
+      items.map((item) => {
+        const poItem = poItems.find((p) => p.id === item.purchase_order_item_id);
+        const remaining = poItem ? Math.max(0, poItem.qty_ordered - poItem.qty_received) : item.qty_diterima;
+        return { ...item, qty_diterima: remaining, qty_ditolak: 0, kondisi: "baik" };
+      })
     );
   };
 
@@ -237,18 +280,18 @@ export default function CreateGrnPage() {
 
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.message || "Gagal membuat GRN");
+        throw new Error(error.message || "Gagal membuat penerimaan barang");
       }
 
       toast({
         title: "Berhasil",
-        description: "GRN berhasil dibuat",
+        description: "Penerimaan barang berhasil dibuat",
       });
       router.push("/dashboard/purchasing/grn");
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Error",
-        description: error.message,
+        description: error instanceof Error ? error.message : "Gagal membuat penerimaan barang",
         variant: "destructive",
       });
     } finally {
@@ -256,8 +299,8 @@ export default function CreateGrnPage() {
     }
   };
 
-  const filteredDeliveries = deliveries.filter((d: any) =>
-    d.search_text.includes(searchQuery.toLowerCase())
+  const filteredDeliveries = deliveries.filter((d) =>
+    (d.search_text || "").includes(searchQuery.toLowerCase())
   );
 
   return (
@@ -268,12 +311,12 @@ export default function CreateGrnPage() {
           <BreadcrumbNav
             items={[
               { href: "/dashboard/purchasing", label: "Purchasing" },
-              { href: "/dashboard/purchasing/grn", label: "Penerimaan Barang" },
-              { label: "Buat GRN Baru" },
+              { href: "/dashboard/purchasing/grn", label: "Barang Masuk" },
+              { label: "Buat Penerimaan Baru" },
             ]}
           />
-          <h1 className="text-2xl font-bold text-gray-900 mt-2">Buat GRN Baru</h1>
-          <p className="text-sm text-gray-500">Goods Receipt Note - Penerimaan Barang</p>
+          <h1 className="text-2xl font-bold text-gray-900 mt-2">Buat Penerimaan Baru</h1>
+          <p className="text-sm text-gray-500">Pilih delivery, cek sisa PO, lalu simpan penerimaan untuk menambah stok</p>
         </div>
         <Button variant="outline" onClick={() => router.back()}>
           <ArrowLeftIcon className="w-4 h-4 mr-2" />
@@ -290,33 +333,34 @@ export default function CreateGrnPage() {
               <CardHeader className="pb-3">
                 <CardTitle className="text-base flex items-center gap-2">
                   <TruckIcon className="w-5 h-5 text-pink-600" />
-                  Pilih Pengiriman
+                  1. Pilih Delivery
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4 p-4">
                 <div className="space-y-2">
                   <Label className="text-sm font-medium">Pengiriman</Label>
                   <Popover open={openDelivery} onOpenChange={setOpenDelivery}>
-                    <PopoverTrigger>
-                      <Button
-                        variant="outline"
-                        role="combobox"
-                        aria-expanded={openDelivery}
-                        className="w-full justify-between h-10 px-3 bg-white hover:bg-gray-50"
-                      >
-                        <span className="truncate text-left font-medium">
-                          {selectedDelivery
-                            ? (() => {
-                                const displayKurir = selectedDelivery.kurir || '';
-                                if (displayKurir) {
-                                  return `${selectedDelivery.no_resi} - ${displayKurir}`;
-                                }
-                                return selectedDelivery.no_resi;
-                              })()
-                            : "Pilih pengiriman..."}
-                        </span>
-                        <ChevronsUpDown className="h-4 w-4 shrink-0 opacity-50" />
-                      </Button>
+                    <PopoverTrigger
+                      type="button"
+                      role="combobox"
+                      aria-expanded={openDelivery}
+                      className={cn(
+                        "flex h-10 w-full items-center justify-between rounded-lg border border-border bg-white px-3 text-sm shadow-xs transition-colors hover:bg-gray-50",
+                        "focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 outline-none"
+                      )}
+                    >
+                      <span className="truncate text-left font-medium">
+                        {selectedDelivery
+                          ? (() => {
+                              const displayKurir = selectedDelivery.kurir || '';
+                              if (displayKurir) {
+                                return `${selectedDelivery.no_resi} - ${displayKurir}`;
+                              }
+                              return selectedDelivery.no_resi;
+                            })()
+                          : "Pilih pengiriman..."}
+                      </span>
+                      <ChevronsUpDown className="h-4 w-4 shrink-0 opacity-50" />
                     </PopoverTrigger>
                     <PopoverContent 
                       className="w-[calc(var(--radix-popover-trigger-width)-16px)] p-0 shadow-2xl z-[100] border-gray-200 bg-white ml-2" 
@@ -338,7 +382,7 @@ export default function CreateGrnPage() {
                         <CommandList className="max-h-64 overflow-y-auto bg-white p-1">
                           <CommandEmpty className="py-6 text-center text-sm text-gray-500">Tidak ada pengiriman ditemukan.</CommandEmpty>
                           <CommandGroup className="p-1">
-                            {filteredDeliveries.map((d: any) => (
+                            {filteredDeliveries.map((d) => (
                               <CommandItem
                                 key={d.id}
                                 value={`${d.no_resi} - ${d.kurir}`}
@@ -356,7 +400,7 @@ export default function CreateGrnPage() {
                                     tanggal_kirim: d.tanggal_kirim,
                                     tanggal_estimasi_tiba: d.tanggal_estimasi_tiba,
                                   };
-                                  setSelectedDelivery(simplifiedDelivery);
+                                  setSelectedDelivery(simplifiedDelivery as Delivery);
                                   setFormData((prev) => ({ ...prev, delivery_id: d.id }));
                                   setOpenDelivery(false);
                                   setSearchQuery("");
@@ -464,18 +508,23 @@ export default function CreateGrnPage() {
                 <div className="flex items-center justify-between">
                   <CardTitle className="text-base font-semibold flex items-center gap-2">
                     <ClipboardDocumentCheckIcon className="w-5 h-5 text-pink-600" />
-                    Item Penerimaan
+                    2. Konfirmasi Item Diterima
                   </CardTitle>
-                  <Button type="button" variant="outline" size="sm" onClick={handleAddItem}>
-                    <PlusIcon className="w-4 h-4 mr-1.5" />
-                    Tambah Item
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button type="button" variant="outline" size="sm" onClick={fillAllRemaining} disabled={grnItems.length === 0}>
+                      Isi Sisa PO
+                    </Button>
+                    <Button type="button" variant="outline" size="sm" onClick={handleAddItem}>
+                      <PlusIcon className="w-4 h-4 mr-1.5" />
+                      Item Manual
+                    </Button>
+                  </div>
                 </div>
               </CardHeader>
               <CardContent className="p-0">
                 {grnItems.length === 0 ? (
                   <div className="flex items-center justify-center h-full text-gray-400 text-sm">
-                    Pilih pengiriman untuk melihat item PO
+                    Pilih delivery di kiri untuk menarik item PO otomatis
                   </div>
                 ) : (
                   <table className="w-full">
@@ -484,17 +533,19 @@ export default function CreateGrnPage() {
                         <th className="text-left text-xs font-semibold text-gray-600 uppercase tracking-wide px-4 py-2.5">Bahan Baku</th>
                         <th className="text-center text-xs font-semibold text-gray-600 uppercase tracking-wide px-3 py-2.5 w-20">Ordered</th>
                         <th className="text-center text-xs font-semibold text-gray-600 uppercase tracking-wide px-3 py-2.5 w-20">Received</th>
-                        <th className="text-center text-xs font-semibold text-gray-600 uppercase tracking-wide px-3 py-2.5 w-24">Diterima</th>
+                        <th className="text-center text-xs font-semibold text-gray-600 uppercase tracking-wide px-3 py-2.5 w-20">Sisa</th>
+                        <th className="text-center text-xs font-semibold text-gray-600 uppercase tracking-wide px-3 py-2.5 w-24">Terima</th>
                         <th className="text-center text-xs font-semibold text-gray-600 uppercase tracking-wide px-3 py-2.5 w-24">Ditolak</th>
                         <th className="text-center text-xs font-semibold text-gray-600 uppercase tracking-wide px-3 py-2.5 w-28">Kondisi</th>
                         <th className="text-right text-xs font-semibold text-gray-600 uppercase tracking-wide px-4 py-2.5 w-16">Aksi</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100">
-                      {grnItems.map((item, idx) => {
+                      {grnItems.map((item) => {
                         const poItem = poItems.find((p) => p.id === item.purchase_order_item_id);
                         const qtyOrdered = typeof poItem?.qty_ordered === 'number' ? poItem.qty_ordered : 0;
                         const qtyReceived = typeof poItem?.qty_received === 'number' ? poItem.qty_received : 0;
+                        const qtyRemaining = Math.max(0, qtyOrdered - qtyReceived);
                         const satuan = typeof poItem?.satuan === 'string' ? poItem.satuan : 'pcs';
                         
                         return (
@@ -513,10 +564,14 @@ export default function CreateGrnPage() {
                             <td className="px-3 py-3 text-center">
                               <span className="text-sm text-gray-600">{qtyReceived}</span>
                             </td>
+                            <td className="px-3 py-3 text-center">
+                              <span className="text-sm font-semibold text-pink-700">{qtyRemaining}</span>
+                            </td>
                             <td className="px-3 py-3">
                               <Input
                                 type="number"
                                 min="0"
+                                max={qtyRemaining || undefined}
                                 value={item.qty_diterima}
                                 onChange={(e) =>
                                   handleUpdateItem(item.id, "qty_diterima", parseFloat(e.target.value) || 0)
@@ -572,7 +627,7 @@ export default function CreateGrnPage() {
                 </Button>
                 <Button type="submit" disabled={loading || grnItems.length === 0} className="px-6">
                   <ClipboardDocumentCheckIcon className="w-4 h-4 mr-2" />
-                  {loading ? "Menyimpan..." : "Simpan GRN"}
+                  {loading ? "Menyimpan..." : "Simpan Penerimaan"}
                 </Button>
               </div>
             </Card>

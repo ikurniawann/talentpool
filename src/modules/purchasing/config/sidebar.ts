@@ -57,8 +57,8 @@ export const PURCHASING_MENU_ITEMS: SidebarItem[] = [
   },
   {
     key: "receiving",
-    label: "Penerimaan",
-    href: "/dashboard/purchasing/receiving",
+    label: "Barang Masuk",
+    href: "/dashboard/purchasing/grn",
     icon: TruckIcon,
     badge: { key: "pending_grn", label: "0", color: "orange" },
   },
@@ -68,12 +68,6 @@ export const PURCHASING_MENU_ITEMS: SidebarItem[] = [
     href: "/dashboard/purchasing/qc",
     icon: CheckBadgeIcon,
     badge: { key: "pending_qc", label: "0", color: "orange" },
-  },
-  {
-    key: "delivery",
-    label: "Pengiriman",
-    href: "/dashboard/purchasing/delivery",
-    icon: TruckIcon,
   },
   {
     key: "returns",

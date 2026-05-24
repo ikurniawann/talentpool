@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { z } from "zod";
 import {
   requireApiUser,
@@ -36,7 +36,7 @@ export async function GET(request: NextRequest) {
         `
         *,
         inventory:inventory_id(id),
-        bahan_baku:bahan_baku_id(id, kode, nama),
+        raw_material:raw_material_id(id, kode, nama),
         creator:created_by(full_name)
       `,
         { count: "exact" }
@@ -44,11 +44,11 @@ export async function GET(request: NextRequest) {
       .order("created_at", { ascending: false })
       .range(offset, offset + limit - 1);
 
-    if (bahan_id) query = query.eq("bahan_baku_id", bahan_id);
+    if (bahan_id) query = query.eq("raw_material_id", bahan_id);
     if (tipe) query = query.eq("tipe", tipe);
     if (reference_type) query = query.eq("reference_type", reference_type);
-    if (date_from) query = query.gte("tanggal_movement", date_from);
-    if (date_to) query = query.lte("tanggal_movement", date_to);
+    if (date_from) query = query.gte("created_at", date_from);
+    if (date_to) query = query.lte("created_at", date_to);
 
     const { data, error, count } = await query;
 

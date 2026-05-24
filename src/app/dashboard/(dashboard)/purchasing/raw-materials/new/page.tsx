@@ -26,9 +26,12 @@ const STORAGE_OPTIONS = [
   { value: "SUHU_RUANG", label: "Suhu Ruang" },
   { value: "DINGIN", label: "Dingin" },
   { value: "BEKU", label: "Beku" },
-  { value: "KERING", label: "Kering" },
-  { value: "TERTUTUP", label: "Tertutup Rapat" },
+  { value: "KHUSUS", label: "Khusus" },
 ];
+
+function getErrorMessage(error: unknown, fallback: string) {
+  return error instanceof Error ? error.message : fallback;
+}
 
 export default function NewRawMaterialPage() {
   const router = useRouter();
@@ -86,9 +89,9 @@ export default function NewRawMaterialPage() {
       });
       toast.success("Bahan baku berhasil ditambahkan");
       router.push("/dashboard/purchasing/raw-materials");
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error creating raw material:", error);
-      toast.error(error.message || "Gagal menambahkan bahan baku");
+      toast.error(getErrorMessage(error, "Gagal menambahkan bahan baku"));
     } finally {
       setLoading(false);
     }
@@ -269,7 +272,7 @@ export default function NewRawMaterialPage() {
                     id="stok_maximum"
                     type="number"
                     min="0"
-                    value={formData.stok_maximum}
+                    value={formData.stok_maximum ?? ""}
                     onChange={(e) => setFormData({ ...formData, stok_maximum: parseFloat(e.target.value) || 0 })}
                     className="h-9 text-sm"
                   />
@@ -297,7 +300,7 @@ export default function NewRawMaterialPage() {
                     ...STORAGE_OPTIONS.map((opt) => ({ value: opt.value, label: opt.label })),
                   ]}
                   value={formData.storage_condition || ""}
-                  onChange={(v) => setFormData({ ...formData, storage_condition: (v as any) || undefined })}
+                  onChange={(v) => setFormData({ ...formData, storage_condition: v || undefined })}
                   placeholder="Pilih kondisi..."
                   searchPlaceholder="Cari..."
                   emptyMessage="Tidak ditemukan"

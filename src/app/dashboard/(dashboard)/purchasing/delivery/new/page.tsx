@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -11,17 +11,10 @@ import { DatePicker } from "@/components/ui/datepicker";
 import { BreadcrumbNav } from "@/modules/purchasing/components/breadcrumb/BreadcrumbNav";
 import { useToast } from "@/hooks/use-toast";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import {
   Command,
   CommandEmpty,
   CommandGroup,
   CommandInput,
-  CommandItem,
   CommandList,
 } from "@/components/ui/command";
 import {
@@ -37,7 +30,6 @@ import {
   Loader2Icon,
   CheckIcon,
   ChevronsUpDown,
-  SearchIcon,
 } from "lucide-react";
 
 interface POOption {
@@ -47,8 +39,21 @@ interface POOption {
   status: string;
 }
 
+type DeliveryApiResponse = {
+  data?: {
+    nomor_resi?: string;
+  };
+  message?: string;
+  error?: { message?: string } | string;
+};
+
+function getErrorMessage(error: unknown, fallback: string) {
+  return error instanceof Error ? error.message : fallback;
+}
+
 export default function CreateDeliveryPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [poList, setPoList] = useState<POOption[]>([]);
@@ -72,12 +77,16 @@ export default function CreateDeliveryPage() {
         const data = await res.json();
         
         if (data.data) {
-          const validStatuses = ["approved", "sent", "partial", "completed"];
-          const availablePOs = data.data.filter((po: any) => {
+          const validStatuses = ["approved", "sent", "partial", "partially_received"];
+          const availablePOs = (data.data as POOption[]).filter((po) => {
             const status = po.status?.toLowerCase() || "";
             return validStatuses.includes(status);
           });
           setPoList(availablePOs);
+          const poId = searchParams.get("po_id");
+          if (poId && availablePOs.some((po: POOption) => po.id === poId)) {
+            setFormData((prev) => ({ ...prev, po_id: poId }));
+          }
         }
       } catch (e) {
         console.error("Failed to fetch POs:", e);
@@ -86,7 +95,7 @@ export default function CreateDeliveryPage() {
       }
     }
     fetchPOs();
-  }, []);
+  }, [searchParams]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -111,7 +120,7 @@ export default function CreateDeliveryPage() {
         body: JSON.stringify(formData),
       });
 
-      const data = await res.json();
+      const data = (await res.json()) as DeliveryApiResponse;
       console.log("API Response:", res.status, data);
       
       if (res.ok) {
@@ -119,16 +128,17 @@ export default function CreateDeliveryPage() {
           title: "✅ Berhasil",
           description: `Delivery ${data.data?.nomor_resi || ""} berhasil dibuat`,
         });
-        router.push("/dashboard/purchasing/delivery");
+        router.push(data.data?.id ? `/dashboard/purchasing/delivery/${data.data.id}` : "/dashboard/purchasing/delivery");
         router.refresh();
       } else {
-        throw new Error(data.error?.message || data.message || data.error || "Gagal membuat delivery");
+        const apiError = typeof data.error === "string" ? data.error : data.error?.message;
+        throw new Error(apiError || data.message || "Gagal membuat delivery");
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Submit error:", error);
       toast({
         title: "❌ Error",
-        description: error.message || "Gagal membuat delivery",
+        description: getErrorMessage(error, "Gagal membuat delivery"),
         variant: "destructive",
       });
     } finally {
@@ -360,8 +370,9 @@ export default function CreateDeliveryPage() {
                 <ul className="space-y-1 list-disc list-inside">
                   <li>Pilih PO yang sudah di-approve</li>
                   <li>No. Surat Jalan wajib diisi</li>
-                  <li>Status awal: Menunggu</li>
-                  <li>Setelah tiba, buat GRN</li>
+                  <li>Status awal: Menunggu penerimaan</li>
+                  <li>Lanjutkan dari detail pengiriman untuk input penerimaan GRN</li>
+                  <li>GRN akan menambah stok bahan dan update progress PO</li>
                 </ul>
               </CardContent>
             </Card>

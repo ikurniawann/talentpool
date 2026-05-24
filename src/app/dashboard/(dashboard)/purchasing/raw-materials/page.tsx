@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useCallback, useEffect } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -28,7 +28,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Plus, Search, MoreVertical, ArrowUpDown, AlertCircle, Upload } from "lucide-react";
 import { toast } from "sonner";
-import { RawMaterialWithStock, MaterialCategory, PaginatedResponse } from "@/types/purchasing";
+import { RawMaterialWithStock, MaterialCategory } from "@/types/purchasing";
 import { listRawMaterials } from "@/lib/purchasing";
 import { CsvImporter } from "@/components/ui/csv-importer";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
@@ -55,6 +55,10 @@ const STATUS_OPTIONS = [
   { value: "below_minimum", label: "Stok Menipis/Habis" },
 ];
 
+function getErrorMessage(error: unknown, fallback: string) {
+  return error instanceof Error ? error.message : fallback;
+}
+
 export default function RawMaterialsPage() {
   const [materials, setMaterials] = useState<RawMaterialWithStock[]>([]);
   const [loading, setLoading] = useState(true);
@@ -69,22 +73,9 @@ export default function RawMaterialsPage() {
   const [statusFilter, setStatusFilter] = useState("");
   const [importDialogOpen, setImportDialogOpen] = useState(false);
 
-  useEffect(() => {
-    loadMaterials();
-  }, [pagination.page, categoryFilter, statusFilter]);
-
-  // Debounce search
-  useEffect(() => {
-    const timeout = setTimeout(() => {
-      loadMaterials();
-    }, 300);
-    return () => clearTimeout(timeout);
-  }, [searchQuery]);
-
-  const loadMaterials = async () => {
+  const loadMaterials = useCallback(async () => {
     try {
       setLoading(true);
-      console.log("Loading materials...", { page: pagination.page, search: searchQuery, category: categoryFilter });
       const response = await listRawMaterials({
         search: searchQuery || undefined,
         kategori: categoryFilter || undefined,
@@ -94,23 +85,26 @@ export default function RawMaterialsPage() {
         sort_by: "nama",
         sort_dir: "ASC",
       });
-      console.log("Materials response:", response);
       setMaterials(response.data);
       setPagination((prev) => ({
         ...prev,
         total: response.pagination.total,
         total_pages: response.pagination.total_pages,
       }));
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error loading materials:", error);
-      console.error("Error details:", error.message, error.stack);
-      toast.error("Gagal memuat data bahan baku: " + error.message);
+      toast.error("Gagal memuat data bahan baku: " + getErrorMessage(error, "Unknown error"));
     } finally {
       setLoading(false);
     }
-  };
+  }, [searchQuery, categoryFilter, statusFilter, pagination.page, pagination.limit]);
 
-  const getCategoryLabel = (category: MaterialCategory) => {
+  useEffect(() => {
+    loadMaterials();
+  }, [loadMaterials]);
+
+  const getCategoryLabel = (category?: MaterialCategory | null) => {
+    if (!category) return "-";
     const labels: Record<MaterialCategory, string> = {
       BAHAN_PANGAN: "Bahan Pangan",
       BAHAN_NON_PANGAN: "Bahan Non-Pangan",
@@ -267,16 +261,16 @@ export default function RawMaterialsPage() {
                   <TableCell>{getCategoryLabel(material.kategori)}</TableCell>
                   <TableCell>
                     <div className="flex flex-wrap gap-1">
-                      {(material as any).coa_production && (
+                      {material.coa_production && (
                         <Badge className="bg-amber-100 text-amber-800 hover:bg-amber-100 text-xs">Prod</Badge>
                       )}
-                      {(material as any).coa_rnd && (
+                      {material.coa_rnd && (
                         <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-100 text-xs">RnD</Badge>
                       )}
-                      {(material as any).coa_asset && (
+                      {material.coa_asset && (
                         <Badge className="bg-green-100 text-green-800 hover:bg-green-100 text-xs">Asset</Badge>
                       )}
-                      {!(material as any).coa_production && !(material as any).coa_rnd && !(material as any).coa_asset && (
+                      {!material.coa_production && !material.coa_rnd && !material.coa_asset && (
                         <span className="text-gray-400 text-sm">-</span>
                       )}
                     </div>
@@ -284,36 +278,34 @@ export default function RawMaterialsPage() {
                   <TableCell className="text-right">
                     <span
                       className={
-                        material.qty_onhand <= 0
+                        (material.qty_onhand ?? 0) <= 0
                           ? "text-red-600 font-semibold"
-                          : material.qty_onhand <= material.stok_minimum
+                          : (material.qty_onhand ?? 0) <= (material.stok_minimum ?? 0)
                           ? "text-yellow-600 font-semibold"
                           : ""
                       }
                     >
-                      {formatNumber(material.qty_onhand)}
+                      {formatNumber(material.qty_onhand ?? 0)}
                     </span>
                     <span className="text-muted-foreground text-sm ml-1">
-                      {material.satuan_besar_nama || "-"}
+                      {material.satuan_besar_nama || material.satuan_besar?.nama || "-"}
                     </span>
                   </TableCell>
                   <TableCell className="text-right">
-                    {formatNumber(material.stok_minimum)}
+                    {formatNumber(material.stok_minimum ?? 0)}
                   </TableCell>
                   <TableCell className="text-right">
-                    {material.avg_cost > 0
-                      ? `Rp ${material.avg_cost.toLocaleString("id-ID")}`
+                    {(material.avg_cost ?? 0) > 0
+                      ? `Rp ${(material.avg_cost ?? 0).toLocaleString("id-ID")}`
                       : "-"}
                   </TableCell>
                   <TableCell>
-                    {getStockStatusBadge(material.status_stok)}
+                    {getStockStatusBadge(material.status_stok ?? "AMAN")}
                   </TableCell>
                   <TableCell>
                     <DropdownMenu>
-                      <DropdownMenuTrigger>
-                        <Button variant="ghost" size="icon" className="relative z-10">
-                          <MoreVertical className="w-4 h-4" />
-                        </Button>
+                      <DropdownMenuTrigger className="relative z-10 inline-flex h-8 w-8 items-center justify-center rounded-md text-gray-600 hover:bg-gray-100 hover:text-gray-900">
+                        <MoreVertical className="w-4 h-4" />
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end" className="z-50 bg-white shadow-lg border border-gray-200">
                         <Link
@@ -338,7 +330,12 @@ export default function RawMaterialsPage() {
 
       {/* Pagination */}
       {pagination.total_pages > 1 && (
-        <Pagination>
+        <Pagination
+          currentPage={pagination.page}
+          totalPages={pagination.total_pages}
+          totalItems={pagination.total}
+          onPageChange={(page) => setPagination((prev) => ({ ...prev, page }))}
+        >
           <PaginationContent>
             <PaginationItem>
               <PaginationPrevious

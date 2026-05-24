@@ -5,6 +5,10 @@
 import { NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 
+function getErrorMessage(error: unknown, fallback: string) {
+  return error instanceof Error ? error.message : fallback;
+}
+
 // POST /api/purchasing/po/:id/approve
 export async function POST(
   request: NextRequest,
@@ -29,9 +33,9 @@ export async function POST(
     }
 
     // Validasi status
-    if (po.status !== "DRAFT") {
+    if (String(po.status).toLowerCase() !== "draft") {
       return Response.json(
-        { success: false, message: "PO hanya bisa diapprove saat status DRAFT" },
+        { success: false, message: "PO hanya bisa diapprove saat status draft" },
         { status: 400 }
       );
     }
@@ -50,11 +54,11 @@ export async function POST(
       );
     }
 
-    // Update status ke APPROVED
+    // Update status ke approved
     const { data, error } = await supabase
       .from("purchase_orders")
       .update({
-        status: "APPROVED",
+        status: "approved",
         approved_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       })
@@ -69,10 +73,10 @@ export async function POST(
       data,
       message: "PO berhasil diapprove",
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error approving PO:", error);
     return Response.json(
-      { success: false, message: error.message || "Gagal mengapprove PO" },
+      { success: false, message: getErrorMessage(error, "Gagal mengapprove PO") },
       { status: 500 }
     );
   }

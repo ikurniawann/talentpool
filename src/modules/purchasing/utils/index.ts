@@ -67,16 +67,16 @@ export function formatWeight(grams: number): string {
 export function formatUnit(value: number, unit: MaterialUnit): string {
   const unitLabels: Record<MaterialUnit, string> = {
     kg: "kg",
-    gram: "g",
-    liter: "L",
-    ml: "mL",
-    piece: "pcs",
+    g: "g",
+    L: "L",
+    mL: "mL",
+    pcs: "pcs",
     roll: "roll",
-    sheet: "lembar",
-    meter: "m",
+    lembar: "lembar",
+    m: "m",
     pack: "pack",
     drum: "drum",
-    sack: "zak",
+    zak: "zak",
   };
   return `${value} ${unitLabels[unit] ?? unit}`;
 }

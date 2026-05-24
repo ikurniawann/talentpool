@@ -22,6 +22,10 @@ const materialSchema = z.object({
   coa: z.enum(["PRODUCTION", "RND", "ASSET"]).optional().nullable(),
 });
 
+function getErrorMessage(error: unknown, fallback: string) {
+  return error instanceof Error ? error.message : fallback;
+}
+
 // GET /api/purchasing/raw-materials
 export async function GET(request: NextRequest) {
   try {
@@ -75,8 +79,6 @@ export async function GET(request: NextRequest) {
       throw error;
     }
 
-    console.log(`Raw materials fetched: ${data?.length || 0} items`);
-
     return Response.json({
       data,
       pagination: {
@@ -86,10 +88,10 @@ export async function GET(request: NextRequest) {
         total_pages: Math.ceil((count || 0) / limit),
       },
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error fetching raw materials:", error);
     return Response.json(
-      { success: false, message: error.message || "Gagal mengambil data bahan baku" },
+      { success: false, message: getErrorMessage(error, "Gagal mengambil data bahan baku") },
       { status: 500 }
     );
   }
@@ -158,7 +160,7 @@ export async function POST(request: NextRequest) {
       { success: true, data, message: "Bahan baku berhasil ditambahkan" },
       { status: 201 }
     );
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error creating raw material:", error);
 
     if (error instanceof z.ZodError) {
@@ -173,7 +175,7 @@ export async function POST(request: NextRequest) {
     }
 
     return Response.json(
-      { success: false, message: error.message || "Gagal menambahkan bahan baku" },
+      { success: false, message: getErrorMessage(error, "Gagal menambahkan bahan baku") },
       { status: 500 }
     );
   }

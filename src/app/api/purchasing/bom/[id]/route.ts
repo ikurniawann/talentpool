@@ -8,10 +8,25 @@ import { z } from "zod";
 
 const bomSchema = z.object({
   qty_required: z.number().min(0.0001, "Jumlah harus lebih dari 0").optional(),
+  qty_needed: z.number().min(0.0001, "Jumlah harus lebih dari 0").optional(),
   satuan_id: z.string().uuid().optional().nullable(),
   waste_factor: z.number().min(0).max(1).optional(),
+  waste_persen: z.number().min(0).max(100).optional(),
   is_active: z.boolean().optional(),
-});
+}).transform((value) => ({
+  ...(value.qty_required !== undefined || value.qty_needed !== undefined
+    ? { qty_required: value.qty_required ?? value.qty_needed }
+    : {}),
+  ...(value.satuan_id !== undefined ? { satuan_id: value.satuan_id } : {}),
+  ...(value.waste_factor !== undefined || value.waste_persen !== undefined
+    ? { waste_factor: value.waste_factor ?? ((value.waste_persen ?? 0) / 100) }
+    : {}),
+  ...(value.is_active !== undefined ? { is_active: value.is_active } : {}),
+}));
+
+function getErrorMessage(error: unknown, fallback: string) {
+  return error instanceof Error ? error.message : fallback;
+}
 
 // PUT /api/purchasing/bom/:id
 export async function PUT(
@@ -58,7 +73,7 @@ export async function PUT(
       data,
       message: "Item BOM berhasil diupdate",
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error updating BOM item:", error);
 
     if (error instanceof z.ZodError) {
@@ -73,7 +88,7 @@ export async function PUT(
     }
 
     return Response.json(
-      { success: false, message: error.message || "Gagal mengupdate item BOM" },
+      { success: false, message: getErrorMessage(error, "Gagal mengupdate item BOM") },
       { status: 500 }
     );
   }
@@ -108,10 +123,10 @@ export async function DELETE(
       success: true,
       message: "Bahan berhasil dihapus dari BOM",
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error deleting BOM item:", error);
     return Response.json(
-      { success: false, message: error.message || "Gagal menghapus bahan dari BOM" },
+      { success: false, message: getErrorMessage(error, "Gagal menghapus bahan dari BOM") },
       { status: 500 }
     );
   }

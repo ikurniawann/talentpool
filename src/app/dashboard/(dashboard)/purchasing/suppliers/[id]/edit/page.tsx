@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useCallback, useEffect } from "react";
 import Link from "next/link";
 import { useRouter, useParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -11,17 +11,19 @@ import { Textarea } from "@/components/ui/textarea";
 import { Combobox } from "@/components/ui/combobox";
 import { ArrowLeft, Save, Building2, User, FileText, Phone } from "lucide-react";
 import {
-  SupplierFormData,
   PaymentTerms,
   Currency,
   PAYMENT_TERMS_OPTIONS,
   CURRENCY_OPTIONS,
   KOTA_OPTIONS,
   formatNPWP,
-  getPaymentTermsLabel,
 } from "@/types/supplier";
 import { getSupplier, updateSupplier } from "@/lib/purchasing/supplier";
 import { toast } from "sonner";
+
+function getErrorMessage(error: unknown, fallback: string) {
+  return error instanceof Error ? error.message : fallback;
+}
 
 export default function EditSupplierPage() {
   const router = useRouter();
@@ -47,11 +49,7 @@ export default function EditSupplierPage() {
     catatan: "",
   });
 
-  useEffect(() => {
-    loadSupplier();
-  }, [supplierId]);
-
-  const loadSupplier = async () => {
+  const loadSupplier = useCallback(async () => {
     try {
       const data = await getSupplier(supplierId);
       setFormData({
@@ -75,7 +73,11 @@ export default function EditSupplierPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [supplierId]);
+
+  useEffect(() => {
+    loadSupplier();
+  }, [loadSupplier]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -90,9 +92,9 @@ export default function EditSupplierPage() {
       await updateSupplier(supplierId, formData);
       toast.success("Supplier berhasil diupdate");
       router.push("/dashboard/purchasing/suppliers");
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error updating supplier:", error);
-      toast.error(error.message || "Gagal mengupdate supplier");
+      toast.error(getErrorMessage(error, "Gagal mengupdate supplier"));
     } finally {
       setIsSubmitting(false);
     }

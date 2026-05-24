@@ -62,6 +62,8 @@ export interface SupplierPriceListItem {
   satuan: Satuan;
 }
 
+export type SupplierPriceList = SupplierPriceListItem;
+
 // ─── Stok Info ───────────────────────────────────────────────────────────────
 
 export interface StokInfo {

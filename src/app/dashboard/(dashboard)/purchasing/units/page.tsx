@@ -44,6 +44,10 @@ import {
   PaginationProps,
 } from "@/components/ui/pagination";
 
+function getErrorMessage(error: unknown, fallback: string) {
+  return error instanceof Error ? error.message : fallback;
+}
+
 const TIPE_OPTIONS = [
   { value: "BESAR", label: "Satuan Besar" },
   { value: "KECIL", label: "Satuan Kecil" },
@@ -97,7 +101,7 @@ export default function UnitsPage() {
       setUnits(response.data);
       setTotal(response.pagination.total);
       setTotalPages(response.pagination.total_pages);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error loading units:", error);
       toast.error("Gagal memuat data satuan");
     } finally {
@@ -158,7 +162,6 @@ export default function UnitsPage() {
       if (editingUnit) {
         await updateUnit(editingUnit.id, formData);
         logger.updateRawMaterial("Satuan Updated", formData.kode || "N/A", `Updated ${formData.nama}`);
-        console.log('🔔 Activity logged (update):', formData.kode);
         toast.success("Satuan berhasil diupdate");
       } else {
         await createUnit(formData);
@@ -166,14 +169,13 @@ export default function UnitsPage() {
           nama: formData.nama, 
           tipe: formData.tipe 
         });
-        console.log('🔔 Activity logged (create):', formData.kode);
         toast.success("Satuan berhasil ditambahkan");
       }
       setIsDialogOpen(false);
       fetchUnits();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error saving unit:", error);
-      toast.error(error.message || "Gagal menyimpan satuan");
+      toast.error(getErrorMessage(error, "Gagal menyimpan satuan"));
     } finally {
       setIsSubmitting(false);
     }
@@ -187,9 +189,9 @@ export default function UnitsPage() {
       toast.success("Satuan berhasil dinonaktifkan");
       setIsDeleteDialogOpen(false);
       fetchUnits();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error deleting unit:", error);
-      toast.error(error.message || "Gagal menghapus satuan");
+      toast.error(getErrorMessage(error, "Gagal menghapus satuan"));
     }
   };
 
@@ -422,8 +424,8 @@ export default function UnitsPage() {
               </Label>
               <Select
                 value={formData.tipe}
-                onValueChange={(value: "BESAR" | "KECIL" | "KONVERSI") =>
-                  setFormData({ ...formData, tipe: value })
+                onValueChange={(value) =>
+                  setFormData({ ...formData, tipe: value as "BESAR" | "KECIL" | "KONVERSI" })
                 }
               >
                 <SelectTrigger>

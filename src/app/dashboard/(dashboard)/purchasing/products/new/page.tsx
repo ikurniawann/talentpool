@@ -21,6 +21,10 @@ interface BOMFormItem extends Partial<BOMItemFormData> {
   subtotal: number;
 }
 
+function getErrorMessage(error: unknown, fallback: string) {
+  return error instanceof Error ? error.message : fallback;
+}
+
 export default function NewProductPage() {
   const router = useRouter();
   const [materials, setMaterials] = useState<RawMaterialWithStock[]>([]);
@@ -125,9 +129,9 @@ export default function NewProductPage() {
 
       toast.success("Produk berhasil ditambahkan");
       router.push("/dashboard/purchasing/products");
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error creating product:", error);
-      toast.error(error.message || "Gagal menambahkan produk");
+      toast.error(getErrorMessage(error, "Gagal menambahkan produk"));
     } finally {
       setIsSubmitting(false);
     }
@@ -278,11 +282,11 @@ export default function NewProductPage() {
             <CardContent className="space-y-3">
               {bomItems.length === 0 ? (
                 <div className="text-center py-8 text-gray-500 text-sm">
-                  Belum ada bahan baku. Klik "Tambah Bahan" untuk menambahkan.
+                  Belum ada bahan baku. Klik &quot;Tambah Bahan&quot; untuk menambahkan.
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {bomItems.map((item, index) => (
+                  {bomItems.map((item) => (
                     <div key={item.id} className="grid grid-cols-12 gap-3 items-end p-3 border rounded-md bg-gray-50">
                       <div className="col-span-4 space-y-1.5">
                         <Label className="text-xs">Bahan Baku</Label>

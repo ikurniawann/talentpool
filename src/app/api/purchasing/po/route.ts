@@ -15,10 +15,17 @@ const poSchema = z.object({
   diskon_persen: z.number().min(0).max(100).default(0),
   diskon_nominal: z.number().min(0).default(0),
   ppn_persen: z.number().min(0).max(100).default(11),
+  source_type: z.enum(["manual", "production_order", "low_stock"]).optional().default("manual"),
+  production_order_id: z.string().uuid().optional().nullable(),
+  source_reference: z.string().optional().nullable(),
 });
 
+function getErrorMessage(error: unknown, fallback: string) {
+  return error instanceof Error ? error.message : fallback;
+}
+
 // Helper: Generate nomor PO
-async function generateNomorPO(supabase: any): Promise<string> {
+async function generateNomorPO(supabase: Awaited<ReturnType<typeof createClient>>): Promise<string> {
   const today = new Date();
   const year = today.getFullYear();
   const month = String(today.getMonth() + 1).padStart(2, "0");
@@ -68,7 +75,7 @@ export async function GET(request: NextRequest) {
       query = query.or(`nomor_po.ilike.%${search}%,nama_supplier.ilike.%${search}%`);
     }
     if (status) {
-      query = query.eq("status", status);
+      query = query.eq("status", status.toLowerCase());
     }
     if (supplierId) {
       query = query.eq("supplier_id", supplierId);
@@ -82,7 +89,7 @@ export async function GET(request: NextRequest) {
 
     // Exclude cancelled dari default view
     if (!searchParams.get("include_cancelled")) {
-      query = query.neq("status", "CANCELLED");
+      query = query.neq("status", "cancelled");
     }
 
     // Pagination
@@ -106,10 +113,10 @@ export async function GET(request: NextRequest) {
         total_pages: Math.ceil((count || 0) / limit),
       },
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error fetching PO:", error);
     return Response.json(
-      { success: false, message: error.message || "Gagal mengambil data PO" },
+      { success: false, message: getErrorMessage(error, "Gagal mengambil data PO") },
       { status: 500 }
     );
   }
@@ -127,11 +134,11 @@ export async function POST(request: NextRequest) {
     // Generate nomor PO
     const nomor_po = await generateNomorPO(supabase);
 
-    // Insert PO dengan status DRAFT
+    // Insert PO dengan status draft
     const insertData = {
       ...validated,
       nomor_po,
-      status: "DRAFT",
+      status: "draft",
       subtotal: 0,
       total: 0,
       is_active: true,
@@ -149,7 +156,7 @@ export async function POST(request: NextRequest) {
       { success: true, data, message: "PO berhasil dibuat" },
       { status: 201 }
     );
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error creating PO:", error);
 
     if (error instanceof z.ZodError) {
@@ -164,7 +171,7 @@ export async function POST(request: NextRequest) {
     }
 
     return Response.json(
-      { success: false, message: error.message || "Gagal membuat PO" },
+      { success: false, message: getErrorMessage(error, "Gagal membuat PO") },
       { status: 500 }
     );
   }

@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { z } from "zod";
 import {
   requireApiUser,
@@ -7,9 +7,20 @@ import {
   successResponse,
 } from "@/lib/api/auth";
 
-// GET /api/purchasing/cogs/product/:produk_id
-// Real-time HPP calculation based on BOM × avg_cost + overhead allocation
+type StockRow = {
+  id: string;
+  qty_onhand?: number | string | null;
+  qty_on_order?: number | string | null;
+  avg_cost?: number | string | null;
+};
 
+function toNumber(value: unknown) {
+  const numeric = Number(value);
+  return Number.isFinite(numeric) ? numeric : 0;
+}
+
+// GET /api/purchasing/cogs/product/:produk_id
+// Real-time HPP estimasi berdasarkan products + bom_items + inventory.
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ produk_id: string }> }
@@ -19,124 +30,129 @@ export async function GET(
     const supabase = await createClient();
     const { produk_id } = await params;
 
-    // Validate UUID
     if (!z.string().uuid().safeParse(produk_id).success) {
       throw ApiError.badRequest("Invalid produk ID");
     }
 
-    // Fetch product with BOM
-    const { data: produk, error: produkError } = await supabase
-      .from("produk")
-      .select(
-        `
+    const { data: product, error: productError } = await supabase
+      .from("products")
+      .select(`
         *,
-        satuan:satuan_id(id, kode, nama),
-        bom_items:bom(
-          *,
-          bahan_baku:bahan_baku_id(
-            id, kode, nama,
-            inventory:inventory(bahan_baku_id, qty_in_stock, avg_cost)
-          ),
-          satuan:satuan_id(id, kode, nama)
-        )
-      `
-      )
+        satuan:satuan_id(id, kode, nama)
+      `)
       .eq("id", produk_id)
+      .eq("is_active", true)
       .single();
 
-    if (produkError || !produk) {
+    if (productError || !product) {
       throw ApiError.notFound("Produk tidak ditemukan");
     }
 
-    if (!produk.bom_items || produk.bom_items.length === 0) {
+    const { data: bomItems, error: bomError } = await supabase
+      .from("bom_items")
+      .select(`
+        *,
+        raw_material:raw_material_id(id, kode, nama),
+        satuan:satuan_id(id, kode, nama)
+      `)
+      .eq("product_id", produk_id)
+      .eq("is_active", true)
+      .order("created_at", { ascending: true });
+
+    if (bomError) throw bomError;
+
+    if (!bomItems || bomItems.length === 0) {
       return successResponse({
-        produk_id: produk.id,
-        kode: produk.kode,
-        nama: produk.nama,
-        satuan: produk.satuan,
-        harga_jual: produk.harga_jual,
+        produk_id: product.id,
+        kode: product.kode,
+        nama: product.nama,
+        satuan: product.satuan,
+        harga_jual: product.harga_jual,
         hpp_per_unit: 0,
         total_bom_cost: 0,
         total_overhead: 0,
         breakdown_bahan: [],
+        stock_warnings: [],
         warning: "Produk belum memiliki BOM (Bill of Materials)",
       });
     }
 
-    // Get overhead rate from system settings or use default 10%
+    const materialIds = Array.from(
+      new Set(bomItems.map((item) => item.raw_material_id).filter(Boolean))
+    );
+
+    const { data: stockRows, error: stockError } = materialIds.length > 0
+      ? await supabase
+          .from("v_raw_materials_stock")
+          .select("id, qty_onhand, qty_on_order, avg_cost")
+          .in("id", materialIds)
+      : { data: [], error: null };
+
+    if (stockError) throw stockError;
+
+    const stockByMaterialId = new Map<string, StockRow>(
+      (stockRows || []).map((stock) => [stock.id, stock as StockRow])
+    );
+
     const { data: settings } = await supabase
       .from("settings")
       .select("value")
       .eq("key", "overhead_rate")
-      .single();
+      .maybeSingle();
 
-    const overheadRate = settings ? parseFloat(settings.value) / 100 : 0.1;
+    const overheadRate = settings?.value ? toNumber(settings.value) / 100 : 0.1;
 
-    // Calculate cost breakdown per ingredient
     let totalBomCost = 0;
-    const breakdownBahan: Array<{
-      bahan_id: string;
-      kode: string;
-      nama: string;
-      jumlah: number;
-      satuan: string;
-      qty_in_stock: number;
-      avg_cost: number;
-      waste_percentage: number;
-      effective_qty: number;
-      subtotal: number;
-    }> = [];
-
-    for (const bom of produk.bom_items) {
-      const bahan = bom.bahan_baku;
-      const qtyInStock = bahan?.inventory?.[0]?.qty_in_stock || 0;
-      const avgCost = bahan?.inventory?.[0]?.avg_cost || 0;
-      const wastePct = bom.waste_percentage || 0;
-
-      // Apply waste: if 10% waste, need 1/(1-0.1) = 1.111 units per unit produced
-      const effectiveQty = bom.jumlah / (1 - wastePct / 100);
-      const subtotal = effectiveQty * avgCost;
-
+    const breakdownBahan = bomItems.map((bom) => {
+      const stock = stockByMaterialId.get(bom.raw_material_id);
+      const qtyRequired = toNumber(bom.qty_required);
+      const wasteFactor = toNumber(bom.waste_factor);
+      const effectiveQty = qtyRequired * (1 + wasteFactor);
+      const unitCost = toNumber(stock?.avg_cost);
+      const subtotal = effectiveQty * unitCost;
       totalBomCost += subtotal;
 
-      breakdownBahan.push({
-        bahan_id: bahan.id,
-        kode: bahan.kode,
-        nama: bahan.nama,
-        jumlah: bom.jumlah,
+      return {
+        bahan_id: bom.raw_material_id,
+        kode: bom.raw_material?.kode || "",
+        nama: bom.raw_material?.nama || "",
+        jumlah: qtyRequired,
         satuan: bom.satuan?.nama || "-",
-        qty_in_stock: qtyInStock,
-        avg_cost: avgCost,
-        waste_percentage: wastePct,
+        qty_available: toNumber(stock?.qty_onhand),
+        qty_on_order: toNumber(stock?.qty_on_order),
+        unit_cost: unitCost,
+        waste_percentage: wasteFactor * 100,
         effective_qty: Math.round(effectiveQty * 1000) / 1000,
         subtotal: Math.round(subtotal * 100) / 100,
-      });
-    }
+      };
+    });
 
     const totalOverhead = totalBomCost * overheadRate;
     const hppPerUnit = Math.round((totalBomCost + totalOverhead) * 100) / 100;
     const totalBomCostRounded = Math.round(totalBomCost * 100) / 100;
     const totalOverheadRounded = Math.round(totalOverhead * 100) / 100;
 
-    // Compute margin vs harga_jual
-    let margin = null;
-    let marginPct = null;
-    if (produk.harga_jual && produk.harga_jual > 0) {
-      margin = produk.harga_jual - hppPerUnit;
-      marginPct = Math.round(((margin / produk.harga_jual) * 100) * 100) / 100;
-    }
+    const hargaJual = toNumber(product.harga_jual);
+    const margin = hargaJual > 0 ? hargaJual - hppPerUnit : null;
+    const marginPct = margin !== null && hargaJual > 0
+      ? Math.round((margin / hargaJual) * 10000) / 100
+      : null;
 
-    // Check if any ingredient is below minimum stock
-    const criticalIngredients = breakdownBahan.filter(
-      (b) => b.qty_in_stock < b.jumlah * 10 // less than 10x required
-    );
+    const stockWarnings = breakdownBahan
+      .filter((item) => item.jumlah > 0 && item.qty_available < item.jumlah * 10)
+      .map((item) => ({
+        nama: item.nama,
+        qty_available: item.qty_available,
+        required_per_unit: item.jumlah,
+        stock_coverage_units: Math.round((item.qty_available / item.jumlah) * 10) / 10,
+      }));
 
     return successResponse({
-      produk_id: produk.id,
-      kode: produk.kode,
-      nama: produk.nama,
-      satuan: produk.satuan,
-      harga_jual: produk.harga_jual,
+      produk_id: product.id,
+      kode: product.kode,
+      nama: product.nama,
+      satuan: product.satuan,
+      harga_jual: product.harga_jual,
       hpp_per_unit: hppPerUnit,
       total_bom_cost: totalBomCostRounded,
       overhead_rate: overheadRate * 100,
@@ -144,25 +160,15 @@ export async function GET(
       breakdown_bahan: breakdownBahan,
       margin_vs_harga_jual: margin,
       margin_percentage: marginPct,
-      margin_label: marginPct
-        ? marginPct > 30
-          ? "Healthy"
-          : marginPct > 15
-          ? "Acceptable"
-          : "Thin"
-        : null,
-      stock_warnings:
-        criticalIngredients.length > 0
-          ? criticalIngredients.map((c) => ({
-              nama: c.nama,
-              qty_in_stock: c.qty_in_stock,
-              required_per_unit: c.jumlah,
-              stock_coverage_units:
-                c.jumlah > 0
-                  ? Math.round((c.qty_in_stock / c.jumlah) * 10) / 10
-                  : 0,
-            }))
-          : [],
+      margin_label:
+        marginPct === null
+          ? null
+          : marginPct > 30
+            ? "Healthy"
+            : marginPct > 15
+              ? "Acceptable"
+              : "Thin",
+      stock_warnings: stockWarnings,
     });
   } catch (error) {
     if (error instanceof ApiError) return error.toResponse();

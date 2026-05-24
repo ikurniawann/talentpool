@@ -12,6 +12,8 @@ const createSupplierSchema = z.object({
   nama_supplier: z.string().min(1, "Nama supplier wajib diisi").max(200),
   pic_name: z.string().max(100).optional(),
   pic_phone: z.string().max(30).optional(),
+  pic_email: z.string().email("Email PIC tidak valid").optional().or(z.literal("")),
+  telepon: z.string().max(50).optional(),
   email: z.string().email("Email tidak valid").optional().or(z.literal("")),
   alamat: z.string().optional(),
   kota: z.string().max(100).optional(),
@@ -24,6 +26,8 @@ const createSupplierSchema = z.object({
   bank_rekening: z.string().optional(),
   bank_atas_nama: z.string().optional(),
   kategori: z.string().optional(),
+  catatan: z.string().optional(),
+  status: z.enum(["active", "inactive", "probation", "blocked", "draft"]).default("active"),
 });
 
 const queryParamsSchema = z.object({
@@ -167,6 +171,8 @@ export async function POST(request: NextRequest) {
         nama_supplier: validated.nama_supplier,
         pic_name: validated.pic_name,
         pic_phone: validated.pic_phone,
+        pic_email: validated.pic_email,
+        telepon: validated.telepon,
         email: validated.email,
         alamat: validated.alamat,
         kota: validated.kota,
@@ -177,8 +183,9 @@ export async function POST(request: NextRequest) {
         bank_rekening: validated.bank_rekening,
         bank_atas_nama: validated.bank_atas_nama,
         kategori: validated.kategori,
-        status: "active",
-        is_active: true,
+        catatan: validated.catatan,
+        status: validated.status,
+        is_active: validated.status !== "inactive",
         created_by: user.id,
       })
       .select()

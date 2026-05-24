@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { z } from "zod";
 import {
   requireApiRole,
@@ -12,17 +12,20 @@ const updateSupplierSchema = z.object({
   nama_supplier: z.string().min(1).max(200).optional(),
   pic_name: z.string().max(100).optional(),
   pic_phone: z.string().max(30).optional(),
+  pic_email: z.string().email("Email PIC tidak valid").optional().or(z.literal("")),
   email: z.string().email("Email tidak valid").optional().or(z.literal("")),
   alamat: z.string().optional(),
+  telepon: z.string().max(30).optional(),
   kota: z.string().max(100).optional(),
   npwp: z.string().max(50).optional(),
-  payment_terms: z.enum(["COD", "NET7", "NET14", "NET30", "NET45", "NET60"]).optional(),
+  payment_terms: z.enum(["CBD", "TOP7", "TOP14", "TOP30", "TOP45", "TOP60"]).optional(),
   currency: z.enum(["IDR", "USD", "EUR"]).optional(),
   bank_nama: z.string().optional(),
   bank_rekening: z.string().optional(),
   bank_atas_nama: z.string().optional(),
   kategori: z.string().optional(),
-  status: z.enum(["active", "inactive", "blacklisted"]).optional(),
+  catatan: z.string().optional(),
+  status: z.enum(["active", "inactive", "probation", "blocked", "draft"]).optional(),
 });
 
 // ========================
@@ -106,19 +109,6 @@ export async function GET(
 
     const onTimeDeliveryRate =
       totalDelivered > 0 ? Math.round((onTimeCount / totalDelivered) * 100 * 10) / 10 : 0;
-
-    // ---- Analytics: QC Pass Rate ----
-    // Get all GRs from this supplier, join with QC
-    const { data: grItems } = await supabase
-      .from("gr_items")
-      .select("received_qty, condition")
-      .eq("gr_id", id); // This won't work directly without join — skip for now
-
-    // ---- Analytics: Bahan yang sering dibeli dari supplier ini ----
-    const { data: bahanSerinDibeli } = await supabase
-      .from("po_items")
-      .select("description")
-      .eq("po_id", id); // Again, need proper join — use raw approach below
 
     // Simpler: get distinct descriptions from PO items for this vendor's POs
     const { data: topBahan } = await supabase
@@ -255,18 +245,34 @@ export async function DELETE(
       );
     }
 
-    // Soft delete: set is_active = false + deleted_at + deleted_by
+    // Soft delete/deactivate. Some older Purchasing schemas do not have
+    // deleted_at/deleted_by yet, so retry with the core status fields only.
+    const deactivatePayload = {
+      is_active: false,
+      status: "inactive",
+      deleted_by: user.id,
+      deleted_at: new Date().toISOString(),
+      updated_by: user.id,
+    };
     const { error } = await supabase
       .from("suppliers")
-      .update({
-        is_active: false,
-        deleted_by: user.id,
-        deleted_at: new Date().toISOString(),
-        updated_by: user.id,
-      })
+      .update(deactivatePayload)
       .eq("id", id);
 
-    if (error) throw error;
+    if (error?.code === "PGRST204") {
+      const { error: fallbackError } = await supabase
+        .from("suppliers")
+        .update({
+          is_active: false,
+          status: "inactive",
+          updated_by: user.id,
+        })
+        .eq("id", id);
+
+      if (fallbackError) throw fallbackError;
+    } else if (error) {
+      throw error;
+    }
 
     return noContentResponse();
   } catch (error) {

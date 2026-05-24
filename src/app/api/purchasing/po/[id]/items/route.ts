@@ -15,6 +15,10 @@ const poItemSchema = z.object({
   catatan: z.string().optional(),
 });
 
+function getErrorMessage(error: unknown, fallback: string) {
+  return error instanceof Error ? error.message : fallback;
+}
+
 // GET /api/purchasing/po/:id/items
 export async function GET(
   request: NextRequest,
@@ -38,10 +42,10 @@ export async function GET(
     if (error) throw error;
 
     return Response.json({ success: true, data });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error fetching PO items:", error);
     return Response.json(
-      { success: false, message: error.message || "Gagal mengambil data item PO" },
+      { success: false, message: getErrorMessage(error, "Gagal mengambil data item PO") },
       { status: 500 }
     );
   }
@@ -74,9 +78,9 @@ export async function POST(
       );
     }
 
-    if (po.status !== "DRAFT") {
+    if (String(po.status).toLowerCase() !== "draft") {
       return Response.json(
-        { success: false, message: "Item hanya bisa ditambahkan saat PO status DRAFT" },
+        { success: false, message: "Item hanya bisa ditambahkan saat PO status draft" },
         { status: 400 }
       );
     }
@@ -114,7 +118,7 @@ export async function POST(
       { success: true, data, message: "Item berhasil ditambahkan ke PO" },
       { status: 201 }
     );
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error adding PO item:", error);
 
     if (error instanceof z.ZodError) {
@@ -129,7 +133,7 @@ export async function POST(
     }
 
     return Response.json(
-      { success: false, message: error.message || "Gagal menambahkan item ke PO" },
+      { success: false, message: getErrorMessage(error, "Gagal menambahkan item ke PO") },
       { status: 500 }
     );
   }

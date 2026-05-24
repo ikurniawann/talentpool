@@ -28,6 +28,8 @@ import {
   RETURN_STATUS_COLORS,
   RETURN_REASON_LABELS,
   ReturnStatus,
+  ReturnReasonType,
+  PurchaseReturn,
 } from "@/types/purchasing";
 import {
   ArrowPathIcon,
@@ -42,12 +44,12 @@ import { format } from "date-fns";
 import { id as localeId } from "date-fns/locale";
 
 export default function PurchaseReturnsPage() {
-  const [returns, setReturns] = useState<any[]>([]);
+  const [returns, setReturns] = useState<PurchaseReturn[]>([]);
   const [loading, setLoading] = useState(true);
   const [pagination, setPagination] = useState({ page: 1, total: 0, total_pages: 1 });
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<ReturnStatus | "all">("all");
-  const [reasonFilter, setReasonFilter] = useState("all");
+  const [reasonFilter, setReasonFilter] = useState<ReturnReasonType | "all">("all");
 
   useEffect(() => {
     loadReturns();
@@ -159,7 +161,7 @@ export default function PurchaseReturnsPage() {
                 className="pl-10"
               />
             </div>
-            <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as any)}>
+            <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as ReturnStatus | "all")}>
               <SelectTrigger className="w-full sm:w-48">
                 <SelectValue placeholder="Status" />
               </SelectTrigger>
@@ -172,7 +174,10 @@ export default function PurchaseReturnsPage() {
                 <SelectItem value="completed">Completed</SelectItem>
               </SelectContent>
             </Select>
-            <Select value={reasonFilter} onValueChange={setReasonFilter}>
+            <Select
+              value={reasonFilter}
+              onValueChange={(value) => setReasonFilter(value as ReturnReasonType | "all")}
+            >
               <SelectTrigger className="w-full sm:w-48">
                 <SelectValue placeholder="Alasan" />
               </SelectTrigger>
@@ -244,7 +249,7 @@ export default function PurchaseReturnsPage() {
                       </td>
                       <td className="px-4 py-3">
                         <Badge variant="outline">
-                          {RETURN_REASON_LABELS[ret.reason_type]}
+                          {RETURN_REASON_LABELS[ret.reason_type as ReturnReasonType]}
                         </Badge>
                       </td>
                       <td className="px-4 py-3 font-mono text-xs">
@@ -254,8 +259,8 @@ export default function PurchaseReturnsPage() {
                         {formatRupiah(ret.total_amount)}
                       </td>
                       <td className="px-4 py-3">
-                        <Badge className={RETURN_STATUS_COLORS[ret.status]}>
-                          {RETURN_STATUS_LABELS[ret.status]}
+                        <Badge className={RETURN_STATUS_COLORS[ret.status as ReturnStatus]}>
+                          {RETURN_STATUS_LABELS[ret.status as ReturnStatus]}
                         </Badge>
                       </td>
                       <td className="px-4 py-3">

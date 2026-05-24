@@ -19,9 +19,9 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Search, MoreVertical, Package, Calculator, Upload } from "lucide-react";
+import { Plus, Search, MoreVertical, Package, Calculator } from "lucide-react";
 import { toast } from "sonner";
-import { ProductWithCOGS, PaginatedResponse } from "@/types/purchasing";
+import { ProductWithCOGS } from "@/types/purchasing";
 import { listProducts, deleteProduct } from "@/lib/purchasing";
 import {
   Pagination,
@@ -52,6 +52,10 @@ export default function ProductsPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [deletingProduct, setDeletingProduct] = useState<ProductWithCOGS | null>(null);
+
+  const getErrorMessage = (error: unknown, fallback: string) => {
+    return error instanceof Error ? error.message : fallback;
+  };
 
   useEffect(() => {
     loadProducts();
@@ -99,9 +103,9 @@ export default function ProductsPage() {
       toast.success("Produk berhasil dinonaktifkan");
       setIsDeleteDialogOpen(false);
       loadProducts();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error deleting product:", error);
-      toast.error(error.message || "Gagal menghapus produk");
+      toast.error(getErrorMessage(error, "Gagal menghapus produk"));
     }
   };
 
@@ -198,10 +202,8 @@ export default function ProductsPage() {
                   </TableCell>
                   <TableCell>
                     <DropdownMenu>
-                      <DropdownMenuTrigger>
-                        <Button variant="ghost" size="icon" className="relative z-10">
-                          <MoreVertical className="w-4 h-4" />
-                        </Button>
+                      <DropdownMenuTrigger className="relative z-10 inline-flex h-8 w-8 items-center justify-center rounded-md text-gray-600 hover:bg-gray-100 hover:text-gray-900">
+                        <MoreVertical className="w-4 h-4" />
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end" className="z-50 bg-white shadow-lg border border-gray-200">
                         <Link href={`/dashboard/purchasing/products/${product.id}`}>
@@ -212,6 +214,12 @@ export default function ProductsPage() {
                         </Link>
                         <Link href={`/dashboard/purchasing/products/${product.id}/edit`}>
                           <DropdownMenuItem>Edit Produk</DropdownMenuItem>
+                        </Link>
+                        <Link href={`/dashboard/purchasing/products/${product.id}/bom`}>
+                          <DropdownMenuItem>
+                            <Calculator className="w-4 h-4 mr-2" />
+                            Edit BOM/HPP
+                          </DropdownMenuItem>
                         </Link>
                         <DropdownMenuItem
                           onClick={() => handleOpenDelete(product)}

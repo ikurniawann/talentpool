@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -42,6 +42,8 @@ import {
   User,
   Calendar,
   MapPin,
+  Factory,
+  Truck,
 } from "lucide-react";
 import { toast } from "sonner";
 import { PurchaseOrderWithStats, PurchaseOrderItem, POStatus } from "@/types/purchasing";
@@ -54,7 +56,6 @@ import {
 
 export default function PODetailPage() {
   const params = useParams();
-  const router = useRouter();
   const poId = params.id as string;
 
   const [po, setPo] = useState<PurchaseOrderWithStats | null>(null);
@@ -67,6 +68,11 @@ export default function PODetailPage() {
   const [isCancelDialogOpen, setIsCancelDialogOpen] = useState(false);
   const [sendVia, setSendVia] = useState<"EMAIL" | "WHATSAPP" | "PRINT" | "OTHER">("EMAIL");
   const [cancelReason, setCancelReason] = useState("");
+
+  const normalizedStatus = po?.status?.toLowerCase() as POStatus | undefined;
+
+  const getErrorMessage = (error: unknown, fallback: string) =>
+    error instanceof Error ? error.message : fallback;
 
   // Add print styles
   useEffect(() => {
@@ -131,9 +137,9 @@ export default function PODetailPage() {
       toast.success("PO berhasil diapprove");
       setIsApproveDialogOpen(false);
       loadPO();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error approving PO:", error);
-      toast.error(error.message || "Gagal mengapprove PO");
+      toast.error(getErrorMessage(error, "Gagal mengapprove PO"));
     }
   };
 
@@ -148,9 +154,9 @@ export default function PODetailPage() {
       toast.success(`PO berhasil dikirim via ${sendVia}`);
       setIsSendDialogOpen(false);
       loadPO();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error sending PO:", error);
-      toast.error(error.message || "Gagal mengirim PO");
+      toast.error(getErrorMessage(error, "Gagal mengirim PO"));
     }
   };
 
@@ -161,13 +167,14 @@ export default function PODetailPage() {
       toast.success("PO berhasil dibatalkan");
       setIsCancelDialogOpen(false);
       loadPO();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error cancelling PO:", error);
-      toast.error(error.message || "Gagal membatalkan PO");
+      toast.error(getErrorMessage(error, "Gagal membatalkan PO"));
     }
   };
 
-  const getStatusBadge = (status: POStatus) => {
+  const getStatusBadge = (status: POStatus | string) => {
+    const normalized = status.toLowerCase() as POStatus;
     const styles: Record<POStatus, string> = {
       draft: "bg-gray-100 text-gray-800",
       pending_approval: "bg-yellow-100 text-yellow-800",
@@ -188,7 +195,7 @@ export default function PODetailPage() {
       rejected: "Ditolak",
       cancelled: "Dibatalkan",
     };
-    return <Badge className={styles[status]}>{labels[status]}</Badge>;
+    return <Badge className={styles[normalized] || "bg-gray-100 text-gray-800"}>{labels[normalized] || status}</Badge>;
   };
 
   const formatCurrency = (num: number) => {
@@ -246,7 +253,7 @@ export default function PODetailPage() {
             Print
           </Button>
           
-          {po.status === "draft" && (
+          {normalizedStatus === "draft" && (
             <>
               <Link href={`/dashboard/purchasing/po/${po.id}/edit`}>
                 <Button variant="outline">Edit</Button>
@@ -258,14 +265,23 @@ export default function PODetailPage() {
             </>
           )}
           
-          {po.status === "approved" && (
+          {normalizedStatus === "approved" && (
             <Button onClick={() => setIsSendDialogOpen(true)}>
               <Send className="w-4 h-4 mr-2" />
               Kirim ke Supplier
             </Button>
           )}
+
+          {["approved", "sent", "partial", "partially_received"].includes(normalizedStatus || "") && (
+            <Link href={`/dashboard/purchasing/delivery/new?po_id=${po.id}`}>
+              <Button variant="outline">
+                <Truck className="w-4 h-4 mr-2" />
+                Buat Delivery
+              </Button>
+            </Link>
+          )}
           
-          {po.status !== "received" && po.status !== "cancelled" && (
+          {normalizedStatus !== "received" && normalizedStatus !== "cancelled" && (
             <Button variant="destructive" onClick={() => setIsCancelDialogOpen(true)}>
               <XCircle className="w-4 h-4 mr-2" />
               Batal
@@ -324,6 +340,28 @@ export default function PODetailPage() {
               </div>
             )}
 
+            {po.source_type === "production_order" && (
+              <div className="rounded-lg border border-pink-100 bg-pink-50 p-3">
+                <Label className="text-muted-foreground text-sm flex items-center gap-1">
+                  <Factory className="w-4 h-4" />
+                  Sumber PO
+                </Label>
+                <div className="mt-1 flex flex-wrap items-center gap-2">
+                  <Badge className="bg-pink-600 text-white hover:bg-pink-600">Production Order</Badge>
+                  {po.production_order_id ? (
+                    <Link
+                      href={`/dashboard/purchasing/production/orders/${po.production_order_id}`}
+                      className="font-medium text-pink-700 hover:underline"
+                    >
+                      {po.production_order_number || po.source_reference || po.production_order_id}
+                    </Link>
+                  ) : (
+                    <span className="font-medium">{po.source_reference || "-"}</span>
+                  )}
+                </div>
+              </div>
+            )}
+
             {po.alamat_pengiriman && (
               <div className="space-y-1">
                 <Label className="text-muted-foreground text-sm flex items-center gap-1">
@@ -369,7 +407,7 @@ export default function PODetailPage() {
           <CardContent className="space-y-3">
             {(() => {
               // Hitung dari items kalau po.subtotal = 0
-              const subtotalFromItems = po.items?.reduce((s: number, i: any) =>
+              const subtotalFromItems = po.items?.reduce((s: number, i: PurchaseOrderItem & { diskon_item?: number }) =>
                 s + (i.subtotal || (i.qty_ordered * i.harga_satuan) - (i.diskon_item || 0)), 0) || 0;
               const subtotal = (po.subtotal && po.subtotal > 0) ? po.subtotal : subtotalFromItems;
               const diskon = po.diskon_nominal || 0;
@@ -406,7 +444,7 @@ export default function PODetailPage() {
               );
             })()}
 
-            {po.status !== "draft" && po.status !== "cancelled" && (
+            {normalizedStatus !== "draft" && normalizedStatus !== "cancelled" && (
               <div className="pt-4 border-t mt-4">
                 <div className="text-sm text-muted-foreground mb-2">Progress Penerimaan</div>
                 <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
@@ -451,7 +489,7 @@ export default function PODetailPage() {
                 <TableHead>Satuan</TableHead>
                 <TableHead className="text-right">Harga Satuan</TableHead>
                 <TableHead className="text-right">Subtotal</TableHead>
-                {po.status !== "draft" && po.status !== "cancelled" && (
+                {normalizedStatus !== "draft" && normalizedStatus !== "cancelled" && (
                   <TableHead className="text-right">Diterima</TableHead>
                 )}
               </TableRow>
@@ -473,7 +511,7 @@ export default function PODetailPage() {
                   <TableCell className="text-right font-medium">
                     {formatCurrency(item.subtotal)}
                   </TableCell>
-                  {po.status !== "draft" && po.status !== "cancelled" && (
+                  {normalizedStatus !== "draft" && normalizedStatus !== "cancelled" && (
                     <TableCell className="text-right">
                       <div
                         className={
@@ -526,7 +564,7 @@ export default function PODetailPage() {
           <div className="space-y-4 py-4">
             <div className="space-y-2">
               <Label>Metode Pengiriman</Label>
-              <Select value={sendVia} onValueChange={(v) => setSendVia(v as any)}>
+              <Select value={sendVia} onValueChange={(v) => setSendVia(v as "EMAIL" | "WHATSAPP" | "PRINT" | "OTHER")}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>

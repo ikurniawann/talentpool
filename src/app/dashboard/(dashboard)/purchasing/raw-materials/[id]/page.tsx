@@ -1,20 +1,12 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { ArrowLeft, Package, AlertCircle, Edit, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { RawMaterialWithStock } from "@/types/purchasing";
@@ -28,6 +20,10 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 
+function getErrorMessage(error: unknown, fallback: string) {
+  return error instanceof Error ? error.message : fallback;
+}
+
 export default function RawMaterialDetailPage() {
   const params = useParams();
   const router = useRouter();
@@ -37,13 +33,7 @@ export default function RawMaterialDetailPage() {
   const [loading, setLoading] = useState(true);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
 
-  useEffect(() => {
-    if (materialId) {
-      loadData();
-    }
-  }, [materialId]);
-
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     try {
       setLoading(true);
       const data = await getRawMaterial(materialId);
@@ -54,7 +44,13 @@ export default function RawMaterialDetailPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [materialId]);
+
+  useEffect(() => {
+    if (materialId) {
+      loadData();
+    }
+  }, [materialId, loadData]);
 
   const handleDelete = async () => {
     if (!material) return;
@@ -63,9 +59,9 @@ export default function RawMaterialDetailPage() {
       toast.success("Bahan baku berhasil dinonaktifkan");
       setIsDeleteDialogOpen(false);
       router.push("/dashboard/purchasing/raw-materials");
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error deleting material:", error);
-      toast.error(error.message || "Gagal menghapus bahan baku");
+      toast.error(getErrorMessage(error, "Gagal menghapus bahan baku"));
     }
   };
 

@@ -1,8 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase/service-client';
+import { getPosSession } from '@/lib/api/auth';
+
+function getErrorMessage(error: unknown) {
+  return error instanceof Error ? error.message : 'Unknown error';
+}
 
 // GET /api/pos/reservations - List reservations with filters
 export async function GET(request: NextRequest) {
+  const sessionUserId = await getPosSession();
+  if (!sessionUserId) {
+    return NextResponse.json({ success: false, error: 'Authentication required' }, { status: 401 });
+  }
+
   try {
     const supabase = createServiceClient();
     const searchParams = request.nextUrl.searchParams;
@@ -37,10 +47,10 @@ export async function GET(request: NextRequest) {
     if (error) throw error;
 
     return NextResponse.json({ success: true, data });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error fetching reservations:', error);
     return NextResponse.json(
-      { success: false, error: error.message },
+      { success: false, error: getErrorMessage(error) },
       { status: 500 }
     );
   }
@@ -48,6 +58,11 @@ export async function GET(request: NextRequest) {
 
 // POST /api/pos/reservations - Create new reservation
 export async function POST(request: NextRequest) {
+  const sessionUserId = await getPosSession();
+  if (!sessionUserId) {
+    return NextResponse.json({ success: false, error: 'Authentication required' }, { status: 401 });
+  }
+
   try {
     const supabase = createServiceClient();
     const body = await request.json();
@@ -119,12 +134,11 @@ export async function POST(request: NextRequest) {
     if (reservationError) throw reservationError;
 
     return NextResponse.json({ success: true, data: reservation }, { status: 201 });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error creating reservation:', error);
     return NextResponse.json(
-      { success: false, error: error.message },
+      { success: false, error: getErrorMessage(error) },
       { status: 500 }
     );
   }
 }
-

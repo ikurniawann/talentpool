@@ -1,15 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import {
   BuildingOfficeIcon,
   CubeIcon,
   ClipboardDocumentListIcon,
-  TruckIcon,
   ArrowDownCircleIcon,
   CheckBadgeIcon,
   ArrowUturnLeftIcon,
@@ -27,8 +24,7 @@ const MODULE_STATS = [
   { label: "Bahan Baku", href: "/dashboard/purchasing/raw-materials", icon: CubeIcon, color: "bg-purple-100 text-purple-600", desc: "Master bahan &amp; satuan" },
   { label: "Produk", href: "/dashboard/purchasing/products", icon: CubeIcon, color: "bg-indigo-100 text-indigo-600", desc: "BOM &amp; struktur produk" },
   { label: "Purchase Order", href: "/dashboard/purchasing/purchase-orders", icon: ClipboardDocumentListIcon, color: "bg-green-100 text-green-600", desc: "Kelola PO ke vendor" },
-  { label: "Pengiriman", href: "/dashboard/purchasing/delivery", icon: TruckIcon, color: "bg-orange-100 text-orange-600", desc: "Lacak pengiriman vendor" },
-  { label: "Penerimaan", href: "/dashboard/purchasing/grn", icon: ArrowDownCircleIcon, color: "bg-teal-100 text-teal-600", desc: "GRN &amp; penerimaan barang" },
+  { label: "Barang Masuk", href: "/dashboard/purchasing/grn", icon: ArrowDownCircleIcon, color: "bg-teal-100 text-teal-600", desc: "Delivery, GRN &amp; status barang masuk" },
   { label: "Quality Control", href: "/dashboard/purchasing/qc", icon: CheckBadgeIcon, color: "bg-yellow-100 text-yellow-600", desc: "Inspeksi &amp; QC barang" },
   { label: "Retur", href: "/dashboard/purchasing/returns", icon: ArrowUturnLeftIcon, color: "bg-red-100 text-red-600", desc: "Pengelolaan retur" },
   { label: "Inventori", href: "/dashboard/purchasing/inventory", icon: ArchiveBoxIcon, color: "bg-cyan-100 text-cyan-600", desc: "Stok &amp; mutasi bahan" },

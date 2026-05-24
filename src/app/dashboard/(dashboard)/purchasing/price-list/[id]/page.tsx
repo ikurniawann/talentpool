@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, Edit, Trash2, DollarSign, Package, Truck } from "lucide-react";
 import { toast } from "sonner";
 import { SupplierPriceList } from "@/types/purchasing";
-import { listPriceLists, deletePriceList } from "@/lib/purchasing";
+import { deletePriceList, getPriceList } from "@/lib/purchasing";
 import {
   Dialog,
   DialogContent,
@@ -28,26 +28,28 @@ export default function PriceListDetailPage() {
   const [loading, setLoading] = useState(true);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
 
-  useEffect(() => {
-    if (priceListId) {
-      loadData();
-    }
-  }, [priceListId]);
+  const getErrorMessage = (error: unknown, fallback: string) => {
+    return error instanceof Error ? error.message : fallback;
+  };
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     try {
       setLoading(true);
-      const response: any = await listPriceLists({});
-      const items = Array.isArray(response) ? response : (response.data || []);
-      const item = items.find((p: any) => p.id === priceListId);
-      setPriceList(item || null);
+      const item = await getPriceList(priceListId);
+      setPriceList(item);
     } catch (error) {
       console.error("Error loading price list:", error);
       toast.error("Gagal memuat data price list");
     } finally {
       setLoading(false);
     }
-  };
+  }, [priceListId]);
+
+  useEffect(() => {
+    if (priceListId) {
+      loadData();
+    }
+  }, [priceListId, loadData]);
 
   const handleDelete = async () => {
     if (!priceList) return;
@@ -56,9 +58,9 @@ export default function PriceListDetailPage() {
       toast.success("Price list berhasil dihapus");
       setIsDeleteDialogOpen(false);
       router.push("/dashboard/purchasing/price-list");
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error deleting price list:", error);
-      toast.error(error.message || "Gagal menghapus price list");
+      toast.error(getErrorMessage(error, "Gagal menghapus price list"));
     }
   };
 
@@ -141,7 +143,9 @@ export default function PriceListDetailPage() {
               <div>
                 <p className="text-sm text-muted-foreground">Supplier</p>
                 <p className="font-medium">{priceList.supplier?.nama_supplier}</p>
-                <p className="text-sm text-muted-foreground">{priceList.supplier?.kode_supplier}</p>
+                <p className="text-sm text-muted-foreground">
+                  {priceList.supplier?.kode_supplier || priceList.supplier?.kode || "-"}
+                </p>
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Bahan Baku</p>

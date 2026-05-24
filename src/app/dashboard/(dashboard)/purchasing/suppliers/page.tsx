@@ -51,6 +51,7 @@ import {
   Supplier,
   SupplierListParams,
   PaymentTerms,
+  SupplierStatus,
   PAYMENT_TERMS_OPTIONS,
   getPaymentTermsLabel,
 } from "@/types/supplier";
@@ -62,6 +63,10 @@ import {
 import PurchasingGuard from "@/modules/purchasing/components/auth/PurchasingGuard";
 import { useAuth } from "@/hooks/use-auth";
 import { toast } from "sonner";
+
+function getErrorMessage(error: unknown, fallback: string) {
+  return error instanceof Error ? error.message : fallback;
+}
 
 // ─── Status badge ───────────────────────────────────────────────
 
@@ -82,28 +87,6 @@ function StatusBadge({ isActive, status }: { isActive: boolean; status?: Supplie
       Nonaktif
     </Badge>
   );
-}
-
-// ─── Format helpers ─────────────────────────────────────────────
-
-function formatCurrency(amount: number, currency: string = "IDR"): string {
-  if (currency === "USD") {
-    return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(amount);
-  }
-  return new Intl.NumberFormat("id-ID", {
-    style: "currency",
-    currency: "IDR",
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(amount);
-}
-
-function formatDate(dateStr: string): string {
-  return new Intl.DateTimeFormat("id-ID", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  }).format(new Date(dateStr));
 }
 
 // ─── Main List Page ──────────────────────────────────────────────
@@ -170,12 +153,12 @@ function SuppliersListInner() {
       setSuppliers(res.data);
       setTotal(res.pagination.total);
       setTotalPages(res.pagination.totalPages);
-    } catch (err: any) {
-      toast.error("Gagal memuat data: " + err.message);
+    } catch (err: unknown) {
+      toast.error("Gagal memuat data: " + getErrorMessage(err, "Unknown error"));
     } finally {
       setLoading(false);
     }
-  }, [debouncedSearch, statusFilter, paymentFilter, page, limit, sortBy, sortDir, toast]);
+  }, [debouncedSearch, statusFilter, paymentFilter, page, limit, sortBy, sortDir]);
 
   useEffect(() => {
     fetchSuppliers();
@@ -202,8 +185,8 @@ function SuppliersListInner() {
       toast.success(`Supplier "${supplier.nama_supplier}" dinonaktifkan.`);
       setDeactivateDialog({ open: false, supplier: null });
       fetchSuppliers();
-    } catch (err: any) {
-      toast.error("Gagal: " + err.message);
+    } catch (err: unknown) {
+      toast.error("Gagal: " + getErrorMessage(err, "Unknown error"));
     } finally {
       setDeactivateLoading(false);
     }
@@ -307,7 +290,7 @@ function SuppliersListInner() {
             {/* Status filter */}
             <Select
               value={statusFilter}
-              onValueChange={(v) => { setStatusFilter(v as any); setPage(1); }}
+              onValueChange={(v) => { setStatusFilter(v as typeof statusFilter); setPage(1); }}
             >
               <SelectTrigger className="w-[160px]">
                 <SelectValue />
@@ -323,7 +306,7 @@ function SuppliersListInner() {
             {/* Payment terms filter */}
             <Select
               value={paymentFilter}
-              onValueChange={(v) => { setPaymentFilter(v as any); setPage(1); }}
+              onValueChange={(v) => { setPaymentFilter(v as typeof paymentFilter); setPage(1); }}
             >
               <SelectTrigger className="w-[140px]">
                 <SelectValue />
@@ -560,7 +543,7 @@ function SuppliersListInner() {
             templateName="template-supplier.csv"
             apiEndpoint="/api/purchasing/import/suppliers"
             onSuccess={() => {
-              loadSuppliers();
+              fetchSuppliers();
             }}
             columns={[
               { key: "kode", label: "Kode", required: true, type: "text" },

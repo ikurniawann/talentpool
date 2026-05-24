@@ -15,6 +15,38 @@ const productSchema = z.object({
   is_active: z.boolean().optional(),
 });
 
+type BomItemRow = {
+  raw_material_id?: string | null;
+  qty_required?: number | null;
+  waste_factor?: number | null;
+  raw_material?: {
+    avg_cost?: number | null;
+    harga_avg?: number | null;
+    harga_terakhir?: number | null;
+  } | null;
+};
+
+function getErrorMessage(error: unknown, fallback: string) {
+  return error instanceof Error ? error.message : fallback;
+}
+
+function getMaterialCost(
+  item: BomItemRow,
+  stockCostMap: Map<string, number>
+) {
+  const materialId = item.raw_material_id;
+  if (materialId && stockCostMap.has(materialId)) {
+    return stockCostMap.get(materialId) ?? 0;
+  }
+
+  return Number(
+    item.raw_material?.avg_cost ??
+      item.raw_material?.harga_avg ??
+      item.raw_material?.harga_terakhir ??
+      0
+  );
+}
+
 // GET /api/purchasing/products/:id
 export async function GET(
   request: NextRequest,
@@ -55,11 +87,24 @@ export async function GET(
 
     if (bomError) throw bomError;
 
-    // Calculate total HPP dari BOM
+    const materialIds = Array.from(
+      new Set((bomItems || []).map((item) => item.raw_material_id).filter(Boolean))
+    );
+    const { data: stockCosts } = materialIds.length > 0
+      ? await supabase
+          .from("v_raw_materials_stock")
+          .select("id, avg_cost")
+          .in("id", materialIds)
+      : { data: [] };
+    const stockCostMap = new Map(
+      (stockCosts || []).map((material) => [material.id, Number(material.avg_cost ?? 0)])
+    );
+
     let totalHPP = 0;
-    const bomWithCost = (bomItems || []).map((item: any) => {
-      const materialCost = item.raw_material?.avg_cost || 0;
-      const qtyNeeded = item.qty_required * (1 + (item.waste_factor || 0));
+    const bomWithCost = (bomItems || []).map((item) => {
+      const bomItem = item as BomItemRow;
+      const materialCost = getMaterialCost(bomItem, stockCostMap);
+      const qtyNeeded = Number(bomItem.qty_required ?? 0) * (1 + Number(bomItem.waste_factor ?? 0));
       const itemCost = materialCost * qtyNeeded;
       totalHPP += itemCost;
       return {
@@ -77,10 +122,10 @@ export async function GET(
         hpp_calculated: totalHPP,
       },
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error fetching product:", error);
     return Response.json(
-      { success: false, message: error.message || "Gagal mengambil data produk" },
+      { success: false, message: getErrorMessage(error, "Gagal mengambil data produk") },
       { status: 500 }
     );
   }
@@ -131,7 +176,7 @@ export async function PUT(
       data,
       message: "Produk berhasil diupdate",
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error updating product:", error);
 
     if (error instanceof z.ZodError) {
@@ -146,7 +191,7 @@ export async function PUT(
     }
 
     return Response.json(
-      { success: false, message: error.message || "Gagal mengupdate produk" },
+      { success: false, message: getErrorMessage(error, "Gagal mengupdate produk") },
       { status: 500 }
     );
   }
@@ -190,10 +235,10 @@ export async function DELETE(
       success: true,
       message: "Produk berhasil dinonaktifkan",
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error deleting product:", error);
     return Response.json(
-      { success: false, message: error.message || "Gagal menghapus produk" },
+      { success: false, message: getErrorMessage(error, "Gagal menghapus produk") },
       { status: 500 }
     );
   }

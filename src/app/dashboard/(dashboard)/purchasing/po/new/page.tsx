@@ -8,18 +8,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowLeft, Save, Plus, Trash2, Package, Search, User } from "lucide-react";
@@ -36,6 +28,15 @@ interface POItemForm extends PurchaseOrderItemFormData {
   subtotal: number;
 }
 
+type SuppliersResponse = Supplier[] | { data?: Supplier[] };
+type FetchError = Error & {
+  response?: Response;
+};
+
+function getErrorMessage(error: unknown, fallback: string) {
+  return error instanceof Error ? error.message : fallback;
+}
+
 export default function NewPOPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -46,23 +47,86 @@ export default function NewPOPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [supplierModalOpen, setSupplierModalOpen] = useState(false);
   const [supplierSearch, setSupplierSearch] = useState("");
+  const [prefillApplied, setPrefillApplied] = useState(false);
+  const [formData, setFormData] = useState<PurchaseOrderFormData>({
+    supplier_id: "",
+    tanggal_po: new Date().toISOString().split("T")[0],
+    tanggal_kirim_estimasi: "",
+    catatan: "",
+    alamat_pengiriman: "",
+    diskon_persen: 0,
+    diskon_nominal: 0,
+    ppn_persen: 11,
+    source_type: "manual",
+    production_order_id: null,
+    source_reference: null,
+    items: [],
+  });
+  const [items, setItems] = useState<POItemForm[]>([]);
 
-  // Auto-fill from URL query params (from Low Stock Report)
+  // Auto-fill from URL query params (from Low Stock Report / Production shortage)
   useEffect(() => {
+    if (prefillApplied || materials.length === 0) return;
+    const itemsJson = searchParams.get("items");
     const materialCode = searchParams.get('material');
     const qty = searchParams.get('qty');
     const supplierName = searchParams.get('supplier');
+
+    if (itemsJson) {
+      try {
+        const parsed = JSON.parse(itemsJson) as Array<{
+          kode?: string;
+          qty?: number;
+          price?: number;
+        }>;
+        const nextItems = parsed
+          .map((prefill, index) => {
+            const material = materials.find((m) => m.kode === prefill.kode);
+            if (!material) return null;
+            const qtyOrdered = Math.max(0, Number(prefill.qty || 0));
+            const unitPrice = Number(prefill.price ?? material.harga_terakhir ?? material.avg_cost ?? 0);
+            return {
+              id: `prefill-${Date.now()}-${index}`,
+              raw_material_id: material.id,
+              qty_ordered: qtyOrdered,
+              harga_satuan: unitPrice,
+              subtotal: qtyOrdered * unitPrice,
+              notes: "Kebutuhan bahan produksi",
+              raw_material_name: material.nama,
+              raw_material_unit: material.satuan_besar_nama || material.satuan || "Unit",
+            } as POItemForm;
+          })
+          .filter(Boolean) as POItemForm[];
+
+        if (nextItems.length > 0) {
+          const productionOrderId = searchParams.get("production_order_id");
+          const productionOrderNumber = searchParams.get("production_order");
+          setItems(nextItems);
+          setFormData((prev) => ({
+            ...prev,
+            source_type: searchParams.get("source") === "production" ? "production_order" : prev.source_type,
+            production_order_id: productionOrderId || prev.production_order_id || null,
+            source_reference: productionOrderNumber || prev.source_reference || null,
+            catatan: productionOrderNumber
+              ? `Kebutuhan bahan produksi ${productionOrderNumber}`
+              : prev.catatan,
+          }));
+          setPrefillApplied(true);
+          toast.success(`${nextItems.length} material produksi ditambahkan ke PO`);
+          return;
+        }
+      } catch (error) {
+        console.error("Failed to parse PO prefill items:", error);
+      }
+    }
     
     if (materialCode && qty && materials.length > 0) {
       // Find material by code
       const material = materials.find(m => m.kode === materialCode);
       if (material) {
-        // Find supplier by name if provided
-        let supplierId = formData.supplier_id;
         if (supplierName && suppliers.length > 0) {
           const supplier = suppliers.find(s => s.nama_supplier.includes(supplierName));
           if (supplier) {
-            supplierId = supplier.id;
             setFormData(prev => ({ ...prev, supplier_id: supplier.id }));
           }
         }
@@ -81,24 +145,11 @@ export default function NewPOPage() {
         };
         
         setItems([newItem]);
+        setPrefillApplied(true);
         toast.success(`Material ${material.nama} ditambahkan ke PO (${qty} ${unit?.nama || 'pcs'})`);
       }
     }
-  }, [searchParams, materials, suppliers, units]);
-
-  const [formData, setFormData] = useState<PurchaseOrderFormData>({
-    supplier_id: "",
-    tanggal_po: new Date().toISOString().split("T")[0],
-    tanggal_kirim_estimasi: "",
-    catatan: "",
-    alamat_pengiriman: "",
-    diskon_persen: 0,
-    diskon_nominal: 0,
-    ppn_persen: 11,
-    items: [],
-  });
-
-  const [items, setItems] = useState<POItemForm[]>([]);
+  }, [searchParams, materials, suppliers, units, formData.supplier_id, prefillApplied]);
 
   useEffect(() => {
     loadData();
@@ -110,12 +161,12 @@ export default function NewPOPage() {
       // Load suppliers
       console.log("Loading suppliers...");
       try {
-        const suppliersRes: any = await listSuppliers();
-        const suppliersArray = Array.isArray(suppliersRes) ? suppliersRes : (suppliersRes as any).data || [];
+        const suppliersRes = await listSuppliers() as SuppliersResponse;
+        const suppliersArray = Array.isArray(suppliersRes) ? suppliersRes : suppliersRes.data || [];
         setSuppliers(suppliersArray);
         console.log("Suppliers loaded:", suppliersArray.length);
-      } catch (err: any) {
-        console.error("Failed to load suppliers:", err.message);
+      } catch (err: unknown) {
+        console.error("Failed to load suppliers:", getErrorMessage(err, "Unknown error"));
         // Continue without suppliers - user can still add items
       }
       
@@ -127,9 +178,9 @@ export default function NewPOPage() {
         const materialsArray = materialsRes.data || [];
         setMaterials(materialsArray);
         console.log("Materials loaded:", materialsArray.length);
-      } catch (err: any) {
-        console.error("Failed to load materials:", err.message);
-        toast.error(`Gagal memuat bahan baku: ${err.message}`);
+      } catch (err: unknown) {
+        console.error("Failed to load materials:", getErrorMessage(err, "Unknown error"));
+        toast.error(`Gagal memuat bahan baku: ${getErrorMessage(err, "Unknown error")}`);
       }
       
       // Load units
@@ -138,14 +189,14 @@ export default function NewPOPage() {
         const unitsRes = await listUnits();
         console.log("Units loaded:", unitsRes?.data?.length || 0);
         setUnits(unitsRes?.data || []);
-      } catch (err: any) {
-        console.error("Failed to load units:", err.message);
+      } catch (err: unknown) {
+        console.error("Failed to load units:", getErrorMessage(err, "Unknown error"));
         // Units are optional, continue
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error loading data:", error);
       console.error("Error details:", JSON.stringify(error, null, 2));
-      toast.error(`Gagal memuat data: ${error.message}`);
+      toast.error(`Gagal memuat data: ${getErrorMessage(error, "Unknown error")}`);
     } finally {
       setLoading(false);
     }
@@ -184,7 +235,7 @@ export default function NewPOPage() {
     setItems(items.filter((_, i) => i !== index));
   };
 
-  const updateItem = (index: number, field: keyof POItemForm, value: any) => {
+  const updateItem = (index: number, field: keyof POItemForm, value: POItemForm[keyof POItemForm]) => {
     const newItems = [...items];
     newItems[index] = { ...newItems[index], [field]: value };
 
@@ -248,13 +299,14 @@ export default function NewPOPage() {
 
       toast.success("PO berhasil dibuat");
       router.push(`/dashboard/purchasing/po/${po.id}`);
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const typedError = error as FetchError;
       console.error("Error creating PO:", error);
-      console.error("Error response:", error.response);
+      console.error("Error response:", typedError.response);
       
-      if (error.response) {
+      if (typedError.response) {
         try {
-          const errorData = await error.response.json();
+          const errorData = await typedError.response.json();
           console.error("API Error details:", JSON.stringify(errorData, null, 2));
           
           // Show detailed validation errors
@@ -271,7 +323,7 @@ export default function NewPOPage() {
           toast.error("Gagal membuat PO");
         }
       } else {
-        toast.error(error.message || "Gagal membuat PO");
+        toast.error(getErrorMessage(error, "Gagal membuat PO"));
       }
     } finally {
       setIsSubmitting(false);
@@ -543,7 +595,7 @@ export default function NewPOPage() {
 
               {items.length === 0 && (
                 <div className="text-center py-8 text-muted-foreground border rounded-lg">
-                  Belum ada item. Klik "Tambah Item" untuk memulai.
+                  Belum ada item. Klik &quot;Tambah Item&quot; untuk memulai.
                 </div>
               )}
             </div>

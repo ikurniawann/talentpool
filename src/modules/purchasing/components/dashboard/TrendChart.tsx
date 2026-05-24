@@ -12,7 +12,7 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import { formatRupiah } from "@/modules/purchasing/utils";
-import { MonthlyTrend } from "../usePurchasingDashboard";
+import { MonthlyTrend } from "@/modules/purchasing/hooks/usePurchasingDashboard";
 
 interface TrendChartProps {
   data: MonthlyTrend[];

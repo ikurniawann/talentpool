@@ -26,9 +26,9 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Plus, Search, MoreVertical, FileText, CheckCircle, Send, XCircle, Download, Trash2, Check } from "lucide-react";
+import { Plus, Search, MoreVertical, FileText, CheckCircle, Send, XCircle, Download, Trash2, Truck } from "lucide-react";
 import { toast } from "sonner";
-import { PurchaseOrderWithStats, POStatus, PaginatedResponse } from "@/types/purchasing";
+import { PurchaseOrderWithStats, POStatus } from "@/types/purchasing";
 import { listPurchaseOrders, approvePurchaseOrder, sendPurchaseOrder, cancelPurchaseOrder } from "@/lib/purchasing";
 import { convertToCSV, downloadCSV, formatDateForCSV, formatCurrencyForCSV } from "@/lib/utils/csv-export";
 import {
@@ -60,6 +60,10 @@ const STATUS_OPTIONS: { value: POStatus | ""; label: string }[] = [
   { value: "rejected", label: "Ditolak" },
   { value: "cancelled", label: "Dibatalkan" },
 ];
+
+function getErrorMessage(error: unknown, fallback: string) {
+  return error instanceof Error ? error.message : fallback;
+}
 
 export default function PurchaseOrdersPage() {
   const [pos, setPos] = useState<PurchaseOrderWithStats[]>([]);
@@ -138,7 +142,7 @@ export default function PurchaseOrdersPage() {
         { key: "supplier_kode", label: "Kode Supplier" },
         { key: "tanggal_po", label: "Tanggal PO", format: formatDateForCSV },
         { key: "status", label: "Status" },
-        { key: "subtotal", label: "Total Amount", format: (val: any) => val ? formatCurrencyForCSV(val) : "" },
+        { key: "subtotal", label: "Total Amount", format: (val: unknown) => val ? formatCurrencyForCSV(Number(val)) : "" },
         { key: "created_by", label: "Created By" },
         { key: "catatan", label: "Catatan" },
       ];
@@ -193,8 +197,8 @@ export default function PurchaseOrdersPage() {
           await approvePurchaseOrder(id);
           successCount++;
           console.log(`✓ PO ${id} approved`);
-        } catch (error: any) {
-          console.error(`✗ Failed to approve PO ${id}:`, error?.message || error);
+        } catch (error: unknown) {
+          console.error(`✗ Failed to approve PO ${id}:`, getErrorMessage(error, "Unknown error"));
           failCount++;
           failedIds.push(id);
         }
@@ -238,7 +242,7 @@ export default function PurchaseOrdersPage() {
         try {
           // await deletePurchaseOrder(id); // TODO: Implement this
           successCount++;
-        } catch (error: any) {
+        } catch (error: unknown) {
           console.error(`Failed to delete PO ${id}:`, error);
           failCount++;
         }
@@ -265,9 +269,9 @@ export default function PurchaseOrdersPage() {
       await approvePurchaseOrder(po.id);
       toast.success("PO berhasil diapprove");
       loadPOs();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error approving PO:", error);
-      toast.error(error.message || "Gagal mengapprove PO");
+      toast.error(getErrorMessage(error, "Gagal mengapprove PO"));
     }
   };
 
@@ -284,9 +288,9 @@ export default function PurchaseOrdersPage() {
       toast.success(`PO berhasil dikirim via ${sendVia}`);
       setIsSendDialogOpen(false);
       loadPOs();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error sending PO:", error);
-      toast.error(error.message || "Gagal mengirim PO");
+      toast.error(getErrorMessage(error, "Gagal mengirim PO"));
     }
   };
 
@@ -303,13 +307,16 @@ export default function PurchaseOrdersPage() {
       toast.success("PO berhasil dibatalkan");
       setIsCancelDialogOpen(false);
       loadPOs();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error cancelling PO:", error);
-      toast.error(error.message || "Gagal membatalkan PO");
+      toast.error(getErrorMessage(error, "Gagal membatalkan PO"));
     }
   };
 
-  const getStatusBadge = (status: POStatus) => {
+  const normalizeStatus = (status: string) => status.toLowerCase() as POStatus;
+
+  const getStatusBadge = (status: POStatus | string) => {
+    const normalized = normalizeStatus(status);
     const styles: Record<POStatus, string> = {
       draft: "bg-gray-100 text-gray-800",
       pending_approval: "bg-yellow-100 text-yellow-800",
@@ -330,7 +337,7 @@ export default function PurchaseOrdersPage() {
       rejected: "Ditolak",
       cancelled: "Dibatalkan",
     };
-    return <Badge className={styles[status]}>{labels[status]}</Badge>;
+    return <Badge className={styles[normalized] || "bg-gray-100 text-gray-800"}>{labels[normalized] || status}</Badge>;
   };
 
   const formatCurrency = (num: number) => {
@@ -487,7 +494,7 @@ export default function PurchaseOrdersPage() {
                   </TableCell>
                   <TableCell>{getStatusBadge(po.status)}</TableCell>
                   <TableCell>
-                    {po.status !== "draft" && po.status !== "cancelled" && (
+                    {normalizeStatus(po.status) !== "draft" && normalizeStatus(po.status) !== "cancelled" && (
                       <div className="flex items-center gap-2">
                         <div className="w-24 h-2 bg-gray-200 rounded-full overflow-hidden">
                           <div
@@ -509,10 +516,8 @@ export default function PurchaseOrdersPage() {
                   </TableCell>
                   <TableCell>
                     <DropdownMenu>
-                      <DropdownMenuTrigger>
-                        <Button variant="ghost" size="icon" className="relative z-10">
-                          <MoreVertical className="w-4 h-4" />
-                        </Button>
+                      <DropdownMenuTrigger className="relative z-10 inline-flex h-8 w-8 items-center justify-center rounded-md text-gray-600 hover:bg-gray-100 hover:text-gray-900">
+                        <MoreVertical className="w-4 h-4" />
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end" className="z-50 bg-white shadow-lg border border-gray-200">
                         <Link href={`/dashboard/purchasing/po/${po.id}`}>
@@ -521,7 +526,7 @@ export default function PurchaseOrdersPage() {
                             Lihat Detail
                           </DropdownMenuItem>
                         </Link>
-                        {po.status === "draft" && (
+                        {normalizeStatus(po.status) === "draft" && (
                           <>
                             <Link href={`/dashboard/purchasing/po/${po.id}/edit`}>
                               <DropdownMenuItem>
@@ -535,13 +540,21 @@ export default function PurchaseOrdersPage() {
                             </DropdownMenuItem>
                           </>
                         )}
-                        {po.status === "approved" && (
+                        {normalizeStatus(po.status) === "approved" && (
                           <DropdownMenuItem onClick={() => handleOpenSend(po)}>
                             <Send className="w-4 h-4 mr-2 text-pink-600" />
                             Kirim ke Supplier
                           </DropdownMenuItem>
                         )}
-                        {po.status !== "received" && po.status !== "cancelled" && (
+                        {["approved", "sent", "partially_received"].includes(normalizeStatus(po.status)) && (
+                          <Link href={`/dashboard/purchasing/delivery/new?po_id=${po.id}`}>
+                            <DropdownMenuItem>
+                              <Truck className="w-4 h-4 mr-2 text-pink-600" />
+                              Buat Delivery
+                            </DropdownMenuItem>
+                          </Link>
+                        )}
+                        {normalizeStatus(po.status) !== "received" && normalizeStatus(po.status) !== "cancelled" && (
                           <DropdownMenuItem onClick={() => handleOpenCancel(po)}>
                             <XCircle className="w-4 h-4 mr-2 text-red-600" />
                             Batalkan
@@ -629,7 +642,7 @@ export default function PurchaseOrdersPage() {
               <Label>Metode Pengiriman</Label>
               <Select
                 value={sendVia}
-                onValueChange={(v) => setSendVia(v as any)}
+                onValueChange={(v) => setSendVia(v as "EMAIL" | "WHATSAPP" | "PRINT" | "OTHER")}
               >
                 <SelectTrigger>
                   <SelectValue />

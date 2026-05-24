@@ -190,7 +190,7 @@ export const ROUTES: RouteDefinition[] = [
   {
     route: "receiving.list",
     path: "/dashboard/purchasing/receiving",
-    meta: { label: "Penerimaan", icon: "ArrowDownCircleIcon" },
+    meta: { label: "Barang Masuk", icon: "ArrowDownCircleIcon" },
   },
   {
     route: "receiving.grn-new",

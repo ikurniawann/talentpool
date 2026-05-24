@@ -126,7 +126,7 @@ export default function GrnContinueListPage() {
         items={[
           { label: "Dashboard", href: "/dashboard" },
           { label: "Purchasing", href: "/dashboard/purchasing" },
-          { label: "Penerimaan", href: "/dashboard/purchasing/grn" },
+          { label: "Barang Masuk", href: "/dashboard/purchasing/grn" },
           { label: "Lanjutkan GRN" },
         ]}
       />

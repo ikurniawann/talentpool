@@ -28,7 +28,7 @@ export default function PurchasingMainMenuPage() {
       features: ["New PO", "Approval Workflow", "Print PO"],
     },
     {
-      title: "Penerimaan Barang",
+      title: "Barang Masuk",
       href: "/dashboard/purchasing/grn",
       icon: Truck,
       description: "Goods Receipt Note (GRN)",

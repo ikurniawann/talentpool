@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useCallback, useEffect } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,7 +18,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Badge } from "@/components/ui/badge";
 import { Plus, Search, MoreVertical, DollarSign, Edit, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { SupplierPriceList } from "@/types/purchasing";
@@ -32,6 +31,10 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 
+function getErrorMessage(error: unknown, fallback: string) {
+  return error instanceof Error ? error.message : fallback;
+}
+
 export default function PriceListPage() {
   const [priceLists, setPriceLists] = useState<SupplierPriceList[]>([]);
   const [loading, setLoading] = useState(true);
@@ -40,18 +43,14 @@ export default function PriceListPage() {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [deletingItem, setDeletingItem] = useState<SupplierPriceList | null>(null);
 
-  useEffect(() => {
-    loadPriceLists();
-  }, [filterSupplier, filterMaterial]);
-
-  const loadPriceLists = async () => {
+  const loadPriceLists = useCallback(async () => {
     try {
       setLoading(true);
-      const response: any = await listPriceLists({
+      const response = await listPriceLists({
         supplier_id: filterSupplier || undefined,
         raw_material_id: filterMaterial || undefined,
       });
-      const items = Array.isArray(response) ? response : (response.data || []);
+      const items = Array.isArray(response) ? response : [response];
       setPriceLists(items);
     } catch (error) {
       console.error("Error loading price lists:", error);
@@ -59,7 +58,11 @@ export default function PriceListPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [filterSupplier, filterMaterial]);
+
+  useEffect(() => {
+    loadPriceLists();
+  }, [loadPriceLists]);
 
   const handleOpenDelete = (item: SupplierPriceList) => {
     setDeletingItem(item);
@@ -73,9 +76,9 @@ export default function PriceListPage() {
       toast.success("Price list berhasil dihapus");
       setIsDeleteDialogOpen(false);
       loadPriceLists();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error deleting price list:", error);
-      toast.error(error.message || "Gagal menghapus price list");
+      toast.error(getErrorMessage(error, "Gagal menghapus price list"));
     }
   };
 
@@ -160,7 +163,9 @@ export default function PriceListPage() {
                 <TableRow key={item.id}>
                   <TableCell>
                 <div className="font-medium">{item.supplier?.nama_supplier}</div>
-                <div className="text-sm text-muted-foreground">{item.supplier?.kode_supplier}</div>
+                <div className="text-sm text-muted-foreground">
+                  {item.supplier?.kode_supplier || item.supplier?.kode || "-"}
+                </div>
                   </TableCell>
                   <TableCell>
                     <div className="font-medium">{item.bahan_baku?.nama}</div>
@@ -189,10 +194,8 @@ export default function PriceListPage() {
                   </TableCell>
                   <TableCell>
                     <DropdownMenu>
-                      <DropdownMenuTrigger>
-                        <Button variant="ghost" size="icon" className="relative z-10">
-                          <MoreVertical className="w-4 h-4" />
-                        </Button>
+                      <DropdownMenuTrigger className="relative z-10 inline-flex h-8 w-8 items-center justify-center rounded-md text-gray-600 hover:bg-gray-100 hover:text-gray-900">
+                        <MoreVertical className="w-4 h-4" />
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end" className="z-50 bg-white shadow-lg border border-gray-200">
                         <Link href={`/dashboard/purchasing/price-list/${item.id}`}>

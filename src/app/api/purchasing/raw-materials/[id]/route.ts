@@ -20,6 +20,10 @@ const materialSchema = z.object({
   is_active: z.boolean().optional(),
 });
 
+function getErrorMessage(error: unknown, fallback: string) {
+  return error instanceof Error ? error.message : fallback;
+}
+
 // GET /api/purchasing/raw-materials/:id
 export async function GET(
   request: NextRequest,
@@ -48,7 +52,7 @@ export async function GET(
 
     // Get suppliers dengan harga
     const { data: suppliers, error: suppliersError } = await supabase
-      .from("supplier_price_list")
+      .from("supplier_price_lists")
       .select(`
         *,
         supplier:supplier_id (
@@ -95,10 +99,10 @@ export async function GET(
         products: products || [],
       },
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error fetching raw material:", error);
     return Response.json(
-      { success: false, message: error.message || "Gagal mengambil data bahan baku" },
+      { success: false, message: getErrorMessage(error, "Gagal mengambil data bahan baku") },
       { status: 500 }
     );
   }
@@ -142,8 +146,7 @@ export async function PUT(
         .limit(1);
 
       if (bomItems && bomItems.length > 0) {
-        // Log warning tapi tetap update
-        console.warn(`Konversi factor ${id} berubah dan mempengaruhi ${bomItems.length} BOM items`);
+        // Konversi berubah; update tetap dilanjutkan karena BOM menyimpan qty eksplisit.
       }
     }
 
@@ -165,7 +168,7 @@ export async function PUT(
       data,
       message: "Bahan baku berhasil diupdate",
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error updating raw material:", error);
 
     if (error instanceof z.ZodError) {
@@ -180,7 +183,7 @@ export async function PUT(
     }
 
     return Response.json(
-      { success: false, message: error.message || "Gagal mengupdate bahan baku" },
+      { success: false, message: getErrorMessage(error, "Gagal mengupdate bahan baku") },
       { status: 500 }
     );
   }
@@ -267,10 +270,10 @@ export async function DELETE(
       success: true,
       message: "Bahan baku berhasil dinonaktifkan",
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error deleting raw material:", error);
     return Response.json(
-      { success: false, message: error.message || "Gagal menghapus bahan baku" },
+      { success: false, message: getErrorMessage(error, "Gagal menghapus bahan baku") },
       { status: 500 }
     );
   }

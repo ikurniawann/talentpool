@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -26,9 +26,12 @@ const STORAGE_OPTIONS = [
   { value: "SUHU_RUANG", label: "Suhu Ruang" },
   { value: "DINGIN", label: "Dingin" },
   { value: "BEKU", label: "Beku" },
-  { value: "KERING", label: "Kering" },
-  { value: "TERTUTUP", label: "Tertutup Rapat" },
+  { value: "KHUSUS", label: "Khusus" },
 ];
+
+function getErrorMessage(error: unknown, fallback: string) {
+  return error instanceof Error ? error.message : fallback;
+}
 
 export default function EditRawMaterialPage() {
   const router = useRouter();
@@ -56,12 +59,7 @@ export default function EditRawMaterialPage() {
     coa_asset: "",
   });
 
-  useEffect(() => {
-    loadMaterial();
-    loadUnits();
-  }, [materialId]);
-
-  const loadMaterial = async () => {
+  const loadMaterial = useCallback(async () => {
     try {
       const data = await getRawMaterial(materialId);
       setMaterial(data);
@@ -76,9 +74,9 @@ export default function EditRawMaterialPage() {
         stok_maximum: data.stok_maximum || 0,
         shelf_life_days: data.shelf_life_days || undefined,
         storage_condition: data.storage_condition || undefined,
-        coa_production: (data as any).coa_production || "",
-        coa_rnd: (data as any).coa_rnd || "",
-        coa_asset: (data as any).coa_asset || "",
+        coa_production: data.coa_production || "",
+        coa_rnd: data.coa_rnd || "",
+        coa_asset: data.coa_asset || "",
       });
     } catch (error) {
       console.error("Failed to load material:", error);
@@ -86,16 +84,21 @@ export default function EditRawMaterialPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [materialId]);
 
-  const loadUnits = async () => {
+  const loadUnits = useCallback(async () => {
     try {
       const data = await listUnits();
       setUnits(data.data || []);
     } catch (error) {
       console.error("Failed to load units:", error);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    loadMaterial();
+    loadUnits();
+  }, [loadMaterial, loadUnits]);
 
   const satuanBesar = units.filter(u => u.tipe === "BESAR" || u.tipe === "KONVERSI");
   const satuanKecil = units.filter(u => u.tipe === "KECIL" || u.tipe === "KONVERSI");
@@ -118,9 +121,9 @@ export default function EditRawMaterialPage() {
       });
       toast.success("Bahan baku berhasil diupdate");
       router.push(`/dashboard/purchasing/raw-materials/${materialId}`);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error updating material:", error);
-      toast.error(error.message || "Gagal mengupdate bahan baku");
+      toast.error(getErrorMessage(error, "Gagal mengupdate bahan baku"));
     } finally {
       setIsSubmitting(false);
     }
@@ -334,7 +337,7 @@ export default function EditRawMaterialPage() {
                     ...STORAGE_OPTIONS.map((opt) => ({ value: opt.value, label: opt.label })),
                   ]}
                   value={formData.storage_condition || ""}
-                  onChange={(v) => setFormData({ ...formData, storage_condition: (v as any) || undefined })}
+                  onChange={(v) => setFormData({ ...formData, storage_condition: v || undefined })}
                   placeholder="Pilih kondisi..."
                   searchPlaceholder="Cari..."
                   emptyMessage="Tidak ditemukan"

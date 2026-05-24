@@ -27,6 +27,27 @@
   display: none;
 }
 
+/* Make interactive UI communicate clickability consistently. */
+a[href],
+button:not(:disabled),
+[role="button"]:not([aria-disabled="true"]):not([data-disabled="true"]),
+[role="menuitem"]:not([aria-disabled="true"]):not([data-disabled="true"]),
+[role="option"]:not([aria-disabled="true"]):not([data-disabled="true"]),
+[data-slot="button"]:not(:disabled),
+[data-slot="select-trigger"]:not(:disabled),
+[data-slot="dropdown-menu-trigger"]:not(:disabled),
+[data-slot="popover-trigger"]:not(:disabled),
+[data-slot="command-item"]:not([data-disabled="true"]) {
+  cursor: pointer;
+}
+
+button:disabled,
+[aria-disabled="true"],
+[data-disabled="true"],
+[disabled] {
+  cursor: not-allowed;
+}
+
 /* ── Liquid Glass Theme ── */
 
 /* Page background — soft pastel gradient mesh that shows through glass */

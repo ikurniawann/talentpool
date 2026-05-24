@@ -20,6 +20,10 @@ const updatePriceListSchema = z.object({
   is_active: z.boolean().optional(),
 });
 
+function getErrorMessage(error: unknown, fallback: string) {
+  return error instanceof Error ? error.message : fallback;
+}
+
 // GET /api/purchasing/price-list/:id
 export async function GET(
   request: NextRequest,
@@ -63,10 +67,10 @@ export async function GET(
     }
 
     return Response.json({ success: true, data });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error fetching price list:", error);
     return Response.json(
-      { success: false, message: error.message || "Gagal mengambil data" },
+      { success: false, message: getErrorMessage(error, "Gagal mengambil data") },
       { status: 500 }
     );
   }
@@ -101,7 +105,7 @@ export async function PUT(
       data,
       message: "Price list berhasil diupdate",
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error updating price list:", error);
 
     if (error instanceof z.ZodError) {
@@ -116,7 +120,7 @@ export async function PUT(
     }
 
     return Response.json(
-      { success: false, message: error.message || "Gagal mengupdate price list" },
+      { success: false, message: getErrorMessage(error, "Gagal mengupdate price list") },
       { status: 500 }
     );
   }
@@ -147,10 +151,10 @@ export async function DELETE(
       success: true,
       message: "Price list berhasil dihapus",
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error deleting price list:", error);
     return Response.json(
-      { success: false, message: error.message || "Gagal menghapus price list" },
+      { success: false, message: getErrorMessage(error, "Gagal menghapus price list") },
       { status: 500 }
     );
   }

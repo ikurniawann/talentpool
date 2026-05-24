@@ -3,7 +3,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ActionPO } from "../usePurchasingDashboard";
+import { ActionPO } from "@/modules/purchasing/hooks/usePurchasingDashboard";
 import { formatDate, getPOStatusLabel } from "@/modules/purchasing/utils";
 import { AlertCircle, Clock, Eye } from "lucide-react";
 import Link from "next/link";

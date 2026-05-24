@@ -19,6 +19,10 @@ const priceListSchema = z.object({
   catatan: z.string().optional(),
 });
 
+function getErrorMessage(error: unknown, fallback: string) {
+  return error instanceof Error ? error.message : fallback;
+}
+
 // GET /api/purchasing/price-list
 export async function GET(request: NextRequest) {
   try {
@@ -84,10 +88,10 @@ export async function GET(request: NextRequest) {
     if (error) throw error;
 
     return Response.json({ success: true, data });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error fetching price list:", error);
     return Response.json(
-      { success: false, message: error.message || "Gagal mengambil data harga" },
+      { success: false, message: getErrorMessage(error, "Gagal mengambil data harga") },
       { status: 500 }
     );
   }
@@ -99,12 +103,8 @@ export async function POST(request: NextRequest) {
     const supabase = await createClient();
     const body = await request.json();
 
-    console.log("Price list API - Received body:", body);
-
     // Validasi input
     const validated = priceListSchema.parse(body);
-
-    console.log("Price list API - Validated data:", validated);
 
     // Set default berlaku_dari to today if not provided
     if (!validated.berlaku_dari) {
@@ -127,7 +127,7 @@ export async function POST(request: NextRequest) {
       { success: true, data, message: "Price list berhasil dibuat" },
       { status: 201 }
     );
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error creating price list:", error);
 
     if (error instanceof z.ZodError) {
@@ -143,7 +143,7 @@ export async function POST(request: NextRequest) {
     }
 
     return Response.json(
-      { success: false, message: error.message || "Gagal membuat price list" },
+      { success: false, message: getErrorMessage(error, "Gagal membuat price list") },
       { status: 500 }
     );
   }

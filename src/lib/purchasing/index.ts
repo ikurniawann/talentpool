@@ -2,7 +2,6 @@
 // LIB: Purchasing Module API Functions
 // ============================================
 
-import { createClient } from "@/lib/supabase/server";
 import {
   Supplier,
   SupplierFormData,
@@ -295,9 +294,34 @@ export async function listProducts(
   if (params.page) sp.set("page", String(params.page));
   if (params.limit) sp.set("limit", String(params.limit));
 
-  return fetchApi<PaginatedResponse<ProductWithCOGS>>(
+  const response = await fetchApi<
+    | PaginatedResponse<ProductWithCOGS>
+    | {
+        success?: boolean;
+        data: ProductWithCOGS[];
+        pagination: {
+          page: number;
+          limit: number;
+          total: number;
+          total_pages: number;
+        };
+      }
+  >(
     `${BASE}/products?${sp.toString()}`
   );
+
+  if ("pagination" in response) {
+    return {
+      data: response.data,
+      total: response.pagination.total,
+      page: response.pagination.page,
+      limit: response.pagination.limit,
+      total_pages: response.pagination.total_pages,
+      pagination: response.pagination,
+    };
+  }
+
+  return response;
 }
 
 export async function getProduct(id: string): Promise<ProductWithCOGS> {
@@ -361,11 +385,20 @@ export async function createBOMItem(
   productId: string,
   payload: BOMItemFormData
 ): Promise<BOMItem> {
+  const body = {
+    raw_material_id: payload.raw_material_id,
+    qty_required: payload.qty_required ?? payload.qty_needed,
+    waste_factor: payload.waste_factor ?? ((payload.waste_persen ?? 0) / 100),
+    ...((payload.satuan_id ?? payload.unit_id)
+      ? { satuan_id: payload.satuan_id ?? payload.unit_id }
+      : {}),
+  };
+
   const response = await fetchApi<{ data: BOMItem }>(
     `${BASE}/products/${productId}/bom`,
     {
       method: "POST",
-      body: JSON.stringify(payload),
+      body: JSON.stringify(body),
     }
   );
   return response.data;
@@ -375,11 +408,24 @@ export async function updateBOMItem(
   id: string,
   payload: Partial<BOMItemFormData>
 ): Promise<BOMItem> {
+  const body = {
+    ...(payload.raw_material_id ? { raw_material_id: payload.raw_material_id } : {}),
+    ...(payload.qty_required !== undefined || payload.qty_needed !== undefined
+      ? { qty_required: payload.qty_required ?? payload.qty_needed }
+      : {}),
+    ...(payload.satuan_id !== undefined || payload.unit_id !== undefined
+      ? { satuan_id: payload.satuan_id ?? payload.unit_id ?? null }
+      : {}),
+    ...(payload.waste_factor !== undefined || payload.waste_persen !== undefined
+      ? { waste_factor: payload.waste_factor ?? ((payload.waste_persen ?? 0) / 100) }
+      : {}),
+  };
+
   const response = await fetchApi<{ data: BOMItem }>(
     `${BASE}/bom/${id}`,
     {
       method: "PUT",
-      body: JSON.stringify(payload),
+      body: JSON.stringify(body),
     }
   );
   return response.data;

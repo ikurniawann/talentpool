@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter, useParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -19,7 +19,8 @@ import PurchasingGuard from "@/modules/purchasing/components/auth/PurchasingGuar
 import { SupplierPriceHistoryPanel } from "@/modules/purchasing/components/supplier-price-history/SupplierPriceHistoryPanel";
 import {
   Building2, Pencil, Power, ArrowLeft, Phone, Mail, MapPin, 
-  CreditCard, FileText, TrendingUp, Truck, User, CheckCircle2, X
+  CreditCard, FileText, TrendingUp, Truck, User, CheckCircle2, X,
+  type LucideIcon,
 } from "lucide-react";
 import { SupplierDetail, SupplierPOSummary } from "@/types/supplier";
 import { getSupplier, deactivateSupplier, getSupplierPOHistory } from "@/lib/purchasing/supplier";
@@ -44,6 +45,10 @@ function formatDate(dateStr: string) {
     month: "short",
     year: "numeric",
   });
+}
+
+function getErrorMessage(error: unknown, fallback: string) {
+  return error instanceof Error ? error.message : fallback;
 }
 
 export default function SupplierDetailPage() {
@@ -74,8 +79,8 @@ function SupplierDetailInner() {
       try {
         const data = await getSupplier(supplierId);
         setSupplier(data);
-      } catch (err: any) {
-        toast({ title: "Gagal", description: err.message, variant: "destructive" });
+      } catch (err: unknown) {
+        toast({ title: "Gagal", description: getErrorMessage(err, "Gagal memuat supplier"), variant: "destructive" });
         router.push("/dashboard/purchasing/suppliers");
       } finally {
         setLoading(false);
@@ -104,8 +109,8 @@ function SupplierDetailInner() {
       toast({ title: "Berhasil", description: `Supplier "${supplier.nama_supplier}" dinonaktifkan.` });
       setDeactivateDialog(false);
       setSupplier(prev => prev ? { ...prev, is_active: false } : null);
-    } catch (err: any) {
-      toast({ title: "Gagal", description: err.message, variant: "destructive" });
+    } catch (err: unknown) {
+      toast({ title: "Gagal", description: getErrorMessage(err, "Gagal menonaktifkan supplier"), variant: "destructive" });
     } finally {
       setDeactivateLoading(false);
     }
@@ -408,7 +413,7 @@ function SupplierDetailInner() {
               Nonaktifkan Supplier
             </DialogTitle>
             <DialogDescription>
-              Yakin ingin menonaktifkan "{supplier.nama_supplier}"? Supplier tidak akan muncul di daftar aktif.
+              Yakin ingin menonaktifkan &quot;{supplier.nama_supplier}&quot;? Supplier tidak akan muncul di daftar aktif.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="gap-2 sm:gap-0">
@@ -423,7 +428,7 @@ function SupplierDetailInner() {
   );
 }
 
-function InfoRow({ label, value, icon: Icon }: { label: string; value?: string | null; icon?: any }) {
+function InfoRow({ label, value, icon: Icon }: { label: string; value?: string | null; icon?: LucideIcon }) {
   if (!value) return null;
   return (
     <div className="flex gap-2">

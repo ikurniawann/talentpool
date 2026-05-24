@@ -3,12 +3,17 @@
 // ============================================
 
 import { NextRequest } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { createServiceClient } from "@/lib/supabase/service-client";
+import { adjustInventoryOnOrder } from "@/lib/inventory";
 import { z } from "zod";
 
 const sendSchema = z.object({
   sent_via: z.enum(["EMAIL", "WHATSAPP", "PRINT", "OTHER"]),
 });
+
+function getErrorMessage(error: unknown, fallback: string) {
+  return error instanceof Error ? error.message : fallback;
+}
 
 // POST /api/purchasing/po/:id/send
 export async function POST(
@@ -17,7 +22,7 @@ export async function POST(
 ) {
   try {
     const { id } = await params;
-    const supabase = await createClient();
+    const supabase = createServiceClient();
     const body = await request.json();
 
     // Validasi input
@@ -37,19 +42,33 @@ export async function POST(
       );
     }
 
-    // Validasi status - harus APPROVED untuk dikirim
-    if (po.status !== "APPROVED") {
+    // Validasi status - harus approved untuk dikirim
+    if (String(po.status).toLowerCase() !== "approved") {
       return Response.json(
         { success: false, message: "PO harus diapprove terlebih dahulu sebelum dikirim" },
         { status: 400 }
       );
     }
 
-    // Update status ke SENT
+    const { data: items, error: itemsError } = await supabase
+      .from("purchase_order_items")
+      .select("raw_material_id, qty_ordered, qty_received")
+      .eq("purchase_order_id", id)
+      .eq("is_active", true);
+
+    if (itemsError) throw itemsError;
+    if (!items || items.length === 0) {
+      return Response.json(
+        { success: false, message: "PO tidak memiliki item untuk dikirim" },
+        { status: 400 }
+      );
+    }
+
+    // Update status ke sent
     const { data, error } = await supabase
       .from("purchase_orders")
       .update({
-        status: "SENT",
+        status: "sent",
         sent_via,
         sent_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
@@ -60,12 +79,19 @@ export async function POST(
 
     if (error) throw error;
 
+    for (const item of items) {
+      const remainingQty = Math.max(0, Number(item.qty_ordered || 0) - Number(item.qty_received || 0));
+      if (item.raw_material_id && remainingQty > 0) {
+        await adjustInventoryOnOrder(supabase, item.raw_material_id, remainingQty);
+      }
+    }
+
     return Response.json({
       success: true,
       data,
       message: `PO berhasil dikirim ke supplier via ${sent_via}`,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error sending PO:", error);
 
     if (error instanceof z.ZodError) {
@@ -80,7 +106,7 @@ export async function POST(
     }
 
     return Response.json(
-      { success: false, message: error.message || "Gagal mengirim PO" },
+      { success: false, message: getErrorMessage(error, "Gagal mengirim PO") },
       { status: 500 }
     );
   }

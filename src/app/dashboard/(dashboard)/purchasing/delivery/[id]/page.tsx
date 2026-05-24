@@ -11,22 +11,11 @@ import {
   TruckIcon,
   ArrowLeftIcon,
   PackageCheckIcon,
-  EditIcon,
-  CalendarIcon,
-  MapPinIcon,
   ClipboardListIcon,
   Building2Icon,
   Loader2Icon,
+  ArrowRightIcon,
 } from "lucide-react";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { Textarea } from "@/components/ui/textarea";
 
 type DeliveryStatus = "pending" | "shipped" | "in_transit" | "delivered" | "cancelled";
 
@@ -69,10 +58,6 @@ export default function DeliveryDetailPage() {
   const { toast } = useToast();
   const [delivery, setDelivery] = useState<Delivery | null>(null);
   const [loading, setLoading] = useState(true);
-  const [arriveDialogOpen, setArriveDialogOpen] = useState(false);
-  const [arriveNotes, setArriveNotes] = useState("");
-  const [arriving, setArriving] = useState(false);
-  const [grnData, setGrnData] = useState<any>(null);
 
   const deliveryId = params.id as string;
 
@@ -101,39 +86,6 @@ export default function DeliveryDetailPage() {
     }
   }
 
-  async function handleArrive() {
-    setArriving(true);
-    try {
-      const res = await fetch(`/api/purchasing/delivery/${deliveryId}/arrive`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ notes: arriveNotes }),
-      });
-
-      const data = await res.json();
-      
-      if (res.ok) {
-        toast({
-          title: "Berhasil",
-          description: "Barang telah ditandai tiba dan GRN dibuat",
-        });
-        setDelivery(data.data.delivery);
-        setGrnData(data.data.grn);
-        setArriveDialogOpen(false);
-      } else {
-        throw new Error(data.error?.message || "Gagal menandai tiba");
-      }
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
-    } finally {
-      setArriving(false);
-    }
-  }
-
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -144,7 +96,7 @@ export default function DeliveryDetailPage() {
 
   if (!delivery) return null;
 
-  const canArrive = delivery.status === "in_transit" || delivery.status === "shipped";
+  const canReceive = delivery.status !== "cancelled";
   const isDelivered = delivery.status === "delivered";
 
   return (
@@ -175,31 +127,44 @@ export default function DeliveryDetailPage() {
             <ArrowLeftIcon className="w-4 h-4 mr-2" />
             Kembali
           </Button>
-          {!isDelivered && (
-            <Button variant="outline">
-              <EditIcon className="w-4 h-4 mr-2" />
-              Edit
-            </Button>
-          )}
-          {canArrive && (
-            <Button onClick={() => setArriveDialogOpen(true)}>
+          {canReceive && (
+            <Button onClick={() => router.push(`/dashboard/purchasing/grn/new?delivery_id=${delivery.id}`)}>
               <PackageCheckIcon className="w-4 h-4 mr-2" />
-              Tandai Tiba
+              Input Penerimaan
             </Button>
           )}
         </div>
       </div>
+
+      <Card className="border-pink-100 bg-pink-50">
+        <CardContent className="p-4">
+          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <div>
+              <p className="text-sm font-semibold text-pink-900">Flow pengiriman ini</p>
+              <div className="mt-2 flex flex-wrap items-center gap-2 text-sm text-pink-800">
+                <span className="rounded-full bg-white px-3 py-1 border border-pink-100">1. Delivery dibuat</span>
+                <ArrowRightIcon className="h-4 w-4" />
+                <span className="rounded-full bg-white px-3 py-1 border border-pink-100">2. Input GRN</span>
+                <ArrowRightIcon className="h-4 w-4" />
+                <span className="rounded-full bg-white px-3 py-1 border border-pink-100">3. Stok bertambah</span>
+              </div>
+            </div>
+            {canReceive && (
+              <Button onClick={() => router.push(`/dashboard/purchasing/grn/new?delivery_id=${delivery.id}`)}>
+                <PackageCheckIcon className="w-4 h-4 mr-2" />
+                Lanjut Input GRN
+              </Button>
+            )}
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Status Badge */}
       <div className="flex items-center gap-4">
         <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${STATUS_COLORS[delivery.status]}`}>
           {STATUS_LABELS[delivery.status]}
         </span>
-        {grnData && (
-          <Badge variant="outline" className="text-green-600 border-green-600">
-            GRN: {grnData.nomor_gr}
-          </Badge>
-        )}
+        {isDelivered && <Badge variant="outline" className="text-green-700 border-green-200">Sudah ada penerimaan</Badge>}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -299,76 +264,6 @@ export default function DeliveryDetailPage() {
         </Card>
       </div>
 
-      {/* GRN Info if available */}
-      {grnData && (
-        <Card className="border-green-200 bg-green-50">
-          <CardHeader>
-            <CardTitle className="text-lg flex items-center gap-2 text-green-800">
-              <PackageCheckIcon className="w-5 h-5" />
-              Goods Receipt Note (GRN) Dibuat
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-green-700">
-              GRN <strong>{grnData.nomor_gr}</strong> telah dibuat otomatis saat
-              barang tiba.{" "}
-              <Button
-                variant="link"
-                className="p-0 h-auto text-green-800 font-medium"
-                onClick={() => router.push(`/dashboard/purchasing/grn/${grnData.id}`)}
-              >
-                Lihat GRN →
-              </Button>
-            </p>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Arrive Dialog */}
-      <Dialog open={arriveDialogOpen} onOpenChange={setArriveDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Tandai Barang Tiba</DialogTitle>
-            <DialogDescription>
-              Konfirmasi bahwa barang dari pengiriman ini sudah diterima.
-              Sistem akan membuat GRN (Goods Receipt Note) secara otomatis.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Catatan Penerimaan</label>
-              <Textarea
-                placeholder="Contoh: Diterima dalam kondisi baik..."
-                value={arriveNotes}
-                onChange={(e) => setArriveNotes(e.target.value)}
-                rows={3}
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setArriveDialogOpen(false)}
-              disabled={arriving}
-            >
-              Batal
-            </Button>
-            <Button onClick={handleArrive} disabled={arriving}>
-              {arriving ? (
-                <>
-                  <Loader2Icon className="w-4 h-4 mr-2 animate-spin" />
-                  Memproses...
-                </>
-              ) : (
-                <>
-                  <PackageCheckIcon className="w-4 h-4 mr-2" />
-                  Konfirmasi Tiba
-                </>
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

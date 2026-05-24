@@ -16,13 +16,21 @@ export interface Supplier {
   id: string;
   nama_supplier: string;
   kode_supplier: string;
+  kode?: string;
   alamat?: string;
   telepon?: string;
+  pic_phone?: string | null;
   email?: string;
   npwp?: string;
   status: string;
   kota?: string;
   pic_name?: string;
+  pic_email?: string | null;
+  pic_jabatan?: string | null;
+  catatan?: string | null;
+  is_active?: boolean;
+  payment_terms?: string;
+  currency?: string;
 }
 
 export interface RawMaterialWithStock {
@@ -33,14 +41,19 @@ export interface RawMaterialWithStock {
   stock?: number;
   harga_terakhir?: number;
   harga_avg?: number;
+  avg_cost?: number;
+  satuan_besar_nama?: string;
   satuan_besar?: { nama: string };
 }
 
 export interface Unit {
   id: string;
+  kode: string;
   nama: string;
   simbol?: string;
-  tipe?: string;
+  tipe: "BESAR" | "KECIL" | "KONVERSI";
+  deskripsi: string;
+  is_active: boolean;
 }
 
 export interface PaginatedResponse<T> {
@@ -49,6 +62,12 @@ export interface PaginatedResponse<T> {
   page: number;
   limit: number;
   total_pages: number;
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    total_pages: number;
+  };
 }
 
 // ============================================
@@ -120,6 +139,35 @@ export interface SupplierPriceListFormData {
   catatan?: string;
 }
 
+export interface SupplierFormData {
+  kode_supplier: string;
+  nama_supplier: string;
+  alamat?: string;
+  telepon?: string;
+  email?: string;
+  npwp?: string;
+  kota?: string;
+  pic_name?: string;
+  pic_phone?: string;
+  pic_email?: string;
+  pic_jabatan?: string;
+  catatan?: string;
+  status?: string;
+  payment_terms?: string;
+  currency?: string;
+  bank_nama?: string;
+  bank_rekening?: string;
+  bank_atas_nama?: string;
+  kategori?: string;
+}
+
+export interface UnitFormData {
+  kode: string;
+  nama: string;
+  tipe: "BESAR" | "KECIL" | "KONVERSI";
+  deskripsi?: string;
+}
+
 export interface SupplierPriceList {
   id: string;
   supplier_id: string;
@@ -135,7 +183,7 @@ export interface SupplierPriceList {
   created_at: string;
   updated_at: string;
   
-  supplier?: { nama_supplier: string; kode_supplier?: string };
+  supplier?: { nama_supplier: string; kode_supplier?: string; kode?: string };
   raw_material?: { kode: string; nama: string };
   unit?: { nama: string; simbol?: string };
   satuan?: { nama: string };
@@ -195,13 +243,21 @@ export interface ProductWithCOGS {
   hpp_estimasi?: number;
 }
 
+export type Product = ProductWithCOGS;
+
 export interface BOMItem {
   id: string;
   product_id: string;
   raw_material_id: string;
   qty: number;
+  qty_required?: number;
   unit_id: string;
+  satuan_id?: string | null;
   cost: number;
+  cost_per_unit?: number;
+  total_cost?: number;
+  waste_factor?: number;
+  is_active?: boolean;
   created_at: string;
   updated_at: string;
   
@@ -217,9 +273,12 @@ export interface BOMItem {
 
 export interface BOMItemFormData {
   raw_material_id: string;
-  qty_needed: number;
+  qty_required?: number;
+  qty_needed?: number;
   waste_persen?: number;
+  waste_factor?: number;
   unit_id?: string;
+  satuan_id?: string | null;
   cost?: number;
 }
 
@@ -257,13 +316,166 @@ export interface RawMaterialWithStock {
   coa_rnd?: string;
   coa_asset?: string;
   hpp?: number;
+  avg_cost?: number;
+  satuan_besar_nama?: string;
   stok_akhir?: number;
   status_stok?: string;
   qty_onhand?: number;
   qty_reserved?: number;
   qty_available?: number;
   qty_on_order?: number;
+  material_type?: "PURCHASED" | "WIP";
+  source_product_id?: string | null;
 }
+
+export type RawMaterial = RawMaterialWithStock;
+
+export interface RawMaterialFormData {
+  kode?: string;
+  nama?: string;
+  kode_bahan?: string;
+  nama_bahan?: string;
+  kategori?: MaterialCategory;
+  satuan_besar_id: string;
+  satuan_kecil_id?: string | null;
+  konversi_factor?: number;
+  stok_minimum?: number;
+  stok_maximum?: number | null;
+  shelf_life_days?: number;
+  storage_condition?: string;
+  coa_production?: string;
+  coa_rnd?: string;
+  coa_asset?: string;
+  deskripsi?: string;
+  is_active?: boolean;
+}
+
+export interface RawMaterialListParams {
+  search?: string;
+  kategori?: MaterialCategory;
+  satuan_besar_id?: string;
+  is_active?: boolean;
+  below_minimum?: boolean;
+  page?: number;
+  limit?: number;
+  sort_by?: "kode_bahan" | "nama_bahan" | "kategori" | "created_at" | "nama";
+  sort_dir?: "ASC" | "DESC";
+}
+
+export interface Inventory {
+  id: string;
+  raw_material_id: string;
+  qty_onhand: number;
+  qty_reserved?: number;
+  qty_available?: number;
+  avg_cost?: number;
+  updated_at?: string;
+}
+
+export interface InventoryMovement {
+  id: string;
+  raw_material_id: string;
+  tipe: string;
+  jumlah: number;
+  unit_cost?: number | null;
+  total_cost?: number | null;
+  reference_type?: string | null;
+  reference_id?: string | null;
+  alasan?: string | null;
+  created_at?: string;
+}
+
+export interface InventoryAdjustmentForm {
+  raw_material_id: string;
+  qty_adjustment: number;
+  reason: string;
+  notes?: string;
+}
+
+export interface POListParams {
+  page?: number;
+  limit?: number;
+  search?: string;
+  supplier_id?: string;
+  status?: POStatus | "all";
+  date_from?: string;
+  date_to?: string;
+  tanggal_mulai?: string;
+  tanggal_sampai?: string;
+  sort_by?: string;
+  sort_order?: "ASC" | "DESC";
+}
+
+export interface Delivery {
+  id: string;
+  delivery_number: string;
+  po_id?: string | null;
+  supplier_id?: string | null;
+  status?: string;
+  delivery_date?: string | null;
+  created_at?: string;
+}
+
+export interface DeliveryFormData {
+  po_id: string;
+  delivery_date?: string;
+  notes?: string;
+  items?: Array<Record<string, unknown>>;
+}
+
+export interface GoodsReceipt {
+  id: string;
+  grn_number: string;
+  po_id?: string | null;
+  supplier_id?: string | null;
+  status?: string;
+  received_date?: string | null;
+  created_at?: string;
+}
+
+export interface GoodsReceiptItem {
+  id: string;
+  grn_id: string;
+  raw_material_id: string;
+  qty_ordered?: number;
+  qty_received?: number;
+  unit_price?: number;
+  batch_number?: string | null;
+  expiry_date?: string | null;
+}
+
+export interface GoodsReceiptItemFormData {
+  po_item_id?: string;
+  raw_material_id: string;
+  qty_received: number;
+  unit_price?: number;
+  batch_number?: string;
+  expiry_date?: string;
+}
+
+export interface GoodsReceiptFormData {
+  po_id: string;
+  received_date?: string;
+  notes?: string;
+  items: GoodsReceiptItemFormData[];
+}
+
+export interface QCInspection {
+  id: string;
+  grn_item_id: string;
+  status: string;
+  inspected_at?: string;
+  notes?: string | null;
+}
+
+export interface QCInspectionFormData {
+  grn_item_id: string;
+  status: string;
+  notes?: string;
+}
+
+export type Return = PurchaseReturn;
+export type ReturnFormData = PurchaseReturnFormData;
 
 export interface PurchaseOrderFormData {
   supplier_id: string;
@@ -274,6 +486,9 @@ export interface PurchaseOrderFormData {
   diskon_persen: number;
   diskon_nominal: number;
   ppn_persen: number;
+  source_type?: "manual" | "production_order" | "low_stock";
+  production_order_id?: string | null;
+  source_reference?: string | null;
   items: PurchaseOrderItemFormData[];
 }
 
@@ -303,6 +518,10 @@ export interface PurchaseOrder {
   sent_at?: string | null;
   sent_via?: string | null;
   cancelled_at?: string | null;
+  source_type?: "manual" | "production_order" | "low_stock" | null;
+  production_order_id?: string | null;
+  production_order_number?: string | null;
+  source_reference?: string | null;
   created_by: string | null;
   created_at: string;
   updated_at: string;
@@ -424,6 +643,7 @@ export interface ReturnableItem {
   qc_status: string;
   supplier_id: string;
   nama_supplier: string;
+  satuan?: string;
 }
 
 export interface PurchaseReturnFormData {
@@ -437,8 +657,8 @@ export interface PurchaseReturnFormData {
     raw_material_id: string;
     qty_returned: number;
     unit_cost: number;
-    batch_number?: string;
-    expiry_date?: string;
+    batch_number?: string | null;
+    expiry_date?: string | null;
     condition_notes?: string;
   }>;
   notes?: string;

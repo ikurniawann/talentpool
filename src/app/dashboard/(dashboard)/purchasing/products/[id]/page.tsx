@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -28,6 +28,10 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 
+function getErrorMessage(error: unknown, fallback: string) {
+  return error instanceof Error ? error.message : fallback;
+}
+
 export default function ProductDetailPage() {
   const params = useParams();
   const router = useRouter();
@@ -38,13 +42,7 @@ export default function ProductDetailPage() {
   const [loading, setLoading] = useState(true);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
 
-  useEffect(() => {
-    if (productId) {
-      loadData();
-    }
-  }, [productId]);
-
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     try {
       setLoading(true);
       const [productData, bomData] = await Promise.all([
@@ -53,7 +51,7 @@ export default function ProductDetailPage() {
       ]);
       
       // Map BOM data dengan fallback untuk field yang mungkin undefined
-      const mappedBomItems = bomData.map((item: any) => ({
+      const mappedBomItems = bomData.map((item) => ({
         ...item,
         qty_needed: item.qty_required || item.qty_needed || 0,
         waste_persen: ((item.waste_factor || 0) * 100) || 0,
@@ -68,7 +66,13 @@ export default function ProductDetailPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [productId]);
+
+  useEffect(() => {
+    if (productId) {
+      loadData();
+    }
+  }, [productId, loadData]);
 
   const handleDelete = async () => {
     if (!product) return;
@@ -77,9 +81,9 @@ export default function ProductDetailPage() {
       toast.success("Produk berhasil dinonaktifkan");
       setIsDeleteDialogOpen(false);
       router.push("/dashboard/purchasing/products");
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error deleting product:", error);
-      toast.error(error.message || "Gagal menghapus produk");
+      toast.error(getErrorMessage(error, "Gagal menghapus produk"));
     }
   };
 
@@ -145,6 +149,12 @@ export default function ProductDetailPage() {
               Edit
             </Button>
           </Link>
+          <Link href={`/dashboard/purchasing/products/${product.id}/bom`}>
+            <Button variant="outline">
+              <Calculator className="w-4 h-4 mr-2" />
+              Edit BOM
+            </Button>
+          </Link>
           <Button variant="destructive" onClick={() => setIsDeleteDialogOpen(true)}>
             <Trash2 className="w-4 h-4 mr-2" />
             Hapus
@@ -152,67 +162,97 @@ export default function ProductDetailPage() {
         </div>
       </div>
 
-      <Tabs defaultValue="info" className="space-y-6">
-        <TabsList>
-          <TabsTrigger value="info">Informasi</TabsTrigger>
-          <TabsTrigger value="bom">BOM ({bomItems.length})</TabsTrigger>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <Card className="lg:col-span-2">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Package className="w-5 h-5" />
+              Ringkasan Produk
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="grid gap-4 sm:grid-cols-3">
+            <div>
+              <p className="text-sm text-muted-foreground">Kategori</p>
+              <p className="font-medium">{product.kategori || "-"}</p>
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground">Status</p>
+              <p className="font-medium">{product.is_active ? "Aktif" : "Nonaktif"}</p>
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground">Komponen BOM</p>
+              <p className="font-medium">{bomItems.length} bahan</p>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Calculator className="w-5 h-5" />
+              Harga
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">HPP Estimasi</span>
+              <span className="font-medium">{formatCurrency(product.hpp_estimasi)}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Harga Jual</span>
+              <span className="font-medium">{formatCurrency(product.harga_jual)}</span>
+            </div>
+            <div className="border-t pt-2 flex justify-between">
+              <span className="text-muted-foreground">Margin</span>
+              <span className={`font-medium ${margin.amount >= 0 ? "text-green-600" : "text-red-600"}`}>
+                {formatCurrency(margin.amount)} ({margin.percentage.toFixed(1)}%)
+              </span>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      <Tabs defaultValue="info" className="flex-col space-y-4">
+        <TabsList
+          variant="line"
+          className="flex h-auto w-full justify-start gap-6 rounded-none border-b border-gray-200 bg-transparent p-0"
+        >
+          <TabsTrigger
+            value="info"
+            className="h-11 flex-none rounded-none border-0 border-b-2 border-transparent bg-transparent px-0 text-sm font-semibold text-gray-500 shadow-none data-active:border-pink-600 data-active:!bg-transparent data-active:text-pink-700 data-active:shadow-none"
+          >
+            Informasi
+          </TabsTrigger>
+          <TabsTrigger
+            value="bom"
+            className="h-11 flex-none rounded-none border-0 border-b-2 border-transparent bg-transparent px-0 text-sm font-semibold text-gray-500 shadow-none data-active:border-pink-600 data-active:!bg-transparent data-active:text-pink-700 data-active:shadow-none"
+          >
+            BOM ({bomItems.length})
+          </TabsTrigger>
         </TabsList>
 
-        {/* Info Tab */}
-        <TabsContent value="info" className="space-y-6">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Product Info */}
-            <Card className="lg:col-span-2">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Package className="w-5 h-5" />
-                  Informasi Produk
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Kode</p>
-                    <p className="font-medium">{product.kode_produk}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Kategori</p>
-                    <p className="font-medium">{product.kategori || "-"}</p>
-                  </div>
+        <TabsContent value="info">
+          <Card>
+            <CardHeader>
+              <CardTitle>Informasi Produk</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div>
+                  <p className="text-sm text-muted-foreground">Kode</p>
+                  <p className="font-medium">{product.kode_produk}</p>
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground">Deskripsi</p>
-                  <p>{product.deskripsi || "-"}</p>
+                  <p className="text-sm text-muted-foreground">Kategori</p>
+                  <p className="font-medium">{product.kategori || "-"}</p>
                 </div>
-              </CardContent>
-            </Card>
-
-            {/* Pricing */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Calculator className="w-5 h-5" />
-                  Harga
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">HPP Estimasi</span>
-                  <span className="font-medium">{formatCurrency(product.hpp_estimasi)}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Harga Jual</span>
-                  <span className="font-medium">{formatCurrency(product.harga_jual)}</span>
-                </div>
-                <div className="border-t pt-2 flex justify-between">
-                  <span className="text-muted-foreground">Margin</span>
-                  <span className={`font-medium ${margin.amount >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                    {formatCurrency(margin.amount)} ({margin.percentage.toFixed(1)}%)
-                  </span>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Deskripsi</p>
+                <p>{product.deskripsi || "-"}</p>
+              </div>
+            </CardContent>
+          </Card>
         </TabsContent>
 
         {/* BOM Tab */}

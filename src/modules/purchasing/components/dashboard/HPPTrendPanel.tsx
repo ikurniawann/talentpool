@@ -1,7 +1,7 @@
 "use client";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { HPPTrend } from "../usePurchasingDashboard";
+import { HPPTrend } from "@/modules/purchasing/hooks/usePurchasingDashboard";
 import { formatRupiah } from "@/modules/purchasing/utils";
 import { TrendingUp, TrendingDown } from "lucide-react";
 

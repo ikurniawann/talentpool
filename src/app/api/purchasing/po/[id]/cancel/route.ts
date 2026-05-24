@@ -10,6 +10,10 @@ const cancelSchema = z.object({
   reason: z.string().min(1, "Alasan pembatalan wajib diisi"),
 });
 
+function getErrorMessage(error: unknown, fallback: string) {
+  return error instanceof Error ? error.message : fallback;
+}
+
 // POST /api/purchasing/po/:id/cancel
 export async function POST(
   request: NextRequest,
@@ -38,25 +42,27 @@ export async function POST(
     }
 
     // Validasi status - tidak bisa cancel jika sudah fully received
-    if (po.status === "RECEIVED") {
+    const normalizedStatus = String(po.status).toLowerCase();
+
+    if (normalizedStatus === "received") {
       return Response.json(
         { success: false, message: "PO yang sudah diterima sepenuhnya tidak bisa dibatalkan" },
         { status: 400 }
       );
     }
 
-    if (po.status === "CANCELLED") {
+    if (normalizedStatus === "cancelled") {
       return Response.json(
         { success: false, message: "PO sudah dibatalkan sebelumnya" },
         { status: 400 }
       );
     }
 
-    // Update status ke CANCELLED
+    // Update status ke cancelled
     const { data, error } = await supabase
       .from("purchase_orders")
       .update({
-        status: "CANCELLED",
+        status: "cancelled",
         is_active: false,
         cancelled_at: new Date().toISOString(),
         cancellation_reason: reason,
@@ -76,7 +82,7 @@ export async function POST(
       data,
       message: "PO berhasil dibatalkan",
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error cancelling PO:", error);
 
     if (error instanceof z.ZodError) {
@@ -91,7 +97,7 @@ export async function POST(
     }
 
     return Response.json(
-      { success: false, message: error.message || "Gagal membatalkan PO" },
+      { success: false, message: getErrorMessage(error, "Gagal membatalkan PO") },
       { status: 500 }
     );
   }

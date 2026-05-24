@@ -3,12 +3,10 @@
 import * as React from "react";
 import { Check, ChevronsUpDown, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
 import {
   Command,
   CommandEmpty,
   CommandGroup,
-  CommandInput,
   CommandItem,
   CommandList,
 } from "@/components/ui/command";
@@ -68,40 +66,40 @@ export function Combobox({
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <Button
-          variant="outline"
-          role="combobox"
-          aria-expanded={open}
-          className={cn("w-full justify-between h-10 px-3", className)}
-          disabled={disabled}
-        >
-          <span className={cn("truncate", !selectedOption && "text-muted-foreground")}>
-            {selectedOption ? selectedOption.label : placeholder}
-          </span>
-          <div className="flex items-center gap-2">
-            {allowClear && value && (
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onChange("");
-                }}
-                className="text-muted-foreground hover:text-foreground"
-              >
-                ×
-              </button>
-            )}
-            <ChevronsUpDown className="h-4 w-4 shrink-0 opacity-50" />
-          </div>
-        </Button>
+      <PopoverTrigger
+        type="button"
+        role="combobox"
+        aria-expanded={open}
+        className={cn(
+          "border-input bg-background hover:bg-accent hover:text-accent-foreground inline-flex h-10 w-full items-center justify-between gap-2 rounded-md border px-3 py-2 text-sm whitespace-nowrap shadow-xs transition-colors outline-none disabled:pointer-events-none disabled:opacity-50",
+          className
+        )}
+        disabled={disabled}
+      >
+        <span className={cn("truncate", !selectedOption && "text-muted-foreground")}>
+          {selectedOption ? selectedOption.label : placeholder}
+        </span>
+        <div className="flex items-center gap-2">
+          {allowClear && value && (
+            <span
+              role="button"
+              tabIndex={-1}
+              onClick={(e) => {
+                e.stopPropagation();
+                onChange("");
+              }}
+              className="text-muted-foreground hover:text-foreground"
+            >
+              ×
+            </span>
+          )}
+          <ChevronsUpDown className="h-4 w-4 shrink-0 opacity-50" />
+        </div>
       </PopoverTrigger>
       <PopoverContent 
         className="w-[--radix-popover-trigger-width] p-0 shadow-xl z-[9999] border border-gray-200 bg-white" 
         align="start"
         sideOffset={4}
-        avoidCollisions
-        collisionPadding={16}
       >
         <Command shouldFilter={false} className="bg-white">
           <div className="flex items-center border-b border-gray-200 px-3 py-2.5">

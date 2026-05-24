@@ -5,7 +5,6 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { BreadcrumbNav } from "@/modules/purchasing/components/breadcrumb/BreadcrumbNav";
 import {
@@ -13,7 +12,6 @@ import {
   PlusIcon,
   MagnifyingGlassIcon,
   EyeIcon,
-  ArrowRightIcon,
 } from "@heroicons/react/24/outline";
 
 type DeliveryStatus = "pending" | "shipped" | "in_transit" | "delivered" | "cancelled";
@@ -178,9 +176,18 @@ export default function DeliveryListPage() {
                         </span>
                       </td>
                       <td className="py-3 px-4">
-                        <Link href={`/dashboard/purchasing/delivery/${d.id}`}>
-                          <Button size="sm" variant="ghost"><EyeIcon className="w-4 h-4" /></Button>
-                        </Link>
+                        <div className="flex items-center gap-1">
+                          <Link href={`/dashboard/purchasing/delivery/${d.id}`}>
+                            <Button size="sm" variant="ghost" title="Detail"><EyeIcon className="w-4 h-4" /></Button>
+                          </Link>
+                          {d.status !== "cancelled" && (
+                            <Link href={`/dashboard/purchasing/grn/new?delivery_id=${d.id}`}>
+                              <Button size="sm" variant="outline" className="text-pink-700 border-pink-200 hover:bg-pink-50">
+                                Terima
+                              </Button>
+                            </Link>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   ))

@@ -22,13 +22,18 @@ export type POStatus =
 export interface Supplier {
   id: string;
   kode: string;
+  kode_supplier?: string;
   nama_supplier: string;
   pic_name: string | null;
   pic_phone: string | null;
+  pic_email?: string | null;
+  pic_jabatan?: string | null;
+  telepon?: string | null;
   email: string | null;
   alamat: string | null;
   kota: string | null;
   npwp: string | null;
+  catatan?: string | null;
   payment_terms: PaymentTerms;
   currency: Currency;
   bank_nama: string | null;
@@ -47,10 +52,12 @@ export interface Supplier {
 // ─── Supplier Form DTO ────────────────────────────────────────
 
 export interface SupplierFormData {
-  kode_supplier: string;
+  kode_supplier?: string;
   nama_supplier: string;
   pic_name?: string;
   pic_phone?: string;
+  pic_email?: string;
+  telepon?: string;
   email?: string;
   alamat?: string;
   kota?: string;
@@ -61,6 +68,7 @@ export interface SupplierFormData {
   bank_rekening?: string;
   bank_atas_nama?: string;
   kategori?: string;
+  catatan?: string;
 }
 
 // ─── Supplier List Query ──────────────────────────────────────

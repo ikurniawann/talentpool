@@ -12,7 +12,7 @@ import {
   ResponsiveContainer,
   Cell,
 } from "recharts";
-import { SupplierPerformance } from "../usePurchasingDashboard";
+import { SupplierPerformance } from "@/modules/purchasing/hooks/usePurchasingDashboard";
 import { formatPercent } from "@/modules/purchasing/utils";
 import { Truck } from "lucide-react";
 

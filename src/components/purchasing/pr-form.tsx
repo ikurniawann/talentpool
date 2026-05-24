@@ -35,6 +35,7 @@ const prSchema = z.object({
 });
 
 type PRFormData = z.infer<typeof prSchema>;
+type PRPriority = PRFormData["priority"];
 
 interface PRFormProps {
   departments: { id: string; name: string }[];
@@ -112,7 +113,7 @@ export function PRForm({ departments, onSubmit, isLoading }: PRFormProps) {
           <Label htmlFor="priority">Prioritas *</Label>
           <Select
             defaultValue="medium"
-            onValueChange={(value: any) => setValue("priority", value)}
+            onValueChange={(value) => setValue("priority", value as PRPriority)}
           >
             <SelectTrigger>
               <SelectValue placeholder="Pilih prioritas" />

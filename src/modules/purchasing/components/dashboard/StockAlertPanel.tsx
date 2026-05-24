@@ -1,7 +1,7 @@
 "use client";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { StockAlert } from "../usePurchasingDashboard";
+import { StockAlert } from "@/modules/purchasing/hooks/usePurchasingDashboard";
 import { formatUnit } from "@/modules/purchasing/utils";
 import { AlertTriangle, ArrowRight } from "lucide-react";
 import Link from "next/link";

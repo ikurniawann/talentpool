@@ -1,0 +1,197 @@
+import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
+import { createServiceClient } from "@/lib/supabase/service-client";
+import { requireApiRole, ApiError } from "@/lib/api/auth";
+
+const createProductionSchema = z.object({
+  product_id: z.string().uuid("Produk wajib dipilih"),
+  output_type: z.enum(["FINISHED_GOOD", "WIP"]).default("FINISHED_GOOD"),
+  planned_qty: z.number().positive("Qty produksi harus lebih dari 0"),
+  overhead_cost: z.number().min(0).default(0),
+  labor_cost: z.number().min(0).default(0),
+  packaging_cost: z.number().min(0).default(0),
+  waste_cost: z.number().min(0).default(0),
+  catatan: z.string().optional().nullable(),
+});
+
+function toNumber(value: unknown) {
+  const numeric = Number(value);
+  return Number.isFinite(numeric) ? numeric : 0;
+}
+
+function getErrorMessage(error: unknown, fallback: string) {
+  return error instanceof Error ? error.message : fallback;
+}
+
+async function generateProductionNumber(supabase: ReturnType<typeof createServiceClient>) {
+  const now = new Date();
+  const prefix = `PROD-${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}`;
+
+  const { data, error } = await supabase
+    .from("production_orders")
+    .select("nomor_produksi")
+    .ilike("nomor_produksi", `${prefix}-%`)
+    .order("nomor_produksi", { ascending: false })
+    .limit(1);
+
+  if (error) throw error;
+
+  const lastNumber = data?.[0]?.nomor_produksi?.split("-").pop();
+  const nextNumber = Number.isFinite(Number(lastNumber)) ? Number(lastNumber) + 1 : 1;
+  return `${prefix}-${String(nextNumber).padStart(4, "0")}`;
+}
+
+export async function GET(request: NextRequest) {
+  try {
+    await requireApiRole(["admin", "purchasing_admin", "purchasing_manager", "warehouse_admin"]);
+    const supabase = createServiceClient();
+    const { searchParams } = new URL(request.url);
+    const status = searchParams.get("status");
+    const search = searchParams.get("search");
+    const limit = Math.min(Number(searchParams.get("limit") || 25), 100);
+
+    let query = supabase
+      .from("v_production_orders")
+      .select("*")
+      .order("created_at", { ascending: false })
+      .limit(limit);
+
+    if (status) query = query.eq("status", status);
+    if (search) {
+      query = query.or(`nomor_produksi.ilike.%${search}%,product_nama.ilike.%${search}%,product_kode.ilike.%${search}%`);
+    }
+
+    const { data, error } = await query;
+    if (error) throw error;
+
+    return NextResponse.json({ success: true, data: data || [] });
+  } catch (error) {
+    if (error instanceof ApiError) return error.toResponse();
+    console.error("Error fetching production orders:", error);
+    return NextResponse.json(
+      { success: false, message: getErrorMessage(error, "Gagal mengambil data produksi") },
+      { status: 500 }
+    );
+  }
+}
+
+export async function POST(request: NextRequest) {
+  try {
+    const user = await requireApiRole(["admin", "purchasing_admin", "purchasing_manager", "warehouse_admin"]);
+    const supabase = createServiceClient();
+    const body = await request.json();
+    const validated = createProductionSchema.parse(body);
+
+    const { data: product, error: productError } = await supabase
+      .from("products")
+      .select("id, kode, nama")
+      .eq("id", validated.product_id)
+      .eq("is_active", true)
+      .single();
+
+    if (productError || !product) {
+      return NextResponse.json(
+        { success: false, message: "Produk tidak ditemukan" },
+        { status: 404 }
+      );
+    }
+
+    const { data: bomItems, error: bomError } = await supabase
+      .from("bom_items")
+      .select("raw_material_id, satuan_id, qty_required, waste_factor")
+      .eq("product_id", validated.product_id)
+      .eq("is_active", true);
+
+    if (bomError) throw bomError;
+    if (!bomItems || bomItems.length === 0) {
+      return NextResponse.json(
+        { success: false, message: "Produk belum memiliki BOM. Lengkapi recipe/BOM dulu sebelum produksi." },
+        { status: 400 }
+      );
+    }
+
+    const materialIds = bomItems.map((item) => item.raw_material_id).filter(Boolean);
+    const { data: stocks, error: stockError } = await supabase
+      .from("v_raw_materials_stock")
+      .select("id, avg_cost")
+      .in("id", materialIds);
+
+    if (stockError) throw stockError;
+
+    const stockCostMap = new Map((stocks || []).map((stock) => [stock.id, toNumber(stock.avg_cost)]));
+    const materials = bomItems.map((item) => {
+      const qtyPlanned = toNumber(item.qty_required) * (1 + toNumber(item.waste_factor)) * validated.planned_qty;
+      const unitCost = stockCostMap.get(item.raw_material_id) || 0;
+      return {
+        raw_material_id: item.raw_material_id,
+        satuan_id: item.satuan_id,
+        qty_planned: qtyPlanned,
+        qty_actual: qtyPlanned,
+        waste_qty: 0,
+        unit_cost: unitCost,
+        total_cost: qtyPlanned * unitCost,
+      };
+    });
+
+    const plannedMaterialCost = materials.reduce((sum, item) => sum + item.total_cost, 0);
+    const totalPlannedCost =
+      plannedMaterialCost +
+      validated.overhead_cost +
+      validated.labor_cost +
+      validated.packaging_cost +
+      validated.waste_cost;
+    const hppPerUnit = totalPlannedCost / validated.planned_qty;
+    const nomorProduksi = await generateProductionNumber(supabase);
+
+    const { data: order, error: orderError } = await supabase
+      .from("production_orders")
+      .insert({
+        nomor_produksi: nomorProduksi,
+        product_id: validated.product_id,
+        output_type: validated.output_type,
+        planned_qty: validated.planned_qty,
+        actual_qty: 0,
+        status: "DRAFT",
+        planned_material_cost: plannedMaterialCost,
+        overhead_cost: validated.overhead_cost,
+        labor_cost: validated.labor_cost,
+        packaging_cost: validated.packaging_cost,
+        waste_cost: validated.waste_cost,
+        hpp_per_unit: hppPerUnit,
+        catatan: validated.catatan || null,
+        created_by: user.id,
+      })
+      .select()
+      .single();
+
+    if (orderError) throw orderError;
+
+    const { error: materialError } = await supabase
+      .from("production_order_materials")
+      .insert(materials.map((item) => ({ ...item, production_order_id: order.id })));
+
+    if (materialError) throw materialError;
+
+    return NextResponse.json(
+      {
+        success: true,
+        data: { ...order, materials },
+        message: `Production order ${nomorProduksi} berhasil dibuat`,
+      },
+      { status: 201 }
+    );
+  } catch (error) {
+    if (error instanceof ApiError) return error.toResponse();
+    if (error instanceof z.ZodError) {
+      return NextResponse.json(
+        { success: false, message: "Validasi gagal", errors: error.flatten().fieldErrors },
+        { status: 400 }
+      );
+    }
+    console.error("Error creating production order:", error);
+    return NextResponse.json(
+      { success: false, message: getErrorMessage(error, "Gagal membuat produksi") },
+      { status: 500 }
+    );
+  }
+}

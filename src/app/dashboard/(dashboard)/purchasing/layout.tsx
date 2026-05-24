@@ -19,6 +19,7 @@ import {
   ChevronDownIcon,
   ScaleIcon,
   TagIcon,
+  Cog6ToothIcon,
 } from "@heroicons/react/24/outline";
 
 // Master Data Items
@@ -33,9 +34,10 @@ const MASTER_ITEMS = [
 // Transaksi Items
 const TRANSAKSI_ITEMS = [
   { href: "/dashboard/purchasing/po", label: "Purchase Order", icon: ShoppingCartIcon },
-  { href: "/dashboard/purchasing/grn", label: "Penerimaan", icon: TruckIcon },
+  { href: "/dashboard/purchasing/grn", label: "Barang Masuk", icon: TruckIcon },
+  { href: "/dashboard/purchasing/production", label: "Produksi", icon: Cog6ToothIcon },
+  { href: "/dashboard/purchasing/production/recipes", label: "Recipe/BOM", icon: CubeTransparentIcon },
   { href: "/dashboard/purchasing/qc", label: "QC", icon: CheckBadgeIcon },
-  { href: "/dashboard/purchasing/delivery", label: "Pengiriman", icon: TruckIcon },
   { href: "/dashboard/purchasing/returns", label: "Retur", icon: ArrowUturnLeftIcon },
 ];
 

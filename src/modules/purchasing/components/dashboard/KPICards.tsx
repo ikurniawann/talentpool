@@ -1,9 +1,9 @@
 "use client";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { formatRupiah, formatPercent } from "@/modules/purchasing/utils";
+import { formatRupiah } from "@/modules/purchasing/utils";
 import { TrendingUp, TrendingDown, Minus } from "lucide-react";
-import { PurchasingKPIs } from "./usePurchasingDashboard";
+import { PurchasingKPIs } from "@/modules/purchasing/hooks/usePurchasingDashboard";
 
 interface KPICardsProps {
   kpis: PurchasingKPIs;

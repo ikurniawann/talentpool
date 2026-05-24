@@ -8,10 +8,52 @@ import { z } from "zod";
 
 const bomSchema = z.object({
   raw_material_id: z.string().uuid("Bahan baku wajib dipilih"),
-  qty_required: z.number().min(0.0001, "Jumlah harus lebih dari 0"),
-  satuan_id: z.string().uuid().optional(),
-  waste_factor: z.number().min(0).max(1).default(0),
+  qty_required: z.number().min(0.0001, "Jumlah harus lebih dari 0").optional(),
+  qty_needed: z.number().min(0.0001, "Jumlah harus lebih dari 0").optional(),
+  satuan_id: z.string().uuid().nullable().optional(),
+  waste_factor: z.number().min(0).max(1).optional(),
+  waste_persen: z.number().min(0).max(100).optional(),
+}).transform((value) => ({
+  raw_material_id: value.raw_material_id,
+  qty_required: value.qty_required ?? value.qty_needed ?? 0,
+  satuan_id: value.satuan_id || null,
+  waste_factor: value.waste_factor ?? ((value.waste_persen ?? 0) / 100),
+})).refine((value) => value.qty_required > 0, {
+  message: "Jumlah harus lebih dari 0",
+  path: ["qty_required"],
 });
+
+type BomItemRow = {
+  raw_material_id?: string | null;
+  qty_required?: number | null;
+  waste_factor?: number | null;
+  raw_material?: {
+    avg_cost?: number | null;
+    harga_avg?: number | null;
+    harga_terakhir?: number | null;
+  } | null;
+};
+
+function getErrorMessage(error: unknown, fallback: string) {
+  return error instanceof Error ? error.message : fallback;
+}
+
+function getMaterialCost(
+  item: BomItemRow,
+  stockCostMap: Map<string, number>
+) {
+  const materialId = item.raw_material_id;
+  if (materialId && stockCostMap.has(materialId)) {
+    return stockCostMap.get(materialId) ?? 0;
+  }
+
+  return Number(
+    item.raw_material?.avg_cost ??
+      item.raw_material?.harga_avg ??
+      item.raw_material?.harga_terakhir ??
+      0
+  );
+}
 
 // GET /api/purchasing/products/:id/bom
 export async function GET(
@@ -40,10 +82,23 @@ export async function GET(
 
     if (error) throw error;
 
-    // Hitung cost untuk setiap item
-    const bomWithCost = (data || []).map((item: any) => {
-      const materialCost = item.raw_material?.avg_cost || 0;
-      const qtyWithWaste = item.qty_required * (1 + item.waste_factor);
+    const materialIds = Array.from(
+      new Set((data || []).map((item) => item.raw_material_id).filter(Boolean))
+    );
+    const { data: stockCosts } = materialIds.length > 0
+      ? await supabase
+          .from("v_raw_materials_stock")
+          .select("id, avg_cost")
+          .in("id", materialIds)
+      : { data: [] };
+    const stockCostMap = new Map(
+      (stockCosts || []).map((material) => [material.id, Number(material.avg_cost ?? 0)])
+    );
+
+    const bomWithCost = (data || []).map((item) => {
+      const bomItem = item as BomItemRow;
+      const materialCost = getMaterialCost(bomItem, stockCostMap);
+      const qtyWithWaste = Number(bomItem.qty_required ?? 0) * (1 + Number(bomItem.waste_factor ?? 0));
       return {
         ...item,
         cost_per_unit: materialCost,
@@ -52,10 +107,10 @@ export async function GET(
     });
 
     return Response.json({ success: true, data: bomWithCost });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error fetching BOM:", error);
     return Response.json(
-      { success: false, message: error.message || "Gagal mengambil data BOM" },
+      { success: false, message: getErrorMessage(error, "Gagal mengambil data BOM") },
       { status: 500 }
     );
   }
@@ -88,6 +143,27 @@ export async function POST(
       );
     }
 
+    const { data: material, error: materialError } = await supabase
+      .from("raw_materials")
+      .select("id, source_product_id")
+      .eq("id", validated.raw_material_id)
+      .eq("is_active", true)
+      .single();
+
+    if (materialError || !material) {
+      return Response.json(
+        { success: false, message: "Bahan baku tidak ditemukan" },
+        { status: 404 }
+      );
+    }
+
+    if (material.source_product_id === id) {
+      return Response.json(
+        { success: false, message: "Produk tidak boleh memakai WIP dari produk yang sama sebagai BOM" },
+        { status: 400 }
+      );
+    }
+
     // Cek apakah bahan sudah ada di BOM
     const { data: existingItem } = await supabase
       .from("bom_items")
@@ -95,7 +171,7 @@ export async function POST(
       .eq("product_id", id)
       .eq("raw_material_id", validated.raw_material_id)
       .eq("is_active", true)
-      .single();
+      .maybeSingle();
 
     if (existingItem) {
       return Response.json(
@@ -121,7 +197,7 @@ export async function POST(
       { success: true, data, message: "Bahan berhasil ditambahkan ke BOM" },
       { status: 201 }
     );
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error creating BOM item:", error);
 
     if (error instanceof z.ZodError) {
@@ -136,7 +212,7 @@ export async function POST(
     }
 
     return Response.json(
-      { success: false, message: error.message || "Gagal menambahkan bahan ke BOM" },
+      { success: false, message: getErrorMessage(error, "Gagal menambahkan bahan ke BOM") },
       { status: 500 }
     );
   }

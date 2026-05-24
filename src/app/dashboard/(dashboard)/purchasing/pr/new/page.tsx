@@ -8,6 +8,21 @@ import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 import { generatePRNumber, getRequiredApprovalLevel } from "@/lib/purchasing/utils";
 
+type PRItemInput = {
+  description: string;
+  qty: number;
+  unit: string;
+  estimated_price: number;
+};
+
+type PRFormInput = {
+  department_id: string;
+  priority: "low" | "medium" | "high" | "urgent";
+  required_date?: string;
+  notes?: string;
+  items: PRItemInput[];
+};
+
 export default async function NewPRPage() {
   const user = await requireUser();
   const supabase = await createClient();
@@ -25,7 +40,7 @@ export default async function NewPRPage() {
     .eq("is_active", true)
     .order("name");
 
-  async function handleCreatePR(formData: any, action: "draft" | "submit") {
+  async function handleCreatePR(formData: PRFormInput, action: "draft" | "submit") {
     "use server";
     
     const supabase = await createClient();
@@ -34,7 +49,7 @@ export default async function NewPRPage() {
     try {
       // Calculate total
       const totalAmount = formData.items.reduce(
-        (sum: number, item: any) => sum + (item.qty * item.estimated_price),
+        (sum, item) => sum + (item.qty * item.estimated_price),
         0
       );
 
@@ -65,7 +80,7 @@ export default async function NewPRPage() {
       if (prError) throw prError;
       
       // Insert items
-      const items = formData.items.map((item: any) => ({
+      const items = formData.items.map((item) => ({
         pr_id: pr.id,
         description: item.description,
         qty: item.qty,
