@@ -21,6 +21,7 @@ import {
   Cloud,
   Command,
   CreditCard,
+  ExternalLink,
   Folder,
   Gamepad2,
   Grid3X3,
@@ -180,6 +181,7 @@ export default function ArkivOsDesktop() {
   const [showSettings, setShowSettings] = useState(false);
   const [showAbout, setShowAbout] = useState(false);
   const [openAppModule, setOpenAppModule] = useState<DesktopModule | null>(null);
+  const [moduleOpenChoice, setModuleOpenChoice] = useState<DesktopModule | null>(null);
   const [wallpaper, setWallpaper] = useState(wallpapers[0]);
   const [iconPositions, setIconPositions] = useState(defaultIconPositions);
   const [widgetVisibility, setWidgetVisibility] = useState<WidgetVisibility>(defaultWidgetVisibility);
@@ -223,13 +225,23 @@ export default function ArkivOsDesktop() {
 
   const openModule = (module: DesktopModule) => {
     if (module.disabled) return;
+    setModuleOpenChoice(module);
+  };
+
+  const openModuleInArkivOs = (module: DesktopModule) => {
     const href = moduleHref(module);
     if (module.externalHref) {
       window.open(href, "_blank", "noopener,noreferrer");
+      setModuleOpenChoice(null);
       return;
     }
-    // Open in application window
     setOpenAppModule(module);
+    setModuleOpenChoice(null);
+  };
+
+  const openModuleInNewTab = (module: DesktopModule) => {
+    window.open(moduleHref(module), "_blank", "noopener,noreferrer");
+    setModuleOpenChoice(null);
   };
 
   const handleMouseMove = (event: ReactMouseEvent<HTMLElement>) => {
@@ -596,6 +608,15 @@ export default function ArkivOsDesktop() {
       {showAbout && <AboutArkiv onClose={() => setShowAbout(false)} />}
       {showAssistant && <AiAssistantWindow account={userAccount} settings={assistantSettings} onClose={() => setShowAssistant(false)} />}
       {openAppModule && <ApplicationWindow module={openAppModule} url={moduleHref(openAppModule)} onClose={() => setOpenAppModule(null)} />}
+      {moduleOpenChoice && (
+        <ModuleOpenChoiceModal
+          module={moduleOpenChoice}
+          isLoggedIn={isLoggedIn}
+          onClose={() => setModuleOpenChoice(null)}
+          onOpenInside={() => openModuleInArkivOs(moduleOpenChoice)}
+          onOpenNewTab={() => openModuleInNewTab(moduleOpenChoice)}
+        />
+      )}
       {toast && <ToastNotification message={toast} onOpen={() => setShowNotifications(true)} onClose={() => setToast(null)} />}
       {showAccount && (
         <OsAccountPopup
@@ -881,6 +902,84 @@ function ModuleWindow({ module, isLoggedIn, onClose, onOpen }: { module: Desktop
         </button>
       </div>
     </WindowShell>
+  );
+}
+
+function ModuleOpenChoiceModal({
+  module,
+  isLoggedIn,
+  onClose,
+  onOpenInside,
+  onOpenNewTab,
+}: {
+  module: DesktopModule;
+  isLoggedIn: boolean;
+  onClose: () => void;
+  onOpenInside: () => void;
+  onOpenNewTab: () => void;
+}) {
+  const Icon = module.icon;
+
+  return (
+    <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/45 p-4 backdrop-blur-xl" onClick={onClose}>
+      <div
+        className="w-[min(420px,calc(100vw-32px))] overflow-hidden rounded-[28px] border border-white/18 bg-slate-950/88 shadow-[0_28px_90px_rgba(0,0,0,.55)]"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <div className="flex items-start justify-between border-b border-white/10 p-5">
+          <div className="flex items-center gap-4">
+            <div className="relative grid size-14 place-items-center rounded-2xl border border-white/25 bg-white/12">
+              <div className={`absolute inset-1 rounded-[18px] bg-gradient-to-br ${pinkAccent}`} />
+              <Icon className="relative size-7 text-white" />
+            </div>
+            <div>
+              <h2 className="text-lg font-semibold text-white">{module.name}</h2>
+              <p className="text-xs text-white/50">{isLoggedIn ? module.subtitle : "Login required"}</p>
+            </div>
+          </div>
+          <button
+            type="button"
+            aria-label="Close"
+            onClick={onClose}
+            className="grid size-8 place-items-center rounded-full bg-white/10 text-white/70 transition hover:bg-white/18 hover:text-white"
+          >
+            <X className="size-4" />
+          </button>
+        </div>
+
+        <div className="space-y-3 p-5">
+          <button
+            type="button"
+            onClick={onOpenInside}
+            className="group flex w-full items-center gap-4 rounded-2xl border border-pink-300/30 bg-pink-500/16 p-4 text-left transition hover:border-pink-200/50 hover:bg-pink-500/24"
+          >
+            <div className="grid size-11 shrink-0 place-items-center rounded-2xl bg-pink-500 text-white shadow-lg shadow-pink-950/30">
+              <MonitorDot className="size-5" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="text-sm font-semibold text-white">Buka di Arkiv OS</div>
+              <div className="mt-1 text-xs leading-5 text-white/55">Module tampil sebagai window di desktop Arkiv OS.</div>
+            </div>
+            <ChevronRight className="size-4 text-white/45 transition group-hover:translate-x-0.5 group-hover:text-white" />
+          </button>
+
+          <button
+            type="button"
+            onClick={onOpenNewTab}
+            className="group flex w-full items-center gap-4 rounded-2xl border border-white/12 bg-white/8 p-4 text-left transition hover:border-white/24 hover:bg-white/12"
+          >
+            <div className="grid size-11 shrink-0 place-items-center rounded-2xl bg-white/12 text-white">
+              <ExternalLink className="size-5" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="text-sm font-semibold text-white">Open New Tab</div>
+              <div className="mt-1 text-xs leading-5 text-white/55">Module dibuka di tab browser baru.</div>
+            </div>
+            <ChevronRight className="size-4 text-white/45 transition group-hover:translate-x-0.5 group-hover:text-white" />
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }
 
