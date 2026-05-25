@@ -66,10 +66,25 @@ export async function GET(
 
     if (itemsError) throw itemsError;
 
+    const { data: activeDelivery, error: deliveryError } = await supabase
+      .from("deliveries")
+      .select("id, nomor_resi, no_surat_jalan, status")
+      .eq("purchase_order_id", id)
+      .eq("is_active", true)
+      .neq("status", "cancelled")
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (deliveryError) throw deliveryError;
+
     return Response.json({
       success: true,
       data: {
         ...po,
+        active_delivery_id: activeDelivery?.id || null,
+        active_delivery_number: activeDelivery?.nomor_resi || activeDelivery?.no_surat_jalan || null,
+        active_delivery_status: activeDelivery?.status || null,
         items: items || [],
       },
     });

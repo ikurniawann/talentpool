@@ -492,7 +492,7 @@ export async function listPriceLists(
   const sp = new URLSearchParams();
   if (params.id) sp.set("id", params.id);
   if (params.supplier_id) sp.set("supplier_id", params.supplier_id);
-  if (params.raw_material_id) sp.set("raw_material_id", params.raw_material_id);
+  if (params.raw_material_id) sp.set("bahan_baku_id", params.raw_material_id);
   if (params.is_active !== undefined) sp.set("is_active", String(params.is_active));
 
   const response = await fetchApi<{ data: SupplierPriceList[] | SupplierPriceList }>(
@@ -679,6 +679,15 @@ export async function createPurchaseOrderPaymentTerm(
     }
   );
   return response.data;
+}
+
+export async function deletePurchaseOrderPaymentTerm(
+  poId: string,
+  termId: string
+): Promise<void> {
+  await fetchApi(`${BASE}/po/${poId}/payment-terms/${termId}`, {
+    method: "DELETE",
+  });
 }
 
 export async function createVendorPayment(

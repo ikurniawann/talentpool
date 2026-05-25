@@ -33,6 +33,29 @@ const updateGrnSchema = z.object({
   tanggal_penerimaan: z.string().optional(),
 });
 
+const QTY_EPSILON = 0.000001;
+
+type POQtyValidationItem = {
+  id: string;
+  raw_material_id: string;
+  qty_ordered?: number | null;
+  qty_received?: number | null;
+  raw_material?: {
+    nama?: string | null;
+    nama_bahan?: string | null;
+  } | null;
+};
+
+function formatQty(value: number) {
+  return new Intl.NumberFormat("id-ID", {
+    maximumFractionDigits: 4,
+  }).format(value);
+}
+
+function getMaterialLabel(item: POQtyValidationItem) {
+  return item.raw_material?.nama || item.raw_material?.nama_bahan || "item ini";
+}
+
 // GET /api/purchasing/grn/[id] - Get GRN detail
 export async function GET(
   request: NextRequest,
@@ -216,6 +239,71 @@ export async function PATCH(
             diff,
           });
         }
+      }
+    }
+
+    if (validated.items && validated.items.length > 0) {
+      const poItemIds = validated.items
+        .map((item) => item.purchase_order_item_id)
+        .filter((itemId): itemId is string => Boolean(itemId));
+
+      const { data: poItemsForValidation, error: poValidationError } = await supabase
+        .from("purchase_order_items")
+        .select(`
+          id,
+          raw_material_id,
+          qty_ordered,
+          qty_received,
+          raw_material:raw_material_id(nama)
+        `)
+        .eq("purchase_order_id", currentGrn.purchase_order_id)
+        .eq("is_active", true);
+
+      if (poValidationError) throw poValidationError;
+
+      const validationItems = (poItemsForValidation || []) as POQtyValidationItem[];
+
+      const poItemsMap = new Map(
+        validationItems.map((item) => [item.id, item])
+      );
+      const poItemsByMaterialMap = new Map(
+        validationItems.map((item) => [item.raw_material_id, item])
+      );
+      const existingItemsByKey = new Map(
+        (existingItems || []).map((item) => [item.purchase_order_item_id || item.raw_material_id, item])
+      );
+
+      for (const item of validated.items) {
+        const key = item.purchase_order_item_id || item.raw_material_id;
+        const existingItem = existingItemsByKey.get(key);
+        const poItem = item.purchase_order_item_id
+          ? poItemsMap.get(item.purchase_order_item_id)
+          : poItemsByMaterialMap.get(item.raw_material_id);
+
+        if (!poItem) {
+          throw ApiError.badRequest("Item PO tidak ditemukan untuk validasi penerimaan");
+        }
+
+        const previousReceivedInThisGrn = Number(existingItem?.qty_diterima || 0);
+        const receivedOutsideThisGrn = Math.max(
+          0,
+          Number(poItem.qty_received || 0) - previousReceivedInThisGrn
+        );
+        const remainingQty = Math.max(
+          0,
+          Number(poItem.qty_ordered || 0) - receivedOutsideThisGrn
+        );
+        const processedQty = Number(item.qty_diterima || 0) + Number(item.qty_ditolak || 0);
+
+        if (processedQty > remainingQty + QTY_EPSILON) {
+          throw ApiError.badRequest(
+            `Qty ${getMaterialLabel(poItem)} melebihi sisa PO. Maksimal ${formatQty(remainingQty)}, tetapi diinput ${formatQty(processedQty)} (diterima + ditolak).`
+          );
+        }
+      }
+
+      if (poItemIds.length === 0) {
+        throw ApiError.badRequest("Minimal 1 item harus terhubung dengan item PO");
       }
     }
 

@@ -171,9 +171,19 @@ body.purchasing-ui [data-slot="select-trigger"] {
   min-height: 2.25rem !important;
   height: 2.25rem !important;
   border-radius: 0.5rem !important;
-  padding-inline: 0.75rem !important;
   font-size: 0.875rem !important;
   line-height: 1.25rem !important;
+}
+
+body.purchasing-ui input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]):not([data-combobox-search="true"]):not([class*="pl-"]),
+body.purchasing-ui [data-slot="input"]:not([class*="pl-"]),
+body.purchasing-ui [data-slot="select-trigger"] {
+  padding-inline: 0.75rem !important;
+}
+
+body.purchasing-ui .relative > svg.absolute ~ input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]),
+body.purchasing-ui .relative > svg.absolute ~ [data-slot="input"] {
+  padding-left: 2.5rem !important;
 }
 
 body.purchasing-ui textarea,

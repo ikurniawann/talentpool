@@ -91,21 +91,23 @@ export async function validateDeliveryCanReceive(
     return { valid: false, errors };
   }
 
-  // Check if delivery is in valid status (delivered juga OK untuk lanjutan penerimaan)
+  // Check if delivery is in valid status
   if (!["pending", "shipped", "in_transit", "delivered"].includes(delivery.status)) {
     errors.push(`Delivery dengan status ${delivery.status} tidak dapat diterima`);
   }
 
-  // Check if GRN already exists for this delivery
+  // One delivery / surat jalan should produce one GRN. Additional arrivals should use a new delivery.
   const { data: existingGrn } = await supabase
     .from("grn")
-    .select("id, status")
+    .select("id, nomor_grn, status")
     .eq("delivery_id", deliveryId)
     .eq("is_active", true)
     .maybeSingle();
 
-  if (existingGrn && existingGrn.status === "received") {
-    errors.push("Delivery sudah diterima sebelumnya");
+  if (existingGrn) {
+    errors.push(
+      `Delivery ini sudah memiliki dokumen Barang Masuk (${existingGrn.nomor_grn || existingGrn.id}). Buat delivery baru jika ada pengiriman susulan.`
+    );
   }
 
   // Get PO items for reference — always use adminSupabase-level access here

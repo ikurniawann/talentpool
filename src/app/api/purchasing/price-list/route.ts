@@ -31,7 +31,7 @@ export async function GET(request: NextRequest) {
 
     const id = searchParams.get("id");
     const supplierId = searchParams.get("supplier_id");
-    const bahanBakuId = searchParams.get("bahan_baku_id");
+    const bahanBakuId = searchParams.get("bahan_baku_id") || searchParams.get("raw_material_id");
     const isActive = searchParams.get("is_active");
 
     let query = supabase

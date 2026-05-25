@@ -4,36 +4,26 @@ import { useState, useEffect, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Save, Plus, Trash2, Package, Search, User } from "lucide-react";
+import { ArrowLeft, Save, Plus, Trash2, Package, X } from "lucide-react";
 import { toast } from "sonner";
 import { Combobox } from "@/components/ui/combobox";
 import { DatePicker } from "@/components/ui/datepicker";
-import { Supplier, RawMaterialWithStock, PurchaseOrderFormData, PurchaseOrderItemFormData, Unit } from "@/types/purchasing";
-import { listSuppliers, listRawMaterials, listUnits, convertPRToPurchaseOrder } from "@/lib/purchasing";
+import { NumericInput } from "@/components/ui/numeric-input";
+import { Supplier, RawMaterialWithStock, PurchaseOrderFormData, PurchaseOrderItemFormData, Unit, SupplierPriceList } from "@/types/purchasing";
+import { createPurchaseOrder, listSuppliers, listRawMaterials, listUnits, convertPRToPurchaseOrder, listPriceLists } from "@/lib/purchasing";
 
 interface POItemForm extends PurchaseOrderItemFormData {
   id: string;
   pr_item_id?: string;
   raw_material_name?: string;
   raw_material_unit?: string;
+  requested_qty?: number;
+  requested_satuan_id?: string;
+  source?: "manual" | "pr" | "prefill";
   subtotal: number;
 }
 
@@ -79,8 +69,6 @@ export default function NewPOPage() {
   const [selectedPR, setSelectedPR] = useState<PRForPO | null>(null);
   const [loadingPR, setLoadingPR] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [supplierModalOpen, setSupplierModalOpen] = useState(false);
-  const [supplierSearch, setSupplierSearch] = useState("");
   const prId = searchParams.get("pr_id");
   const [prefillApplied, setPrefillApplied] = useState(false);
   const [formData, setFormData] = useState<PurchaseOrderFormData>({
@@ -100,6 +88,133 @@ export default function NewPOPage() {
   });
   const [items, setItems] = useState<POItemForm[]>([]);
   const isPrSourced = Boolean(formData.pr_id);
+
+  const getConversionFactor = useCallback((materialId: string, unitId?: string) => {
+    if (!unitId) return 1;
+    const material = materials.find((item) => item.id === materialId);
+    const conversion = material?.unit_conversions?.find(
+      (item) => item.satuan_id === unitId && item.is_active !== false
+    );
+    return Number(conversion?.qty_in_base_unit || 1);
+  }, [materials]);
+
+  const getUnitName = useCallback((unitId?: string) => {
+    return units.find((unit) => unit.id === unitId)?.nama || "";
+  }, [units]);
+
+  const getMaterialUnitOptions = useCallback((materialId?: string) => {
+    const material = materials.find((item) => item.id === materialId);
+    const conversionUnitIds = (material?.unit_conversions || [])
+      .filter((conversion) => conversion.is_active !== false)
+      .map((conversion) => conversion.satuan_id);
+    const unitIds = Array.from(
+      new Set([
+        material?.satuan_besar_id,
+        ...conversionUnitIds,
+      ].filter(Boolean) as string[])
+    );
+
+    return unitIds
+      .map((unitId) => {
+        const unit = units.find((item) => item.id === unitId);
+        return unit ? { value: unit.id, label: unit.nama, description: unit.kode } : null;
+      })
+      .filter(Boolean) as { value: string; label: string; description?: string }[];
+  }, [materials, units]);
+
+  const findSupplierPrice = useCallback(async (supplierId: string, materialId: string) => {
+    if (!supplierId || !materialId) return null;
+    const response = await listPriceLists({ supplier_id: supplierId, raw_material_id: materialId, is_active: true });
+    const priceLists = (Array.isArray(response) ? response : [response]).filter(Boolean) as SupplierPriceList[];
+
+    return priceLists
+      .filter((price) => Number(price.harga ?? price.price ?? 0) > 0 && (price.satuan_id || price.unit_id))
+      .sort((a, b) => {
+        if (a.is_preferred !== b.is_preferred) return a.is_preferred ? -1 : 1;
+        return Number(a.harga ?? a.price ?? 0) - Number(b.harga ?? b.price ?? 0);
+      })[0] || null;
+  }, []);
+
+  const findSupplierUnitPrice = useCallback(async (
+    supplierId: string,
+    materialId: string,
+    targetUnitId?: string
+  ) => {
+    if (!supplierId || !materialId || !targetUnitId) return null;
+
+    const response = await listPriceLists({ supplier_id: supplierId, raw_material_id: materialId, is_active: true });
+    const priceLists = (Array.isArray(response) ? response : [response])
+      .filter((price) => Number(price?.harga ?? price?.price ?? 0) > 0 && (price?.satuan_id || price?.unit_id)) as SupplierPriceList[];
+
+    const sortedPrices = [...priceLists].sort((a, b) => {
+      if (a.is_preferred !== b.is_preferred) return a.is_preferred ? -1 : 1;
+      return Number(a.harga ?? a.price ?? 0) - Number(b.harga ?? b.price ?? 0);
+    });
+    const exactPrice = sortedPrices.find((price) => (price.satuan_id || price.unit_id) === targetUnitId);
+    const sourcePrice = exactPrice || sortedPrices[0];
+    if (!sourcePrice) return null;
+
+    const sourceUnitId = sourcePrice.satuan_id || sourcePrice.unit_id;
+    const sourceFactor = getConversionFactor(materialId, sourceUnitId);
+    const targetFactor = getConversionFactor(materialId, targetUnitId);
+    const unitPrice = Number(sourcePrice.harga ?? sourcePrice.price ?? 0);
+
+    return {
+      unitPrice: sourceFactor > 0 ? (unitPrice / sourceFactor) * targetFactor : unitPrice,
+      isExact: Boolean(exactPrice),
+    };
+  }, [getConversionFactor]);
+
+  const applySupplierPriceToItem = useCallback(async (item: POItemForm, supplierId: string): Promise<POItemForm> => {
+    if (!supplierId || !item.raw_material_id) return item;
+
+    try {
+      const price = await findSupplierPrice(supplierId, item.raw_material_id);
+      if (!price) return item;
+
+      const priceUnitId = price.satuan_id || price.unit_id;
+      const targetUnitId = item.source === "pr"
+        ? item.requested_satuan_id || item.satuan_id || priceUnitId
+        : priceUnitId;
+      const requestedQty = Number(item.requested_qty ?? item.qty_ordered ?? 0);
+      const shouldConvertQty = item.source === "prefill";
+      const requestUnitId = item.requested_satuan_id || item.satuan_id || targetUnitId;
+      const requestFactor = getConversionFactor(item.raw_material_id, requestUnitId);
+      const targetFactor = getConversionFactor(item.raw_material_id, targetUnitId);
+      const convertedQty = shouldConvertQty && targetFactor > 0
+        ? (requestedQty * requestFactor) / targetFactor
+        : Math.max(1, Number(item.qty_ordered || requestedQty || 1));
+      const priceFactor = getConversionFactor(item.raw_material_id, priceUnitId);
+      const supplierPrice = Number(price.harga ?? price.price ?? 0);
+      const unitPrice = priceFactor > 0 ? (supplierPrice / priceFactor) * targetFactor : supplierPrice;
+
+      return {
+        ...item,
+        satuan_id: targetUnitId,
+        raw_material_unit: getUnitName(targetUnitId) || item.raw_material_unit,
+        qty_ordered: convertedQty,
+        harga_satuan: Math.round(unitPrice),
+        subtotal: convertedQty * Math.round(unitPrice),
+      };
+    } catch (error) {
+      console.error("Error applying supplier price:", error);
+      return item;
+    }
+  }, [findSupplierPrice, getConversionFactor, getUnitName]);
+
+  const applySupplierPrices = useCallback(async (supplierId: string, nextItems = items) => {
+    if (!supplierId || nextItems.length === 0) return nextItems;
+    const pricedItems = await Promise.all(nextItems.map((item) => applySupplierPriceToItem(item, supplierId)));
+    setItems(pricedItems);
+    return pricedItems;
+  }, [applySupplierPriceToItem, items]);
+
+  const applySupplierPricesForItems = useCallback(async (supplierId: string, nextItems: POItemForm[]) => {
+    if (!supplierId || nextItems.length === 0) return nextItems;
+    const pricedItems = await Promise.all(nextItems.map((item) => applySupplierPriceToItem(item, supplierId)));
+    setItems(pricedItems);
+    return pricedItems;
+  }, [applySupplierPriceToItem]);
 
   // Auto-fill from URL query params (from Low Stock Report / Production shortage)
   useEffect(() => {
@@ -131,6 +246,9 @@ export default function NewPOPage() {
               notes: "Kebutuhan bahan produksi",
               raw_material_name: material.nama,
               raw_material_unit: material.satuan_besar_nama || material.satuan || "Unit",
+              requested_qty: qtyOrdered,
+              requested_satuan_id: material.satuan_besar_id,
+              source: "prefill",
             } as POItemForm;
           })
           .filter(Boolean) as POItemForm[];
@@ -179,6 +297,9 @@ export default function NewPOPage() {
           notes: "",
           raw_material_name: material.nama,
           raw_material_unit: unit?.nama || 'Pcs',
+          requested_qty: parseInt(qty),
+          requested_satuan_id: material.satuan_besar_id,
+          source: "prefill",
         };
         
         setItems([newItem]);
@@ -268,8 +389,15 @@ export default function NewPOPage() {
         subtotal: item.qty * (item.estimated_price || 0),
         raw_material_name: item.raw_material?.nama || item.description,
         raw_material_unit: item.satuan?.nama || item.unit,
+        requested_qty: item.qty,
+        requested_satuan_id: item.satuan_id || undefined,
+        source: "pr",
       }));
-      setItems(mappedItems);
+      if (formData.supplier_id) {
+        await applySupplierPricesForItems(formData.supplier_id, mappedItems);
+      } else {
+        setItems(mappedItems);
+      }
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : "Unknown error";
       console.error("Error loading PR:", error);
@@ -277,7 +405,7 @@ export default function NewPOPage() {
     } finally {
       setLoadingPR(false);
     }
-  }, []);
+  }, [applySupplierPricesForItems, formData.supplier_id]);
 
   useEffect(() => {
     loadData();
@@ -289,25 +417,21 @@ export default function NewPOPage() {
     }
   }, [loadPRForPO, prId]);
 
+  const clearSelectedPR = () => {
+    setSelectedPR(null);
+    setItems([]);
+    setFormData((prev) => ({ ...prev, pr_id: undefined }));
+    router.replace("/dashboard/purchasing/po/new");
+  };
+
   const handleSelectPR = (id: string) => {
+    if (!id) {
+      clearSelectedPR();
+      return;
+    }
     router.replace(`/dashboard/purchasing/po/new?pr_id=${id}`);
     loadPRForPO(id);
   };
-
-  const getSelectedSupplier = () => {
-    return suppliers.find(s => s.id === formData.supplier_id);
-  };
-
-  const handleSelectSupplier = (supplier: Supplier) => {
-    setFormData((prev) => ({ ...prev, supplier_id: supplier.id }));
-    setSupplierModalOpen(false);
-    setSupplierSearch("");
-  };
-
-  const filteredSuppliers = suppliers.filter(s => 
-    s.nama_supplier.toLowerCase().includes(supplierSearch.toLowerCase()) ||
-    s.kode_supplier.toLowerCase().includes(supplierSearch.toLowerCase())
-  );
 
   const addItem = () => {
     setItems(prev => [
@@ -319,6 +443,8 @@ export default function NewPOPage() {
         harga_satuan: 0,
         subtotal: 0,
         notes: "",
+        requested_qty: 1,
+        source: "manual",
       },
     ]);
   };
@@ -326,6 +452,26 @@ export default function NewPOPage() {
   const removeItem = (index: number) => {
     setItems(items.filter((_, i) => i !== index));
   };
+
+  const applyUnitPriceForItem = useCallback(async (item: POItemForm, supplierId: string, unitId?: string) => {
+    if (!supplierId || !item.raw_material_id || !unitId) return item;
+
+    try {
+      const price = await findSupplierUnitPrice(supplierId, item.raw_material_id, unitId);
+      if (!price) return item;
+
+      return {
+        ...item,
+        satuan_id: unitId,
+        raw_material_unit: getUnitName(unitId) || item.raw_material_unit,
+        harga_satuan: Math.round(price.unitPrice),
+        subtotal: Number(item.qty_ordered || 0) * Math.round(price.unitPrice),
+      };
+    } catch (error) {
+      console.error("Error applying unit price:", error);
+      return item;
+    }
+  }, [findSupplierUnitPrice, getUnitName]);
 
   const updateItem = (index: number, field: keyof POItemForm, value: POItemForm[keyof POItemForm]) => {
     const newItems = [...items];
@@ -336,17 +482,39 @@ export default function NewPOPage() {
       const qty = Number(field === "qty_ordered" ? value : newItems[index].qty_ordered);
       const price = Number(field === "harga_satuan" ? value : newItems[index].harga_satuan);
       newItems[index].subtotal = qty * price;
+      if (field === "qty_ordered") {
+        newItems[index].requested_qty = qty;
+      }
+    }
+
+    if (field === "satuan_id") {
+      newItems[index].requested_satuan_id = String(value || "");
+      newItems[index].raw_material_unit = getUnitName(String(value || "")) || newItems[index].raw_material_unit;
     }
 
     // Update material info
     if (field === "raw_material_id") {
       const material = materials.find((m) => m.id === value);
+      const unitId = material?.satuan_besar_id || "";
       newItems[index].raw_material_name = material?.nama;
-      newItems[index].raw_material_unit = material?.satuan_besar_nama || material?.satuan;
-      newItems[index].satuan_id = material?.satuan_besar_id || newItems[index].satuan_id;
+      newItems[index].raw_material_unit = getUnitName(unitId) || material?.satuan_besar_nama || material?.satuan;
+      newItems[index].satuan_id = unitId || undefined;
+      newItems[index].requested_satuan_id = unitId || undefined;
     }
 
     setItems(newItems);
+
+    if (field === "raw_material_id" && formData.supplier_id && String(value)) {
+      applySupplierPriceToItem(newItems[index], formData.supplier_id).then((pricedItem) => {
+        setItems((current) => current.map((item, itemIndex) => itemIndex === index ? pricedItem : item));
+      });
+    }
+
+    if (field === "satuan_id" && formData.supplier_id && String(value)) {
+      applyUnitPriceForItem(newItems[index], formData.supplier_id, String(value)).then((pricedItem) => {
+        setItems((current) => current.map((item, itemIndex) => itemIndex === index ? pricedItem : item));
+      });
+    }
   };
 
   const calculateTotals = () => {
@@ -371,15 +539,31 @@ export default function NewPOPage() {
       toast.error("Tambahkan minimal 1 item");
       return;
     }
-    if (!formData.pr_id) {
-      toast.error("Pilih PR approved terlebih dahulu");
+    const invalidItem = items.find((item) => !item.raw_material_id || item.qty_ordered <= 0 || item.harga_satuan < 0);
+    if (invalidItem) {
+      toast.error("Lengkapi bahan baku, jumlah, dan harga untuk semua item");
       return;
     }
 
     setIsSubmitting(true);
     try {
-      console.log("Creating PO with formData:", formData);
-      const po = await convertPRToPurchaseOrder(formData.pr_id, formData);
+      const payload: PurchaseOrderFormData = {
+        ...formData,
+        pr_id: formData.pr_id || undefined,
+        tanggal_kirim_estimasi: formData.tanggal_kirim_estimasi || "",
+        items: items.map((item) => ({
+          raw_material_id: item.raw_material_id,
+          pr_item_id: item.pr_item_id,
+          satuan_id: item.satuan_id,
+          qty_ordered: Number(item.qty_ordered || 0),
+          harga_satuan: Number(item.harga_satuan || 0),
+          notes: item.notes || "",
+        })),
+      };
+      console.log("Creating PO with payload:", payload);
+      const po = payload.pr_id
+        ? await convertPRToPurchaseOrder(payload.pr_id, payload)
+        : await createPurchaseOrder(payload);
 
       console.log("PO created:", po);
 
@@ -417,8 +601,6 @@ export default function NewPOPage() {
   };
 
   const { subtotal, diskonNominal, ppnNominal, total } = calculateTotals();
-  const selectedSupplier = getSelectedSupplier();
-
   return (
     <div className="container mx-auto py-6 space-y-6">
       {/* Header */}
@@ -431,7 +613,7 @@ export default function NewPOPage() {
         <div>
           <h1 className="text-2xl font-bold">Buat Purchase Order Baru</h1>
           <p className="text-muted-foreground">
-            {selectedPR ? `Dari PR ${selectedPR.pr_number}` : "Pilih PR approved lalu buat PO"}
+            {selectedPR ? `Dari PR ${selectedPR.pr_number}` : "Buat PO manual atau pilih PR approved sebagai referensi"}
           </p>
         </div>
       </div>
@@ -446,33 +628,48 @@ export default function NewPOPage() {
               <div>
                 <div className="flex items-center gap-2">
                   <span className="font-semibold">{selectedPR.pr_number}</span>
-                  <Badge>{selectedPR.status}</Badge>
+                  <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100">
+                    {selectedPR.status}
+                  </Badge>
                 </div>
                 <p className="text-sm text-muted-foreground">
                   {selectedPR.department_name || selectedPR.department?.name || "-"} · {selectedPR.items?.length || 0} item
                 </p>
               </div>
-              <Button type="button" variant="outline" onClick={() => router.push(`/dashboard/purchasing/pr/${selectedPR.id}`)}>
-                Lihat PR
-              </Button>
+              <div className="flex gap-2">
+                <Button type="button" variant="outline" onClick={() => router.push(`/dashboard/purchasing/pr/${selectedPR.id}`)}>
+                  Lihat PR
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={clearSelectedPR}
+                  className="gap-2"
+                >
+                  <X className="h-4 w-4" />
+                  Clear
+                </Button>
+              </div>
             </div>
           ) : (
             <div className="space-y-2">
               <Label>Pilih PR Approved</Label>
-              <Select onValueChange={handleSelectPR}>
-                <SelectTrigger className={loading || loadingPR ? "pointer-events-none opacity-50" : undefined}>
-                  <SelectValue placeholder="Pilih PR yang sudah approved..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {approvedPrs.map((pr) => (
-                    <SelectItem key={pr.id} value={pr.id}>
-                      {pr.pr_number} - {pr.department_name || pr.department?.name || "-"}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Combobox
+                options={approvedPrs.map((pr) => ({
+                  value: pr.id,
+                  label: pr.pr_number,
+                  description: `${pr.department_name || pr.department?.name || "-"} · ${pr.items?.length || 0} item`,
+                }))}
+                value={formData.pr_id || ""}
+                onChange={handleSelectPR}
+                placeholder="Pilih PR yang sudah approved..."
+                searchPlaceholder="Cari nomor PR / departemen..."
+                emptyMessage="PR approved tidak ditemukan"
+                allowClear
+                disabled={loading || loadingPR}
+              />
               <p className="text-xs text-muted-foreground">
-                PO normal dibuat dari PR yang sudah approved dan belum converted.
+                Opsional. PO tetap bisa dibuat manual tanpa PR.
               </p>
             </div>
           )}
@@ -490,29 +687,32 @@ export default function NewPOPage() {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label>
+                  Supplier <span className="text-red-500">*</span>
+                </Label>
+                <Combobox
+                  options={suppliers.map((supplier) => ({
+                    value: supplier.id,
+                    label: supplier.nama_supplier,
+                    description: supplier.kode_supplier,
+                  }))}
+                  value={formData.supplier_id}
+                    onChange={(value) => {
+                      setFormData((prev) => ({ ...prev, supplier_id: value }));
+                      if (value) {
+                        applySupplierPrices(value);
+                      }
+                    }}
+                  placeholder="Pilih supplier..."
+                  searchPlaceholder="Cari supplier..."
+                  emptyMessage="Supplier tidak ditemukan"
+                  allowClear
+                  disabled={loading}
+                />
+              </div>
+
               <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>
-                    Supplier <span className="text-red-500">*</span>
-                  </Label>
-                  <div className="flex gap-2">
-                    <Input
-                      value={selectedSupplier ? `${selectedSupplier.nama_supplier} (${selectedSupplier.kode_supplier})` : ""}
-                      placeholder="Pilih supplier..."
-                      readOnly
-                      className="flex-1"
-                    />
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => setSupplierModalOpen(true)}
-                      disabled={loading}
-                    >
-                      <User className="w-4 h-4 mr-2" />
-                      Pilih
-                    </Button>
-                  </div>
-                </div>
                 <div className="space-y-2">
                   <Label>Tanggal PO</Label>
                   <DatePicker
@@ -523,11 +723,9 @@ export default function NewPOPage() {
                       setFormData((prev) => ({ ...prev, tanggal_po: date }));
                     }}
                     placeholder="Tanggal PO..."
+                    variant="neutral"
                   />
                 </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Tanggal Kirim Estimasi</Label>
                   <DatePicker
@@ -538,6 +736,7 @@ export default function NewPOPage() {
                       setFormData((prev) => ({ ...prev, tanggal_kirim_estimasi: date }));
                     }}
                     placeholder="Estimasi kirim..."
+                    variant="neutral"
                   />
                 </div>
               </div>
@@ -589,7 +788,7 @@ export default function NewPOPage() {
                 <span className="text-muted-foreground">PPN ({formData.ppn_persen}%)</span>
                 <span>Rp {ppnNominal.toLocaleString("id-ID")}</span>
               </div>
-              <div className="border-t pt-2 flex justify-between font-semibold text-lg">
+              <div className="flex justify-between border-t border-dashed border-gray-200 pt-2 text-lg font-semibold">
                 <span>Total</span>
                 <span>Rp {total.toLocaleString("id-ID")}</span>
               </div>
@@ -597,34 +796,46 @@ export default function NewPOPage() {
               <div className="grid grid-cols-2 gap-2 pt-4">
                 <div className="space-y-1">
                   <Label className="text-xs">Diskon (%)</Label>
-                  <Input
-                    type="number"
-                    min="0"
-                    max="100"
-                    value={formData.diskon_persen}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        diskon_persen: parseFloat(e.target.value) || 0,
-                        diskon_nominal: 0,
-                      })
-                    }
-                  />
+                  <div className="flex rounded-lg border border-gray-300 bg-white focus-within:border-gray-400 focus-within:ring-2 focus-within:ring-gray-100">
+                    <NumericInput
+                      min="0"
+                      max="100"
+                      value={formData.diskon_persen}
+                      decimalScale={2}
+                      onValueChange={(value) =>
+                        setFormData({
+                          ...formData,
+                          diskon_persen: Math.min(100, Math.max(0, value || 0)),
+                          diskon_nominal: 0,
+                        })
+                      }
+                      className="h-9 rounded-r-none border-0 text-sm shadow-none focus-visible:ring-0"
+                    />
+                    <div className="flex min-w-10 items-center justify-center rounded-r-lg border-l border-gray-200 bg-gray-50 px-3 text-xs font-semibold text-gray-500">
+                      %
+                    </div>
+                  </div>
                 </div>
                 <div className="space-y-1">
                   <Label className="text-xs">PPN (%)</Label>
-                  <Input
-                    type="number"
-                    min="0"
-                    max="100"
-                    value={formData.ppn_persen}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        ppn_persen: parseFloat(e.target.value) || 0,
-                      })
-                    }
-                  />
+                  <div className="flex rounded-lg border border-gray-300 bg-white focus-within:border-gray-400 focus-within:ring-2 focus-within:ring-gray-100">
+                    <NumericInput
+                      min="0"
+                      max="100"
+                      value={formData.ppn_persen}
+                      decimalScale={2}
+                      onValueChange={(value) =>
+                        setFormData({
+                          ...formData,
+                          ppn_persen: Math.min(100, Math.max(0, value || 0)),
+                        })
+                      }
+                      className="h-9 rounded-r-none border-0 text-sm shadow-none focus-visible:ring-0"
+                    />
+                    <div className="flex min-w-10 items-center justify-center rounded-r-lg border-l border-gray-200 bg-gray-50 px-3 text-xs font-semibold text-gray-500">
+                      %
+                    </div>
+                  </div>
                 </div>
               </div>
             </CardContent>
@@ -645,7 +856,7 @@ export default function NewPOPage() {
               {items.map((item, index) => (
                 <div
                   key={item.id}
-                  className="grid grid-cols-12 gap-4 items-start p-4 border rounded-lg"
+                  className="grid grid-cols-12 items-start gap-4 rounded-xl border border-gray-200/70 bg-white p-4 shadow-xs"
                 >
                   <div className="col-span-4 space-y-1">
                     <Label className="text-xs">Bahan Baku *</Label>
@@ -669,54 +880,50 @@ export default function NewPOPage() {
 
                   <div className="col-span-2 space-y-1">
                     <Label className="text-xs">Jumlah *</Label>
-                    <Input
-                      type="number"
-                      step="0.0001"
+                    <NumericInput
                       min="0"
-                      value={item.qty_ordered}
+                      value={item.qty_ordered > 0 ? item.qty_ordered : null}
+                      decimalScale={4}
+                      placeholder="0"
                       disabled={isPrSourced}
-                      onChange={(e) =>
-                        updateItem(
-                          index,
-                          "qty_ordered",
-                          parseFloat(e.target.value) || 0
-                        )
-                      }
+                      onFocus={(event) => event.currentTarget.select()}
+                      onValueChange={(value) => updateItem(index, "qty_ordered", value || 0)}
+                      className="h-9 text-sm"
                     />
                   </div>
 
                   <div className="col-span-2 space-y-1">
                     <Label className="text-xs">Satuan</Label>
                     <Combobox
-                      options={units.map((unit) => ({
-                        value: unit.id,
-                        label: unit.nama,
-                        description: unit.kode,
-                      }))}
+                      options={getMaterialUnitOptions(item.raw_material_id)}
                       value={item.satuan_id || ""}
                       onChange={(value) => updateItem(index, "satuan_id", value || undefined)}
-                      placeholder={item.raw_material_unit || "Pilih satuan..."}
+                      placeholder={item.raw_material_id ? "Pilih satuan..." : "Pilih bahan dulu"}
                       searchPlaceholder="Cari satuan..."
-                      emptyMessage="Satuan tidak ditemukan"
-                      allowClear
+                      emptyMessage={
+                        item.raw_material_id
+                          ? "Satuan bahan ini belum dikonfigurasi"
+                          : "Pilih bahan baku terlebih dahulu"
+                      }
+                      allowClear={false}
                       disabled={loading || isPrSourced}
                     />
                   </div>
 
                   <div className="col-span-2 space-y-1">
                     <Label className="text-xs">Harga *</Label>
-                    <Input
-                      type="number"
-                      min="0"
-                      value={item.harga_satuan}
-                      onChange={(e) =>
-                        updateItem(
-                          index,
-                          "harga_satuan",
-                          parseFloat(e.target.value) || 0
-                        )
-                      }
-                    />
+                    <div className="flex rounded-lg border border-gray-300 bg-white focus-within:border-gray-400 focus-within:ring-2 focus-within:ring-gray-100">
+                      <div className="flex min-w-12 items-center justify-center rounded-l-lg border-r border-gray-200 bg-gray-50 px-3 text-xs font-semibold text-gray-500">
+                        Rp
+                      </div>
+                      <NumericInput
+                        min="0"
+                        value={item.harga_satuan}
+                        decimalScale={0}
+                        onValueChange={(value) => updateItem(index, "harga_satuan", value || 0)}
+                        className="h-9 rounded-l-none border-0 text-sm shadow-none focus-visible:ring-0"
+                      />
+                    </div>
                   </div>
 
                   <div className="col-span-1 space-y-1">
@@ -741,7 +948,7 @@ export default function NewPOPage() {
               ))}
 
               {items.length === 0 && (
-                <div className="text-center py-8 text-muted-foreground border rounded-lg">
+                <div className="rounded-xl border border-gray-200/70 bg-gray-50/60 py-8 text-center text-muted-foreground">
                   Belum ada item. Klik &quot;Tambah Item&quot; untuk memulai.
                 </div>
               )}
@@ -756,78 +963,13 @@ export default function NewPOPage() {
               Batal
             </Button>
           </Link>
-          <Button type="submit" disabled={isSubmitting || !formData.pr_id} className="purchasing-main-button">
+          <Button type="submit" disabled={isSubmitting} className="purchasing-main-button">
             <Save className="w-4 h-4 mr-2" />
             {isSubmitting ? "Menyimpan..." : "Simpan PO"}
           </Button>
         </div>
       </form>
 
-      {/* Supplier Selection Modal */}
-      <Dialog open={supplierModalOpen} onOpenChange={setSupplierModalOpen}>
-        <DialogContent className="max-w-2xl max-h-[80vh]">
-          <DialogHeader>
-            <DialogTitle>Pilih Supplier</DialogTitle>
-          </DialogHeader>
-          
-          <div className="space-y-4">
-            {/* Search */}
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input
-                placeholder="Cari supplier..."
-                value={supplierSearch}
-                onChange={(e) => setSupplierSearch(e.target.value)}
-                className="pl-10"
-              />
-            </div>
-
-            {/* Supplier List */}
-            <div className="border rounded-lg overflow-hidden">
-              {loading ? (
-                <div className="p-8 text-center text-muted-foreground">
-                  Memuat data...
-                </div>
-              ) : filteredSuppliers.length === 0 ? (
-                <div className="p-8 text-center text-muted-foreground">
-                  {suppliers.length === 0 ? "Tidak ada supplier" : "Supplier tidak ditemukan"}
-                </div>
-              ) : (
-                <div className="max-h-[400px] overflow-y-auto">
-                  {filteredSuppliers.map((supplier) => (
-                    <button
-                      key={supplier.id}
-                      type="button"
-                      onClick={() => handleSelectSupplier(supplier)}
-                      className="w-full px-4 py-3 text-left hover:bg-muted border-b last:border-b-0 transition-colors"
-                    >
-                      <div className="font-medium">{supplier.nama_supplier}</div>
-                      <div className="text-sm text-muted-foreground">
-                        {supplier.kode_supplier}
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* Actions */}
-            <div className="flex justify-end gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => {
-                  setSupplierModalOpen(false);
-                  setSupplierSearch("");
-                }}
-                className="purchasing-secondary-button"
-              >
-                Batal
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

@@ -1,22 +1,23 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
-import { useToast } from "@/hooks/use-toast";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { DatePicker } from "@/components/ui/datepicker";
+import { Combobox } from "@/components/ui/combobox";
+import { NumericInput } from "@/components/ui/numeric-input";
+import { toast } from "sonner";
 import { BreadcrumbNav } from "@/modules/purchasing/components/breadcrumb/BreadcrumbNav";
 import {
   ClipboardDocumentCheckIcon,
   ArrowLeftIcon,
   TruckIcon,
-  CheckCircleIcon,
+  ExclamationTriangleIcon,
 } from "@heroicons/react/24/outline";
 
 interface GrnItem {
@@ -27,6 +28,8 @@ interface GrnItem {
   nama_bahan: string;
   qty_diterima: number;
   qty_ditolak: number;
+  previous_qty_diterima: number;
+  previous_qty_ditolak: number;
   kondisi: "baik" | "rusak" | "cacat";
   catatan: string;
   satuan?: string;
@@ -45,39 +48,117 @@ interface GRNData {
   id: string;
   nomor_grn: string;
   delivery_id: string;
-  po_id: string;
+  po_id?: string;
+  purchase_order_id?: string;
   po_number: string;
   supplier_name: string;
   no_surat_jalan: string;
+  delivery_number?: string;
   tanggal_penerimaan: string;
   status: string;
   catatan: string;
   items: GrnItem[];
+  receive_count?: number;
+  total_item_diterima?: number;
+  total_item_ditolak?: number;
 }
+
+type ApiUnit = string | {
+  nama?: string;
+  nama_satuan?: string;
+  kode?: string;
+} | null;
+
+type ApiRawMaterial = {
+  nama?: string;
+  nama_bahan?: string;
+  kode?: string;
+  satuan_besar?: ApiUnit;
+} | null;
 
 type ApiLineItem = {
   id: string;
   grn_id?: string;
   purchase_order_item_id?: string;
-  raw_material_id: string;
+  raw_material_id?: string;
   nama_bahan?: string;
   qty_ordered?: number;
   qty_received?: number;
   qty_diterima?: number;
+  qty_ditolak?: number;
+  kondisi?: "baik" | "rusak" | "cacat";
+  catatan?: string | null;
   raw_material?: {
     nama?: string;
     nama_bahan?: string;
+    kode?: string;
+    satuan_besar?: ApiUnit;
   } | null;
-  satuan?: {
-    nama?: string;
-    nama_satuan?: string;
+  satuan?: ApiUnit;
+  purchase_order_item?: {
+    id: string;
+    raw_material_id?: string;
+    qty_ordered?: number;
+    qty_received?: number;
+    raw_material?: ApiRawMaterial;
+    satuan?: ApiUnit;
   } | null;
 };
+
+type ApiResponsePayload = {
+  success?: boolean;
+  message?: string;
+  error?: string | { message?: string };
+};
+
+function toNumber(value: unknown) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function formatQty(value: number) {
+  return new Intl.NumberFormat("id-ID", {
+    maximumFractionDigits: 4,
+  }).format(value);
+}
+
+function getUnitName(unit?: ApiUnit, fallback = "pcs") {
+  if (!unit) return fallback;
+  if (typeof unit === "string") return unit || fallback;
+  return unit.nama || unit.nama_satuan || unit.kode || fallback;
+}
+
+function getMaterialName(rawMaterial?: ApiRawMaterial, fallback = "Bahan tidak ditemukan") {
+  if (!rawMaterial) return fallback;
+  return rawMaterial.nama || rawMaterial.nama_bahan || fallback;
+}
+
+function getStatusBadge(status: string) {
+  const normalized = status || "pending";
+  const labels: Record<string, string> = {
+    pending: "Menunggu",
+    partially_received: "Diterima Sebagian",
+    received: "Diterima",
+    rejected: "Ditolak",
+  };
+
+  const classes: Record<string, string> = {
+    pending: "border-amber-200 bg-amber-50 text-amber-700",
+    partially_received: "border-orange-200 bg-orange-50 text-orange-700",
+    received: "border-emerald-200 bg-emerald-50 text-emerald-700",
+    rejected: "border-red-200 bg-red-50 text-red-700",
+  };
+
+  return (
+    <Badge variant="outline" className={classes[normalized] || classes.pending}>
+      {labels[normalized] || normalized}
+    </Badge>
+  );
+}
 
 export default function ContinueGrnPage() {
   const params = useParams();
   const router = useRouter();
-  const { toast } = useToast();
   const grnId = params.id as string;
 
   const [loading, setLoading] = useState(true);
@@ -85,65 +166,40 @@ export default function ContinueGrnPage() {
   const [grnData, setGrnData] = useState<GRNData | null>(null);
   const [poItems, setPoItems] = useState<POItem[]>([]);
   const [grnItems, setGrnItems] = useState<GrnItem[]>([]);
-  const [showModal, setShowModal] = useState(false);
-  const [modalData, setModalData] = useState({ success: false, message: "" });
   const [formData, setFormData] = useState({
     tanggal_penerimaan: "",
     catatan: "",
   });
 
+  const mapPOItem = useCallback((item: ApiLineItem): POItem => ({
+    id: item.id,
+    raw_material_id: item.raw_material_id || "",
+    nama_bahan: item.nama_bahan || getMaterialName(item.raw_material),
+    qty_ordered: toNumber(item.qty_ordered),
+    qty_received: toNumber(item.qty_received),
+    satuan: getUnitName(item.satuan || item.raw_material?.satuan_besar),
+  }), []);
+
   const fetchPOItems = useCallback(async (poId: string) => {
     try {
-      console.log("=== FETCH PO ITEMS ===");
-      console.log("PO ID:", poId);
-      
-      // Try fetch from PO API first
-      const res = await fetch(`/api/purchasing/po/${poId}`);
+      const res = await fetch(`/api/purchasing/po/${poId}/items`);
       const data = await res.json();
 
-      console.log("PO API Response status:", res.status);
-      console.log("PO API Response data:", JSON.stringify(data, null, 2));
-
-      if (data.data?.items && data.data.items.length > 0) {
-        const items = (data.data.items as ApiLineItem[]).map((item) => ({
-          id: item.id,
-          raw_material_id: item.raw_material_id,
-          nama_bahan: item.raw_material?.nama || item.raw_material?.nama_bahan || "Unknown",
-          qty_ordered: item.qty_ordered || 0,
-          qty_received: item.qty_received || 0,
-          satuan: item.satuan?.nama || item.satuan?.nama_satuan || "pcs",
-        }));
-        console.log("✅ Mapped PO Items:", items);
+      if (data.data && Array.isArray(data.data) && data.data.length > 0) {
+        const items = (data.data as ApiLineItem[]).map(mapPOItem);
         setPoItems(items);
         return;
       }
 
-      // Fallback: Fetch purchase_order_items directly
-      console.warn("⚠️ No items in PO response, fetching directly from purchase_order_items...");
-      const directRes = await fetch(`/api/purchasing/po-items?po_id=${poId}`);
-      const directData = await directRes.json();
-      
-      console.log("Direct PO Items API Response:", JSON.stringify(directData, null, 2));
-      
-      if (directData.data && directData.data.length > 0) {
-        const items = (directData.data as ApiLineItem[]).map((item) => ({
-          id: item.id,
-          raw_material_id: item.raw_material_id,
-          nama_bahan: item.raw_material?.nama || item.raw_material?.nama_bahan || "Unknown",
-          qty_ordered: item.qty_ordered || 0,
-          qty_received: item.qty_received || 0,
-          satuan: item.satuan?.nama || item.satuan?.nama_satuan || "pcs",
-        }));
-        console.log("✅ Direct fetched PO Items:", items);
-        setPoItems(items);
-      } else {
-        console.error("❌ No PO items found even with direct fetch!");
-        console.error("This means purchase_order_items table is empty for PO", poId);
+      const fallbackRes = await fetch(`/api/purchasing/po/${poId}`);
+      const fallbackData = await fallbackRes.json();
+      if (fallbackData.data?.items && Array.isArray(fallbackData.data.items)) {
+        setPoItems((fallbackData.data.items as ApiLineItem[]).map(mapPOItem));
       }
     } catch (e) {
-      console.error("❌ Failed to fetch PO items:", e);
+      console.error("Failed to fetch PO items:", e);
     }
-  }, []);
+  }, [mapPOItem]);
 
   const fetchGrnData = useCallback(async () => {
     setLoading(true);
@@ -156,8 +212,9 @@ export default function ContinueGrnPage() {
         throw new Error(data.error?.message || "Gagal memuat data GRN");
       }
 
-      const grn = data.data as GRNData & { purchase_order_id?: string };
-      setGrnData(grn);
+      const grn = data.data as GRNData;
+      const poId = grn.purchase_order_id || grn.po_id || "";
+      setGrnData({ ...grn, po_id: poId });
       setFormData({
         tanggal_penerimaan: grn.tanggal_penerimaan || new Date().toISOString().split("T")[0],
         catatan: grn.catatan || "",
@@ -165,38 +222,59 @@ export default function ContinueGrnPage() {
 
       // Initialize GRN items with existing data
       if (grn.items && grn.items.length > 0) {
-        const mappedItems = grn.items.map((item) => ({
+        const apiItems = grn.items as unknown as ApiLineItem[];
+        const embeddedPoItems = apiItems
+          .filter((item) => item.purchase_order_item)
+          .map((item) => {
+            const poItem = item.purchase_order_item!;
+            return {
+              id: poItem.id,
+              raw_material_id: poItem.raw_material_id || item.raw_material_id || "",
+              nama_bahan: getMaterialName(item.raw_material || poItem.raw_material),
+              qty_ordered: toNumber(poItem.qty_ordered),
+              qty_received: toNumber(poItem.qty_received),
+              satuan: getUnitName(poItem.satuan || item.satuan || item.raw_material?.satuan_besar),
+            };
+          });
+
+        if (embeddedPoItems.length > 0) {
+          setPoItems(embeddedPoItems);
+        }
+
+        const mappedItems = apiItems.map((item) => {
+          const poItem = item.purchase_order_item;
+          const rawMaterial = item.raw_material || poItem?.raw_material;
+          return {
           id: item.id,
           grn_id: item.grn_id,
           purchase_order_item_id: item.purchase_order_item_id,
-          raw_material_id: item.raw_material_id,
-          nama_bahan: item.nama_bahan || "Unknown",
+          raw_material_id: item.raw_material_id || poItem?.raw_material_id || "",
+          nama_bahan: item.nama_bahan || getMaterialName(rawMaterial),
           qty_diterima: 0,
           qty_ditolak: 0,
-          kondisi: "baik" as const,
+          previous_qty_diterima: toNumber(item.qty_diterima),
+          previous_qty_ditolak: toNumber(item.qty_ditolak),
+          kondisi: item.kondisi || "baik" as const,
           catatan: "",
-          satuan: item.satuan || "pcs",
-        }));
+          satuan: getUnitName(item.satuan || poItem?.satuan || rawMaterial?.satuan_besar),
+          };
+        });
 
         setGrnItems(mappedItems);
 
-        if (grn.po_id) {
-          await fetchPOItems(grn.po_id);
+        if (poId) {
+          await fetchPOItems(poId);
         } else {
           console.error("No PO ID found in GRN data", grn);
         }
       }
     } catch (error: unknown) {
       console.error("Fetch error:", error);
-      toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "Gagal memuat data GRN",
-        variant: "destructive",
-      });
+      toast.error(error instanceof Error ? error.message : "Gagal memuat data GRN");
     } finally {
       setLoading(false);
     }
-  }, [fetchPOItems, grnId, toast]);
+  }, [fetchPOItems, grnId]);
 
   useEffect(() => {
     if (grnId) {
@@ -212,6 +290,51 @@ export default function ContinueGrnPage() {
     });
   }
 
+  const itemRows = useMemo(() => grnItems.map((item) => {
+    const poItem =
+      poItems.find((p) => p.id === item.purchase_order_item_id) ||
+      poItems.find((p) => p.raw_material_id === item.raw_material_id);
+    const qtyOrdered = poItem?.qty_ordered || 0;
+    const qtyReceived = poItem?.qty_received || 0;
+    const remaining = Math.max(0, qtyOrdered - qtyReceived);
+    const satuan = poItem?.satuan || item.satuan || "pcs";
+
+    return {
+      item,
+      poItem,
+      qtyOrdered,
+      qtyReceived,
+      remaining,
+      satuan,
+    };
+  }), [grnItems, poItems]);
+
+  const totals = useMemo(() => {
+    return itemRows.reduce(
+      (acc, row) => {
+        acc.ordered += row.qtyOrdered;
+        acc.received += row.qtyReceived;
+        acc.remaining += row.remaining;
+        acc.newReceived += row.item.qty_diterima;
+        acc.rejected += row.item.qty_ditolak;
+        return acc;
+      },
+      { ordered: 0, received: 0, remaining: 0, newReceived: 0, rejected: 0 }
+    );
+  }, [itemRows]);
+
+  function fillAllRemaining() {
+    setGrnItems((items) =>
+      items.map((item) => {
+        const poItem =
+          poItems.find((p) => p.id === item.purchase_order_item_id) ||
+          poItems.find((p) => p.raw_material_id === item.raw_material_id);
+        const remaining = poItem ? Math.max(0, poItem.qty_ordered - poItem.qty_received) : 0;
+        return { ...item, qty_diterima: remaining, qty_ditolak: 0, kondisi: "baik" };
+      })
+    );
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setSaving(true);
@@ -219,14 +342,12 @@ export default function ContinueGrnPage() {
     try {
       // Validate
       const validItems = grnItems.filter(
-        (item) => item.qty_diterima > 0 || item.qty_ditolak > 0
+        (item) =>
+          item.previous_qty_diterima + item.qty_diterima > 0 ||
+          item.previous_qty_ditolak + item.qty_ditolak > 0
       );
       if (validItems.length === 0) {
-        toast({
-          title: "Error",
-          description: "Minimal 1 item harus diisi",
-          variant: "destructive",
-        });
+        toast.error("Minimal 1 item harus diisi");
         setSaving(false);
         return;
       }
@@ -252,13 +373,14 @@ export default function ContinueGrnPage() {
       const payload = {
         status: newStatus,
         catatan: formData.catatan,
+        tanggal_penerimaan: formData.tanggal_penerimaan,
         items: validItems.map((item) => ({
           id: item.id,
           grn_id: grnId,
           purchase_order_item_id: item.purchase_order_item_id,
           raw_material_id: item.raw_material_id,
-          qty_diterima: item.qty_diterima,
-          qty_ditolak: item.qty_ditolak,
+          qty_diterima: item.previous_qty_diterima + item.qty_diterima,
+          qty_ditolak: item.previous_qty_ditolak + item.qty_ditolak,
           kondisi: item.kondisi,
           catatan: item.catatan || null,
         })),
@@ -277,7 +399,7 @@ export default function ContinueGrnPage() {
       const text = await res.text();
       console.log("API Response (raw):", res.status, text);
       
-      let data;
+      let data: ApiResponsePayload;
       try {
         data = text ? JSON.parse(text) : { error: { message: "Empty response from server" } };
       } catch (e) {
@@ -288,33 +410,20 @@ export default function ContinueGrnPage() {
       console.log("API Response:", res.status, data);
 
       if (res.ok) {
-        // Show success modal
-        setModalData({
-          success: true,
-          message: `GRN ${grnData?.nomor_grn || ""} berhasil diupdate`,
-        });
-        setShowModal(true);
+        toast.success(`GRN ${grnData?.nomor_grn || ""} berhasil diupdate`);
+        router.push("/dashboard/purchasing/grn");
+        router.refresh();
       } else {
-        throw new Error(data.error?.message || data.message || "Gagal mengupdate GRN");
+        const errorMessage =
+          typeof data.error === "string"
+            ? data.error
+            : data.error?.message || data.message || "Gagal mengupdate GRN";
+        toast.error(errorMessage);
       }
     } catch (error: unknown) {
-      console.error("Submit error:", error);
-      // Show error modal
-      setModalData({
-        success: false,
-        message: error instanceof Error ? error.message : "Gagal mengupdate GRN",
-      });
-      setShowModal(true);
+      toast.error(error instanceof Error ? error.message : "Gagal mengupdate GRN");
     } finally {
       setSaving(false);
-    }
-  }
-
-  function handleModalClose() {
-    setShowModal(false);
-    if (modalData.success) {
-      router.push("/dashboard/purchasing/grn");
-      router.refresh();
     }
   }
 
@@ -338,7 +447,6 @@ export default function ContinueGrnPage() {
     <div className="space-y-6">
       <BreadcrumbNav
         items={[
-          { label: "Dashboard", href: "/dashboard" },
           { label: "Purchasing", href: "/dashboard/purchasing" },
           { label: "Barang Masuk", href: "/dashboard/purchasing/grn" },
           { label: "Lanjutkan GRN", href: "/dashboard/purchasing/grn/continue" },
@@ -346,274 +454,249 @@ export default function ContinueGrnPage() {
         ]}
       />
 
-      <div className="flex items-center gap-4">
-        <Link href="/dashboard/purchasing/grn/continue">
-          <Button variant="ghost" size="icon">
-            <ArrowLeftIcon className="w-5 h-5" />
-          </Button>
-        </Link>
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Lanjutkan Penerimaan Barang</h1>
-          <p className="text-sm text-gray-500">{grnData.nomor_grn}</p>
+      <div className="flex flex-col items-start justify-between gap-4 border-b border-gray-200/70 pb-4 sm:flex-row sm:items-center">
+        <div className="min-w-0">
+          <h1 className="mt-2 text-2xl font-bold text-gray-900">Lanjutkan Penerimaan Barang</h1>
+          <p className="text-sm text-gray-500">
+            Cek sisa PO dari GRN sebelumnya, lalu input penerimaan lanjutan
+          </p>
         </div>
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => router.back()}
+          className="purchasing-secondary-button w-full sm:w-auto"
+        >
+          <ArrowLeftIcon className="mr-2 h-4 w-4" />
+          Kembali
+        </Button>
       </div>
 
-      {/* GRN Info Summary */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg flex items-center gap-2">
-            <ClipboardDocumentCheckIcon className="w-5 h-5" />
-            Informasi GRN
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="grid md:grid-cols-3 gap-4">
-          <div>
-            <Label className="text-xs text-gray-500">Nomor GRN</Label>
-            <p className="font-medium">{grnData.nomor_grn}</p>
-          </div>
-          <div>
-            <Label className="text-xs text-gray-500">Supplier</Label>
-            <p className="font-medium">{grnData.supplier_name || "—"}</p>
-          </div>
-          <div>
-            <Label className="text-xs text-gray-500">No. PO</Label>
-            <p className="font-medium">{grnData.po_number || "—"}</p>
-          </div>
-          <div>
-            <Label className="text-xs text-gray-500">No. Surat Jalan</Label>
-            <p className="font-medium">{grnData.no_surat_jalan || "—"}</p>
-          </div>
-          <div>
-            <Label className="text-xs text-gray-500">Status</Label>
-            <Badge
-              className={
-                grnData.status === "pending"
-                  ? "bg-yellow-100 text-yellow-800"
-                  : "bg-orange-100 text-orange-800"
-              }
-            >
-              {grnData.status === "pending" ? "Menunggu" : "Diterima Sebagian"}
-            </Badge>
-          </div>
-        </CardContent>
-      </Card>
-
       <form onSubmit={handleSubmit} className="space-y-6">
-        {/* GRN Info */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg flex items-center gap-2">
-              <TruckIcon className="w-5 h-5" />
-              Update Informasi Penerimaan
+        <Card className="border-gray-200/70 shadow-sm">
+          <CardHeader className="border-b border-gray-100 pb-4">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <ClipboardDocumentCheckIcon className="h-5 w-5" />
+              Informasi GRN
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Tanggal Penerimaan *</Label>
-                <Input
-                  type="date"
-                  value={formData.tanggal_penerimaan}
-                  onChange={(e) =>
-                    setFormData((prev) => ({ ...prev, tanggal_penerimaan: e.target.value }))
-                  }
-                  required
-                />
+          <CardContent className="space-y-5 p-4">
+            <div className="grid gap-5 lg:grid-cols-12">
+              <div className="lg:col-span-8">
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                  <div>
+                    <span className="text-xs font-medium uppercase tracking-wide text-gray-500">Nomor GRN</span>
+                    <p className="mt-0.5 text-sm font-semibold text-gray-900">{grnData.nomor_grn}</p>
+                  </div>
+                  <div>
+                    <span className="text-xs font-medium uppercase tracking-wide text-gray-500">Status</span>
+                    <div className="mt-1">{getStatusBadge(grnData.status)}</div>
+                  </div>
+                  <div>
+                    <span className="text-xs font-medium uppercase tracking-wide text-gray-500">No. PO</span>
+                    <p className="mt-0.5 text-sm font-medium text-gray-900">{grnData.po_number || "-"}</p>
+                  </div>
+                  <div>
+                    <span className="text-xs font-medium uppercase tracking-wide text-gray-500">Surat Jalan</span>
+                    <p className="mt-0.5 text-sm font-medium text-gray-900">{grnData.no_surat_jalan || "-"}</p>
+                  </div>
+                </div>
+
+                <div className="mt-4 border-t border-gray-200/70 pt-4">
+                  <span className="text-xs font-medium uppercase tracking-wide text-gray-500">Supplier</span>
+                  <p className="mt-0.5 text-sm font-semibold text-gray-900">{grnData.supplier_name || "-"}</p>
+                </div>
+
+                <div className="mt-4 grid grid-cols-3 gap-2 border-t border-gray-200/70 pt-4">
+                  <div className="rounded-lg border border-gray-200/70 bg-gray-50 px-3 py-2">
+                    <p className="text-xs text-gray-500">Total PO</p>
+                    <p className="mt-1 text-sm font-semibold text-gray-900">{formatQty(totals.ordered)}</p>
+                  </div>
+                  <div className="rounded-lg border border-pink-100 bg-pink-50 px-3 py-2">
+                    <p className="text-xs text-pink-600">Sudah Terima</p>
+                    <p className="mt-1 text-sm font-semibold text-pink-700">{formatQty(totals.received)}</p>
+                  </div>
+                  <div className="rounded-lg border border-orange-100 bg-orange-50 px-3 py-2">
+                    <p className="text-xs text-orange-600">Sisa</p>
+                    <p className="mt-1 text-sm font-semibold text-orange-700">{formatQty(totals.remaining)}</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-3 border-t border-gray-200/70 pt-4 lg:col-span-4 lg:border-l lg:border-t-0 lg:pl-5 lg:pt-0">
+                <div className="space-y-1.5">
+                  <Label htmlFor="tanggal_penerimaan">Tanggal Penerimaan</Label>
+                  <DatePicker
+                    id="tanggal_penerimaan"
+                    value={formData.tanggal_penerimaan}
+                    onChange={(date) =>
+                      setFormData((prev) => ({ ...prev, tanggal_penerimaan: date }))
+                    }
+                    variant="neutral"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="catatan">Catatan</Label>
+                  <Textarea
+                    id="catatan"
+                    value={formData.catatan}
+                    onChange={(e) => setFormData((prev) => ({ ...prev, catatan: e.target.value }))}
+                    placeholder="Catatan penerimaan..."
+                    rows={3}
+                    className="resize-none"
+                  />
+                </div>
               </div>
             </div>
-            <div className="space-y-2">
-              <Label>Catatan</Label>
-              <Textarea
-                value={formData.catatan}
-                onChange={(e) => setFormData((prev) => ({ ...prev, catatan: e.target.value }))}
-                placeholder="Catatan penerimaan..."
-                rows={3}
-              />
-            </div>
           </CardContent>
         </Card>
 
-        {/* Items */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">Update Detail Item Diterima</CardTitle>
-            <p className="text-sm text-gray-500 mt-1">
-              Masukkan qty yang diterima pada pengiriman ini. Sisa yang belum diterima akan tetap
-              terbuka untuk penerimaan berikutnya.
-            </p>
-          </CardHeader>
-          <CardContent>
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-gray-50 border-b">
-                  <tr>
-                    <th className="text-left py-3 px-4 text-sm font-medium text-gray-700">
-                      Bahan Baku
-                    </th>
-                    <th className="text-center py-3 px-4 text-sm font-medium text-gray-700">
-                      Qty Order
-                    </th>
-                    <th className="text-center py-3 px-4 text-sm font-medium text-gray-700">
-                      Sudah Terima
-                    </th>
-                    <th className="text-center py-3 px-4 text-sm font-medium text-gray-700">
-                      Sisa
-                    </th>
-                    <th className="text-center py-3 px-4 text-sm font-medium text-gray-700">
-                      Qty Diterima *
-                    </th>
-                    <th className="text-center py-3 px-4 text-sm font-medium text-gray-700">
-                      Qty Ditolak
-                    </th>
-                    <th className="text-center py-3 px-4 text-sm font-medium text-gray-700">
-                      Kondisi
-                    </th>
-                    <th className="text-left py-3 px-4 text-sm font-medium text-gray-700">
-                      Catatan
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y">
-                  {grnItems.map((item, index) => {
-                    // Try to find PO item by purchase_order_item_id first
-                    let poItem = poItems.find((p) => p.id === item.purchase_order_item_id);
-                    
-                    // Fallback: match by raw_material_id if purchase_order_item_id is null
-                    if (!poItem && item.raw_material_id) {
-                      console.log(`[Fallback] Matching by raw_material_id: ${item.raw_material_id}`);
-                      poItem = poItems.find((p) => p.raw_material_id === item.raw_material_id);
-                    }
-                    
-                    const qtyOrdered = poItem?.qty_ordered || 0;
-                    const qtyReceived = poItem?.qty_received || 0;
-                    const alreadyReceivedInThisGrn = item.qty_diterima || 0;
-                    const remaining = Math.max(0, qtyOrdered - qtyReceived);
-                    
-                    console.log(`[Item ${index}]`, {
-                      nama: item.nama_bahan,
-                      purchase_order_item_id: item.purchase_order_item_id,
-                      raw_material_id: item.raw_material_id,
-                      qtyOrdered,
-                      qtyReceived,
-                      alreadyReceivedInThisGrn,
-                      remaining,
-                      poItemId: poItem?.id,
-                      matched: !!poItem,
-                    });
-                    
-                    return (
-                      <tr key={item.id}>
-                        <td className="py-3 px-4">
-                          <p className="font-medium">{item.nama_bahan}</p>
-                          <p className="text-xs text-gray-500">
-                            Satuan: {poItem?.satuan || item.satuan || "pcs"}
-                          </p>
-                        </td>
-                        <td className="py-3 px-4 text-center font-medium">{qtyOrdered}</td>
-                        <td className="py-3 px-4 text-center text-pink-600 font-medium">
-                          {qtyReceived}
-                        </td>
-                        <td className="py-3 px-4 text-center text-orange-600 font-medium">
-                          {remaining}
-                        </td>
-                        <td className="py-3 px-4">
-                          <Input
-                            type="number"
-                            min="0"
-                            max={remaining}
-                            value={item.qty_diterima}
-                            onChange={(e) =>
-                              updateGrnItem(index, "qty_diterima", parseFloat(e.target.value) || 0)
-                            }
-                            className="w-24 mx-auto text-center"
-                            disabled={remaining <= 0}
-                          />
-                          {remaining <= 0 && (
-                            <p className="text-xs text-orange-600 mt-1">Sudah lengkap</p>
-                          )}
-                        </td>
-                        <td className="py-3 px-4">
-                          <Input
-                            type="number"
-                            min="0"
-                            value={item.qty_ditolak}
-                            onChange={(e) =>
-                              updateGrnItem(index, "qty_ditolak", parseFloat(e.target.value) || 0)
-                            }
-                            className="w-24 mx-auto text-center"
-                          />
-                        </td>
-                        <td className="py-3 px-4">
-                          <select
-                            value={item.kondisi}
-                            onChange={(e) =>
-                              updateGrnItem(index, "kondisi", e.target.value)
-                            }
-                            className="w-full p-2 border rounded text-sm"
-                          >
-                            <option value="baik">Baik</option>
-                            <option value="rusak">Rusak</option>
-                            <option value="cacat">Cacat</option>
-                          </select>
-                        </td>
-                        <td className="py-3 px-4">
-                          <Input
-                            value={item.catatan}
-                            onChange={(e) => updateGrnItem(index, "catatan", e.target.value)}
-                            placeholder="Catatan..."
-                            className="text-sm"
-                          />
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </CardContent>
+        <Card className="border-gray-200/70 shadow-sm">
+              <CardHeader className="border-b border-gray-100 px-4 pb-4">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <CardTitle className="flex items-center gap-2 text-base font-semibold">
+                      <TruckIcon className="h-5 w-5" />
+                      Update Detail Item Diterima
+                    </CardTitle>
+                    <p className="mt-1 text-sm text-gray-500">
+                      Qty baru akan ditambahkan ke penerimaan sebelumnya. Sisa yang belum diterima tetap terbuka.
+                    </p>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={fillAllRemaining}
+                    disabled={grnItems.length === 0 || totals.remaining <= 0}
+                    className="purchasing-secondary-button"
+                  >
+                    Isi Semua Sisa
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent className="p-0">
+                {itemRows.length === 0 ? (
+                  <div className="flex min-h-56 flex-col items-center justify-center gap-2 text-center text-sm text-gray-500">
+                    <ExclamationTriangleIcon className="h-8 w-8 text-amber-500" />
+                    Item GRN tidak ditemukan.
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead className="border-b border-gray-100 bg-gray-50">
+                        <tr>
+                          <th className="px-4 py-2.5 text-left text-xs font-semibold uppercase tracking-wide text-gray-600">Bahan Baku</th>
+                          <th className="w-24 px-3 py-2.5 text-center text-xs font-semibold uppercase tracking-wide text-gray-600">Order</th>
+                          <th className="w-24 px-3 py-2.5 text-center text-xs font-semibold uppercase tracking-wide text-gray-600">Terima</th>
+                          <th className="w-24 px-3 py-2.5 text-center text-xs font-semibold uppercase tracking-wide text-gray-600">Sisa</th>
+                          <th className="w-28 px-3 py-2.5 text-center text-xs font-semibold uppercase tracking-wide text-gray-600">Qty Baru</th>
+                          <th className="w-28 px-3 py-2.5 text-center text-xs font-semibold uppercase tracking-wide text-gray-600">Ditolak</th>
+                          <th className="w-32 px-3 py-2.5 text-center text-xs font-semibold uppercase tracking-wide text-gray-600">Kondisi</th>
+                          <th className="min-w-40 px-4 py-2.5 text-left text-xs font-semibold uppercase tracking-wide text-gray-600">Catatan</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-100">
+                        {itemRows.map(({ item, poItem, qtyOrdered, qtyReceived, remaining, satuan }, index) => (
+                          <tr key={item.id} className="transition-colors hover:bg-gray-50">
+                            <td className="px-4 py-3">
+                              <p className="text-sm font-medium text-gray-900">{item.nama_bahan}</p>
+                              <p className="mt-0.5 text-xs text-gray-500">
+                                Satuan: {satuan}
+                                {!poItem && <span className="ml-2 text-amber-600">Data PO tidak lengkap</span>}
+                              </p>
+                              {(item.previous_qty_diterima > 0 || item.previous_qty_ditolak > 0) && (
+                                <p className="mt-1 text-xs text-gray-500">
+                                  GRN ini sebelumnya: {formatQty(item.previous_qty_diterima)} diterima
+                                  {item.previous_qty_ditolak > 0 ? `, ${formatQty(item.previous_qty_ditolak)} ditolak` : ""}
+                                </p>
+                              )}
+                            </td>
+                            <td className="px-3 py-3 text-center text-sm text-gray-700">{formatQty(qtyOrdered)}</td>
+                            <td className="px-3 py-3 text-center text-sm font-medium text-pink-700">{formatQty(qtyReceived)}</td>
+                            <td className="px-3 py-3 text-center text-sm font-semibold text-orange-700">{formatQty(remaining)}</td>
+                            <td className="px-3 py-3">
+                              <NumericInput
+                                min="0"
+                                max={remaining || undefined}
+                                value={item.qty_diterima}
+                                onValueChange={(value) => updateGrnItem(index, "qty_diterima", value || 0)}
+                                decimalScale={4}
+                                disabled={remaining <= 0}
+                                className="mx-auto h-9 w-24 text-center text-sm"
+                              />
+                              {remaining <= 0 && (
+                                <p className="mt-1 text-center text-xs text-orange-600">Sudah lengkap</p>
+                              )}
+                            </td>
+                            <td className="px-3 py-3">
+                              <NumericInput
+                                min="0"
+                                value={item.qty_ditolak}
+                                onValueChange={(value) => updateGrnItem(index, "qty_ditolak", value || 0)}
+                                decimalScale={4}
+                                className="mx-auto h-9 w-24 text-center text-sm"
+                              />
+                            </td>
+                            <td className="px-3 py-3">
+                              <Combobox
+                                options={[
+                                  { value: "baik", label: "Baik" },
+                                  { value: "rusak", label: "Rusak" },
+                                  { value: "cacat", label: "Cacat" },
+                                ]}
+                                value={item.kondisi}
+                                onChange={(value) =>
+                                  updateGrnItem(index, "kondisi", value as "baik" | "rusak" | "cacat")
+                                }
+                                placeholder="Kondisi..."
+                                searchPlaceholder="Cari kondisi..."
+                                emptyMessage="Kondisi tidak ditemukan"
+                                className="!w-full h-9 text-sm"
+                              />
+                            </td>
+                            <td className="px-4 py-3">
+                              <Textarea
+                                value={item.catatan}
+                                onChange={(e) => updateGrnItem(index, "catatan", e.target.value)}
+                                placeholder="Catatan..."
+                                rows={1}
+                                className="min-h-9 resize-none text-sm"
+                              />
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </CardContent>
+              <div className="flex flex-col gap-3 border-t border-gray-200/70 bg-gray-50 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="text-sm text-gray-500">
+                  Akan ditambahkan: <span className="font-semibold text-gray-900">{formatQty(totals.newReceived)}</span> diterima
+                  {totals.rejected > 0 && (
+                    <span>, <span className="font-semibold text-gray-900">{formatQty(totals.rejected)}</span> ditolak</span>
+                  )}
+                </div>
+                <div className="flex justify-end gap-3">
+                  <Link href="/dashboard/purchasing/grn/continue">
+                    <Button type="button" variant="outline" className="purchasing-secondary-button px-6">
+                      Batal
+                    </Button>
+                  </Link>
+                  <Button
+                    type="submit"
+                    disabled={saving || grnItems.length === 0}
+                    className="purchasing-main-button px-6"
+                  >
+                    <ClipboardDocumentCheckIcon className="mr-2 h-4 w-4" />
+                    {saving ? "Menyimpan..." : "Simpan Perubahan"}
+                  </Button>
+                </div>
+              </div>
         </Card>
-
-        <div className="flex justify-between items-center">
-          <Link href="/dashboard/purchasing/grn/continue">
-            <Button type="button" variant="outline">
-              Batal
-            </Button>
-          </Link>
-          <div className="flex gap-3">
-            <Button
-              type="submit"
-              disabled={saving}
-              className="purchasing-main-button"
-            >
-              {saving ? "Menyimpan..." : "Simpan Perubahan"}
-            </Button>
-          </div>
-        </div>
       </form>
 
-      {/* Modal Popup */}
-      <Dialog open={showModal} onOpenChange={setShowModal}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              {modalData.success ? (
-                <CheckCircleIcon className="w-6 h-6 text-green-600" />
-              ) : (
-                <span className="text-red-600">⚠️</span>
-              )}
-              {modalData.success ? "✅ Berhasil" : "❌ Gagal"}
-            </DialogTitle>
-            <DialogDescription className="pt-2">
-              {modalData.message}
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button onClick={handleModalClose} className="purchasing-main-button w-full">
-              OK
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

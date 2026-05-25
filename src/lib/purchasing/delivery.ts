@@ -162,9 +162,14 @@ export async function validatePOCanDelivery(
   }
 
   const statusLower = po.status?.toLowerCase();
-  if (statusLower !== "sent" && statusLower !== "partial" && statusLower !== "approved") {
+  if (
+    statusLower !== "sent" &&
+    statusLower !== "partial" &&
+    statusLower !== "partially_received" &&
+    statusLower !== "approved"
+  ) {
     errors.push(
-      `PO berstatus "${po.status}" — harus berstatus APPROVED, SENT, atau PARTIAL untuk dapat dibuatkan Delivery`
+      `PO berstatus "${po.status}" — harus berstatus APPROVED, SENT, PARTIAL, atau PARTIALLY_RECEIVED untuk dapat dibuatkan Delivery`
     );
   }
 

@@ -59,6 +59,29 @@ const updateGrnSchema = z.object({
   items: z.array(grnItemSchema).optional(),
 });
 
+const QTY_EPSILON = 0.000001;
+
+type POQtyValidationItem = {
+  id: string;
+  raw_material_id: string;
+  qty_ordered?: number | null;
+  qty_received?: number | null;
+  raw_material?: {
+    nama?: string | null;
+    nama_bahan?: string | null;
+  } | null;
+};
+
+function formatQty(value: number) {
+  return new Intl.NumberFormat("id-ID", {
+    maximumFractionDigits: 4,
+  }).format(value);
+}
+
+function getMaterialLabel(item: POQtyValidationItem) {
+  return item.raw_material?.nama || item.raw_material?.nama_bahan || "item ini";
+}
+
 // ============================================================
 // GET /api/purchasing/grn - List GRN
 // ============================================================
@@ -213,15 +236,53 @@ export async function POST(request: NextRequest) {
     // Re-fetch PO items directly with adminSupabase to ensure we get data (bypass RLS)
     const { data: freshPoItems } = await adminSupabase
       .from("purchase_order_items")
-      .select("id, raw_material_id, qty_ordered, qty_received, harga_satuan, unit_price")
+      .select(`
+        id,
+        raw_material_id,
+        qty_ordered,
+        qty_received,
+        harga_satuan,
+        unit_price,
+        raw_material:raw_material_id(nama)
+      `)
       .eq("purchase_order_id", delivery.purchase_order_id)
       .eq("is_active", true);
 
     // Use freshPoItems as source of truth
-    const effectivePoItems = freshPoItems || poItems || [];
+    const effectivePoItems = (freshPoItems || poItems || []) as POQtyValidationItem[];
 
     if (!valid && !errors.some(e => e.includes('status'))) {
       throw ApiError.badRequest(errors.join("; "));
+    }
+
+    const processedQtyByItem = new Map<string, number>();
+    for (const item of validated.items) {
+      const key = item.purchase_order_item_id || item.raw_material_id;
+      processedQtyByItem.set(
+        key,
+        (processedQtyByItem.get(key) || 0) + item.qty_diterima + item.qty_ditolak
+      );
+    }
+
+    for (const item of validated.items) {
+      const key = item.purchase_order_item_id || item.raw_material_id;
+      const poItem = effectivePoItems.find((p) =>
+        item.purchase_order_item_id
+          ? p.id === item.purchase_order_item_id
+          : p.raw_material_id === item.raw_material_id
+      );
+
+      if (!poItem) {
+        throw ApiError.badRequest("Item PO tidak ditemukan untuk validasi penerimaan");
+      }
+
+      const remainingQty = Math.max(0, Number(poItem.qty_ordered || 0) - Number(poItem.qty_received || 0));
+      const processedQty = processedQtyByItem.get(key) || 0;
+      if (processedQty > remainingQty + QTY_EPSILON) {
+        throw ApiError.badRequest(
+          `Qty ${getMaterialLabel(poItem)} melebihi sisa PO. Maksimal ${formatQty(remainingQty)}, tetapi diinput ${formatQty(processedQty)} (diterima + ditolak).`
+        );
+      }
     }
 
     // Generate GRN number

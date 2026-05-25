@@ -3,24 +3,15 @@
 import { useState, useEffect, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { DatePicker } from "@/components/ui/datepicker";
+import { Combobox } from "@/components/ui/combobox";
+import { NumericInput } from "@/components/ui/numeric-input";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { BreadcrumbNav } from "@/modules/purchasing/components/breadcrumb/BreadcrumbNav";
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandItem,
-  CommandList,
-} from "@/components/ui/command";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Check, ChevronsUpDown } from "lucide-react";
-import { cn } from "@/lib/utils";
 import {
   ClipboardDocumentCheckIcon,
   PlusIcon,
@@ -99,8 +90,6 @@ export default function CreateGrnPage() {
     tanggal_penerimaan: new Date().toISOString().split("T")[0],
     catatan: "",
   });
-  const [searchQuery, setSearchQuery] = useState("");
-  const [openDelivery, setOpenDelivery] = useState(false);
 
   const fetchDeliveries = useCallback(async () => {
     setFetchingDeliveries(true);
@@ -311,26 +300,22 @@ export default function CreateGrnPage() {
     }
   };
 
-  const filteredDeliveries = deliveries.filter((d) =>
-    (d.search_text || "").includes(searchQuery.toLowerCase())
-  );
-
   return (
-    <div className="space-y-4">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <BreadcrumbNav
-            items={[
-              { href: "/dashboard/purchasing", label: "Purchasing" },
-              { href: "/dashboard/purchasing/grn", label: "Barang Masuk" },
-              { label: "Buat Penerimaan Baru" },
-            ]}
-          />
+    <div className="space-y-6">
+      <BreadcrumbNav
+        items={[
+          { href: "/dashboard/purchasing", label: "Purchasing" },
+          { href: "/dashboard/purchasing/grn", label: "Barang Masuk" },
+          { label: "Buat Penerimaan Baru" },
+        ]}
+      />
+
+      <div className="flex flex-col items-start justify-between gap-4 border-b border-gray-200/70 pb-4 sm:flex-row sm:items-center">
+        <div className="min-w-0">
           <h1 className="text-2xl font-bold text-gray-900 mt-2">Buat Penerimaan Baru</h1>
           <p className="text-sm text-gray-500">Pilih delivery, cek sisa PO, lalu simpan penerimaan untuk menambah stok</p>
         </div>
-        <Button variant="outline" onClick={() => router.back()}>
+        <Button variant="outline" onClick={() => router.back()} className="purchasing-secondary-button w-full sm:w-auto">
           <ArrowLeftIcon className="w-4 h-4 mr-2" />
           Kembali
         </Button>
@@ -338,128 +323,37 @@ export default function CreateGrnPage() {
 
       {/* Form */}
       <form onSubmit={handleSubmit}>
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
           {/* Left Panel - Delivery Selection & Info (4 cols) */}
           <div className="lg:col-span-4 space-y-4">
-            <Card>
-              <CardHeader className="pb-3">
+            <Card className="border-gray-200/70 shadow-sm">
+              <CardHeader className="border-b border-gray-100 pb-4">
                 <CardTitle className="text-base flex items-center gap-2">
-                  <TruckIcon className="w-5 h-5 text-pink-600" />
+                  <TruckIcon className="w-5 h-5" />
                   1. Pilih Delivery
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4 p-4">
                 <div className="space-y-2">
                   <Label className="text-sm font-medium">Pengiriman</Label>
-                  <Popover open={openDelivery} onOpenChange={setOpenDelivery}>
-                    <PopoverTrigger
-                      type="button"
-                      role="combobox"
-                      aria-expanded={openDelivery}
-                      className={cn(
-                        "flex h-10 w-full items-center justify-between rounded-lg border border-border bg-white px-3 text-sm shadow-xs transition-colors hover:bg-gray-50",
-                        "focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 outline-none"
-                      )}
-                    >
-                      <span className="truncate text-left font-medium">
-                        {selectedDelivery
-                          ? (() => {
-                              const displayKurir = selectedDelivery.kurir || '';
-                              if (displayKurir) {
-                                return `${selectedDelivery.no_resi} - ${displayKurir}`;
-                              }
-                              return selectedDelivery.no_resi;
-                            })()
-                          : "Pilih pengiriman..."}
-                      </span>
-                      <ChevronsUpDown className="h-4 w-4 shrink-0 opacity-50" />
-                    </PopoverTrigger>
-                    <PopoverContent 
-                      className="w-[calc(var(--radix-popover-trigger-width)-16px)] p-0 shadow-2xl z-[100] border-gray-200 bg-white ml-2" 
-                      align="start" 
-                      sideOffset={8} 
-                    >
-                      <Command shouldFilter={false} className="bg-white">
-                        <div className="flex items-center border-b border-gray-200 px-3 py-2.5">
-                          <svg className="w-4 h-4 text-gray-400 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                          </svg>
-                          <input
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                            placeholder="Cari nomor resi / surat jalan..."
-                            className="w-full text-sm bg-transparent border-none outline-none placeholder:text-gray-400 text-gray-900"
-                          />
-                        </div>
-                        <CommandList className="max-h-64 overflow-y-auto bg-white p-1">
-                          <CommandEmpty className="py-6 text-center text-sm text-gray-500">Tidak ada pengiriman ditemukan.</CommandEmpty>
-                          <CommandGroup className="p-1">
-                            {filteredDeliveries.map((d) => (
-                              <CommandItem
-                                key={d.id}
-                                value={`${d.no_resi} - ${d.kurir}`}
-                                onSelect={() => {
-                                  const simplifiedDelivery = {
-                                    id: d.id,
-                                    no_resi: d.no_resi,
-                                    nomor_resi: d.nomor_resi,
-                                    no_surat_jalan: d.no_surat_jalan,
-                                    kurir: d.kurir,
-                                    status: d.status,
-                                    purchase_order_id: d.purchase_order_id,
-                                    po_id: d.po_id,
-                                    supplier_id: d.supplier_id,
-                                    tanggal_kirim: d.tanggal_kirim,
-                                    tanggal_estimasi_tiba: d.tanggal_estimasi_tiba,
-                                  };
-                                  setSelectedDelivery(simplifiedDelivery as Delivery);
-                                  setFormData((prev) => ({ ...prev, delivery_id: d.id }));
-                                  setOpenDelivery(false);
-                                  setSearchQuery("");
-                                }}
-                                className="cursor-pointer hover:bg-pink-50 data-[selected=true]:bg-pink-100 rounded-md py-2.5 px-3 transition-colors"
-                              >
-                                <div className="flex flex-col gap-1.5 flex-1">
-                                  <div className="flex items-center justify-between">
-                                    <span className="font-semibold text-sm text-gray-900">{d.no_resi}</span>
-                                    <Check
-                                      className={cn(
-                                        "h-4 w-4 text-pink-600",
-                                        selectedDelivery?.id === d.id ? "opacity-100" : "opacity-0"
-                                      )}
-                                    />
-                                  </div>
-                                  <div className="flex items-center gap-1.5 text-xs text-gray-500">
-                                    {(() => {
-                                      const supplierOrKurir = d.supplier_name || d.kurir || d.ekspedisi || '';
-                                      const poOrResi = d.po_number || d.nomor_resi || d.no_resi || '';
-                                      
-                                      if (supplierOrKurir && poOrResi) {
-                                        return (
-                                          <>
-                                            <span className="font-medium">{supplierOrKurir}</span>
-                                            <span className="text-gray-300">•</span>
-                                            <span>{poOrResi}</span>
-                                          </>
-                                        );
-                                      }
-                                      if (supplierOrKurir) {
-                                        return <span className="font-medium">{supplierOrKurir}</span>;
-                                      }
-                                      if (poOrResi) {
-                                        return <span>{poOrResi}</span>;
-                                      }
-                                      return null;
-                                    })()}
-                                  </div>
-                                </div>
-                              </CommandItem>
-                            ))}
-                          </CommandGroup>
-                        </CommandList>
-                      </Command>
-                    </PopoverContent>
-                  </Popover>
+                  <Combobox
+                    options={deliveries.map((delivery) => ({
+                      value: delivery.id,
+                      label: delivery.no_resi || delivery.nomor_resi || delivery.no_surat_jalan,
+                      description: `${delivery.supplier_name || delivery.kurir || "-"} · ${delivery.po_number || delivery.no_surat_jalan || "-"}`,
+                    }))}
+                    value={formData.delivery_id}
+                    onChange={(value) => {
+                      const delivery = deliveries.find((item) => item.id === value) || null;
+                      setSelectedDelivery(delivery);
+                      setFormData((prev) => ({ ...prev, delivery_id: value }));
+                    }}
+                    placeholder="Pilih pengiriman..."
+                    searchPlaceholder="Cari nomor resi / surat jalan..."
+                    emptyMessage="Tidak ada pengiriman ditemukan"
+                    allowClear
+                    className="!w-full h-9 text-sm"
+                  />
                 </div>
 
                 {selectedDelivery && (
@@ -495,6 +389,7 @@ export default function CreateGrnPage() {
                       onChange={(date) =>
                         setFormData((prev) => ({ ...prev, tanggal_penerimaan: date }))
                       }
+                      variant="neutral"
                     />
                   </div>
                   <div className="space-y-1.5">
@@ -515,18 +410,18 @@ export default function CreateGrnPage() {
 
           {/* Right Panel - Items Table (8 cols) */}
           <div className="lg:col-span-8">
-            <Card className="h-full">
-              <CardHeader className="pb-3 px-4">
+            <Card className="h-full border-gray-200/70 shadow-sm">
+              <CardHeader className="border-b border-gray-100 px-4 pb-4">
                 <div className="flex items-center justify-between">
                   <CardTitle className="text-base font-semibold flex items-center gap-2">
-                    <ClipboardDocumentCheckIcon className="w-5 h-5 text-pink-600" />
+                    <ClipboardDocumentCheckIcon className="w-5 h-5" />
                     2. Konfirmasi Item Diterima
                   </CardTitle>
                   <div className="flex gap-2">
-                    <Button type="button" variant="outline" size="sm" onClick={fillAllRemaining} disabled={grnItems.length === 0}>
+                    <Button type="button" variant="outline" size="sm" onClick={fillAllRemaining} disabled={grnItems.length === 0} className="purchasing-secondary-button">
                       Isi Sisa PO
                     </Button>
-                    <Button type="button" variant="outline" size="sm" onClick={handleAddItem}>
+                    <Button type="button" variant="outline" size="sm" onClick={handleAddItem} className="purchasing-secondary-button">
                       <PlusIcon className="w-4 h-4 mr-1.5" />
                       Item Manual
                     </Button>
@@ -540,7 +435,7 @@ export default function CreateGrnPage() {
                   </div>
                 ) : (
                   <table className="w-full">
-                    <thead className="bg-gray-50 sticky top-0 z-10">
+                    <thead className="sticky top-0 z-10 border-b border-gray-100 bg-gray-50">
                       <tr>
                         <th className="text-left text-xs font-semibold text-gray-600 uppercase tracking-wide px-4 py-2.5">Bahan Baku</th>
                         <th className="text-center text-xs font-semibold text-gray-600 uppercase tracking-wide px-3 py-2.5 w-20">Ordered</th>
@@ -580,40 +475,38 @@ export default function CreateGrnPage() {
                               <span className="text-sm font-semibold text-pink-700">{qtyRemaining}</span>
                             </td>
                             <td className="px-3 py-3">
-                              <Input
-                                type="number"
+                              <NumericInput
                                 min="0"
                                 max={qtyRemaining || undefined}
                                 value={item.qty_diterima}
-                                onChange={(e) =>
-                                  handleUpdateItem(item.id, "qty_diterima", parseFloat(e.target.value) || 0)
-                                }
+                                onValueChange={(value) => handleUpdateItem(item.id, "qty_diterima", value || 0)}
+                                decimalScale={4}
                                 className="w-20 text-center text-sm h-9"
                               />
                             </td>
                             <td className="px-3 py-3">
-                              <Input
-                                type="number"
+                              <NumericInput
                                 min="0"
                                 value={item.qty_ditolak}
-                                onChange={(e) =>
-                                  handleUpdateItem(item.id, "qty_ditolak", parseFloat(e.target.value) || 0)
-                                }
+                                onValueChange={(value) => handleUpdateItem(item.id, "qty_ditolak", value || 0)}
+                                decimalScale={4}
                                 className="w-20 text-center text-sm h-9"
                               />
                             </td>
                             <td className="px-3 py-3">
-                              <select
+                              <Combobox
+                                options={[
+                                  { value: "baik", label: "Baik" },
+                                  { value: "rusak", label: "Rusak" },
+                                  { value: "cacat", label: "Cacat" },
+                                ]}
                                 value={item.kondisi}
-                                onChange={(e) =>
-                                  handleUpdateItem(item.id, "kondisi", e.target.value as "baik" | "rusak" | "cacat")
-                                }
-                                className="w-full text-sm border border-gray-300 rounded-md px-2.5 py-1.5 text-center bg-white focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-transparent"
-                              >
-                                <option value="baik">Baik</option>
-                                <option value="rusak">Rusak</option>
-                                <option value="cacat">Cacat</option>
-                              </select>
+                                onChange={(value) => handleUpdateItem(item.id, "kondisi", value as "baik" | "rusak" | "cacat")}
+                                placeholder="Kondisi..."
+                                searchPlaceholder="Cari kondisi..."
+                                emptyMessage="Kondisi tidak ditemukan"
+                                className="!w-full h-9 text-sm"
+                              />
                             </td>
                             <td className="px-4 py-3 text-right">
                               <Button

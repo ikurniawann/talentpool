@@ -13,6 +13,8 @@ import { Combobox } from "@/components/ui/combobox";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { NumericInput } from "@/components/ui/numeric-input";
 import { formatRupiah } from "@/lib/purchasing/utils";
+import { listPriceLists } from "@/lib/purchasing";
+import { SupplierPriceList } from "@/types/purchasing";
 import { toast } from "sonner";
 
 const prItemSchema = z.object({
@@ -46,6 +48,11 @@ interface PRFormProps {
     satuan_besar_id?: string;
     satuan_besar_nama?: string;
     avg_cost?: number;
+    unit_conversions?: {
+      satuan_id: string;
+      qty_in_base_unit: number;
+      is_active?: boolean;
+    }[];
   }[];
   units: { id: string; nama: string }[];
   onSubmit: (data: PRFormData, action: "draft" | "submit") => void | Promise<void>;
@@ -57,6 +64,7 @@ interface PRFormProps {
 export function PRForm({
   departments,
   materials,
+  units,
   onSubmit,
   isLoading,
   initialData,
@@ -92,13 +100,104 @@ export function PRForm({
     0
   );
 
-  function handleSelectMaterial(index: number, materialId: string) {
+  function getConversionFactor(materialId: string, unitId?: string) {
+    if (!unitId) return 1;
     const material = materials.find((item) => item.id === materialId);
+    const conversion = material?.unit_conversions?.find(
+      (item) => item.satuan_id === unitId && item.is_active !== false
+    );
+    return Number(conversion?.qty_in_base_unit || 1);
+  }
+
+  function getUnitName(unitId?: string) {
+    return units.find((unit) => unit.id === unitId)?.nama || "";
+  }
+
+  function getMaterialUnitOptions(materialId?: string) {
+    const material = materials.find((item) => item.id === materialId);
+    const conversionUnitIds = (material?.unit_conversions || [])
+      .filter((conversion) => conversion.is_active !== false)
+      .map((conversion) => conversion.satuan_id);
+    const unitIds = Array.from(
+      new Set([
+        material?.satuan_besar_id,
+        ...conversionUnitIds,
+      ].filter(Boolean) as string[])
+    );
+
+    return unitIds
+      .map((unitId) => {
+        const unit = units.find((item) => item.id === unitId);
+        return unit ? { value: unit.id, label: unit.nama } : null;
+      })
+      .filter(Boolean) as { value: string; label: string }[];
+  }
+
+  function getEstimatedPriceFromPriceLists(
+    materialId: string,
+    targetUnitId?: string,
+    priceLists: SupplierPriceList[] = []
+  ) {
+    const targetFactor = getConversionFactor(materialId, targetUnitId);
+    const validPrices = priceLists
+      .filter((price) => {
+        const materialMatch = (price.bahan_baku_id || price.raw_material_id) === materialId;
+        const unitId = price.satuan_id || price.unit_id;
+        return materialMatch && unitId && Number(price.harga ?? price.price ?? 0) > 0;
+      })
+      .map((price) => {
+        const unitId = price.satuan_id || price.unit_id;
+        const sourceFactor = getConversionFactor(materialId, unitId);
+        const unitPrice = Number(price.harga ?? price.price ?? 0);
+        return {
+          price,
+          estimatedPrice: sourceFactor > 0 ? (unitPrice / sourceFactor) * targetFactor : unitPrice,
+        };
+      })
+      .sort((a, b) => {
+        if (a.price.is_preferred !== b.price.is_preferred) return a.price.is_preferred ? -1 : 1;
+        return a.estimatedPrice - b.estimatedPrice;
+      });
+
+    return validPrices[0]?.estimatedPrice;
+  }
+
+  async function applyEstimatedPrice(index: number, materialId: string, unitId?: string, fallbackPrice = 0) {
+    setValue(`items.${index}.estimated_price`, fallbackPrice);
+
+    if (!materialId) return;
+
+    try {
+      const response = await listPriceLists({ raw_material_id: materialId, is_active: true });
+      const priceLists = Array.isArray(response) ? response : [response];
+      const estimatedPrice = getEstimatedPriceFromPriceLists(materialId, unitId, priceLists);
+      if (estimatedPrice !== undefined) {
+        setValue(`items.${index}.estimated_price`, Math.round(estimatedPrice), {
+          shouldDirty: true,
+          shouldValidate: true,
+        });
+      }
+    } catch (error) {
+      console.error("Error loading estimated price:", error);
+    }
+  }
+
+  async function handleSelectMaterial(index: number, materialId: string) {
+    const material = materials.find((item) => item.id === materialId);
+    const unitId = material?.satuan_besar_id || "";
     setValue(`items.${index}.raw_material_id`, materialId);
     setValue(`items.${index}.description`, material?.nama || "");
     setValue(`items.${index}.unit`, material?.satuan_besar_nama || "");
-    setValue(`items.${index}.satuan_id`, material?.satuan_besar_id || "");
-    setValue(`items.${index}.estimated_price`, material?.avg_cost || 0);
+    setValue(`items.${index}.satuan_id`, unitId);
+    await applyEstimatedPrice(index, materialId, unitId, material?.avg_cost || 0);
+  }
+
+  async function handleSelectUnit(index: number, unitId: string) {
+    const materialId = items[index]?.raw_material_id || "";
+    const material = materials.find((item) => item.id === materialId);
+    setValue(`items.${index}.satuan_id`, unitId);
+    setValue(`items.${index}.unit`, getUnitName(unitId));
+    await applyEstimatedPrice(index, materialId, unitId, material?.avg_cost || 0);
   }
 
   const isSubmitting = isLoading || submitAction !== null;
@@ -274,9 +373,21 @@ export function PRForm({
                   <div className="min-w-0 space-y-1.5 lg:col-span-2">
                     <Label className="text-xs">Satuan</Label>
                     <input type="hidden" {...register(`items.${index}.unit`)} />
-                    <div className="flex h-9 w-full items-center rounded-lg border border-gray-300 bg-gray-200 px-2.5 text-sm text-gray-700">
-                      {items[index]?.unit || "-"}
-                    </div>
+                    <Combobox
+                      options={getMaterialUnitOptions(items[index]?.raw_material_id)}
+                      value={items[index]?.satuan_id || ""}
+                      onChange={(value) => handleSelectUnit(index, value)}
+                      placeholder="Pilih satuan..."
+                      searchPlaceholder="Cari satuan..."
+                      emptyMessage={
+                        items[index]?.raw_material_id
+                          ? "Satuan bahan ini belum dikonfigurasi"
+                          : "Pilih bahan baku terlebih dahulu"
+                      }
+                      allowClear={false}
+                      disabled={!items[index]?.raw_material_id}
+                      className="!w-full h-9 text-sm"
+                    />
                   </div>
 
                   <div className="min-w-0 space-y-1.5 lg:col-span-3">

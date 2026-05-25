@@ -43,6 +43,8 @@ type DeliveryRow = {
   id: string;
   po_id?: string | null;
   po_number?: string | null;
+  supplier_name?: string | null;
+  delivery_number?: string | null;
   no_surat_jalan?: string | null;
   ekspedisi?: string | null;
   no_resi?: string | null;
@@ -82,6 +84,11 @@ type ReceivingRow = {
   orderedQty?: number;
   receivedQty?: number;
   rejectedQty?: number;
+  remainingQty?: number;
+  deliveries: DeliveryRow[];
+  grns: GrnRow[];
+  pendingDelivery?: DeliveryRow | null;
+  latestGrn?: GrnRow | null;
 };
 
 const STATUS_STYLES: Record<ReceivingStatus, string> = {
@@ -130,6 +137,16 @@ function statusPriority(status: ReceivingStatus) {
   return order[status];
 }
 
+function formatQty(value?: number | null) {
+  return new Intl.NumberFormat("id-ID", {
+    maximumFractionDigits: 4,
+  }).format(Number(value || 0));
+}
+
+function deliveryLabel(delivery: DeliveryRow) {
+  return delivery.no_resi || delivery.delivery_number || delivery.no_surat_jalan || "Delivery";
+}
+
 export default function ReceivingWorkspacePage() {
   const [purchaseOrders, setPurchaseOrders] = useState<PurchaseOrderRow[]>([]);
   const [deliveries, setDeliveries] = useState<DeliveryRow[]>([]);
@@ -168,10 +185,9 @@ export default function ReceivingWorkspacePage() {
 
   const rows = useMemo<ReceivingRow[]>(() => {
     const deliveriesByPo = new Map<string, DeliveryRow[]>();
-    const deliveryByPoNumber = new Map<string, DeliveryRow>();
     const deliveryById = new Map<string, DeliveryRow>();
-    const grnByDelivery = new Map<string, GrnRow>();
-    const grnByPo = new Map<string, GrnRow>();
+    const grnsByPo = new Map<string, GrnRow[]>();
+    const grnsByDelivery = new Map<string, GrnRow[]>();
     const poById = new Map<string, PurchaseOrderRow>();
 
     for (const po of purchaseOrders) poById.set(po.id, po);
@@ -181,11 +197,16 @@ export default function ReceivingWorkspacePage() {
         const current = deliveriesByPo.get(delivery.po_id) || [];
         deliveriesByPo.set(delivery.po_id, [...current, delivery]);
       }
-      if (delivery.po_number) deliveryByPoNumber.set(delivery.po_number, delivery);
     }
     for (const grn of grns) {
-      if (grn.delivery_id) grnByDelivery.set(grn.delivery_id, grn);
-      if (grn.po_id) grnByPo.set(grn.po_id, grn);
+      if (grn.po_id) {
+        const current = grnsByPo.get(grn.po_id) || [];
+        grnsByPo.set(grn.po_id, [...current, grn]);
+      }
+      if (grn.delivery_id) {
+        const current = grnsByDelivery.get(grn.delivery_id) || [];
+        grnsByDelivery.set(grn.delivery_id, [...current, grn]);
+      }
     }
 
     const nextRows: ReceivingRow[] = [];
@@ -195,21 +216,30 @@ export default function ReceivingWorkspacePage() {
       const poStatus = normalizeStatus(po.status);
       if (!["approved", "sent", "partially_received", "received", "cancelled"].includes(poStatus)) continue;
 
-      const grn = grnByPo.get(po.id);
-      const poDeliveries = deliveriesByPo.get(po.id) || [];
-      const delivery =
-        (grn?.delivery_id ? deliveryById.get(grn.delivery_id) : null) ||
-        poDeliveries.find((item) => grnByDelivery.has(item.id)) ||
-        poDeliveries.find((item) => item.status !== "cancelled") ||
-        deliveryByPoNumber.get(po.nomor_po);
+      const poDeliveries = (deliveriesByPo.get(po.id) || []).sort((a, b) =>
+        String(b.tanggal_kirim || "").localeCompare(String(a.tanggal_kirim || ""))
+      );
+      const poGrns = (grnsByPo.get(po.id) || []).sort((a, b) =>
+        String(b.tanggal_penerimaan || "").localeCompare(String(a.tanggal_penerimaan || ""))
+      );
+      const pendingDelivery = poDeliveries.find((delivery) => {
+        if (delivery.status === "cancelled") return false;
+        return !(grnsByDelivery.get(delivery.id) || []).length;
+      }) || null;
+      const latestDelivery = poDeliveries.find((delivery) => delivery.status !== "cancelled") || null;
+      const latestGrn = poGrns[0] || null;
       handledPoIds.add(po.id);
+
+      const orderedQty = Number(po.total_qty_ordered || 0);
+      const receivedQty = Number(po.total_qty_received || 0);
+      const rejectedQty = poGrns.reduce((sum, grn) => sum + Number(grn.total_item_ditolak || 0), 0);
+      const remainingQty = Math.max(0, orderedQty - receivedQty);
 
       let status: ReceivingStatus = "waiting_delivery";
       if (poStatus === "cancelled") status = "cancelled";
-      else if (grn?.status === "rejected") status = "rejected";
-      else if (grn?.status === "partially_received" || poStatus === "partially_received") status = "partially_received";
-      else if (grn?.status === "received" || poStatus === "received") status = "received";
-      else if (delivery) status = "in_delivery";
+      else if (poStatus === "received" || remainingQty <= 0) status = "received";
+      else if (pendingDelivery || (latestDelivery && poGrns.length === 0)) status = "in_delivery";
+      else if (poStatus === "partially_received" || poGrns.length > 0) status = "partially_received";
 
       nextRows.push({
         key: `po-${po.id}`,
@@ -217,15 +247,20 @@ export default function ReceivingWorkspacePage() {
         poId: po.id,
         poNumber: po.nomor_po,
         supplierName: po.nama_supplier || "-",
-        deliveryId: delivery?.id || null,
-        deliveryNumber: delivery?.no_resi || delivery?.po_number || null,
-        suratJalan: delivery?.no_surat_jalan || grn?.no_surat_jalan || null,
-        grnId: grn?.id || null,
-        grnNumber: grn?.nomor_grn || null,
-        date: grn?.tanggal_penerimaan || delivery?.tanggal_kirim || po.tanggal_po || null,
-        orderedQty: Number(po.total_qty_ordered || 0),
-        receivedQty: Number(po.total_qty_received || grn?.total_item_diterima || 0),
-        rejectedQty: Number(grn?.total_item_ditolak || 0),
+        deliveryId: pendingDelivery?.id || latestDelivery?.id || null,
+        deliveryNumber: latestDelivery ? deliveryLabel(latestDelivery) : null,
+        suratJalan: latestDelivery?.no_surat_jalan || latestGrn?.no_surat_jalan || null,
+        grnId: latestGrn?.id || null,
+        grnNumber: latestGrn?.nomor_grn || null,
+        date: latestGrn?.tanggal_penerimaan || latestDelivery?.tanggal_kirim || po.tanggal_po || null,
+        orderedQty,
+        receivedQty,
+        rejectedQty,
+        remainingQty,
+        deliveries: poDeliveries,
+        grns: poGrns,
+        pendingDelivery,
+        latestGrn,
       });
     }
 
@@ -251,6 +286,11 @@ export default function ReceivingWorkspacePage() {
         date: grn?.tanggal_penerimaan || delivery.tanggal_kirim || null,
         receivedQty: Number(grn?.total_item_diterima || 0),
         rejectedQty: Number(grn?.total_item_ditolak || 0),
+        remainingQty: undefined,
+        deliveries: [delivery],
+        grns: grn ? [grn] : [],
+        pendingDelivery: grn ? null : delivery,
+        latestGrn: grn || null,
       });
     }
 
@@ -301,7 +341,23 @@ export default function ReceivingWorkspacePage() {
   const isFilterActive = statusFilter !== "all";
 
   function renderAction(row: ReceivingRow) {
-    if (row.status === "waiting_delivery" && row.poId) {
+    if (row.pendingDelivery?.id) {
+      return (
+        <Link
+          href={`/dashboard/purchasing/grn/new?delivery_id=${row.pendingDelivery.id}`}
+          className={`${ACTION_BUTTON_CLASS} border-pink-600`}
+          style={{ backgroundColor: "#db2777" }}
+        >
+          Input Barang Masuk
+        </Link>
+      );
+    }
+    if (
+      row.poId &&
+      row.status !== "received" &&
+      row.status !== "cancelled" &&
+      Number(row.remainingQty || 0) > 0
+    ) {
       return (
         <Link
           href={`/dashboard/purchasing/delivery/new?po_id=${row.poId}`}
@@ -312,26 +368,6 @@ export default function ReceivingWorkspacePage() {
         </Link>
       );
     }
-    if (row.status === "in_delivery" && row.deliveryId) {
-      return (
-        <Link
-          href={`/dashboard/purchasing/grn/new?delivery_id=${row.deliveryId}`}
-          className={`${ACTION_BUTTON_CLASS} border-pink-600`}
-          style={{ backgroundColor: "#db2777" }}
-        >
-          Terima Barang
-        </Link>
-      );
-    }
-    if (row.status === "partially_received" && row.grnId) {
-      return (
-        <Link href={`/dashboard/purchasing/grn/continue/${row.grnId}`}>
-          <Button size="sm" variant="outline" className="text-amber-700 border-amber-200 hover:bg-amber-50">
-            Lanjutkan
-          </Button>
-        </Link>
-      );
-    }
     if (row.grnId) {
       return (
         <Link
@@ -339,7 +375,7 @@ export default function ReceivingWorkspacePage() {
           className={`${ACTION_BUTTON_CLASS} border-emerald-600`}
           style={{ backgroundColor: "#059669" }}
         >
-          Detail Penerimaan
+          Lihat GRN
         </Link>
       );
     }
@@ -370,17 +406,19 @@ export default function ReceivingWorkspacePage() {
       <div className="flex flex-col items-start justify-between gap-4 border-b border-gray-200/70 pb-4 sm:flex-row sm:items-center">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Barang Masuk</h1>
-          <p className="text-sm text-gray-500">Satu tempat untuk delivery, penerimaan, dan status barang masuk stok — {filteredRows.length} total</p>
+          <p className="text-sm text-gray-500">
+            Pantau setiap PO, riwayat delivery, GRN, qty diterima/ditolak, dan sisa yang perlu dikirim — {filteredRows.length} total
+          </p>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" onClick={fetchReceivingData} disabled={loading} className="h-10 gap-2 rounded-lg border-pink-200 bg-white px-3 text-sm font-medium text-pink-700 shadow-sm hover:!border-pink-200 hover:!bg-pink-50 hover:!text-pink-700">
             <ArrowPathIcon className="w-4 h-4 mr-2" />
             Refresh
           </Button>
-          <Link href="/dashboard/purchasing/grn/new">
+          <Link href="/dashboard/purchasing/delivery/new">
             <Button className="h-10 gap-2 rounded-lg bg-pink-600 px-3 text-sm font-semibold text-white shadow-sm hover:bg-pink-700">
               <PlusIcon className="w-4 h-4 mr-2" />
-              Input Penerimaan
+              Buat Delivery
             </Button>
           </Link>
         </div>
@@ -400,7 +438,7 @@ export default function ReceivingWorkspacePage() {
       <PurchasingListSection
         icon={ClipboardDocumentCheckIcon}
         title="Workspace Penerimaan"
-        description="Pantau delivery, surat jalan, dokumen GRN, jumlah diterima, dan tindak lanjut."
+        description="Satu baris mewakili satu PO. Delivery berikutnya dibuat dari sisa PO; GRN dibuat setelah barang fisik datang."
         toolbar={
           <div className="flex w-full flex-col gap-3 sm:w-auto md:flex-row md:items-center">
           <label className="relative w-full md:w-96">
@@ -497,7 +535,7 @@ export default function ReceivingWorkspacePage() {
               <table className="min-w-full text-sm">
                 <thead className="border-b border-gray-100 bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
                   <tr>
-                    {["Status", "PO", "Supplier", "Delivery / Surat Jalan", "Penerimaan", "Qty", "Tanggal", "Aksi"].map((heading) => (
+                    {["Status", "PO", "Supplier", "Delivery & GRN", "Progress Barang", "Tanggal Terakhir", "Aksi"].map((heading) => (
                       <th key={heading} className="px-4 py-3 text-left font-semibold">{heading}</th>
                     ))}
                   </tr>
@@ -521,21 +559,45 @@ export default function ReceivingWorkspacePage() {
                       </td>
                       <td className="px-4 py-3 text-sm">{row.supplierName}</td>
                       <td className="px-4 py-3 text-sm">
-                        <div className="font-medium">{row.deliveryNumber || "-"}</div>
-                        <div className="text-xs text-gray-500">{row.suratJalan || "-"}</div>
+                        <div className="space-y-1.5">
+                          {row.deliveries.length === 0 ? (
+                            <span className="text-gray-400">Belum ada delivery</span>
+                          ) : (
+                            row.deliveries.slice(0, 3).map((delivery) => {
+                              const deliveryGrns = row.grns.filter((grn) => grn.delivery_id === delivery.id);
+                              const firstGrn = deliveryGrns[0];
+                              return (
+                                <div key={delivery.id} className="rounded-lg border border-gray-100 bg-gray-50 px-2.5 py-2">
+                                  <div className="flex flex-wrap items-center gap-2">
+                                    <Link href={`/dashboard/purchasing/delivery/${delivery.id}`} className="font-medium text-gray-900 hover:text-pink-700 hover:underline">
+                                      {deliveryLabel(delivery)}
+                                    </Link>
+                                    <span className="text-xs text-gray-400">SJ: {delivery.no_surat_jalan || "-"}</span>
+                                  </div>
+                                  {firstGrn ? (
+                                    <Link href={`/dashboard/purchasing/grn/${firstGrn.id}`} className="mt-1 block text-xs font-medium text-pink-700 hover:underline">
+                                      GRN: {firstGrn.nomor_grn}
+                                    </Link>
+                                  ) : (
+                                    <div className="mt-1 text-xs text-amber-600">Belum input barang masuk</div>
+                                  )}
+                                </div>
+                              );
+                            })
+                          )}
+                          {row.deliveries.length > 3 && (
+                            <div className="text-xs text-gray-500">+{row.deliveries.length - 3} delivery lainnya</div>
+                          )}
+                        </div>
                       </td>
                       <td className="px-4 py-3 text-sm">
-                        {row.grnId ? (
-                          <Link href={`/dashboard/purchasing/grn/${row.grnId}`} className="font-medium text-pink-700 hover:underline">
-                            {row.grnNumber}
-                          </Link>
-                        ) : (
-                          <span className="text-gray-400">Belum Diterima</span>
+                        <div className="font-medium">
+                          Diterima {formatQty(row.receivedQty)} / {formatQty(row.orderedQty)}
+                        </div>
+                        <div className="text-xs text-gray-500">Sisa {formatQty(row.remainingQty)}</div>
+                        {(row.rejectedQty || 0) > 0 && (
+                          <div className="text-xs text-red-600">{formatQty(row.rejectedQty)} ditolak</div>
                         )}
-                      </td>
-                      <td className="px-4 py-3 text-sm">
-                        <div>{row.receivedQty || 0} / {row.orderedQty || 0}</div>
-                        {(row.rejectedQty || 0) > 0 && <div className="text-xs text-red-600">{row.rejectedQty} ditolak</div>}
                       </td>
                       <td className="px-4 py-3 text-sm">{formatDate(row.date)}</td>
                       <td className="px-4 py-3">{renderAction(row)}</td>

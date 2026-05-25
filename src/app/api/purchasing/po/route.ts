@@ -6,11 +6,16 @@ import { NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { z } from "zod";
 
+const optionalDateSchema = z
+  .union([z.string().regex(/^\d{4}-\d{2}-\d{2}$/), z.literal(""), z.null()])
+  .optional()
+  .transform((value) => value || null);
+
 const poSchema = z.object({
   supplier_id: z.string().uuid("Supplier wajib dipilih"),
   pr_id: z.string().uuid().optional(),
   tanggal_po: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Format tanggal: YYYY-MM-DD"),
-  tanggal_kirim_estimasi: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  tanggal_kirim_estimasi: optionalDateSchema,
   catatan: z.string().optional(),
   alamat_pengiriman: z.string().optional(),
   diskon_persen: z.number().min(0).max(100).default(0),
@@ -19,6 +24,16 @@ const poSchema = z.object({
   source_type: z.enum(["manual", "production_order", "low_stock"]).optional().default("manual"),
   production_order_id: z.string().uuid().optional().nullable(),
   source_reference: z.string().optional().nullable(),
+  items: z.array(
+    z.object({
+      raw_material_id: z.string().uuid("Bahan baku wajib dipilih"),
+      pr_item_id: z.string().uuid().optional(),
+      satuan_id: z.string().uuid().optional(),
+      qty_ordered: z.number().min(0.0001, "Jumlah pesanan minimal 0.0001"),
+      harga_satuan: z.number().min(0, "Harga tidak boleh negatif"),
+      notes: z.string().optional(),
+    })
+  ).min(1, "Minimal 1 item PO"),
 });
 
 function getErrorMessage(error: unknown, fallback: string) {
@@ -104,9 +119,39 @@ export async function GET(request: NextRequest) {
 
     if (error) throw error;
 
+    const poIds = (data || []).map((po) => po.id).filter(Boolean);
+    const { data: deliveries, error: deliveriesError } = poIds.length
+      ? await supabase
+          .from("deliveries")
+          .select("id, purchase_order_id, nomor_resi, no_surat_jalan, status, created_at")
+          .in("purchase_order_id", poIds)
+          .eq("is_active", true)
+          .neq("status", "cancelled")
+          .order("created_at", { ascending: false })
+      : { data: [], error: null };
+
+    if (deliveriesError) throw deliveriesError;
+
+    const deliveryByPoId = new Map<string, (typeof deliveries)[number]>();
+    for (const delivery of deliveries || []) {
+      if (!deliveryByPoId.has(delivery.purchase_order_id)) {
+        deliveryByPoId.set(delivery.purchase_order_id, delivery);
+      }
+    }
+
+    const mappedData = (data || []).map((po) => {
+      const delivery = deliveryByPoId.get(po.id);
+      return {
+        ...po,
+        active_delivery_id: delivery?.id || null,
+        active_delivery_number: delivery?.nomor_resi || delivery?.no_surat_jalan || null,
+        active_delivery_status: delivery?.status || null,
+      };
+    });
+
     return Response.json({
       success: true,
-      data,
+      data: mappedData,
       pagination: {
         page,
         limit,
@@ -132,16 +177,27 @@ export async function POST(request: NextRequest) {
     // Validasi input
     const validated = poSchema.parse(body);
 
+    const { items, ...poPayload } = validated;
+    const subtotal = items.reduce((sum, item) => sum + item.qty_ordered * item.harga_satuan, 0);
+    const diskonNominal = poPayload.diskon_persen
+      ? (subtotal * poPayload.diskon_persen) / 100
+      : poPayload.diskon_nominal;
+    const taxableAmount = Math.max(0, subtotal - diskonNominal);
+    const ppnNominal = (taxableAmount * poPayload.ppn_persen) / 100;
+    const total = taxableAmount + ppnNominal;
+
     // Generate nomor PO
     const nomor_po = await generateNomorPO(supabase);
 
     // Insert PO dengan status draft
     const insertData = {
-      ...validated,
+      ...poPayload,
       nomor_po,
       status: "draft",
-      subtotal: 0,
-      total: 0,
+      subtotal,
+      diskon_nominal: diskonNominal,
+      ppn_nominal: ppnNominal,
+      total,
       is_active: true,
     };
 
@@ -152,6 +208,23 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (error) throw error;
+
+    const poItems = items.map((item) => ({
+      purchase_order_id: data.id,
+      raw_material_id: item.raw_material_id,
+      pr_item_id: item.pr_item_id || null,
+      satuan_id: item.satuan_id || null,
+      qty_ordered: item.qty_ordered,
+      harga_satuan: item.harga_satuan,
+      catatan: item.notes || null,
+      is_active: true,
+    }));
+
+    const { error: itemError } = await supabase
+      .from("purchase_order_items")
+      .insert(poItems);
+
+    if (itemError) throw itemError;
 
     return Response.json(
       { success: true, data, message: "PO berhasil dibuat" },

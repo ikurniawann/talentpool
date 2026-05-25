@@ -5,15 +5,8 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Combobox } from "@/components/ui/combobox";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Search, Filter, FileText, CheckCircle, Send, XCircle, Download, Trash2, Truck, Pencil } from "lucide-react";
+import { Plus, Search, Filter, FileText, CheckCircle, Send, XCircle, Download, Trash2, Truck, Pencil, Eye, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { PurchaseOrderWithStats, POStatus } from "@/types/purchasing";
 import { listPurchaseOrders, approvePurchaseOrder, sendPurchaseOrder, cancelPurchaseOrder } from "@/lib/purchasing";
@@ -74,6 +67,8 @@ export default function PurchaseOrdersPage() {
   const [isBulkDeleteDialogOpen, setIsBulkDeleteDialogOpen] = useState(false);
   const [isProcessingBulk, setIsProcessingBulk] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
+  const [processingPoId, setProcessingPoId] = useState<string | null>(null);
+  const [isSending, setIsSending] = useState(false);
 
   const loadPOs = useCallback(async () => {
     try {
@@ -85,10 +80,13 @@ export default function PurchaseOrdersPage() {
         limit: pagination.limit,
       });
       setPos(response.data);
+      const responsePagination = response.pagination;
+      const total = responsePagination?.total ?? response.total ?? 0;
+      const totalPages = responsePagination?.total_pages ?? response.total_pages ?? Math.ceil(total / pagination.limit);
       setPagination((prev) => ({
         ...prev,
-        total: response.total,
-        total_pages: response.total_pages,
+        total,
+        total_pages: totalPages,
       }));
     } catch (error) {
       console.error("Error loading POs:", error);
@@ -252,12 +250,15 @@ export default function PurchaseOrdersPage() {
 
   const handleApprove = async (po: PurchaseOrderWithStats) => {
     try {
+      setProcessingPoId(po.id);
       await approvePurchaseOrder(po.id);
       toast.success("PO berhasil diapprove");
-      loadPOs();
+      await loadPOs();
     } catch (error: unknown) {
       console.error("Error approving PO:", error);
       toast.error(getErrorMessage(error, "Gagal mengapprove PO"));
+    } finally {
+      setProcessingPoId(null);
     }
   };
 
@@ -270,13 +271,18 @@ export default function PurchaseOrdersPage() {
   const handleSend = async () => {
     if (!sendingPo) return;
     try {
+      setIsSending(true);
+      setProcessingPoId(sendingPo.id);
       await sendPurchaseOrder(sendingPo.id, sendVia);
       toast.success(`PO berhasil dikirim via ${sendVia}`);
       setIsSendDialogOpen(false);
-      loadPOs();
+      await loadPOs();
     } catch (error: unknown) {
       console.error("Error sending PO:", error);
       toast.error(getErrorMessage(error, "Gagal mengirim PO"));
+    } finally {
+      setIsSending(false);
+      setProcessingPoId(null);
     }
   };
 
@@ -596,7 +602,7 @@ export default function PurchaseOrdersPage() {
                     <div className="flex items-center justify-end gap-2">
                       <Link href={`/dashboard/purchasing/po/${po.id}`}>
                         <Button variant="ghost" size="sm" className="cursor-pointer" title="Lihat detail">
-                          <FileText className="w-4 h-4" />
+                          <Eye className="w-4 h-4" />
                         </Button>
                       </Link>
                       {normalizeStatus(po.status) === "draft" && (
@@ -606,19 +612,32 @@ export default function PurchaseOrdersPage() {
                               <Pencil className="w-4 h-4" />
                             </Button>
                           </Link>
-                          <Button variant="ghost" size="sm" onClick={() => handleApprove(po)} title="Approve">
-                            <CheckCircle className="w-4 h-4 text-green-600" />
+                          <Button variant="ghost" size="sm" onClick={() => handleApprove(po)} disabled={processingPoId === po.id} title="Approve">
+                            {processingPoId === po.id ? (
+                              <Loader2 className="w-4 h-4 animate-spin text-green-600" />
+                            ) : (
+                              <CheckCircle className="w-4 h-4 text-green-600" />
+                            )}
                           </Button>
                         </>
                       )}
                       {normalizeStatus(po.status) === "approved" && (
-                        <Button variant="ghost" size="sm" onClick={() => handleOpenSend(po)} title="Kirim ke supplier">
-                          <Send className="w-4 h-4 text-pink-600" />
+                        <Button variant="ghost" size="sm" onClick={() => handleOpenSend(po)} disabled={processingPoId === po.id} title="Kirim ke supplier">
+                          {processingPoId === po.id ? (
+                            <Loader2 className="w-4 h-4 animate-spin text-pink-600" />
+                          ) : (
+                            <Send className="w-4 h-4 text-pink-600" />
+                          )}
                         </Button>
                       )}
                       {["approved", "sent", "partially_received"].includes(normalizeStatus(po.status)) && (
-                        <Link href={`/dashboard/purchasing/delivery/new?po_id=${po.id}`}>
-                          <Button variant="ghost" size="sm" className="cursor-pointer" title="Buat delivery">
+                        <Link href={`/dashboard/purchasing/delivery?po_id=${po.id}`}>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="cursor-pointer"
+                            title="Lihat delivery untuk PO ini"
+                          >
                             <Truck className="w-4 h-4 text-pink-600" />
                           </Button>
                         </Link>
@@ -649,37 +668,39 @@ export default function PurchaseOrdersPage() {
 
       {/* Send Dialog */}
       <Dialog open={isSendDialogOpen} onOpenChange={setIsSendDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Kirim PO ke Supplier</DialogTitle>
-            <DialogDescription>
+        <DialogContent className="gap-0 overflow-hidden rounded-2xl border border-gray-200/70 p-0 shadow-xl ring-1 ring-gray-200/60 sm:max-w-[460px]">
+          <DialogHeader className="border-b border-gray-200/70 px-5 py-4">
+            <DialogTitle className="text-base font-semibold text-gray-900">Kirim PO ke Supplier</DialogTitle>
+            <DialogDescription className="mt-1 text-sm leading-5 text-gray-500">
               Pilih metode pengiriman untuk PO {sendingPo?.nomor_po}
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label>Metode Pengiriman</Label>
-              <Select
+          <div className="space-y-4 px-5 py-4">
+            <div className="space-y-1.5">
+              <Label className="text-xs">Metode Pengiriman</Label>
+              <Combobox
+                options={[
+                  { value: "EMAIL", label: "Email" },
+                  { value: "WHATSAPP", label: "WhatsApp" },
+                  { value: "PRINT", label: "Print / Manual" },
+                  { value: "OTHER", label: "Lainnya" },
+                ]}
                 value={sendVia}
-                onValueChange={(v) => setSendVia(v as "EMAIL" | "WHATSAPP" | "PRINT" | "OTHER")}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="EMAIL">Email</SelectItem>
-                  <SelectItem value="WHATSAPP">WhatsApp</SelectItem>
-                  <SelectItem value="PRINT">Print / Manual</SelectItem>
-                  <SelectItem value="OTHER">Lainnya</SelectItem>
-                </SelectContent>
-              </Select>
+                onChange={(value) => setSendVia(value as "EMAIL" | "WHATSAPP" | "PRINT" | "OTHER")}
+                placeholder="Pilih metode..."
+                searchPlaceholder="Cari metode..."
+                emptyMessage="Metode tidak ditemukan"
+                className="!w-full h-9 text-sm"
+              />
             </div>
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsSendDialogOpen(false)} className="purchasing-secondary-button">
+          <DialogFooter className="mx-0 mb-0 gap-2 border-t border-gray-200/70 bg-gray-50/60 px-5 py-4 sm:justify-end">
+            <Button variant="outline" onClick={() => setIsSendDialogOpen(false)} disabled={isSending} className="purchasing-secondary-button">
               Batal
             </Button>
-            <Button onClick={handleSend} className="purchasing-main-button">Kirim</Button>
+            <Button onClick={handleSend} disabled={isSending} className="purchasing-main-button">
+              {isSending ? "Mengirim..." : "Kirim"}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

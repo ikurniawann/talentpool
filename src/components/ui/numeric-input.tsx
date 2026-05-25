@@ -51,6 +51,12 @@ function formatDisplayValue(value: number | null | undefined, decimalScale: numb
   return value === null || value === undefined ? "" : formatNumber(value, decimalScale);
 }
 
+function getFiniteNumber(value: unknown) {
+  if (value === undefined || value === null || value === "") return undefined;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : undefined;
+}
+
 export function NumericInput({
   value,
   onValueChange,
@@ -76,12 +82,18 @@ export function NumericInput({
       value={displayValue}
       onChange={(event) => {
         const nextValue = sanitizeNumberInput(event.target.value, decimalScale, allowNegative);
-        setDisplayValue(nextValue);
-        onValueChange(parseFormattedNumber(nextValue, decimalScale, allowNegative));
+        const parsed = parseFormattedNumber(nextValue, decimalScale, allowNegative);
+        const max = getFiniteNumber(props.max);
+        const clamped = max !== undefined && parsed > max ? max : parsed;
+
+        setDisplayValue(clamped !== parsed ? formatNumber(clamped, decimalScale) : nextValue);
+        onValueChange(clamped);
       }}
       onBlur={(event) => {
         const parsed = parseFormattedNumber(event.target.value, decimalScale, allowNegative);
-        setDisplayValue(event.target.value === "" ? "" : formatNumber(parsed, decimalScale));
+        const max = getFiniteNumber(props.max);
+        const clamped = max !== undefined && parsed > max ? max : parsed;
+        setDisplayValue(event.target.value === "" ? "" : formatNumber(clamped, decimalScale));
         onBlur?.(event);
       }}
       className={cn("text-left tabular-nums", className)}

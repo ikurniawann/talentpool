@@ -1,18 +1,15 @@
 import { createClient } from "@/lib/supabase/server";
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { z } from "zod";
 import {
   requireApiRole,
   ApiError,
-  successResponse,
   createdResponse,
   paginatedResponse,
 } from "@/lib/api/auth";
 import {
   generateDeliveryNumber,
   validatePOCanDelivery,
-  validateDeliveryTransition,
-  DeliveryStatus,
 } from "@/lib/purchasing/delivery";
 
 // ============================================================
@@ -40,16 +37,24 @@ const queryParamsSchema = z.object({
   date_to: z.string().optional(),
 });
 
-const updateDeliverySchema = z.object({
-  no_surat_jalan: z.string().min(1).optional(),
-  ekspedisi: z.string().optional(),
-  no_resi: z.string().optional(),
-  tanggal_kirim: z.string().optional(),
-  tanggal_estimasi_tiba: z.string().optional(),
-  tanggal_aktual_tiba: z.string().optional(),
-  status: z.enum(["pending", "shipped", "in_transit", "delivered", "cancelled"]).optional(),
-  catatan: z.string().optional(),
-});
+type DeliveryRecord = {
+  id: string;
+  nomor_resi: string | null;
+  no_resi: string | null;
+  purchase_order_id: string | null;
+  no_surat_jalan: string | null;
+  kurir: string | null;
+  tanggal_kirim: string | null;
+  tanggal_estimasi_tiba: string | null;
+  tanggal_aktual_tiba: string | null;
+  status: string;
+  created_at: string | null;
+};
+
+type PurchaseOrderRecord = {
+  id: string;
+  nomor_po: string;
+};
 
 // ============================================================
 // GET /api/purchasing/delivery - List deliveries
@@ -57,7 +62,7 @@ const updateDeliverySchema = z.object({
 
 export async function GET(request: NextRequest) {
   try {
-    const user = await requireApiRole(["purchasing_admin", "purchasing_staff"]);
+    await requireApiRole(["purchasing_admin", "purchasing_staff"]);
     const supabase = await createClient();
 
     const { searchParams } = new URL(request.url);
@@ -78,7 +83,7 @@ export async function GET(request: NextRequest) {
     if (date_from) query = query.gte("tanggal_kirim", date_from);
     if (date_to) query = query.lte("tanggal_kirim", date_to);
     if (search) {
-      query = query.or(`no_surat_jalan.ilike.%${search}%,nomor_resi.ilike.%${search}%,ekspedisi.ilike.%${search}%`);
+      query = query.or(`no_surat_jalan.ilike.%${search}%,nomor_resi.ilike.%${search}%,no_resi.ilike.%${search}%,kurir.ilike.%${search}%`);
     }
 
     const { data, error, count } = await query;
@@ -86,8 +91,9 @@ export async function GET(request: NextRequest) {
     if (error) throw error;
 
     // Fetch PO numbers for all deliveries
-    const poIds = [...new Set((data || []).map((d: any) => d.purchase_order_id).filter(Boolean))];
-    let poMap = new Map();
+    const deliveries = (data || []) as DeliveryRecord[];
+    const poIds = [...new Set(deliveries.map((delivery) => delivery.purchase_order_id).filter(Boolean))];
+    let poMap = new Map<string, string>();
     
     if (poIds.length > 0) {
       const { data: poData, error: poError } = await supabase
@@ -96,24 +102,24 @@ export async function GET(request: NextRequest) {
         .in("id", poIds);
       
       if (!poError && poData) {
-        poMap = new Map(poData.map((po: any) => [po.id, po.nomor_po]));
+        poMap = new Map((poData as PurchaseOrderRecord[]).map((po) => [po.id, po.nomor_po]));
       }
     }
 
     // Transform data to match frontend interface
-    const transformedData = (data || []).map((d: any) => ({
-      id: d.id,
-      delivery_number: d.nomor_resi,
-      po_id: d.purchase_order_id,
-      po_number: poMap.get(d.purchase_order_id) || d.purchase_order_id,
-      no_surat_jalan: d.no_surat_jalan,
-      ekspedisi: d.kurir,
-      no_resi: d.no_resi || d.nomor_resi, // Prioritaskan no_resi dari user
-      tanggal_kirim: d.tanggal_kirim,
-      tanggal_estimasi_tiba: d.tanggal_estimasi_tiba,
-      tanggal_aktual_tiba: d.tanggal_aktual_tiba,
-      status: d.status,
-      created_at: d.created_at,
+    const transformedData = deliveries.map((delivery) => ({
+      id: delivery.id,
+      delivery_number: delivery.nomor_resi,
+      po_id: delivery.purchase_order_id,
+      po_number: poMap.get(delivery.purchase_order_id || "") || delivery.purchase_order_id,
+      no_surat_jalan: delivery.no_surat_jalan,
+      ekspedisi: delivery.kurir,
+      no_resi: delivery.no_resi || delivery.nomor_resi, // Prioritaskan no_resi dari user
+      tanggal_kirim: delivery.tanggal_kirim,
+      tanggal_estimasi_tiba: delivery.tanggal_estimasi_tiba,
+      tanggal_aktual_tiba: delivery.tanggal_aktual_tiba,
+      status: delivery.status,
+      created_at: delivery.created_at,
     }));
 
     return paginatedResponse(
@@ -162,7 +168,7 @@ export async function POST(request: NextRequest) {
     const deliveryNumber = await generateDeliveryNumber(supabase);
 
     // Create delivery record
-    const insertData: any = {
+    const insertData = {
       nomor_resi: deliveryNumber,
       no_resi: validated.no_resi || null,
       purchase_order_id: validated.po_id,

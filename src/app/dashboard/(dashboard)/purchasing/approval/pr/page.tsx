@@ -134,7 +134,7 @@ export default function PRApprovalPage() {
                       <TableHead className="text-right text-gray-900">Estimasi</TableHead>
                       <TableHead className="text-center text-gray-900">Prioritas</TableHead>
                       <TableHead className="text-center text-gray-900">Status</TableHead>
-                      <TableHead className="text-right text-gray-900">Aksi</TableHead>
+                      <TableHead className="text-center text-gray-900">Aksi</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -158,10 +158,10 @@ export default function PRApprovalPage() {
                           <TableCell className="text-center">
                             <Badge className={statusBadge.color}>{statusBadge.label}</Badge>
                           </TableCell>
-                          <TableCell className="text-right" onClick={(event) => event.stopPropagation()}>
-                            <div className="flex justify-end gap-2">
+                          <TableCell className="text-center" onClick={(event) => event.stopPropagation()}>
+                            <div className="flex items-center justify-center gap-2">
                               <Link href={`/dashboard/purchasing/pr/${pr.id}`}>
-                                <Button variant="ghost" size="sm" className="cursor-pointer">
+                                <Button variant="ghost" size="sm" className="h-9 w-9 cursor-pointer p-0">
                                   <Eye className="h-4 w-4" />
                                 </Button>
                               </Link>

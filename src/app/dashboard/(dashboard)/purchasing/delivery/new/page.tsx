@@ -8,28 +8,14 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { DatePicker } from "@/components/ui/datepicker";
+import { Combobox } from "@/components/ui/combobox";
 import { BreadcrumbNav } from "@/modules/purchasing/components/breadcrumb/BreadcrumbNav";
-import { useToast } from "@/hooks/use-toast";
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandList,
-} from "@/components/ui/command";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 import {
   TruckIcon,
   ArrowLeftIcon,
   SaveIcon,
   Loader2Icon,
-  CheckIcon,
-  ChevronsUpDown,
 } from "lucide-react";
 
 interface POOption {
@@ -54,11 +40,9 @@ function getErrorMessage(error: unknown, fallback: string) {
 export default function CreateDeliveryPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [poList, setPoList] = useState<POOption[]>([]);
   const [fetchingPOs, setFetchingPOs] = useState(true);
-  const [poPopoverOpen, setPoPopoverOpen] = useState(false);
 
   const [formData, setFormData] = useState({
     po_id: "",
@@ -101,11 +85,7 @@ export default function CreateDeliveryPage() {
     e.preventDefault();
     
     if (!formData.po_id || !formData.no_surat_jalan) {
-      toast({
-        title: "Validasi Gagal",
-        description: "PO dan No. Surat Jalan wajib diisi",
-        variant: "destructive",
-      });
+      toast.error("PO dan No. Surat Jalan wajib diisi");
       return;
     }
 
@@ -124,23 +104,15 @@ export default function CreateDeliveryPage() {
       console.log("API Response:", res.status, data);
       
       if (res.ok) {
-        toast({
-          title: "✅ Berhasil",
-          description: `Delivery ${data.data?.nomor_resi || ""} berhasil dibuat`,
-        });
+        toast.success(`Delivery ${data.data?.nomor_resi || ""} berhasil dibuat`);
         router.push(data.data?.id ? `/dashboard/purchasing/delivery/${data.data.id}` : "/dashboard/purchasing/delivery");
         router.refresh();
       } else {
         const apiError = typeof data.error === "string" ? data.error : data.error?.message;
-        throw new Error(apiError || data.message || "Gagal membuat delivery");
+        toast.error(apiError || data.message || "Gagal membuat delivery");
       }
     } catch (error: unknown) {
-      console.error("Submit error:", error);
-      toast({
-        title: "❌ Error",
-        description: getErrorMessage(error, "Gagal membuat delivery"),
-        variant: "destructive",
-      });
+      toast.error(getErrorMessage(error, "Gagal membuat delivery"));
     } finally {
       setLoading(false);
     }
@@ -186,70 +158,30 @@ export default function CreateDeliveryPage() {
                 <CardTitle>Informasi Pengiriman</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                {/* PO Selection - Modal Popover */}
                 <div className="space-y-2">
                   <Label>
                     Purchase Order <span className="text-red-500">*</span>
                   </Label>
-                  <Popover open={poPopoverOpen} onOpenChange={setPoPopoverOpen}>
-                    <PopoverTrigger
-                      role="combobox"
-                      aria-expanded={poPopoverOpen}
-                      disabled={fetchingPOs}
-                      className={cn(
-                        "flex items-center w-full h-12 px-3 py-2 text-sm border rounded-lg border-gray-300 bg-white hover:bg-gray-50 text-left",
-                        fetchingPOs && "opacity-50 cursor-not-allowed"
-                      )}
-                    >
-                      {fetchingPOs ? (
-                        <span className="text-gray-400">Memuat PO...</span>
-                      ) : selectedPO ? (
-                        <div className="flex flex-col items-start">
-                          <span className="font-medium">{selectedPO.nomor_po}</span>
-                          <span className="text-xs text-gray-500">{selectedPO.nama_supplier}</span>
-                        </div>
-                      ) : (
-                        <span className="text-gray-400">Pilih Purchase Order</span>
-                      )}
-                      <ChevronsUpDown className="ml-auto h-4 w-4 shrink-0 opacity-50" />
-                    </PopoverTrigger>
-                    <PopoverContent className="w-[400px] p-0 z-[9999]" align="start">
-                      <Command>
-                        <CommandInput placeholder="Cari PO atau supplier..." />
-                        <CommandList>
-                          <CommandEmpty>Tidak ada PO yang ditemukan</CommandEmpty>
-                          <CommandGroup>
-                            {poList.map((po) => (
-                              <div
-                                key={po.id}
-                                role="option"
-                                aria-selected={formData.po_id === po.id}
-                                onClick={() => {
-                                  setFormData((prev) => ({ ...prev, po_id: po.id }));
-                                  setPoPopoverOpen(false);
-                                }}
-                                className={cn(
-                                  "relative flex cursor-pointer select-none items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground",
-                                  formData.po_id === po.id && "bg-accent text-accent-foreground"
-                                )}
-                              >
-                                <CheckIcon
-                                  className={cn(
-                                    "mr-2 h-4 w-4",
-                                    formData.po_id === po.id ? "opacity-100" : "opacity-0"
-                                  )}
-                                />
-                                <div className="flex flex-col">
-                                  <span className="font-medium">{po.nomor_po}</span>
-                                  <span className="text-xs text-gray-500">{po.nama_supplier}</span>
-                                </div>
-                              </div>
-                            ))}
-                          </CommandGroup>
-                        </CommandList>
-                      </Command>
-                    </PopoverContent>
-                  </Popover>
+                  <Combobox
+                    options={poList.map((po) => ({
+                      value: po.id,
+                      label: po.nomor_po,
+                      description: po.nama_supplier,
+                    }))}
+                    value={formData.po_id}
+                    onChange={(value) => setFormData((prev) => ({ ...prev, po_id: value }))}
+                    placeholder={fetchingPOs ? "Memuat PO..." : "Pilih Purchase Order"}
+                    searchPlaceholder="Cari PO atau supplier..."
+                    emptyMessage="Tidak ada PO yang ditemukan"
+                    allowClear
+                    disabled={fetchingPOs}
+                    className="!w-full h-9 text-sm"
+                  />
+                  {selectedPO && (
+                    <p className="text-xs text-gray-500">
+                      Supplier: {selectedPO.nama_supplier}
+                    </p>
+                  )}
                 </div>
 
                 <div className="space-y-2">
@@ -298,6 +230,7 @@ export default function CreateDeliveryPage() {
                       value={formData.tanggal_kirim}
                       onChange={(v) => setFormData((prev) => ({ ...prev, tanggal_kirim: v }))}
                       placeholder="Tanggal kirim..."
+                      variant="neutral"
                     />
                   </div>
                   <div className="space-y-2">
@@ -307,6 +240,7 @@ export default function CreateDeliveryPage() {
                       value={formData.tanggal_estimasi_tiba}
                       onChange={(v) => setFormData((prev) => ({ ...prev, tanggal_estimasi_tiba: v }))}
                       placeholder="Estimasi tiba..."
+                      variant="neutral"
                     />
                   </div>
                 </div>

@@ -35,6 +35,15 @@ const STATUS_LABELS: Record<DeliveryStatus, string> = {
   cancelled: "Dibatalkan",
 };
 
+function formatDate(value?: string | null) {
+  if (!value) return "-";
+  return new Date(value).toLocaleDateString("id-ID", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
+}
+
 interface Delivery {
   id: string;
   nomor_resi: string;
@@ -142,115 +151,129 @@ export default function DeliveryDetailPage() {
         </div>
       </div>
 
-      <Card className="border-pink-100 bg-pink-50">
+      <div className="grid gap-3 md:grid-cols-4">
+        <Card className="border-gray-200/70 shadow-sm">
+          <CardContent className="p-4">
+            <p className="text-xs font-medium text-gray-500">Status Pengiriman</p>
+            <div className="mt-2">
+              <Badge className={STATUS_COLORS[delivery.status]}>{STATUS_LABELS[delivery.status]}</Badge>
+            </div>
+          </CardContent>
+        </Card>
+        <Card className="border-gray-200/70 shadow-sm">
+          <CardContent className="p-4">
+            <p className="text-xs font-medium text-gray-500">Purchase Order</p>
+            <p className="mt-1 truncate font-semibold text-gray-900">{delivery.purchase_order?.po_number || "-"}</p>
+          </CardContent>
+        </Card>
+        <Card className="border-gray-200/70 shadow-sm">
+          <CardContent className="p-4">
+            <p className="text-xs font-medium text-gray-500">Tanggal Kirim</p>
+            <p className="mt-1 font-semibold text-gray-900">{formatDate(delivery.tanggal_kirim)}</p>
+          </CardContent>
+        </Card>
+        <Card className="border-gray-200/70 shadow-sm">
+          <CardContent className="p-4">
+            <p className="text-xs font-medium text-gray-500">Estimasi Tiba</p>
+            <p className="mt-1 font-semibold text-gray-900">{formatDate(delivery.tanggal_estimasi_tiba)}</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      <Card className="border-gray-200/70 bg-gray-50/60 shadow-sm">
         <CardContent className="p-4">
           <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
             <div>
-              <p className="text-sm font-semibold text-pink-900">Flow pengiriman ini</p>
-              <div className="mt-2 flex flex-wrap items-center gap-2 text-sm text-pink-800">
-                <span className="rounded-full bg-white px-3 py-1 border border-pink-100">1. Delivery dibuat</span>
-                <ArrowRightIcon className="h-4 w-4" />
-                <span className="rounded-full bg-white px-3 py-1 border border-pink-100">2. Input GRN</span>
-                <ArrowRightIcon className="h-4 w-4" />
-                <span className="rounded-full bg-white px-3 py-1 border border-pink-100">3. Stok bertambah</span>
+              <p className="text-sm font-semibold text-gray-900">Alur pengiriman</p>
+              <div className="mt-2 flex flex-wrap items-center gap-2 text-sm text-gray-600">
+                <span className="rounded-full border border-gray-200 bg-white px-3 py-1">1. Delivery dibuat</span>
+                <ArrowRightIcon className="h-4 w-4 text-gray-400" />
+                <span className="rounded-full border border-gray-200 bg-white px-3 py-1">2. Input GRN</span>
+                <ArrowRightIcon className="h-4 w-4 text-gray-400" />
+                <span className="rounded-full border border-gray-200 bg-white px-3 py-1">3. Stok bertambah</span>
               </div>
             </div>
-            {canReceive && (
-              <Button onClick={() => router.push(`/dashboard/purchasing/grn/new?delivery_id=${delivery.id}`)}>
-                <PackageCheckIcon className="w-4 h-4 mr-2" />
-                Lanjut Input GRN
-              </Button>
+            {isDelivered && (
+              <Badge variant="outline" className="w-fit border-emerald-200 text-emerald-700">
+                Sudah ada penerimaan
+              </Badge>
             )}
           </div>
         </CardContent>
       </Card>
 
-      {isDelivered && <Badge variant="outline" className="w-fit text-green-700 border-green-200">Sudah ada penerimaan</Badge>}
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         {/* Info Pengiriman */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg flex items-center gap-2">
+        <Card className="border-gray-200/70 shadow-sm">
+          <CardHeader className="border-b border-gray-100 pb-4">
+            <CardTitle className="flex items-center gap-2 text-base">
               <TruckIcon className="w-5 h-5" />
               Info Pengiriman
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <p className="text-sm text-gray-500">No. Surat Jalan</p>
-                <p className="font-medium">{delivery.no_surat_jalan || "-"}</p>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div className="rounded-lg border border-gray-200/70 bg-gray-50/60 p-3">
+                <p className="text-xs font-medium text-gray-500">No. Surat Jalan</p>
+                <p className="mt-1 font-semibold text-gray-900">{delivery.no_surat_jalan || "-"}</p>
               </div>
-              <div>
-                <p className="text-sm text-gray-500">No. Resi</p>
-                <p className="font-medium">{delivery.nomor_resi || "-"}</p>
+              <div className="rounded-lg border border-gray-200/70 bg-gray-50/60 p-3">
+                <p className="text-xs font-medium text-gray-500">No. Resi</p>
+                <p className="mt-1 font-semibold text-gray-900">{delivery.nomor_resi || "-"}</p>
               </div>
-              <div>
-                <p className="text-sm text-gray-500">Ekspedisi</p>
-                <p className="font-medium">{delivery.kurir || "-"}</p>
+              <div className="rounded-lg border border-gray-200/70 bg-gray-50/60 p-3">
+                <p className="text-xs font-medium text-gray-500">Ekspedisi</p>
+                <p className="mt-1 font-semibold text-gray-900">{delivery.kurir || "-"}</p>
               </div>
-              <div>
-                <p className="text-sm text-gray-500">Tanggal Kirim</p>
-                <p className="font-medium">
-                  {delivery.tanggal_kirim
-                    ? new Date(delivery.tanggal_kirim).toLocaleDateString("id-ID")
-                    : "-"}
-                </p>
+              <div className="rounded-lg border border-gray-200/70 bg-gray-50/60 p-3">
+                <p className="text-xs font-medium text-gray-500">Tanggal Kirim</p>
+                <p className="mt-1 font-semibold text-gray-900">{formatDate(delivery.tanggal_kirim)}</p>
               </div>
-              <div>
-                <p className="text-sm text-gray-500">Estimasi Tiba</p>
-                <p className="font-medium">
-                  {delivery.tanggal_estimasi_tiba
-                    ? new Date(delivery.tanggal_estimasi_tiba).toLocaleDateString("id-ID")
-                    : "-"}
-                </p>
+              <div className="rounded-lg border border-gray-200/70 bg-gray-50/60 p-3">
+                <p className="text-xs font-medium text-gray-500">Estimasi Tiba</p>
+                <p className="mt-1 font-semibold text-gray-900">{formatDate(delivery.tanggal_estimasi_tiba)}</p>
               </div>
-              <div>
-                <p className="text-sm text-gray-500">Aktual Tiba</p>
-                <p className="font-medium">
-                  {delivery.tanggal_aktual_tiba
-                    ? new Date(delivery.tanggal_aktual_tiba).toLocaleDateString("id-ID")
-                    : "-"}
-                </p>
+              <div className="rounded-lg border border-gray-200/70 bg-gray-50/60 p-3">
+                <p className="text-xs font-medium text-gray-500">Aktual Tiba</p>
+                <p className="mt-1 font-semibold text-gray-900">{formatDate(delivery.tanggal_aktual_tiba)}</p>
               </div>
             </div>
             {delivery.catatan && (
-              <div className="pt-4 border-t">
-                <p className="text-sm text-gray-500">Catatan</p>
-                <p className="text-sm mt-1">{delivery.catatan}</p>
+              <div className="border-t border-gray-200/70 pt-4">
+                <p className="text-xs font-medium text-gray-500">Catatan</p>
+                <p className="mt-1 text-sm text-gray-700">{delivery.catatan}</p>
               </div>
             )}
           </CardContent>
         </Card>
 
         {/* Info PO & Supplier */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg flex items-center gap-2">
+        <Card className="border-gray-200/70 shadow-sm">
+          <CardHeader className="border-b border-gray-100 pb-4">
+            <CardTitle className="flex items-center gap-2 text-base">
               <ClipboardListIcon className="w-5 h-5" />
               Info Purchase Order
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div>
-              <p className="text-sm text-gray-500">PO Number</p>
-              <p className="font-medium text-lg">
+            <div className="rounded-lg border border-gray-200/70 bg-gray-50/60 p-3">
+              <p className="text-xs font-medium text-gray-500">Nomor PO</p>
+              <p className="mt-1 text-lg font-semibold text-gray-900">
                 {delivery.purchase_order?.po_number || "-"}
               </p>
             </div>
-            <div className="pt-4 border-t">
-              <div className="flex items-center gap-2 mb-2">
+            <div className="rounded-lg border border-gray-200/70 bg-gray-50/60 p-3">
+              <div className="mb-2 flex items-center gap-2">
                 <Building2Icon className="w-4 h-4 text-gray-400" />
-                <p className="text-sm text-gray-500">Supplier</p>
+                <p className="text-xs font-medium text-gray-500">Supplier</p>
               </div>
-              <p className="font-medium">{delivery.supplier?.nama || "-"}</p>
+              <p className="font-semibold text-gray-900">{delivery.supplier?.nama || "-"}</p>
               <p className="text-sm text-gray-500">{delivery.supplier?.kode || ""}</p>
             </div>
-            <div className="pt-4 border-t">
+            <div className="border-t border-gray-200/70 pt-4">
               <Button
                 variant="outline"
-                className="w-full"
+                className="purchasing-secondary-button w-full"
                 onClick={() =>
                   router.push(
                     `/dashboard/purchasing/po/${delivery.purchase_order_id}`

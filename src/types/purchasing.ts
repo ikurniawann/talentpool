@@ -618,6 +618,9 @@ export interface PurchaseOrderWithStats extends PurchaseOrder {
   payment_status?: "unpaid" | "partial" | "paid" | "overdue";
   lifecycle_status?: "draft" | "in_progress" | "waiting_payment" | "waiting_receipt" | "completed" | "cancelled";
   overall_progress_pct?: number;
+  active_delivery_id?: string | null;
+  active_delivery_number?: string | null;
+  active_delivery_status?: string | null;
 }
 
 export interface PurchaseOrderPaymentTerm {

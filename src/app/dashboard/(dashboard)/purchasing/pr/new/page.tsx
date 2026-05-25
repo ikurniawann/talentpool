@@ -56,6 +56,25 @@ export default async function NewPRPage() {
     .eq("is_active", true)
     .order("nama");
 
+  const materialIds = (materials || []).map((material) => material.id);
+  const { data: conversions } = materialIds.length
+    ? await supabase
+        .from("raw_material_unit_conversions")
+        .select("raw_material_id, satuan_id, qty_in_base_unit, is_active")
+        .in("raw_material_id", materialIds)
+        .eq("is_active", true)
+    : { data: [] };
+  const conversionsByMaterial = new Map<string, typeof conversions>();
+  for (const conversion of conversions || []) {
+    const current = conversionsByMaterial.get(conversion.raw_material_id) || [];
+    current.push(conversion);
+    conversionsByMaterial.set(conversion.raw_material_id, current);
+  }
+  const materialsWithConversions = (materials || []).map((material) => ({
+    ...material,
+    unit_conversions: conversionsByMaterial.get(material.id) || [],
+  }));
+
   const { data: units } = await supabase
     .from("units")
     .select("id, nama")
@@ -155,7 +174,7 @@ export default async function NewPRPage() {
 
       <PRForm
         departments={departments || []}
-        materials={materials || []}
+        materials={materialsWithConversions}
         units={units || []}
         onSubmit={handleCreatePR}
       />
