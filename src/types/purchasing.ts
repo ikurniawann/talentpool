@@ -7,6 +7,7 @@ export type POStatus =
   | 'pending_approval'
   | 'approved'
   | 'sent'
+  | 'partial'
   | 'partially_received'
   | 'received'
   | 'rejected'
@@ -573,6 +574,8 @@ export interface PurchaseOrderItem {
     kode: string;
     nama: string;
     satuan?: string;
+    satuan_besar?: { nama: string };
+    satuan_kecil?: { nama: string };
   };
 }
 
@@ -580,8 +583,52 @@ export interface PurchaseOrderWithStats extends PurchaseOrder {
   total_received: number;
   total_pending: number;
   received_percentage: number;
+  receive_percentage?: number;
+  progress_pct?: number;
   total_qty_received: number;
   total_qty_ordered: number;
+  payment_term_count?: number;
+  payable_amount?: number;
+  paid_amount?: number;
+  outstanding_amount?: number;
+  next_due_date?: string | null;
+  payment_progress_pct?: number;
+  receiving_status?: "not_received" | "partial" | "received";
+  payment_status?: "unpaid" | "partial" | "paid" | "overdue";
+  lifecycle_status?: "draft" | "in_progress" | "waiting_payment" | "waiting_receipt" | "completed" | "cancelled";
+  overall_progress_pct?: number;
+}
+
+export interface PurchaseOrderPaymentTerm {
+  id: string;
+  purchase_order_id: string;
+  supplier_id: string;
+  term_no: number;
+  description: string | null;
+  due_date: string;
+  amount: number;
+  paid_amount: number;
+  status: "unpaid" | "partial" | "paid" | "overdue" | "cancelled";
+  notes?: string | null;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface VendorPayment {
+  id: string;
+  payment_number: string;
+  purchase_order_id: string;
+  payment_term_id?: string | null;
+  supplier_id: string;
+  payment_date: string;
+  amount: number;
+  method: "cash" | "bank_transfer" | "giro" | "qris" | "other";
+  reference_number?: string | null;
+  notes?: string | null;
+  status: "draft" | "posted" | "void";
+  created_at: string;
+  updated_at: string;
 }
 
 // ============================================

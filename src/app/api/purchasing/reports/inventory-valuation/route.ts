@@ -2,11 +2,15 @@
 // API ROUTE: /api/purchasing/reports/inventory-valuation
 // ============================================
 
-import { NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 
+function toNumber(value: unknown) {
+  const numeric = Number(value);
+  return Number.isFinite(numeric) ? numeric : 0;
+}
+
 // GET /api/purchasing/reports/inventory-valuation
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
     const supabase = await createClient();
 
@@ -15,7 +19,6 @@ export async function GET(request: NextRequest) {
       .from("v_raw_materials_stock")
       .select("*")
       .eq("is_active", true)
-      .gt("qty_onhand", 0)
       .order("kategori", { ascending: true });
 
     if (error) throw error;
@@ -24,8 +27,24 @@ export async function GET(request: NextRequest) {
     let totalValue = 0;
     const byCategory: Record<string, { kategori: string; total_value: number; item_count: number }> = {};
 
-    data?.forEach((item: any) => {
-      const value = (item.qty_onhand || 0) * (item.avg_cost || 0);
+    const normalizedData = (data || []).map((item) => {
+      const qty = toNumber(item.qty_onhand);
+      const avgCost = toNumber(item.avg_cost ?? item.unit_cost);
+      return {
+        ...item,
+        qty_onhand: qty,
+        min_stock: toNumber(item.min_stock ?? item.stok_minimum),
+        max_stock: item.max_stock ?? item.stok_maximum ?? null,
+        avg_cost: avgCost,
+        unit_cost: avgCost,
+        total_value: qty * avgCost,
+        satuan: item.satuan || item.satuan_besar_nama || "",
+        lokasi_rak: item.lokasi_rak || "-",
+      };
+    });
+
+    normalizedData.forEach((item) => {
+      const value = item.total_value;
       totalValue += value;
 
       if (!byCategory[item.kategori]) {
@@ -49,20 +68,20 @@ export async function GET(request: NextRequest) {
 
     return Response.json({
       success: true,
-      data,
+      data: normalizedData,
       summary: {
         total_value: totalValue,
-        total_items: data?.length || 0,
+        total_items: normalizedData.length,
         by_category: Object.values(byCategory).map((cat) => ({
           ...cat,
           kategori: kategoriLabels[cat.kategori] || cat.kategori,
         })),
       },
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error fetching inventory valuation:", error);
     return Response.json(
-      { success: false, message: error.message || "Gagal mengambil laporan valuasi" },
+      { success: false, message: error instanceof Error ? error.message : "Gagal mengambil laporan valuasi" },
       { status: 500 }
     );
   }

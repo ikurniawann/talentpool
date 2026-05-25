@@ -11,6 +11,7 @@ import {
   CubeTransparentIcon,
   ShoppingCartIcon,
   TruckIcon,
+  BanknotesIcon,
   CheckBadgeIcon,
   ArrowUturnLeftIcon,
   ArchiveBoxIcon,
@@ -37,6 +38,7 @@ const PROCUREMENT_ITEMS = [
   { href: "/dashboard/purchasing/pr", label: "Purchase Request", icon: DocumentTextIcon },
   { href: "/dashboard/purchasing/po", label: "Purchase Order", icon: ShoppingCartIcon },
   { href: "/dashboard/purchasing/grn", label: "Barang Masuk", icon: TruckIcon },
+  { href: "/dashboard/purchasing/vendor-payments", label: "Pembayaran Vendor", icon: BanknotesIcon },
   { href: "/dashboard/purchasing/production", label: "Produksi", icon: Cog6ToothIcon },
   { href: "/dashboard/purchasing/production/recipes", label: "Recipe/BOM", icon: CubeTransparentIcon },
   { href: "/dashboard/purchasing/qc", label: "QC", icon: CheckBadgeIcon },
@@ -105,7 +107,7 @@ export default function PurchasingLayout({ children }: { children: React.ReactNo
     MASTER_ITEMS.some(item => pathname === item.href || pathname?.startsWith(`${item.href}/`));
   const isInProcurementSection =
     pathname === "/dashboard/purchasing/procurement" ||
-    ["/dashboard/purchasing/pr", "/dashboard/purchasing/po", "/dashboard/purchasing/grn", "/dashboard/purchasing/qc", "/dashboard/purchasing/returns"]
+    ["/dashboard/purchasing/pr", "/dashboard/purchasing/po", "/dashboard/purchasing/grn", "/dashboard/purchasing/vendor-payments", "/dashboard/purchasing/production", "/dashboard/purchasing/qc", "/dashboard/purchasing/returns"]
       .some((href) => pathname === href || pathname?.startsWith(`${href}/`));
   const isInApprovalSection = pathname?.startsWith("/dashboard/purchasing/approval");
   const isInReportSection = pathname?.startsWith("/dashboard/purchasing/reports");

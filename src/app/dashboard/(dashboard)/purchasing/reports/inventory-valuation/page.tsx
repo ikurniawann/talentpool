@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -48,6 +48,32 @@ interface InventoryRow {
   satuan?: string;
 }
 
+type InventoryApiRow = {
+  id?: string;
+  raw_material_id?: string;
+  kode?: string;
+  nama?: string;
+  kategori?: string;
+  lokasi_rak?: string;
+  qty_onhand?: number;
+  min_stock?: number;
+  stok_minimum?: number;
+  max_stock?: number | null;
+  stok_maximum?: number | null;
+  avg_cost?: number;
+  unit_cost?: number;
+  satuan?: string;
+  satuan_besar_nama?: string;
+};
+
+const CATEGORY_LABELS: Record<string, string> = {
+  BAHAN_PANGAN: "Bahan Pangan",
+  BAHAN_NON_PANGAN: "Bahan Non-Pangan",
+  KEMASAN: "Kemasan",
+  BAHAN_BAKAR: "Bahan Bakar",
+  LAINNYA: "Lainnya",
+};
+
 export default function InventoryValuationPage() {
   const [items, setItems] = useState<InventoryRow[]>([]);
   const [search, setSearch] = useState("");
@@ -56,11 +82,7 @@ export default function InventoryValuationPage() {
   const [dateTo, setDateTo] = useState("");
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    fetchData();
-  }, [dateFrom, dateTo]);
-
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     setLoading(true);
     try {
       const params = new URLSearchParams();
@@ -69,23 +91,25 @@ export default function InventoryValuationPage() {
       const res = await fetch(`/api/purchasing/reports/inventory-valuation?${params.toString()}`);
       if (res.ok) {
         const result = await res.json();
-        const mappedItems = (result.data || []).map((item: any) => {
+        const mappedItems = ((result.data || []) as InventoryApiRow[]).map((item) => {
           let stockStatus: StockStatus = "normal";
-          if (!item.qty_onhand || item.qty_onhand === 0) stockStatus = "empty";
-          else if (item.qty_onhand <= (item.min_stock || 0) * 0.25) stockStatus = "critical";
-          else if (item.qty_onhand <= (item.min_stock || 0)) stockStatus = "warning";
+          const qty = Number(item.qty_onhand || 0);
+          const minStock = Number(item.min_stock ?? item.stok_minimum ?? 0);
+          if (qty === 0) stockStatus = "empty";
+          else if (minStock > 0 && qty <= minStock * 0.25) stockStatus = "critical";
+          else if (minStock > 0 && qty <= minStock) stockStatus = "warning";
           return {
             id: item.id || item.raw_material_id,
             kode: item.kode,
             nama: item.nama,
-            kategori: item.kategori,
+            kategori: CATEGORY_LABELS[item.kategori || ""] || item.kategori,
             lokasi_rak: item.lokasi_rak,
-            qty_in_stock: item.qty_onhand || 0,
-            minimum_stock: item.min_stock,
-            maximum_stock: item.max_stock,
-            avg_unit_cost: item.avg_cost || 0,
+            qty_in_stock: qty,
+            minimum_stock: minStock,
+            maximum_stock: item.max_stock ?? item.stok_maximum ?? undefined,
+            avg_unit_cost: Number(item.avg_cost ?? item.unit_cost ?? 0),
             stock_status: stockStatus,
-            satuan: item.satuan,
+            satuan: item.satuan || item.satuan_besar_nama,
           };
         });
         setItems(mappedItems);
@@ -96,7 +120,11 @@ export default function InventoryValuationPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [dateFrom, dateTo]);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
 
   const filtered = items.filter((item) => {
     const matchSearch =
@@ -302,11 +330,11 @@ export default function InventoryValuationPage() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Semua Kategori</SelectItem>
-                <SelectItem value="Bahan Baku">Bahan Baku</SelectItem>
+                <SelectItem value="Bahan Pangan">Bahan Pangan</SelectItem>
+                <SelectItem value="Bahan Non-Pangan">Bahan Non-Pangan</SelectItem>
                 <SelectItem value="Kemasan">Kemasan</SelectItem>
-                <SelectItem value="Bahan Penolong">Bahan Penolong</SelectItem>
-                <SelectItem value="Finished Goods">Finished Goods</SelectItem>
-                <SelectItem value="Spare Part">Spare Part</SelectItem>
+                <SelectItem value="Bahan Bakar">Bahan Bakar</SelectItem>
+                <SelectItem value="Lainnya">Lainnya</SelectItem>
               </SelectContent>
             </Select>
           </div>

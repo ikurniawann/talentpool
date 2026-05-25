@@ -1,4 +1,3 @@
-import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { NextRequest } from "next/server";
 import { z } from "zod";
@@ -80,7 +79,21 @@ export async function GET(
         is_active,
         created_at,
         updated_at,
-        raw_material:raw_material_id(id, nama, kode)
+        raw_material:raw_material_id(
+          id,
+          nama,
+          kode,
+          satuan_besar:satuan_besar_id(id,nama,kode)
+        ),
+        satuan:satuan_id(id, nama, kode),
+        purchase_order_item:purchase_order_item_id(
+          id,
+          qty_ordered,
+          qty_received,
+          harga_satuan,
+          subtotal,
+          satuan:satuan_id(id,nama,kode)
+        )
       `)
       .eq("grn_id", id)
       .eq("is_active", true);
@@ -90,25 +103,25 @@ export async function GET(
       throw itemsError;
     }
 
-    console.log(`[GRN/${id}] Fetched ${items?.length || 0} items`);
-    if (items && items.length > 0) {
-      console.log(`[GRN/${id}] First item:`, JSON.stringify(items[0], null, 2));
-      console.log(`[GRN/${id}] purchase_order_item_ids:`, items.map(i => i.purchase_order_item_id));
-    }
-
     // Get related data
     const [{ data: delivery }, { data: po }, { data: supplier }] = await Promise.all([
-      supabase.from("deliveries").select("id, nomor_resi, no_resi").eq("id", grn.delivery_id).single(),
-      supabase.from("purchase_orders").select("id, nomor_po").eq("id", grn.purchase_order_id).single(),
-      supabase.from("suppliers").select("id, nama_supplier, kode").eq("id", grn.supplier_id).single(),
+      grn.delivery_id
+        ? supabase.from("deliveries").select("*").eq("id", grn.delivery_id).maybeSingle()
+        : Promise.resolve({ data: null }),
+      supabase.from("purchase_orders").select("id, nomor_po, status, tanggal_po, total").eq("id", grn.purchase_order_id).maybeSingle(),
+      supabase.from("suppliers").select("id, nama_supplier, kode, email, telepon").eq("id", grn.supplier_id).maybeSingle(),
     ]);
 
     return successResponse(
       {
         ...grn,
-        delivery_number: delivery?.no_resi || delivery?.nomor_resi,
+        delivery_number: delivery?.no_resi || delivery?.nomor_resi || delivery?.no_surat_jalan,
+        delivery,
+        purchase_order: po,
         po_number: po?.nomor_po,
+        po_status: po?.status,
         supplier_name: supplier?.nama_supplier,
+        supplier,
         items: items || [],
       },
       "GRN detail retrieved"
@@ -207,7 +220,15 @@ export async function PATCH(
     }
 
     // Update GRN header
-    const updateData: any = {
+    const updateData: {
+      updated_by: string;
+      updated_at: string;
+      status?: GrnStatus;
+      catatan?: string;
+      tanggal_penerimaan?: string;
+      total_item_diterima?: number;
+      total_item_ditolak?: number;
+    } = {
       updated_by: user.id,
       updated_at: new Date().toISOString(),
     };

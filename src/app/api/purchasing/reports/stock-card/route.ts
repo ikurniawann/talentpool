@@ -49,6 +49,11 @@ type MovementRow = {
   } | null;
 };
 
+type InventoryCostRow = {
+  raw_material_id: string;
+  unit_cost?: number | string | null;
+};
+
 function toNumber(value: unknown) {
   const numeric = Number(value);
   return Number.isFinite(numeric) ? numeric : 0;
@@ -78,7 +83,10 @@ function normalizeMaterial(row: MaterialStockRow) {
   };
 }
 
-function normalizeMovement(row: MovementRow) {
+function normalizeMovement(row: MovementRow, fallbackCostByMaterial: Map<string, number>) {
+  const unitCost = toNumber(row.unit_cost) || fallbackCostByMaterial.get(row.raw_material_id) || 0;
+  const totalCost = toNumber(row.total_cost) || Math.abs(toNumber(row.jumlah)) * unitCost;
+
   return {
     id: row.id,
     raw_material_id: row.raw_material_id,
@@ -89,8 +97,8 @@ function normalizeMovement(row: MovementRow) {
     jumlah: toNumber(row.jumlah),
     qty_before: toNumber(row.qty_before),
     qty_after: toNumber(row.qty_after),
-    unit_cost: toNumber(row.unit_cost),
-    total_cost: toNumber(row.total_cost),
+    unit_cost: unitCost,
+    total_cost: totalCost,
     reference_type: row.reference_type || "-",
     reference_id: row.reference_id || null,
     reference_number: row.reference_number || "-",
@@ -158,7 +166,24 @@ export async function GET(request: NextRequest) {
     const { data: movementsData, error: movementsError } = await movementsQuery;
     if (movementsError) throw movementsError;
 
-    const movements = ((movementsData || []) as unknown as MovementRow[]).map(normalizeMovement);
+    const movementRows = (movementsData || []) as unknown as MovementRow[];
+    const movementMaterialIds = Array.from(new Set(movementRows.map((movement) => movement.raw_material_id).filter(Boolean)));
+    let fallbackCostByMaterial = new Map<string, number>();
+
+    if (movementMaterialIds.length > 0) {
+      const { data: inventoryCosts, error: inventoryCostError } = await supabase
+        .from("inventory")
+        .select("raw_material_id, unit_cost")
+        .in("raw_material_id", movementMaterialIds)
+        .eq("is_active", true);
+
+      if (inventoryCostError) throw inventoryCostError;
+      fallbackCostByMaterial = new Map(
+        ((inventoryCosts || []) as InventoryCostRow[]).map((item) => [item.raw_material_id, toNumber(item.unit_cost)])
+      );
+    }
+
+    const movements = movementRows.map((movement) => normalizeMovement(movement, fallbackCostByMaterial));
 
     let openingBalance = movements[0]?.qty_before || 0;
     if (params.material_id && dateFrom) {

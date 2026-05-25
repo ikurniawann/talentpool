@@ -12,6 +12,8 @@ import {
   ArrowUturnLeftIcon,
   ArchiveBoxIcon,
   DocumentChartBarIcon,
+  ScaleIcon,
+  BanknotesIcon,
 } from "@heroicons/react/24/outline";
 
 export interface MenuBadge {
@@ -30,6 +32,12 @@ export interface SidebarItem {
 }
 
 export const PURCHASING_MENU_ITEMS: SidebarItem[] = [
+  {
+    key: "units",
+    label: "Satuan",
+    href: "/dashboard/purchasing/units",
+    icon: ScaleIcon,
+  },
   {
     key: "suppliers",
     label: "Supplier",
@@ -61,6 +69,12 @@ export const PURCHASING_MENU_ITEMS: SidebarItem[] = [
     href: "/dashboard/purchasing/grn",
     icon: TruckIcon,
     badge: { key: "pending_grn", label: "0", color: "orange" },
+  },
+  {
+    key: "vendor-payments",
+    label: "Pembayaran Vendor",
+    href: "/dashboard/purchasing/vendor-payments",
+    icon: BanknotesIcon,
   },
   {
     key: "qc",

@@ -10,6 +10,8 @@ export type GrnStatus = "pending" | "partially_received" | "received" | "rejecte
 type DeliveryForGrn = {
   id: string;
   purchase_order_id?: string | null;
+  supplier_id?: string | null;
+  no_surat_jalan?: string | null;
   status?: string | null;
 };
 
@@ -18,6 +20,8 @@ type POItemForGrn = {
   raw_material_id?: string | null;
   qty_ordered?: number | null;
   qty_received?: number | null;
+  harga_satuan?: number | null;
+  unit_price?: number | null;
   raw_material?: {
     id: string;
     nama: string;
@@ -105,7 +109,7 @@ export async function validateDeliveryCanReceive(
   }
 
   // Get PO items for reference — always use adminSupabase-level access here
-  const { data: poItems } = await supabase
+  const { data: poItems, error: poItemsError } = await supabase
     .from("purchase_order_items")
     .select(`
       id,
@@ -125,7 +129,10 @@ export async function validateDeliveryCanReceive(
     valid: errors.length === 0,
     errors,
     delivery: delivery as DeliveryForGrn,
-    items: (poItems || []) as POItemForGrn[],
+    items: (poItems || []).map((item) => ({
+      ...item,
+      raw_material: Array.isArray(item.raw_material) ? item.raw_material[0] ?? null : item.raw_material,
+    })) as POItemForGrn[],
   };
 }
 

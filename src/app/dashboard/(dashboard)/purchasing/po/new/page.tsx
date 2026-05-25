@@ -342,7 +342,8 @@ export default function NewPOPage() {
     if (field === "raw_material_id") {
       const material = materials.find((m) => m.id === value);
       newItems[index].raw_material_name = material?.nama;
-      newItems[index].raw_material_unit = material?.satuan;
+      newItems[index].raw_material_unit = material?.satuan_besar_nama || material?.satuan;
+      newItems[index].satuan_id = material?.satuan_besar_id || newItems[index].satuan_id;
     }
 
     setItems(newItems);
@@ -684,7 +685,23 @@ export default function NewPOPage() {
                     />
                   </div>
 
-
+                  <div className="col-span-2 space-y-1">
+                    <Label className="text-xs">Satuan</Label>
+                    <Combobox
+                      options={units.map((unit) => ({
+                        value: unit.id,
+                        label: unit.nama,
+                        description: unit.kode,
+                      }))}
+                      value={item.satuan_id || ""}
+                      onChange={(value) => updateItem(index, "satuan_id", value || undefined)}
+                      placeholder={item.raw_material_unit || "Pilih satuan..."}
+                      searchPlaceholder="Cari satuan..."
+                      emptyMessage="Satuan tidak ditemukan"
+                      allowClear
+                      disabled={loading || isPrSourced}
+                    />
+                  </div>
 
                   <div className="col-span-2 space-y-1">
                     <Label className="text-xs">Harga *</Label>

@@ -205,6 +205,11 @@ export async function POST(request: NextRequest) {
       adminSupabase,
       validated.delivery_id
     );
+
+    if (!delivery?.purchase_order_id) {
+      throw ApiError.badRequest(errors.join("; ") || "Delivery tidak valid untuk penerimaan barang");
+    }
+
     // Re-fetch PO items directly with adminSupabase to ensure we get data (bypass RLS)
     const { data: freshPoItems } = await adminSupabase
       .from("purchase_order_items")

@@ -1,6 +1,41 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 
+type PurchaseOrderKpiRow = {
+  total?: number | null;
+  grand_total?: number | null;
+};
+
+type ActionPoRow = {
+  id: string;
+  nomor_po?: string | null;
+  tanggal_po?: string | null;
+  tanggal_kirim_estimasi?: string | null;
+  status?: string | null;
+  nama_supplier?: string | null;
+};
+
+type StockAlertRow = {
+  id: string;
+  nama?: string | null;
+  kategori?: string | null;
+  qty_onhand?: number | null;
+  min_stock?: number | null;
+  satuan?: string | null;
+};
+
+type MonthlyPoRow = {
+  total?: number | null;
+  grand_total?: number | null;
+  created_at?: string | null;
+  source_type?: string | null;
+};
+
+type SupplierRow = {
+  id: string;
+  nama_supplier?: string | null;
+};
+
 export async function GET(request: Request) {
   try {
     const supabase = await createClient();
@@ -9,17 +44,6 @@ export async function GET(request: Request) {
     // Get date range from query params
     const startDate = searchParams.get("start_date");
     const endDate = searchParams.get("end_date");
-
-    // Date range for filtering POs
-    let poDateFilter = {};
-    if (startDate || endDate) {
-      if (startDate) {
-        poDateFilter = { ...poDateFilter, gte: `${startDate}T00:00:00.000Z` };
-      }
-      if (endDate) {
-        poDateFilter = { ...poDateFilter, lte: `${endDate}T23:59:59.999Z` };
-      }
-    }
 
     // ── KPIs ───────────────────────────────────────────────────────────────
     
@@ -55,22 +79,22 @@ export async function GET(request: Request) {
     ] = await Promise.all([
       supabase
         .from("v_purchase_orders")
-        .select("id, total, created_at")
+        .select("id, total, grand_total, created_at")
         .gte("created_at", startOfMonth.toISOString())
         .lte("created_at", endOfMonth.toISOString()),
       supabase
         .from("v_purchase_orders")
-        .select("id, total, created_at")
+        .select("id, total, grand_total, created_at")
         .gte("created_at", prevMonthStart.toISOString())
         .lte("created_at", prevMonthEnd.toISOString()),
       supabase
-        .from("raw_materials")
+        .from("v_raw_materials_stock")
         .select("id", { count: "exact", head: true })
-        .filter("qty_on_hand", "lt", "minimum_stok"),
+        .in("status_stok", ["MENIPIS", "HABIS"]),
       supabase
         .from("v_purchase_orders")
         .select("id", { count: "exact", head: true })
-        .eq("status", "waiting_approval"),
+        .eq("status", "pending_approval"),
     ]);
 
     if (poError) {
@@ -84,8 +108,8 @@ export async function GET(request: Request) {
       ? ((totalPOCount - prevPOCount) / prevPOCount) * 100
       : 0;
 
-    const totalPOValue = currentMonthPOs?.reduce((sum, po) => sum + (po.total || 0), 0) ?? 0;
-    const prevPOValue = prevMonthPOs?.reduce((sum, po) => sum + (po.total || 0), 0) ?? 0;
+    const totalPOValue = (currentMonthPOs as PurchaseOrderKpiRow[] | null)?.reduce((sum, po) => sum + (po.grand_total || po.total || 0), 0) ?? 0;
+    const prevPOValue = (prevMonthPOs as PurchaseOrderKpiRow[] | null)?.reduce((sum, po) => sum + (po.grand_total || po.total || 0), 0) ?? 0;
     const totalPOValueChange = prevPOValue > 0
       ? ((totalPOValue - prevPOValue) / prevPOValue) * 100
       : 0;
@@ -102,11 +126,11 @@ export async function GET(request: Request) {
         status,
         nama_supplier
       `)
-      .or("status.eq.sent,status.eq.waiting_approval")
+      .or("status.eq.sent,status.eq.pending_approval")
       .order("tanggal_kirim_estimasi", { ascending: true, nullsFirst: false })
       .limit(10);
 
-    const formattedActionPOs = actionPOsData?.map((po: any) => ({
+    const formattedActionPOs = ((actionPOsData || []) as ActionPoRow[]).map((po) => ({
       id: po.id,
       po_number: po.nomor_po,
       supplier_name: po.nama_supplier || "Unknown",
@@ -120,48 +144,43 @@ export async function GET(request: Request) {
 
     // ── Stock Alerts ───────────────────────────────────────────────────────
 
-    const [{ data: stockAlertsData }, { data: units }] = await Promise.all([
-      supabase
-        .from("raw_materials")
-        .select("id, name, category, qty_on_hand, minimum_stok, unit_id")
-        .filter("qty_on_hand", "lt", "minimum_stok")
-        .order("qty_on_hand", { ascending: true })
-        .limit(10),
-      supabase.from("units").select("id, name"),
-    ]);
+    const { data: stockAlertsData } = await supabase
+      .from("v_raw_materials_stock")
+      .select("id, nama, kategori, qty_onhand, min_stock, satuan")
+      .in("status_stok", ["MENIPIS", "HABIS"])
+      .order("qty_onhand", { ascending: true })
+      .limit(10);
 
-    const unitMap = new Map(units?.map(u => [u.id, u.name]) || []);
-
-    const formattedStockAlerts = stockAlertsData?.map((item: any) => ({
+    const formattedStockAlerts = ((stockAlertsData || []) as StockAlertRow[]).map((item) => ({
       id: item.id,
-      material_name: item.name,
-      category: item.category || "Uncategorized",
-      qty_on_hand: item.qty_on_hand || 0,
-      minimum_stok: item.minimum_stok || 0,
-      unit: unitMap.get(item.unit_id) || "pcs",
-      alert_level: item.qty_on_hand === 0 ? "critical" : "warning",
+      material_name: item.nama,
+      category: item.kategori || "Uncategorized",
+      qty_on_hand: item.qty_onhand || 0,
+      minimum_stok: item.min_stock || 0,
+      unit: item.satuan || "unit",
+      alert_level: item.qty_onhand === 0 ? "critical" : "warning",
     })) ?? [];
 
     // ── Monthly Trends (simplified) ───────────────────────────────────────
 
     const { data: monthlyData } = await supabase
       .from("v_purchase_orders")
-      .select("total, created_at, kategori")
+      .select("grand_total, total, created_at, source_type")
       .order("created_at", { ascending: true })
       .limit(100);
 
-    const monthlyTrends: Record<string, any>[] = [];
+    const monthlyTrends: Array<Record<string, string | number>> = [];
     if (monthlyData) {
-      const months: Record<string, Record<string, any>> = {};
-      monthlyData.forEach((po: any) => {
-        const date = new Date(po.created_at);
+      const months: Record<string, Record<string, string | number>> = {};
+      (monthlyData as MonthlyPoRow[]).forEach((po) => {
+        const date = new Date(po.created_at || new Date().toISOString());
         const monthKey = date.toLocaleString("id-ID", { month: "short" });
-        const category = po.kategori || "Lainnya";
+        const category = po.source_type || "manual";
         
         if (!months[monthKey]) {
           months[monthKey] = { month: monthKey };
         }
-        months[monthKey][category] = (months[monthKey][category] || 0) + (po.total || 0);
+        months[monthKey][category] = (months[monthKey][category] || 0) + (po.grand_total || po.total || 0);
       });
       
       Object.values(months).forEach((data) => {
@@ -171,18 +190,18 @@ export async function GET(request: Request) {
 
     // ── HPP Trends (simplified - empty for now) ───────────────────────────
 
-    const formattedHPPTrends: any[] = [];
+    const formattedHPPTrends: Array<Record<string, string | number>> = [];
 
     // ── Supplier Performance (simplified) ─────────────────────────────────
 
     const { data: suppliersData } = await supabase
       .from("suppliers")
-      .select("id, name")
+      .select("id, nama_supplier")
       .limit(10);
 
-    const formattedSupplierPerf = suppliersData?.map((supplier: any) => ({
+    const formattedSupplierPerf = ((suppliersData || []) as SupplierRow[]).map((supplier) => ({
       supplier_id: supplier.id,
-      supplier_name: supplier.name,
+      supplier_name: supplier.nama_supplier,
       on_time_rate: 85,
       qc_pass_rate: 95,
       total_deliveries: 0,
@@ -204,10 +223,18 @@ export async function GET(request: Request) {
       hppTrends: formattedHPPTrends,
       supplierPerformance: formattedSupplierPerf,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Dashboard API Error:", error);
-    const errorMessage = error?.message || String(error);
-    const errorDetails = error?.details || error?.hint || error?.code || '';
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    const errorDetails = typeof error === "object" && error !== null
+      ? "details" in error
+        ? String(error.details)
+        : "hint" in error
+          ? String(error.hint)
+          : "code" in error
+            ? String(error.code)
+            : ""
+      : "";
     return NextResponse.json(
       { 
         error: "Failed to fetch dashboard data", 

@@ -335,7 +335,6 @@ export default function RawMaterialsPage() {
                       <TableHead className="text-gray-900">Kode</TableHead>
                       <TableHead className="text-gray-900">Nama Bahan</TableHead>
                       <TableHead className="text-gray-900">Kategori</TableHead>
-                      <TableHead className="text-gray-900">COA</TableHead>
                       <TableHead className="text-right text-gray-900">Stok Tersedia</TableHead>
                       <TableHead className="text-right text-gray-900">Min. Stok</TableHead>
                       <TableHead className="text-right text-gray-900">Harga Rata-rata</TableHead>
@@ -359,22 +358,6 @@ export default function RawMaterialsPage() {
                           </Link>
                         </TableCell>
                         <TableCell className="text-gray-700">{getCategoryLabel(material.kategori)}</TableCell>
-                        <TableCell>
-                          <div className="flex flex-wrap gap-1">
-                            {material.coa_production && (
-                              <Badge className="bg-amber-100 text-amber-700">Prod</Badge>
-                            )}
-                            {material.coa_rnd && (
-                              <Badge className="bg-blue-100 text-blue-700">RnD</Badge>
-                            )}
-                            {material.coa_asset && (
-                              <Badge className="bg-green-100 text-green-700">Asset</Badge>
-                            )}
-                            {!material.coa_production && !material.coa_rnd && !material.coa_asset && (
-                              <span className="text-sm text-gray-400">-</span>
-                            )}
-                          </div>
-                        </TableCell>
                         <TableCell className="text-right">
                           <span
                             className={

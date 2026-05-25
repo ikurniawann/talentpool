@@ -136,7 +136,7 @@ export default function NewRawMaterialPage() {
                       value={formData.kode}
                       onChange={(e) => setFormData({ ...formData, kode: e.target.value })}
                       placeholder="Auto-generate"
-                      maxLength={50}
+                      maxLength={20}
                       className="h-9 text-sm"
                     />
                   </div>

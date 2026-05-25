@@ -35,6 +35,7 @@ interface Delivery {
   nomor_resi: string;
   no_surat_jalan: string;
   kurir: string;
+  ekspedisi?: string;
   status: string;
   purchase_order_id: string;
   supplier_id: string;
@@ -278,9 +279,20 @@ export default function CreateGrnPage() {
         }),
       });
 
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || "Gagal membuat penerimaan barang");
+      const responseText = await response.text();
+      let result: { success?: boolean; error?: string; message?: string } | null = null;
+      try {
+        result = responseText ? JSON.parse(responseText) : null;
+      } catch {
+        result = { error: responseText || "Response server tidak valid" };
+      }
+
+      if (!response.ok || result?.success === false) {
+        const message =
+          result?.error ||
+          result?.message ||
+          "Gagal membuat penerimaan barang";
+        throw new Error(message);
       }
 
       toast({

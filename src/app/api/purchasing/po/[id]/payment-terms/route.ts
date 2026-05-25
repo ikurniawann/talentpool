@@ -1,0 +1,113 @@
+import { NextRequest } from "next/server";
+import { createServiceClient } from "@/lib/supabase/service-client";
+import { z } from "zod";
+
+const termSchema = z.object({
+  term_no: z.number().int().min(1).optional(),
+  description: z.string().min(1).default("Termin"),
+  due_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  amount: z.number().min(0),
+  notes: z.string().optional().nullable(),
+});
+
+function getErrorMessage(error: unknown, fallback: string) {
+  return error instanceof Error ? error.message : fallback;
+}
+
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id } = await params;
+    const supabase = createServiceClient();
+
+    const [{ data: terms, error: termsError }, { data: payments, error: paymentsError }] = await Promise.all([
+      supabase
+        .from("purchase_order_payment_terms")
+        .select("*")
+        .eq("purchase_order_id", id)
+        .eq("is_active", true)
+        .order("term_no", { ascending: true }),
+      supabase
+        .from("vendor_payments")
+        .select("*")
+        .eq("purchase_order_id", id)
+        .neq("status", "void")
+        .order("payment_date", { ascending: false }),
+    ]);
+
+    if (termsError) throw termsError;
+    if (paymentsError) throw paymentsError;
+
+    return Response.json({ success: true, data: { terms: terms || [], payments: payments || [] } });
+  } catch (error: unknown) {
+    console.error("Error fetching PO payment terms:", error);
+    return Response.json(
+      { success: false, message: getErrorMessage(error, "Gagal mengambil termin pembayaran PO") },
+      { status: 500 }
+    );
+  }
+}
+
+export async function POST(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id } = await params;
+    const supabase = createServiceClient();
+    const body = await request.json();
+    const validated = termSchema.parse(body);
+
+    const { data: po, error: poError } = await supabase
+      .from("purchase_orders")
+      .select("id, supplier_id")
+      .eq("id", id)
+      .single();
+
+    if (poError || !po) {
+      return Response.json({ success: false, message: "PO tidak ditemukan" }, { status: 404 });
+    }
+
+    const { data: latestTerm, error: latestError } = await supabase
+      .from("purchase_order_payment_terms")
+      .select("term_no")
+      .eq("purchase_order_id", id)
+      .eq("is_active", true)
+      .order("term_no", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (latestError) throw latestError;
+
+    const termNo = validated.term_no || Number(latestTerm?.term_no || 0) + 1;
+    const { data, error } = await supabase
+      .from("purchase_order_payment_terms")
+      .insert({
+        purchase_order_id: id,
+        supplier_id: po.supplier_id,
+        term_no: termNo,
+        description: validated.description,
+        due_date: validated.due_date,
+        amount: validated.amount,
+        notes: validated.notes || null,
+        status: validated.amount <= 0 ? "paid" : "unpaid",
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    return Response.json({ success: true, data, message: "Termin pembayaran berhasil ditambahkan" }, { status: 201 });
+  } catch (error: unknown) {
+    console.error("Error creating PO payment term:", error);
+    if (error instanceof z.ZodError) {
+      return Response.json({ success: false, message: "Validasi gagal", errors: error.flatten().fieldErrors }, { status: 400 });
+    }
+    return Response.json(
+      { success: false, message: getErrorMessage(error, "Gagal membuat termin pembayaran PO") },
+      { status: 500 }
+    );
+  }
+}

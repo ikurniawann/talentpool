@@ -44,6 +44,7 @@ const STATUS_OPTIONS: { value: POStatus | "all"; label: string }[] = [
   { value: "pending_approval", label: "Menunggu Persetujuan" },
   { value: "approved", label: "Disetujui" },
   { value: "sent", label: "Terkirim" },
+  { value: "partial", label: "Diterima Sebagian" },
   { value: "partially_received", label: "Diterima Sebagian" },
   { value: "received", label: "Diterima Penuh" },
   { value: "rejected", label: "Ditolak" },
@@ -304,6 +305,7 @@ export default function PurchaseOrdersPage() {
       pending_approval: "bg-yellow-100 text-yellow-800",
       approved: "bg-blue-100 text-blue-800",
       sent: "bg-purple-100 text-purple-800",
+      partial: "bg-yellow-100 text-yellow-800",
       partially_received: "bg-yellow-100 text-yellow-800",
       received: "bg-green-100 text-green-800",
       rejected: "bg-red-100 text-red-800",
@@ -314,12 +316,34 @@ export default function PurchaseOrdersPage() {
       pending_approval: "Menunggu Persetujuan",
       approved: "Disetujui",
       sent: "Terkirim",
+      partial: "Diterima Sebagian",
       partially_received: "Diterima Sebagian",
       received: "Diterima Penuh",
       rejected: "Ditolak",
       cancelled: "Dibatalkan",
     };
     return <Badge className={styles[normalized] || "bg-gray-100 text-gray-800"}>{labels[normalized] || status}</Badge>;
+  };
+
+  const getLifecycleBadge = (po: PurchaseOrderWithStats) => {
+    const lifecycle = po.lifecycle_status || "in_progress";
+    const styles: Record<string, string> = {
+      draft: "bg-gray-100 text-gray-700",
+      in_progress: "bg-blue-100 text-blue-700",
+      waiting_payment: "bg-amber-100 text-amber-700",
+      waiting_receipt: "bg-purple-100 text-purple-700",
+      completed: "bg-emerald-100 text-emerald-700",
+      cancelled: "bg-red-100 text-red-700",
+    };
+    const labels: Record<string, string> = {
+      draft: "Draft",
+      in_progress: "Berjalan",
+      waiting_payment: "Menunggu Pembayaran",
+      waiting_receipt: "Menunggu Barang",
+      completed: "Selesai",
+      cancelled: "Dibatalkan",
+    };
+    return <Badge className={styles[lifecycle] || "bg-blue-100 text-blue-700"}>{labels[lifecycle] || lifecycle}</Badge>;
   };
 
   const formatCurrency = (num: number) => {
@@ -517,25 +541,35 @@ export default function PurchaseOrdersPage() {
                   <TableCell className="text-right font-medium">
                     {formatCurrency(po.grand_total || 0)}
                   </TableCell>
-                  <TableCell className="text-center">{getStatusBadge(po.status)}</TableCell>
+                  <TableCell className="text-center">
+                    <div className="flex flex-col items-center gap-1">
+                      {getStatusBadge(po.status)}
+                      {getLifecycleBadge(po)}
+                    </div>
+                  </TableCell>
                   <TableCell className="text-right">
                     {normalizeStatus(po.status) !== "draft" && normalizeStatus(po.status) !== "cancelled" && (
-                      <div className="flex items-center gap-2">
+                      <div className="grid gap-1">
+                        <div className="flex items-center gap-2">
                         <div className="w-24 h-2 bg-gray-200 rounded-full overflow-hidden">
                           <div
                             className={`h-full ${
-                              (po.received_percentage || 0) >= 100
+                              (po.overall_progress_pct || 0) >= 100
                                 ? "bg-green-500"
-                                : (po.received_percentage || 0) > 0
+                                : (po.overall_progress_pct || 0) > 0
                                 ? "bg-yellow-400"
                                 : "bg-gray-300"
                             }`}
-                            style={{ width: `${po.received_percentage || 0}%` }}
+                            style={{ width: `${po.overall_progress_pct || 0}%` }}
                           />
                         </div>
                         <span className="text-xs text-muted-foreground">
-                          {po.received_percentage || 0}%
+                          {po.overall_progress_pct || 0}%
                         </span>
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          Barang {po.received_percentage || 0}% · Bayar {po.payment_progress_pct || 0}%
+                        </div>
                       </div>
                     )}
                   </TableCell>

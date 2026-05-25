@@ -26,6 +26,8 @@ import {
   PurchaseOrderItem,
   PurchaseOrderFormData,
   PurchaseOrderItemFormData,
+  PurchaseOrderPaymentTerm,
+  VendorPayment,
   POListParams,
   Delivery,
   DeliveryFormData,
@@ -56,7 +58,10 @@ async function fetchApi<T>(
 
   if (!response.ok) {
     const error = await response.json().catch(() => ({}));
-    throw new Error(error.message || `HTTP ${response.status}`);
+    const fieldErrors = error.errors && typeof error.errors === "object"
+      ? Object.values(error.errors).flat().filter(Boolean).join(", ")
+      : "";
+    throw new Error(fieldErrors || error.message || error.error || `HTTP ${response.status}`);
   }
 
   return response.json();
@@ -638,6 +643,60 @@ export async function cancelPurchaseOrder(
     {
       method: "POST",
       body: JSON.stringify({ reason }),
+    }
+  );
+  return response.data;
+}
+
+export async function getPurchaseOrderPaymentTerms(id: string): Promise<{
+  terms: PurchaseOrderPaymentTerm[];
+  payments: VendorPayment[];
+}> {
+  const response = await fetchApi<{
+    data: {
+      terms: PurchaseOrderPaymentTerm[];
+      payments: VendorPayment[];
+    };
+  }>(`${BASE}/po/${id}/payment-terms`);
+  return response.data;
+}
+
+export async function createPurchaseOrderPaymentTerm(
+  id: string,
+  payload: {
+    term_no?: number;
+    description: string;
+    due_date: string;
+    amount: number;
+    notes?: string | null;
+  }
+): Promise<PurchaseOrderPaymentTerm> {
+  const response = await fetchApi<{ data: PurchaseOrderPaymentTerm }>(
+    `${BASE}/po/${id}/payment-terms`,
+    {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }
+  );
+  return response.data;
+}
+
+export async function createVendorPayment(
+  id: string,
+  payload: {
+    payment_term_id?: string | null;
+    payment_date?: string;
+    amount: number;
+    method: VendorPayment["method"];
+    reference_number?: string | null;
+    notes?: string | null;
+  }
+): Promise<VendorPayment> {
+  const response = await fetchApi<{ data: VendorPayment }>(
+    `${BASE}/po/${id}/payments`,
+    {
+      method: "POST",
+      body: JSON.stringify(payload),
     }
   );
   return response.data;
