@@ -76,7 +76,7 @@ export function POForm({ vendors, prData, onSubmit, isLoading }: POFormProps) {
     setValue,
     formState: { errors },
   } = useForm<POFormData>({
-    resolver: zodResolver(poSchema) as any,
+    resolver: zodResolver(poSchema),
     defaultValues: {
       pr_id: prData?.id,
       order_date: new Date().toISOString().split("T")[0],
@@ -419,10 +419,10 @@ export function POForm({ vendors, prData, onSubmit, isLoading }: POFormProps) {
 
       {/* Submit */}
       <div className="flex justify-end gap-3 pt-4 border-t">
-        <Button type="submit" variant="outline" disabled={isLoading}>
+        <Button type="submit" variant="outline" disabled={isLoading} className="purchasing-secondary-button">
           Simpan Draft
         </Button>
-        <Button type="submit" disabled={isLoading}>
+        <Button type="submit" disabled={isLoading} className="purchasing-main-button">
           {isLoading ? "Menyimpan..." : "Buat PO"}
         </Button>
       </div>

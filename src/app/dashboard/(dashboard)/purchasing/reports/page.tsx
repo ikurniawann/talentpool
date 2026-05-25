@@ -49,24 +49,24 @@ const REPORT_CARDS = [
 
 export default function ReportsHubPage() {
   return (
-    <div className="p-6">
+    <div className="space-y-6">
       <BreadcrumbNav items={[
         { label: "Purchasing", href: "/dashboard/purchasing" },
         { label: "Laporan" },
       ]} />
 
-      <div className="mt-4 mb-8">
-        <h1 className="text-2xl font-bold">Laporan Purchasing</h1>
-        <p className="text-sm text-gray-500 mt-1">Pilih laporan yang ingin ditampilkan</p>
+      <div className="border-b border-gray-200/70 pb-4">
+        <h1 className="text-2xl font-bold text-gray-900">Laporan Purchasing</h1>
+        <p className="mt-1 text-sm text-gray-500">Pilih laporan yang ingin ditampilkan</p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
         {REPORT_CARDS.map((card) => (
-          <Card key={card.href} className="hover:shadow-md transition-shadow">
+          <Card key={card.href} className="transition-shadow hover:shadow-md">
             <CardHeader className="pb-3">
               <div className="flex items-center gap-3">
-                <div className={`p-2 rounded-lg ${card.bg}`}>
-                  <card.icon className={`w-6 h-6 ${card.accent}`} />
+                <div className={`rounded-lg p-2 ${card.bg}`}>
+                  <card.icon className={`h-6 w-6 ${card.accent}`} />
                 </div>
                 <CardTitle className="text-lg">{card.title}</CardTitle>
               </div>
@@ -74,9 +74,9 @@ export default function ReportsHubPage() {
             <CardContent className="space-y-4">
               <p className="text-sm text-gray-600">{card.description}</p>
               <Link href={card.href}>
-                <Button variant="outline" size="sm" className={`w-full border-current ${card.accent} hover:bg-opacity-10`}>
+                <Button variant="outline" size="sm" className={`w-full border-current ${card.accent}`}>
                   Lihat Laporan
-                  <ArrowRightIcon className="w-4 h-4 ml-2" />
+                  <ArrowRightIcon className="ml-2 h-4 w-4" />
                 </Button>
               </Link>
             </CardContent>

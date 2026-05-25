@@ -9,15 +9,15 @@ export type GrnStatus = "pending" | "partially_received" | "received" | "rejecte
 
 type DeliveryForGrn = {
   id: string;
-  purchase_order_id: string;
-  status: string;
+  purchase_order_id?: string | null;
+  status?: string | null;
 };
 
 type POItemForGrn = {
   id: string;
-  raw_material_id: string;
-  qty_ordered: number;
-  qty_received: number;
+  raw_material_id?: string | null;
+  qty_ordered?: number | null;
+  qty_received?: number | null;
   raw_material?: {
     id: string;
     nama: string;
@@ -47,13 +47,20 @@ export async function generateGrnNumber(supabase: SupabaseClient): Promise<strin
   const today = new Date();
   const datePrefix = `GRN-${today.getFullYear()}${String(today.getMonth() + 1).padStart(2, "0")}${String(today.getDate()).padStart(2, "0")}`;
 
-  // Get count of GRNs today
-  const { count } = await supabase
+  // Ambil sequence terakhir agar aman jika ada nomor yang pernah dihapus/skip.
+  const { data } = await supabase
     .from("grn")
-    .select("*", { count: "exact", head: true })
-    .ilike("nomor_grn", `${datePrefix}%`);
+    .select("nomor_grn")
+    .ilike("nomor_grn", `${datePrefix}-%`)
+    .order("nomor_grn", { ascending: false })
+    .limit(1);
 
-  const sequence = (count || 0) + 1;
+  let sequence = 1;
+  if (data && data.length > 0) {
+    const lastSeq = Number.parseInt(data[0].nomor_grn.split("-").at(-1) || "", 10);
+    if (Number.isFinite(lastSeq)) sequence = lastSeq + 1;
+  }
+
   return `${datePrefix}-${String(sequence).padStart(4, "0")}`;
 }
 
@@ -98,7 +105,7 @@ export async function validateDeliveryCanReceive(
   }
 
   // Get PO items for reference — always use adminSupabase-level access here
-  const { data: poItems, error: poItemsError } = await supabase
+  const { data: poItems } = await supabase
     .from("purchase_order_items")
     .select(`
       id,

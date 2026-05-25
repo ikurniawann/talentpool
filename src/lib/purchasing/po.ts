@@ -1,5 +1,4 @@
 import { SupabaseClient } from "@supabase/supabase-js";
-import { createClient } from "@/lib/supabase/server";
 
 // ============================================================
 // PO State Machine
@@ -33,29 +32,31 @@ export function validateTransition(from: POStatus, to: POStatus): void {
 
 // ============================================================
 // PO Number Generator
-// Format: PO-{YYYY}{MM}-{SEQ:4}
+// Format: PO-{YYYY}{MM}{DD}-{SEQ:4}
 // ============================================================
 
 export async function generatePONumber(supabase: SupabaseClient): Promise<string> {
   const now = new Date();
   const year = now.getFullYear();
   const month = String(now.getMonth() + 1).padStart(2, "0");
+  const day = String(now.getDate()).padStart(2, "0");
+  const prefix = `PO-${year}${month}${day}`;
 
   const { data } = await supabase
     .from("purchase_orders")
-    .select("po_number")
-    .ilike("po_number", `PO-${year}${month}-%`)
-    .order("po_number", { ascending: false })
+    .select("nomor_po")
+    .ilike("nomor_po", `${prefix}-%`)
+    .order("nomor_po", { ascending: false })
     .limit(1);
 
   let seq = 1;
   if (data && data.length > 0) {
-    const parts = data[0].po_number.split("-");
+    const parts = data[0].nomor_po.split("-");
     const lastSeq = parseInt(parts[parts.length - 1]);
     if (!isNaN(lastSeq)) seq = lastSeq + 1;
   }
 
-  return `PO-${year}${month}-${String(seq).padStart(4, "0")}`;
+  return `${prefix}-${String(seq).padStart(4, "0")}`;
 }
 
 // ============================================================
@@ -262,6 +263,14 @@ export interface POReceiveInput {
   }[];
 }
 
+type ReceivablePOItem = {
+  id: string;
+  qty: number;
+  qty_received?: number | null;
+  bahan_baku_id: string;
+  unit_price?: number | null;
+};
+
 export async function receivePOItems(
   supabase: SupabaseClient,
   input: POReceiveInput,
@@ -282,7 +291,9 @@ export async function receivePOItems(
   const receivedItems: { po_item_id: string; qty: number }[] = [];
 
   for (const inputItem of input.items) {
-    const poItem = (po.items as any[])?.find((i) => i.id === inputItem.po_item_id);
+    const poItem = (po.items as ReceivablePOItem[] | undefined)?.find(
+      (item) => item.id === inputItem.po_item_id
+    );
     if (!poItem) throw new Error(`PO item ${inputItem.po_item_id} tidak ditemukan`);
 
     const newQtyReceived = (poItem.qty_received || 0) + inputItem.qty_received;

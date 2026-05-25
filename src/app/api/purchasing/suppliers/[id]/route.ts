@@ -26,6 +26,7 @@ const updateSupplierSchema = z.object({
   kategori: z.string().optional(),
   catatan: z.string().optional(),
   status: z.enum(["active", "inactive", "probation", "blocked", "draft"]).optional(),
+  is_active: z.boolean().optional(),
 });
 
 // ========================
@@ -46,6 +47,7 @@ export async function GET(
       .from("suppliers")
       .select("*")
       .eq("id", id)
+      .is("deleted_at", null)
       .single();
 
     if (supplierError || !supplier) {
@@ -173,6 +175,7 @@ export async function PUT(
       .from("suppliers")
       .select("id, kode")
       .eq("id", id)
+      .is("deleted_at", null)
       .single();
 
     if (!existing) {
@@ -191,6 +194,7 @@ export async function PUT(
         updated_by: user.id,
       })
       .eq("id", id)
+      .is("deleted_at", null)
       .select()
       .single();
 
@@ -225,7 +229,7 @@ export async function DELETE(
       .from("suppliers")
       .select("id")
       .eq("id", id)
-      .eq("is_active", true)
+      .is("deleted_at", null)
       .single();
 
     if (!existing) {
@@ -245,9 +249,7 @@ export async function DELETE(
       );
     }
 
-    // Soft delete/deactivate. Some older Purchasing schemas do not have
-    // deleted_at/deleted_by yet, so retry with the core status fields only.
-    const deactivatePayload = {
+    const softDeletePayload = {
       is_active: false,
       status: "inactive",
       deleted_by: user.id,
@@ -256,23 +258,11 @@ export async function DELETE(
     };
     const { error } = await supabase
       .from("suppliers")
-      .update(deactivatePayload)
-      .eq("id", id);
+      .update(softDeletePayload)
+      .eq("id", id)
+      .is("deleted_at", null);
 
-    if (error?.code === "PGRST204") {
-      const { error: fallbackError } = await supabase
-        .from("suppliers")
-        .update({
-          is_active: false,
-          status: "inactive",
-          updated_by: user.id,
-        })
-        .eq("id", id);
-
-      if (fallbackError) throw fallbackError;
-    } else if (error) {
-      throw error;
-    }
+    if (error) throw error;
 
     return noContentResponse();
   } catch (error) {

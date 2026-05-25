@@ -9,10 +9,20 @@ import { z } from "zod";
 const unitSchema = z.object({
   kode: z.string().min(1).max(10).optional(),
   nama: z.string().min(1).max(50).optional(),
-  tipe: z.enum(["BESAR", "KECIL", "KONVERSI"]).optional(),
+  tipe: z.enum(["BESAR", "KECIL", "KONVERSI"], {
+    message: "Tipe satuan wajib dipilih",
+  }).optional(),
   deskripsi: z.string().optional(),
   is_active: z.boolean().optional(),
 });
+
+function getErrorMessage(error: unknown, fallback: string) {
+  return error instanceof Error ? error.message : fallback;
+}
+
+function getValidationMessage(error: z.ZodError) {
+  return error.issues[0]?.message || "Validasi gagal";
+}
 
 // GET /api/purchasing/units/:id
 export async function GET(
@@ -27,6 +37,7 @@ export async function GET(
       .from("units")
       .select("*")
       .eq("id", id)
+      .is("deleted_at", null)
       .single();
     
     if (error) {
@@ -40,10 +51,10 @@ export async function GET(
     }
     
     return Response.json({ success: true, data });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error fetching unit:", error);
     return Response.json(
-      { success: false, message: error.message || "Gagal mengambil data satuan" },
+      { success: false, message: getErrorMessage(error, "Gagal mengambil data satuan") },
       { status: 500 }
     );
   }
@@ -69,6 +80,7 @@ export async function PUT(
         .select("id")
         .eq("kode", validated.kode)
         .neq("id", id)
+        .is("deleted_at", null)
         .single();
       
       if (existing) {
@@ -82,8 +94,12 @@ export async function PUT(
     // Update data
     const { data, error } = await supabase
       .from("units")
-      .update(validated)
+      .update({
+        ...validated,
+        updated_at: new Date().toISOString(),
+      })
       .eq("id", id)
+      .is("deleted_at", null)
       .select()
       .single();
     
@@ -102,22 +118,22 @@ export async function PUT(
       data,
       message: "Satuan berhasil diupdate",
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error updating unit:", error);
     
     if (error instanceof z.ZodError) {
       return Response.json(
-        { 
-          success: false, 
-          message: "Validasi gagal", 
-          errors: error.flatten().fieldErrors 
+        {
+          success: false,
+          message: getValidationMessage(error),
+          errors: error.flatten().fieldErrors
         },
         { status: 400 }
       );
     }
     
     return Response.json(
-      { success: false, message: error.message || "Gagal mengupdate satuan" },
+      { success: false, message: getErrorMessage(error, "Gagal mengupdate satuan") },
       { status: 500 }
     );
   }
@@ -131,6 +147,7 @@ export async function DELETE(
   try {
     const { id } = await params;
     const supabase = await createClient();
+    const { data: authData } = await supabase.auth.getUser();
     
     // Cek apakah satuan digunakan di raw_materials
     const { data: usedInMaterials } = await supabase
@@ -149,11 +166,17 @@ export async function DELETE(
       );
     }
     
-    // Soft delete dengan set is_active = false
+    // Soft delete: status remains reversible via update, delete hides the row.
     const { error } = await supabase
       .from("units")
-      .update({ is_active: false })
-      .eq("id", id);
+      .update({
+        is_active: false,
+        deleted_at: new Date().toISOString(),
+        deleted_by: authData.user?.id ?? null,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", id)
+      .is("deleted_at", null);
     
     if (error) {
       if (error.code === "PGRST116") {
@@ -167,12 +190,12 @@ export async function DELETE(
     
     return Response.json({
       success: true,
-      message: "Satuan berhasil dinonaktifkan",
+      message: "Satuan berhasil dihapus",
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error deleting unit:", error);
     return Response.json(
-      { success: false, message: error.message || "Gagal menghapus satuan" },
+      { success: false, message: getErrorMessage(error, "Gagal menghapus satuan") },
       { status: 500 }
     );
   }

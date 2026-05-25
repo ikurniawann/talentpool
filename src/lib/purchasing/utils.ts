@@ -1,53 +1,65 @@
 import { SupabaseClient } from "@supabase/supabase-js";
 
 /**
- * Generate nomor PR dengan format: PR-YYYY-NNNNN
- * Contoh: PR-2024-00001
+ * Build a compact daily document prefix: PREFIX-YYYYMMDD.
+ */
+function getDailyPrefix(prefix: string, date = new Date()): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+
+  return `${prefix}-${year}${month}${day}`;
+}
+
+function getNextSequenceFromDocumentNumber(
+  documentNumber: string | null | undefined
+): number {
+  if (!documentNumber) return 1;
+
+  const sequence = Number.parseInt(documentNumber.split("-").at(-1) || "", 10);
+  return Number.isFinite(sequence) ? sequence + 1 : 1;
+}
+
+/**
+ * Generate nomor PR dengan format: PR-YYYYMMDD-NNNN
+ * Contoh: PR-20260522-0001
  */
 export async function generatePRNumber(
   supabase: SupabaseClient
 ): Promise<string> {
-  const year = new Date().getFullYear();
+  const prefix = getDailyPrefix("PR");
   
-  // Cari PR terakhir di tahun ini
+  // Cari PR terakhir di tanggal ini. Nomor lama tetap valid karena tidak dimigrasi.
   const { data: lastPR } = await supabase
     .from("purchase_requests")
     .select("pr_number")
-    .ilike("pr_number", `PR-${year}-%`)
+    .ilike("pr_number", `${prefix}-%`)
     .order("pr_number", { ascending: false })
     .limit(1);
   
-  let sequence = 1;
-  if (lastPR && lastPR.length > 0) {
-    const lastNum = parseInt(lastPR[0].pr_number.split("-")[2]);
-    sequence = lastNum + 1;
-  }
+  const sequence = getNextSequenceFromDocumentNumber(lastPR?.[0]?.pr_number);
   
-  return `PR-${year}-${String(sequence).padStart(5, "0")}`;
+  return `${prefix}-${String(sequence).padStart(4, "0")}`;
 }
 
 /**
- * Generate nomor PO dengan format: PO-YYYY-NNNNN
+ * Generate nomor PO dengan format: PO-YYYYMMDD-NNNN
  */
 export async function generatePONumber(
   supabase: SupabaseClient
 ): Promise<string> {
-  const year = new Date().getFullYear();
+  const prefix = getDailyPrefix("PO");
   
   const { data: lastPO } = await supabase
     .from("purchase_orders")
-    .select("po_number")
-    .ilike("po_number", `PO-${year}-%`)
-    .order("po_number", { ascending: false })
+    .select("nomor_po")
+    .ilike("nomor_po", `${prefix}-%`)
+    .order("nomor_po", { ascending: false })
     .limit(1);
   
-  let sequence = 1;
-  if (lastPO && lastPO.length > 0) {
-    const lastNum = parseInt(lastPO[0].po_number.split("-")[2]);
-    sequence = lastNum + 1;
-  }
+  const sequence = getNextSequenceFromDocumentNumber(lastPO?.[0]?.nomor_po);
   
-  return `PO-${year}-${String(sequence).padStart(5, "0")}`;
+  return `${prefix}-${String(sequence).padStart(4, "0")}`;
 }
 
 /**
@@ -139,9 +151,7 @@ export function getNextPRStatus(
   
   switch (currentStatus) {
     case "draft":
-      return thresholds.level === "head_dept" ? "pending_head" : 
-             thresholds.level === "finance" ? "pending_finance" : 
-             thresholds.level === "direksi" ? "pending_direksi" : "approved";
+      return thresholds.level ? "pending_head" : "approved";
     case "pending_head":
       return thresholds.level === "finance" ? "pending_finance" : 
              thresholds.level === "direksi" ? "pending_direksi" : "approved";
@@ -172,16 +182,19 @@ export function getPRStatusLabel(status: string): { label: string; color: string
 }
 
 export function getPOStatusLabel(status: string): { label: string; color: string } {
+  const normalized = status.toLowerCase();
   const labels: Record<string, { label: string; color: string }> = {
     draft: { label: "Draft", color: "bg-gray-100 text-gray-700" },
+    approved: { label: "Disetujui", color: "bg-green-100 text-green-700" },
     sent: { label: "Terkirim", color: "bg-blue-100 text-blue-700" },
     partial: { label: "Partial", color: "bg-yellow-100 text-yellow-700" },
+    partially_received: { label: "Diterima Sebagian", color: "bg-yellow-100 text-yellow-700" },
     received: { label: "Diterima", color: "bg-green-100 text-green-700" },
     closed: { label: "Selesai", color: "bg-gray-200 text-gray-800" },
     cancelled: { label: "Dibatalkan", color: "bg-red-100 text-red-700" },
   };
   
-  return labels[status] || { label: status, color: "bg-gray-100 text-gray-700" };
+  return labels[normalized] || { label: status, color: "bg-gray-100 text-gray-700" };
 }
 
 /**

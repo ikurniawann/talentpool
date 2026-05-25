@@ -43,7 +43,7 @@ export async function POST(
     }
 
     // Validasi status - harus approved untuk dikirim
-    if (String(po.status).toLowerCase() !== "approved") {
+    if (po.status !== "approved") {
       return Response.json(
         { success: false, message: "PO harus diapprove terlebih dahulu sebelum dikirim" },
         { status: 400 }

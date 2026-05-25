@@ -101,9 +101,9 @@ export default function EditProductPage() {
       });
       toast.success("Produk berhasil diupdate");
       router.push(`/dashboard/purchasing/products/${productId}`);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error updating product:", error);
-      toast.error(error.message || "Gagal mengupdate produk");
+      toast.error(error instanceof Error ? error.message : "Gagal mengupdate produk");
     } finally {
       setIsSubmitting(false);
     }
@@ -292,10 +292,10 @@ export default function EditProductPage() {
 
         {/* Action Buttons */}
         <div className="flex items-center justify-end gap-3 mt-6 pt-4 border-t">
-          <Button type="button" variant="outline" onClick={() => router.back()} className="px-6">
+          <Button type="button" variant="outline" onClick={() => router.back()} className="purchasing-secondary-button px-6">
             Batal
           </Button>
-          <Button type="submit" disabled={isSubmitting} className="px-6">
+          <Button type="submit" disabled={isSubmitting} className="purchasing-main-button px-6">
             <Save className="w-4 h-4 mr-2" />
             {isSubmitting ? "Menyimpan..." : "Simpan Perubahan"}
           </Button>

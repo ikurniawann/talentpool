@@ -1,10 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -29,12 +28,26 @@ const QC_PARAMETERS = [
   "Expired Date",
 ];
 
+type GrnInspectionItem = {
+  id: string;
+  qty_diterima?: number | null;
+  raw_material?: {
+    nama?: string | null;
+    kode?: string | null;
+  } | null;
+};
+
+type GrnInspection = {
+  nomor_grn?: string | null;
+  items?: GrnInspectionItem[];
+};
+
 export default function QCInspectionPage() {
   const params = useParams();
   const router = useRouter();
   const grnId = params.id as string;
 
-  const [grn, setGrn] = useState<any | null>(null);
+  const [grn, setGrn] = useState<GrnInspection | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [formData, setFormData] = useState({
@@ -45,13 +58,7 @@ export default function QCInspectionPage() {
     rekomendasi: "ACCEPT",
   });
 
-  useEffect(() => {
-    if (grnId) {
-      loadGRN();
-    }
-  }, [grnId]);
-
-  const loadGRN = async () => {
+  const loadGRN = useCallback(async () => {
     try {
       const res = await fetch(`/api/purchasing/grn/${grnId}`);
       const data = await res.json();
@@ -69,7 +76,13 @@ export default function QCInspectionPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [grnId]);
+
+  useEffect(() => {
+    if (grnId) {
+      loadGRN();
+    }
+  }, [grnId, loadGRN]);
 
   const updateHasil = (param: string, value: string) => {
     setFormData((prev) => ({
@@ -114,9 +127,9 @@ export default function QCInspectionPage() {
       
       toast.success("QC inspection berhasil disimpan");
       router.push(`/dashboard/purchasing/grn/${grnId}`);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error saving QC:", error);
-      toast.error(error.message || "Gagal menyimpan QC inspection");
+      toast.error(error instanceof Error ? error.message : "Gagal menyimpan QC inspection");
     } finally {
       setSaving(false);
     }
@@ -274,7 +287,7 @@ export default function QCInspectionPage() {
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              {grn.items?.map((item: any) => (
+              {grn.items?.map((item) => (
                 <div key={item.id} className="p-3 border rounded-lg">
                   <div className="font-medium text-sm">{item.raw_material?.nama}</div>
                   <div className="text-xs text-muted-foreground">{item.raw_material?.kode}</div>
@@ -291,11 +304,11 @@ export default function QCInspectionPage() {
         {/* Actions */}
         <div className="flex justify-end gap-4">
           <Link href={`/dashboard/purchasing/grn/${grnId}`}>
-            <Button variant="outline" disabled={saving}>
+            <Button variant="outline" disabled={saving} className="purchasing-secondary-button">
               Batal
             </Button>
           </Link>
-          <Button type="submit" disabled={saving}>
+          <Button type="submit" disabled={saving} className="purchasing-main-button">
             <Save className="w-4 h-4 mr-2" />
             {saving ? "Menyimpan..." : "Simpan QC Inspection"}
           </Button>

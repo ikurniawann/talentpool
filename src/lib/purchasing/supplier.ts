@@ -92,11 +92,30 @@ export async function updateSupplier(
   return data.data;
 }
 
-// ─── Delete / Deactivate Supplier ──────────────────────────────
+// ─── Status / Delete Supplier ──────────────────────────────────
+
+export async function updateSupplierStatus(
+  id: string,
+  isActive: boolean
+): Promise<Supplier> {
+  const data = await fetchApi<{ data: Supplier }>(
+    `${BASE}/suppliers/${id}`,
+    {
+      method: "PUT",
+      body: JSON.stringify({
+        is_active: isActive,
+        status: isActive ? "active" : "inactive",
+      }),
+    }
+  );
+  return data.data;
+}
 
 export async function deactivateSupplier(id: string): Promise<void> {
   await fetchApi(`${BASE}/suppliers/${id}`, { method: "DELETE" });
 }
+
+export const deleteSupplier = deactivateSupplier;
 
 // ─── Supplier Materials / Prices ───────────────────────────────
 

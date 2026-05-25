@@ -1,27 +1,30 @@
 import { requireUser } from "@/lib/supabase/auth";
 import { createClient } from "@/lib/supabase/server";
-import { notFound, redirect } from "next/navigation";
+import { notFound } from "next/navigation";
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { 
-  ArrowLeft, 
-  Printer, 
+import {
+  ArrowLeft,
+  Printer,
   CheckCircle, 
   XCircle, 
-  Clock,
   FileText,
+  Pencil,
   User
 } from "lucide-react";
 import { 
   formatRupiah, 
   formatDate, 
   getPRStatusLabel, 
-  getPriorityBadge,
-  getRequiredApprovalLevel 
+  getPriorityBadge
 } from "@/lib/purchasing/utils";
 import { PRItem } from "@/types/purchasing";
+import { BreadcrumbNav } from "@/modules/purchasing/components/breadcrumb/BreadcrumbNav";
+import { PRRevisionButton } from "@/components/purchasing/pr-revision-button";
+import { PRDetailToast } from "@/components/purchasing/pr-detail-toast";
+import { PRApprovalActions } from "@/components/purchasing/pr-approval-actions";
 
 interface PRDetailPageProps {
   params: Promise<{ id: string }>;
@@ -37,13 +40,11 @@ export default async function PRDetailPage({ params }: PRDetailPageProps) {
     .from("purchase_requests")
     .select(`
       *,
-      items:pr_items(*),
-      requester:users(full_name),
-      department:departments(name, code),
-      approved_head:users!purchase_requests_approved_by_head_fkey(full_name),
-      approved_finance:users!purchase_requests_approved_by_finance_fkey(full_name),
-      approved_direksi:users!purchase_requests_approved_by_direksi_fkey(full_name),
-      rejected_by_user:users!purchase_requests_rejected_by_fkey(full_name)
+      items:pr_items(
+        *,
+        raw_material:raw_material_id(id, kode, nama),
+        satuan:satuan_id(id, nama)
+      )
     `)
     .eq("id", id)
     .single();
@@ -54,7 +55,34 @@ export default async function PRDetailPage({ params }: PRDetailPageProps) {
 
   const statusBadge = getPRStatusLabel(pr.status);
   const priorityBadge = getPriorityBadge(pr.priority);
-  const approvalInfo = getRequiredApprovalLevel(pr.total_amount);
+  const relatedUserIds = [
+    pr.requester_id,
+    pr.approved_by_head,
+    pr.approved_by_finance,
+    pr.approved_by_direksi,
+    pr.rejected_by,
+  ].filter(Boolean);
+  const { data: relatedUsers } = relatedUserIds.length
+    ? await supabase
+        .from("users")
+        .select("id, full_name")
+        .in("id", relatedUserIds)
+    : { data: [] };
+  const userNameById = new Map(
+    (relatedUsers || []).map((relatedUser) => [relatedUser.id, relatedUser.full_name])
+  );
+  const requesterName = userNameById.get(pr.requester_id) || "-";
+  const approvedHeadName = pr.approved_by_head ? userNameById.get(pr.approved_by_head) : null;
+  const approvedFinanceName = pr.approved_by_finance ? userNameById.get(pr.approved_by_finance) : null;
+  const approvedDireksiName = pr.approved_by_direksi ? userNameById.get(pr.approved_by_direksi) : null;
+  const rejectedByName = pr.rejected_by ? userNameById.get(pr.rejected_by) : null;
+  const { data: department } = pr.department_id
+    ? await supabase
+        .from("departments")
+        .select("name, code")
+        .eq("id", pr.department_id)
+        .single()
+    : { data: null };
 
   // Determine what actions user can take
   const canApprove = () => {
@@ -63,13 +91,10 @@ export default async function PRDetailPage({ params }: PRDetailPageProps) {
     }
     
     // Check if this user is the current required approver
-    if (pr.status === "pending_head" && (user.role === "hrd" || user.role === "purchasing_manager")) {
-      return true;
-    }
-    if (pr.status === "pending_finance" && user.role === "finance_staff") {
-      return true;
-    }
-    if (pr.status === "pending_direksi" && user.role === "direksi") {
+    if (
+      pr.status === "pending_head" &&
+      ["hrd", "purchasing_manager", "purchasing_admin", "super_admin", "admin", "pos_supervisor", "direksi"].includes(user.role)
+    ) {
       return true;
     }
     return false;
@@ -81,81 +106,47 @@ export default async function PRDetailPage({ params }: PRDetailPageProps) {
            (user.role === "purchasing_manager" || user.role === "purchasing_staff");
   };
 
-  // Handle approval action
-  async function handleApprove(formData: FormData) {
-    "use server";
-    
-    const action = formData.get("action") as string;
-    const reason = formData.get("reason") as string;
-    
-    const supabase = await createClient();
-    const currentUser = await requireUser();
-    
-    const updates: any = {};
-    
-    if (action === "approve") {
-      if (pr.status === "pending_head") {
-        updates.approved_by_head = currentUser.id;
-        updates.approved_at_head = new Date().toISOString();
-      } else if (pr.status === "pending_finance") {
-        updates.approved_by_finance = currentUser.id;
-        updates.approved_at_finance = new Date().toISOString();
-      } else if (pr.status === "pending_direksi") {
-        updates.approved_by_direksi = currentUser.id;
-        updates.approved_at_direksi = new Date().toISOString();
-      }
-      
-      // Determine next status
-      if (pr.status === "pending_head" && approvalInfo.level === "finance") {
-        updates.status = "pending_finance";
-        updates.current_approval_level = "finance";
-      } else if ((pr.status === "pending_head" || pr.status === "pending_finance") 
-                 && approvalInfo.level === "direksi") {
-        updates.status = "pending_direksi";
-        updates.current_approval_level = "direksi";
-      } else {
-        updates.status = "approved";
-        updates.current_approval_level = null;
-      }
-    } else if (action === "reject") {
-      updates.status = "rejected";
-      updates.rejected_by = currentUser.id;
-      updates.rejected_at = new Date().toISOString();
-      updates.rejection_reason = reason;
-    }
-    
-    await supabase
-      .from("purchase_requests")
-      .update(updates)
-      .eq("id", id);
-    
-    redirect(`/dashboard/purchasing/pr/${id}`);
-  }
-
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
+      <PRDetailToast />
+      <BreadcrumbNav
+        items={[
+          { label: "Purchasing", href: "/dashboard/purchasing" },
+          { label: "Procurement", href: "/dashboard/purchasing/procurement" },
+          { label: "Purchase Request", href: "/dashboard/purchasing/pr" },
+          { label: pr.pr_number },
+        ]}
+      />
+
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex items-center gap-4">
-          <Link href="/dashboard/purchasing">
-            <Button variant="ghost" size="sm">
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              Kembali
+          <Link href="/dashboard/purchasing/pr">
+            <Button variant="ghost" size="icon" className="h-9 w-9">
+              <ArrowLeft className="h-5 w-5" />
             </Button>
           </Link>
           <div>
             <h1 className="text-2xl font-bold">{pr.pr_number}</h1>
             <p className="text-sm text-gray-500">
-              Dibuat {formatDate(pr.created_at)} oleh {pr.requester?.full_name}
+              Dibuat {formatDate(pr.created_at)} oleh {requesterName}
             </p>
           </div>
         </div>
         
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
+          {pr.status === "draft" && (
+            <Link href={`/dashboard/purchasing/pr/${id}/edit`}>
+              <Button variant="outline">
+                <Pencil className="w-4 h-4 mr-2" />
+                Edit
+              </Button>
+            </Link>
+          )}
+          {pr.status === "rejected" && <PRRevisionButton prId={id} />}
           <Link href={`/dashboard/purchasing/print/pr/${id}`} target="_blank">
-            <Button variant="outline">
+            <Button variant="outline" className="cursor-pointer">
               <Printer className="w-4 h-4 mr-2" />
-              Print
+              Cetak PR
             </Button>
           </Link>
           
@@ -167,17 +158,23 @@ export default async function PRDetailPage({ params }: PRDetailPageProps) {
               </Button>
             </Link>
           )}
+          {pr.status === "converted" && pr.converted_po_id && (
+            <Link href={`/dashboard/purchasing/po/${pr.converted_po_id}`}>
+              <Button>
+                <FileText className="w-4 h-4 mr-2" />
+                Lihat PO
+              </Button>
+            </Link>
+          )}
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left Column - PR Details */}
-        <div className="lg:col-span-2 space-y-6">
-          {/* Status Card */}
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+        <div className="lg:col-span-2 space-y-4">
           <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between mb-6">
-                <div className="flex items-center gap-4">
+            <CardContent className="p-4">
+              <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex flex-wrap items-center gap-3">
                   <Badge className={statusBadge.color} size="lg">
                     {statusBadge.label}
                   </Badge>
@@ -192,9 +189,10 @@ export default async function PRDetailPage({ params }: PRDetailPageProps) {
               </div>
 
               {/* Items Table */}
+              <div className="overflow-x-auto rounded-lg border border-gray-200/70">
               <table className="w-full">
                 <thead className="bg-gray-50">
-                  <tr className="border-b">
+                  <tr className="border-b border-gray-200/70">
                     <th className="text-left py-3 px-4 text-sm font-medium">No</th>
                     <th className="text-left py-3 px-4 text-sm font-medium">Deskripsi</th>
                     <th className="text-center py-3 px-4 text-sm font-medium">Qty</th>
@@ -205,11 +203,16 @@ export default async function PRDetailPage({ params }: PRDetailPageProps) {
                 </thead>
                 <tbody>
                   {pr.items?.map((item: PRItem, index: number) => (
-                    <tr key={item.id} className="border-b">
+                    <tr key={item.id} className="border-b border-gray-200/60 last:border-0">
                       <td className="py-3 px-4 text-sm">{index + 1}</td>
-                      <td className="py-3 px-4 text-sm">{item.description}</td>
+                      <td className="py-3 px-4 text-sm">
+                        {item.raw_material?.nama || item.description}
+                        {item.description && item.raw_material?.nama && (
+                          <p className="text-xs text-gray-500">{item.description}</p>
+                        )}
+                      </td>
                       <td className="py-3 px-4 text-sm text-center">{item.qty}</td>
-                      <td className="py-3 px-4 text-sm text-center">{item.unit}</td>
+                      <td className="py-3 px-4 text-sm text-center">{item.satuan?.nama || item.unit}</td>
                       <td className="py-3 px-4 text-sm text-right">
                         {formatRupiah(item.estimated_price || 0)}
                       </td>
@@ -220,6 +223,7 @@ export default async function PRDetailPage({ params }: PRDetailPageProps) {
                   ))}
                 </tbody>
               </table>
+              </div>
 
               {pr.notes && (
                 <div className="mt-6 p-4 bg-gray-50 rounded-lg">
@@ -232,8 +236,8 @@ export default async function PRDetailPage({ params }: PRDetailPageProps) {
 
           {/* Approval Timeline */}
           <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Timeline Approval</CardTitle>
+            <CardHeader className="border-b border-gray-200/70 px-4 py-3">
+              <CardTitle className="text-base">Timeline Approval</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
@@ -243,7 +247,7 @@ export default async function PRDetailPage({ params }: PRDetailPageProps) {
                     <User className="w-4 h-4 text-pink-600" />
                   </div>
                   <div>
-                    <p className="font-medium">Dibuat oleh {pr.requester?.full_name}</p>
+                    <p className="font-medium">Dibuat oleh {requesterName}</p>
                     <p className="text-sm text-gray-500">{formatDate(pr.created_at)}</p>
                   </div>
                 </div>
@@ -256,7 +260,7 @@ export default async function PRDetailPage({ params }: PRDetailPageProps) {
                     </div>
                     <div>
                       <p className="font-medium">
-                        Disetujui Head Dept ({pr.approved_head?.full_name})
+                        Disetujui Head Dept ({approvedHeadName || "-"})
                       </p>
                       <p className="text-sm text-gray-500">{formatDate(pr.approved_at_head)}</p>
                     </div>
@@ -271,7 +275,7 @@ export default async function PRDetailPage({ params }: PRDetailPageProps) {
                     </div>
                     <div>
                       <p className="font-medium">
-                        Disetujui Finance ({pr.approved_finance?.full_name})
+                        Disetujui Finance ({approvedFinanceName || "-"})
                       </p>
                       <p className="text-sm text-gray-500">{formatDate(pr.approved_at_finance)}</p>
                     </div>
@@ -286,7 +290,7 @@ export default async function PRDetailPage({ params }: PRDetailPageProps) {
                     </div>
                     <div>
                       <p className="font-medium">
-                        Disetujui Direksi ({pr.approved_direksi?.full_name})
+                        Disetujui Direksi ({approvedDireksiName || "-"})
                       </p>
                       <p className="text-sm text-gray-500">{formatDate(pr.approved_at_direksi)}</p>
                     </div>
@@ -301,7 +305,7 @@ export default async function PRDetailPage({ params }: PRDetailPageProps) {
                     </div>
                     <div>
                       <p className="font-medium">
-                        Ditolak oleh {pr.rejected_by_user?.full_name}
+                        Ditolak oleh {rejectedByName || "-"}
                       </p>
                       <p className="text-sm text-gray-500">{formatDate(pr.rejected_at)}</p>
                       {pr.rejection_reason && (
@@ -317,58 +321,18 @@ export default async function PRDetailPage({ params }: PRDetailPageProps) {
           </Card>
         </div>
 
-        {/* Right Column - Actions */}
-        <div className="space-y-6">
-          {/* Approval Actions */}
-          {canApprove() && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">Tindakan Approval</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <form action={handleApprove}>
-                  <input type="hidden" name="action" value="approve" />
-                  <Button 
-                    type="submit" 
-                    className="w-full"
-                    variant="default"
-                  >
-                    <CheckCircle className="w-4 h-4 mr-2" />
-                    Setujui PR
-                  </Button>
-                </form>
-                
-                <form action={handleApprove} className="space-y-2">
-                  <input type="hidden" name="action" value="reject" />
-                  <textarea
-                    name="reason"
-                    placeholder="Alasan penolakan..."
-                    className="w-full p-2 border rounded text-sm"
-                    rows={2}
-                    required
-                  />
-                  <Button 
-                    type="submit" 
-                    className="w-full"
-                    variant="destructive"
-                  >
-                    <XCircle className="w-4 h-4 mr-2" />
-                    Tolak PR
-                  </Button>
-                </form>
-              </CardContent>
-            </Card>
-          )}
+        <div className="space-y-4">
+          {canApprove() && <PRApprovalActions prId={id} />}
 
           {/* Info Card */}
           <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Informasi</CardTitle>
+            <CardHeader className="border-b border-gray-200/70 px-4 py-3">
+              <CardTitle className="text-base">Informasi</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3 text-sm">
               <div>
                 <p className="text-gray-500">Departemen</p>
-                <p className="font-medium">{pr.department?.name}</p>
+                <p className="font-medium">{department?.name || "-"}</p>
               </div>
               
               <div>
@@ -378,18 +342,11 @@ export default async function PRDetailPage({ params }: PRDetailPageProps) {
                 </p>
               </div>
 
-              {approvalInfo.level && (
+              {pr.status === "pending_head" && (
                 <div className="p-3 bg-blue-50 rounded-lg mt-4">
-                  <div className="flex items-center gap-2 mb-2">
-                    <Clock className="w-4 h-4 text-pink-600" />
-                    <p className="font-medium text-blue-900">Approval Required</p>
-                  </div>
-                  <p className="text-sm text-blue-800">
-                    PR ini memerlukan approval {approvalInfo.level === "head_dept" ? "Head Dept" : 
-                      approvalInfo.level === "finance" ? "Finance" : "Direksi"}
-                  </p>
-                  <p className="text-xs text-pink-600 mt-1">
-                    Threshold: &gt; {formatRupiah(approvalInfo.minAmount)}
+                  <p className="font-medium text-blue-900">Approval Kebutuhan</p>
+                  <p className="mt-1 text-sm text-blue-800">
+                    PR ini menunggu approval kebutuhan barang dan qty. Approval nominal final dilakukan di PO.
                   </p>
                 </div>
               )}

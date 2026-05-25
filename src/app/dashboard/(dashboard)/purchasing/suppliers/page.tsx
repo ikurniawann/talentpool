@@ -1,19 +1,14 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Combobox } from "@/components/ui/combobox";
+import { Switch } from "@/components/ui/switch";
 import {
   Table,
   TableHeader,
@@ -30,34 +25,29 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
-import {
-  Pagination,
-  PaginationProps,
-} from "@/components/ui/pagination";
 import { BreadcrumbNav } from "@/modules/purchasing/components/breadcrumb/BreadcrumbNav";
 import { CsvImporter } from "@/components/ui/csv-importer";
 import {
   BuildingOfficeIcon,
   PlusIcon,
   MagnifyingGlassIcon,
-  ArrowsUpDownIcon,
   ArrowUpTrayIcon,
   EyeIcon,
   PencilSquareIcon,
-  PowerIcon,
-  XMarkIcon,
+  TrashIcon,
 } from "@heroicons/react/24/outline";
+import { Loader2, X } from "lucide-react";
 import {
   Supplier,
   SupplierListParams,
   PaymentTerms,
-  SupplierStatus,
   PAYMENT_TERMS_OPTIONS,
   getPaymentTermsLabel,
 } from "@/types/supplier";
 import {
   listSuppliers,
-  deactivateSupplier,
+  deleteSupplier,
+  updateSupplierStatus,
   exportSuppliersCSV,
 } from "@/lib/purchasing/supplier";
 import PurchasingGuard from "@/modules/purchasing/components/auth/PurchasingGuard";
@@ -66,27 +56,6 @@ import { toast } from "sonner";
 
 function getErrorMessage(error: unknown, fallback: string) {
   return error instanceof Error ? error.message : fallback;
-}
-
-// ─── Status badge ───────────────────────────────────────────────
-
-function StatusBadge({ isActive, status }: { isActive: boolean; status?: SupplierStatus }) {
-  if (status === "draft") {
-    return (
-      <Badge className="bg-yellow-100 text-yellow-800 hover:bg-yellow-100">
-        Draft
-      </Badge>
-    );
-  }
-  return isActive ? (
-    <Badge className="bg-green-100 text-green-800 hover:bg-green-100">
-      Aktif
-    </Badge>
-  ) : (
-    <Badge className="bg-gray-100 text-gray-600 hover:bg-gray-100">
-      Nonaktif
-    </Badge>
-  );
 }
 
 // ─── Main List Page ──────────────────────────────────────────────
@@ -111,27 +80,31 @@ function SuppliersListInner() {
 
   // Filters
   const [search, setSearch] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "active" | "inactive" | "draft">("all");
   const [paymentFilter, setPaymentFilter] = useState<PaymentTerms | "all">("all");
 
   // Pagination
   const [page, setPage] = useState(1);
-  const [limit, setLimit] = useState(20);
-
-  // Sort
-  const [sortBy, setSortBy] = useState<SupplierListParams["sort_by"]>("nama_supplier");
-  const [sortDir, setSortDir] = useState<"ASC" | "DESC">("ASC");
+  const limit = 10;
 
   // Dialog
-  const [deactivateDialog, setDeactivateDialog] = useState<{ open: boolean; supplier: Supplier | null }>({
+  const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; supplier: Supplier | null }>({
     open: false,
     supplier: null,
   });
-  const [deactivateLoading, setDeactivateLoading] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+  const [statusUpdatingId, setStatusUpdatingId] = useState<string | null>(null);
+  const [statusDialog, setStatusDialog] = useState<{
+    open: boolean;
+    supplier: Supplier | null;
+    nextStatus: boolean;
+  }>({
+    open: false,
+    supplier: null,
+    nextStatus: true,
+  });
 
-  // Debounce search
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [importDialogOpen, setImportDialogOpen] = useState(false);
 
   // ── Fetch ────────────────────────────────────────────────────
@@ -140,13 +113,13 @@ function SuppliersListInner() {
     setLoading(true);
     try {
       const params: SupplierListParams = {
-        search: debouncedSearch || undefined,
+        search: search || undefined,
         status: statusFilter === "all" ? undefined : statusFilter,
         payment_terms: paymentFilter === "all" ? undefined : paymentFilter,
         page,
         limit,
-        sort_by: sortBy,
-        sort_dir: sortDir,
+        sort_by: "nama_supplier",
+        sort_dir: "ASC",
       };
 
       const res = await listSuppliers(params);
@@ -158,37 +131,43 @@ function SuppliersListInner() {
     } finally {
       setLoading(false);
     }
-  }, [debouncedSearch, statusFilter, paymentFilter, page, limit, sortBy, sortDir]);
+  }, [search, statusFilter, paymentFilter, page]);
 
   useEffect(() => {
     fetchSuppliers();
   }, [fetchSuppliers]);
 
-  // Debounce search
-  useEffect(() => {
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(() => {
-      setDebouncedSearch(search);
-      setPage(1);
-    }, 300);
-    return () => {
-      if (debounceRef.current) clearTimeout(debounceRef.current);
-    };
-  }, [search]);
-
   // ── Actions ──────────────────────────────────────────────────
 
-  async function handleDeactivate(supplier: Supplier) {
-    setDeactivateLoading(true);
+  async function handleDelete(supplier: Supplier) {
+    setDeleteLoading(true);
     try {
-      await deactivateSupplier(supplier.id);
-      toast.success(`Supplier "${supplier.nama_supplier}" dinonaktifkan.`);
-      setDeactivateDialog({ open: false, supplier: null });
+      await deleteSupplier(supplier.id);
+      toast.success(`Supplier "${supplier.nama_supplier}" berhasil dihapus.`);
+      setDeleteDialog({ open: false, supplier: null });
       fetchSuppliers();
     } catch (err: unknown) {
       toast.error("Gagal: " + getErrorMessage(err, "Unknown error"));
     } finally {
-      setDeactivateLoading(false);
+      setDeleteLoading(false);
+    }
+  }
+
+  async function handleConfirmToggleStatus() {
+    const supplier = statusDialog.supplier;
+    if (!supplier) return;
+    if (statusUpdatingId) return;
+
+    setStatusUpdatingId(supplier.id);
+    try {
+      await updateSupplierStatus(supplier.id, statusDialog.nextStatus);
+      toast.success(`Supplier berhasil ${statusDialog.nextStatus ? "diaktifkan" : "dinonaktifkan"}.`);
+      setStatusDialog({ open: false, supplier: null, nextStatus: true });
+      fetchSuppliers();
+    } catch (err: unknown) {
+      toast.error("Gagal mengubah status: " + getErrorMessage(err, "Unknown error"));
+    } finally {
+      setStatusUpdatingId(null);
     }
   }
 
@@ -202,29 +181,18 @@ function SuppliersListInner() {
   }
 
   function handleResetFilters() {
+    setSearchQuery("");
     setSearch("");
     setStatusFilter("all");
     setPaymentFilter("all");
     setPage(1);
   }
 
-  function toggleSort(field: SupplierListParams["sort_by"]) {
-    if (sortBy === field) {
-      setSortDir((d) => (d === "ASC" ? "DESC" : "ASC"));
-    } else {
-      setSortBy(field);
-      setSortDir("ASC");
-    }
+  function handleSearch(e: React.FormEvent) {
+    e.preventDefault();
+    setSearch(searchQuery.trim());
+    setPage(1);
   }
-
-  // ── Pagination ───────────────────────────────────────────────
-
-  const paginationProps: PaginationProps = {
-    currentPage: page,
-    totalPages,
-    totalItems: total,
-    onPageChange: setPage,
-  };
 
   // ── Render ───────────────────────────────────────────────────
 
@@ -234,29 +202,28 @@ function SuppliersListInner() {
     <div className="space-y-6">
       <BreadcrumbNav
         items={[
-          { label: "Dashboard", href: "/dashboard" },
           { label: "Purchasing", href: "/dashboard/purchasing" },
+          { label: "Master Data", href: "/dashboard/purchasing/main" },
           { label: "Supplier" },
         ]}
       />
 
-      {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col items-start justify-between gap-4 border-b border-gray-200/70 pb-4 sm:flex-row sm:items-center">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Supplier</h1>
-          <p className="text-sm text-gray-500">
+          <p className="mt-1 text-sm text-gray-500">
             Kelola vendor &amp; supplier — {total} total
           </p>
         </div>
         {isAdmin && (
-          <div className="flex gap-2">
-            <Button variant="outline" onClick={() => setImportDialogOpen(true)}>
-              <ArrowUpTrayIcon className="w-4 h-4 mr-2" />
+          <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+            <Button variant="outline" onClick={() => setImportDialogOpen(true)} className="h-10 gap-2 rounded-lg border-pink-200 bg-white px-3 text-sm font-medium text-pink-700 shadow-sm hover:!border-pink-200 hover:!bg-pink-50 hover:!text-pink-700">
+              <ArrowUpTrayIcon className="mr-2 h-4 w-4" />
               Import
             </Button>
             <Link href="/dashboard/purchasing/suppliers/new">
-              <Button>
-                <PlusIcon className="w-4 h-4 mr-2" />
+              <Button className="h-10 w-full gap-2 rounded-lg bg-pink-600 px-3 text-sm font-semibold text-white shadow-sm hover:bg-pink-700 sm:w-auto">
+                <PlusIcon className="mr-2 h-4 w-4" />
                 Tambah Supplier
               </Button>
             </Link>
@@ -264,70 +231,75 @@ function SuppliersListInner() {
         )}
       </div>
 
-      {/* Filter Bar */}
       <Card>
         <CardContent className="p-4">
-          <div className="flex flex-col md:flex-row gap-3">
-            {/* Search */}
-            <div className="relative flex-1">
-              <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-              <Input
-                placeholder="Cari kode, nama, atau kota..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="pl-10"
-              />
-              {search && (
-                <button
-                  onClick={() => setSearch("")}
-                  className="absolute right-3 top-1/2 -translate-y-1/2"
-                >
-                  <XMarkIcon className="w-4 h-4 text-gray-400 hover:text-gray-600" />
-                </button>
-              )}
-            </div>
+          <div className="flex flex-col gap-3 md:flex-row md:items-center">
+            <form onSubmit={handleSearch} className="flex flex-1 gap-2">
+              <div className="relative flex-1">
+                <MagnifyingGlassIcon className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                <Input
+                  placeholder="Cari kode, nama, atau kota supplier..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="h-9 pl-10 pr-10 text-sm"
+                />
+                {searchQuery && (
+                  <button
+                    type="button"
+                    onClick={() => setSearchQuery("")}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 transition-colors hover:text-gray-700"
+                    aria-label="Hapus pencarian"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                )}
+              </div>
+              <Button type="submit" variant="outline" className="h-9 flex-shrink-0">
+                Cari
+              </Button>
+            </form>
 
-            {/* Status filter */}
-            <Select
+            <Combobox
+              options={[
+                { value: "all", label: "Semua Status" },
+                { value: "active", label: "Aktif" },
+                { value: "inactive", label: "Nonaktif" },
+                { value: "draft", label: "Draft" },
+              ]}
               value={statusFilter}
-              onValueChange={(v) => { setStatusFilter(v as typeof statusFilter); setPage(1); }}
-            >
-              <SelectTrigger className="w-[160px]">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Semua Status</SelectItem>
-                <SelectItem value="active">Aktif</SelectItem>
-                <SelectItem value="inactive">Nonaktif</SelectItem>
-                <SelectItem value="draft">Draft</SelectItem>
-              </SelectContent>
-            </Select>
+              onChange={(value) => {
+                setStatusFilter(value as typeof statusFilter);
+                setPage(1);
+              }}
+              placeholder="Filter status..."
+              searchPlaceholder="Cari status..."
+              emptyMessage="Status tidak ditemukan"
+              className="!w-full h-9 text-sm md:!w-[220px]"
+            />
 
-            {/* Payment terms filter */}
-            <Select
+            <Combobox
+              options={[
+                { value: "all", label: "Semua Terms" },
+                ...PAYMENT_TERMS_OPTIONS.map((pt) => ({ value: pt, label: pt })),
+              ]}
               value={paymentFilter}
-              onValueChange={(v) => { setPaymentFilter(v as typeof paymentFilter); setPage(1); }}
-            >
-              <SelectTrigger className="w-[140px]">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Semua Terms</SelectItem>
-                {PAYMENT_TERMS_OPTIONS.map((pt) => (
-                  <SelectItem key={pt} value={pt}>{pt}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+              onChange={(value) => {
+                setPaymentFilter(value as PaymentTerms | "all");
+                setPage(1);
+              }}
+              placeholder="Filter terms..."
+              searchPlaceholder="Cari terms..."
+              emptyMessage="Terms tidak ditemukan"
+              className="!w-full h-9 text-sm md:!w-[200px]"
+            />
 
-            {/* Export CSV */}
             <Button variant="outline" onClick={handleExportCSV} title="Export CSV">
-              <ArrowUpTrayIcon className="w-4 h-4 mr-2" />
+              <ArrowUpTrayIcon className="mr-2 h-4 w-4" />
               Export
             </Button>
 
-            {/* Reset */}
-            {(search || statusFilter !== "all" || paymentFilter !== "all") && (
-              <Button variant="ghost" onClick={handleResetFilters}>
+            {(search || statusFilter !== "all" || paymentFilter !== "all" || page > 1) && (
+              <Button variant="outline" onClick={handleResetFilters} className="h-9 flex-shrink-0">
                 Reset
               </Button>
             )}
@@ -335,194 +307,217 @@ function SuppliersListInner() {
         </CardContent>
       </Card>
 
-      {/* Table */}
       <Card>
-        <CardHeader className="pb-0">
+        <CardHeader className="border-b border-gray-200/70 pb-3">
           <CardTitle className="text-base flex items-center gap-2">
             <BuildingOfficeIcon className="w-5 h-5" />
             Daftar Supplier
           </CardTitle>
         </CardHeader>
         <CardContent className="p-0">
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow className="hover:bg-transparent">
-                  <TableHead className="w-12 text-gray-900">No</TableHead>
-                  <TableHead className="text-gray-900">
-                    <button
-                      onClick={() => toggleSort("kode_supplier")}
-                      className="flex items-center gap-1 hover:text-primary text-gray-900 bg-transparent"
-                    >
-                      Kode
-                      <ArrowsUpDownIcon className="w-3 h-3" />
-                    </button>
-                  </TableHead>
-                  <TableHead className="text-gray-900">
-                    <button
-                      onClick={() => toggleSort("nama_supplier")}
-                      className="flex items-center gap-1 hover:text-primary text-gray-900 bg-transparent"
-                    >
-                      Nama Supplier
-                      <ArrowsUpDownIcon className="w-3 h-3" />
-                    </button>
-                  </TableHead>
-                  <TableHead className="text-gray-900">
-                    <button
-                      onClick={() => toggleSort("kota")}
-                      className="flex items-center gap-1 hover:text-primary text-gray-900 bg-transparent"
-                    >
-                      Kota
-                      <ArrowsUpDownIcon className="w-3 h-3" />
-                    </button>
-                  </TableHead>
-                  <TableHead className="text-gray-900">PIC + Telepon</TableHead>
-                  <TableHead className="text-gray-900">Payment Terms</TableHead>
-                  <TableHead className="text-gray-900 text-center">Status</TableHead>
-                  {isAdmin && <TableHead className="text-gray-900 text-right">Aksi</TableHead>}
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {loading ? (
-                  <TableRow>
-                    <TableCell colSpan={isAdmin ? 8 : 7} className="text-center py-12">
-                      <div className="flex justify-center items-center gap-2 text-gray-400">
-                        <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
-                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                        </svg>
-                        Memuat...
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ) : suppliers.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={isAdmin ? 8 : 7} className="text-center py-12">
-                      <BuildingOfficeIcon className="w-12 h-12 mx-auto mb-3 text-gray-300" />
-                      <p className="text-gray-400">Belum ada supplier</p>
-                      {isAdmin && (
-                        <Link href="/dashboard/purchasing/suppliers/new">
-                          <Button variant="link" className="mt-2">+ Tambah Supplier</Button>
-                        </Link>
-                      )}
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  suppliers.map((supplier, idx) => (
-                    <TableRow
-                      key={supplier.id}
-                      className="cursor-pointer"
-                      onClick={() => router.push(`/dashboard/purchasing/suppliers/${supplier.id}`)}
-                    >
-                      <TableCell className="text-gray-400 text-sm">
-                        {(page - 1) * limit + idx + 1}
-                      </TableCell>
-                      <TableCell className="font-mono text-sm">{supplier.kode}</TableCell>
-                      <TableCell className="font-medium">{supplier.nama_supplier}</TableCell>
-                      <TableCell>{supplier.kota ?? <span className="text-gray-400">—</span>}</TableCell>
-                      <TableCell>
-                        <div>
-                          {supplier.pic_name ?? <span className="text-gray-400">—</span>}
-                        </div>
-                        {supplier.pic_phone && (
-                          <div className="text-xs text-gray-500">{supplier.pic_phone}</div>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="outline">{getPaymentTermsLabel(supplier.payment_terms)}</Badge>
-                      </TableCell>
-                      <TableCell className="text-center">
-                        <StatusBadge isActive={supplier.is_active} status={supplier.status} />
-                      </TableCell>
-                      {isAdmin && (
-                        <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
-                          <div className="flex items-center justify-end gap-1">
-                            <Link href={`/dashboard/purchasing/suppliers/${supplier.id}`}>
-                              <Button variant="ghost" size="sm" title="Detail">
-                                <EyeIcon className="w-4 h-4" />
-                              </Button>
-                            </Link>
-                            {(supplier.is_active || supplier.status === "draft") && (
-                              <Link href={`/dashboard/purchasing/suppliers/${supplier.id}/edit`}>
-                                <Button variant="ghost" size="sm" title="Edit">
-                                  <PencilSquareIcon className="w-4 h-4" />
+          {loading ? (
+            <div className="py-12 text-center">
+              <Loader2 className="mx-auto h-8 w-8 animate-spin text-pink-600" />
+              <p className="mt-2 text-sm text-gray-500">Memuat data...</p>
+            </div>
+          ) : suppliers.length === 0 ? (
+            <div className="py-14 text-center">
+              <BuildingOfficeIcon className="mx-auto mb-4 h-12 w-12 text-gray-300" />
+              <p className="text-gray-500">
+                {search ? "Tidak ada supplier yang cocok dengan pencarian" : "Belum ada data supplier"}
+              </p>
+              {isAdmin && !search && (
+                <Link href="/dashboard/purchasing/suppliers/new">
+                  <Button variant="outline" className="mt-4">Tambah Supplier Pertama</Button>
+                </Link>
+              )}
+            </div>
+          ) : (
+            <>
+              <div className="overflow-x-auto px-4">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="hover:bg-transparent">
+                      <TableHead className="w-12 text-gray-900">No</TableHead>
+                      <TableHead className="text-gray-900">Kode</TableHead>
+                      <TableHead className="text-gray-900">Nama Supplier</TableHead>
+                      <TableHead className="text-gray-900">Kota</TableHead>
+                      <TableHead className="text-gray-900">PIC + Telepon</TableHead>
+                      <TableHead className="text-gray-900">Payment Terms</TableHead>
+                      <TableHead className="text-center text-gray-900">Status</TableHead>
+                      {isAdmin && <TableHead className="text-right text-gray-900">Aksi</TableHead>}
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {suppliers.map((supplier, idx) => (
+                      <TableRow
+                        key={supplier.id}
+                        className="cursor-pointer"
+                        onClick={() => router.push(`/dashboard/purchasing/suppliers/${supplier.id}`)}
+                      >
+                        <TableCell className="text-sm text-gray-400">
+                          {(page - 1) * limit + idx + 1}
+                        </TableCell>
+                        <TableCell>
+                          <span className="font-medium text-gray-900">{supplier.kode}</span>
+                        </TableCell>
+                        <TableCell className="font-medium text-gray-900">{supplier.nama_supplier}</TableCell>
+                        <TableCell className="text-gray-600">{supplier.kota ?? "-"}</TableCell>
+                        <TableCell>
+                          <div className="text-gray-700">
+                            {supplier.pic_name ?? <span className="text-gray-400">-</span>}
+                          </div>
+                          {supplier.pic_phone && (
+                            <div className="text-xs text-gray-500">{supplier.pic_phone}</div>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="outline">{getPaymentTermsLabel(supplier.payment_terms)}</Badge>
+                        </TableCell>
+                        <TableCell className="text-center" onClick={(e) => e.stopPropagation()}>
+                          <div className="flex items-center justify-center">
+                            <Switch
+                              checked={supplier.is_active}
+                              disabled={statusUpdatingId === supplier.id}
+                              onCheckedChange={(checked) =>
+                                setStatusDialog({ open: true, supplier, nextStatus: checked })
+                              }
+                              aria-label={`Ubah status ${supplier.nama_supplier}`}
+                            />
+                          </div>
+                        </TableCell>
+                        {isAdmin && (
+                          <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
+                            <div className="flex items-center justify-end gap-2">
+                              <Link href={`/dashboard/purchasing/suppliers/${supplier.id}`}>
+                                <Button variant="ghost" size="sm" title="Detail" className="cursor-pointer">
+                                  <EyeIcon className="h-4 w-4" />
                                 </Button>
                               </Link>
-                            )}
-                            {supplier.is_active && (
+                              {(supplier.is_active || supplier.status === "draft") && (
+                                <Link href={`/dashboard/purchasing/suppliers/${supplier.id}/edit`}>
+                                  <Button variant="ghost" size="sm" title="Edit" className="cursor-pointer">
+                                    <PencilSquareIcon className="h-4 w-4" />
+                                  </Button>
+                                </Link>
+                              )}
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                title="Nonaktifkan"
-                                onClick={() => setDeactivateDialog({ open: true, supplier })}
+                                title="Hapus"
+                                className="cursor-pointer text-red-500 hover:text-red-600"
+                                onClick={() => setDeleteDialog({ open: true, supplier })}
                               >
-                                <PowerIcon className="w-4 h-4 text-orange-500" />
+                                <TrashIcon className="h-4 w-4" />
                               </Button>
-                            )}
-                          </div>
-                        </TableCell>
-                      )}
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </div>
-
-          {/* Pagination */}
-          {!loading && suppliers.length > 0 && (
-            <div className="flex items-center justify-between px-4 py-3 border-t">
-              <div className="flex items-center gap-2 text-sm text-gray-500">
-                <span>Menampilkan</span>
-                <Select
-                  value={String(limit)}
-                  onValueChange={(v) => { setLimit(Number(v)); setPage(1); }}
-                >
-                  <SelectTrigger className="w-[70px] h-8">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {[10, 20, 50, 100].map((n) => (
-                      <SelectItem key={n} value={String(n)}>{n}</SelectItem>
+                            </div>
+                          </TableCell>
+                        )}
+                      </TableRow>
                     ))}
-                  </SelectContent>
-                </Select>
-                <span>dari {total} data</span>
+                  </TableBody>
+                </Table>
               </div>
-              <Pagination {...paginationProps} />
-            </div>
+
+              <div className="border-t border-gray-200/70">
+                <div className="flex items-center justify-between px-4 py-3">
+                  <p className="text-sm text-gray-500">
+                    Halaman {page} dari {Math.max(1, totalPages)}
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setPage((p) => Math.max(1, p - 1))}
+                      disabled={page === 1}
+                    >
+                      Sebelumnya
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setPage((p) => Math.min(Math.max(1, totalPages), p + 1))}
+                      disabled={page >= Math.max(1, totalPages)}
+                    >
+                      Berikutnya
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </>
           )}
         </CardContent>
       </Card>
 
-      {/* Deactivate Dialog */}
+      {/* Status Dialog */}
       <Dialog
-        open={deactivateDialog.open}
-        onOpenChange={(open) => !open && setDeactivateDialog({ open: false, supplier: null })}
+        open={statusDialog.open}
+        onOpenChange={(open) => {
+          if (!open && !statusUpdatingId) {
+            setStatusDialog({ open: false, supplier: null, nextStatus: true });
+          }
+        }}
       >
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Nonaktifkan Supplier</DialogTitle>
-            <DialogDescription>
-              Apakah Anda yakin ingin menonaktifkan supplier{" "}
-              <strong>{deactivateDialog.supplier?.nama_supplier}</strong>? Supplier
-              tidak akan muncul di daftar aktif tapi data tidak dihapus.
+        <DialogContent className="gap-0 overflow-hidden rounded-2xl border border-gray-200/70 p-0 shadow-xl ring-1 ring-gray-200/60 sm:max-w-[420px]">
+          <DialogHeader className="border-b border-gray-200/70 px-4 py-3.5">
+            <DialogTitle className="text-base font-semibold text-gray-900">
+              {statusDialog.nextStatus ? "Aktifkan Supplier" : "Nonaktifkan Supplier"}
+            </DialogTitle>
+            <DialogDescription className="mt-1 text-sm leading-5 text-gray-500">
+              Apakah Anda yakin ingin {statusDialog.nextStatus ? "mengaktifkan" : "menonaktifkan"} supplier{" "}
+              <strong>{statusDialog.supplier?.nama_supplier}</strong>?
             </DialogDescription>
           </DialogHeader>
-          <DialogFooter className="gap-2 sm:gap-0">
+          <DialogFooter className="mx-0 mb-0 gap-2 border-t border-gray-200/70 bg-gray-50/60 px-5 py-4 sm:justify-end">
             <Button
               variant="outline"
-              onClick={() => setDeactivateDialog({ open: false, supplier: null })}
-              disabled={deactivateLoading}
+              onClick={() => setStatusDialog({ open: false, supplier: null, nextStatus: true })}
+              disabled={Boolean(statusUpdatingId)}
+              className="purchasing-secondary-button"
+            >
+              Batal
+            </Button>
+            <Button onClick={handleConfirmToggleStatus} disabled={Boolean(statusUpdatingId)} className="purchasing-main-button">
+              {statusUpdatingId
+                ? "Menyimpan..."
+                : statusDialog.nextStatus
+                  ? "Aktifkan"
+                  : "Nonaktifkan"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Dialog */}
+      <Dialog
+        open={deleteDialog.open}
+        onOpenChange={(open) => !open && setDeleteDialog({ open: false, supplier: null })}
+      >
+        <DialogContent className="gap-0 overflow-hidden rounded-2xl border border-gray-200/70 p-0 shadow-xl ring-1 ring-gray-200/60 sm:max-w-[420px]">
+          <DialogHeader className="border-b border-gray-200/70 px-4 py-3.5">
+            <DialogTitle className="text-base font-semibold text-gray-900">Hapus Supplier</DialogTitle>
+            <DialogDescription className="mt-1 text-sm leading-5 text-gray-500">
+              Apakah Anda yakin ingin menghapus supplier{" "}
+              <strong>{deleteDialog.supplier?.nama_supplier}</strong>? Data akan
+              disembunyikan dari daftar, bukan sekadar dinonaktifkan.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="mx-0 mb-0 gap-2 border-t border-gray-200/70 bg-gray-50/60 px-5 py-4 sm:justify-end">
+            <Button
+              variant="outline"
+              onClick={() => setDeleteDialog({ open: false, supplier: null })}
+              disabled={deleteLoading}
+              className="purchasing-secondary-button"
             >
               Batal
             </Button>
             <Button
               variant="destructive"
-              onClick={() => deactivateDialog.supplier && handleDeactivate(deactivateDialog.supplier)}
-              disabled={deactivateLoading}
+              onClick={() => deleteDialog.supplier && handleDelete(deleteDialog.supplier)}
+              disabled={deleteLoading}
+              className="purchasing-main-button"
             >
-              {deactivateLoading ? "Menonaktifkan..." : "Nonaktifkan"}
+              {deleteLoading ? "Menghapus..." : "Hapus"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -530,38 +525,40 @@ function SuppliersListInner() {
 
       {/* Import Dialog */}
       <Dialog open={importDialogOpen} onOpenChange={setImportDialogOpen}>
-        <DialogContent className="sm:max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>Import Supplier dari CSV</DialogTitle>
-            <DialogDescription>
+        <DialogContent className="gap-0 overflow-hidden rounded-2xl border border-gray-200/70 p-0 shadow-xl ring-1 ring-gray-200/60 sm:max-w-2xl">
+          <DialogHeader className="border-b border-gray-200/70 px-5 py-4">
+            <DialogTitle className="text-lg font-semibold text-gray-900">Import Supplier dari CSV</DialogTitle>
+            <DialogDescription className="mt-1 text-sm leading-5 text-gray-500">
               Upload file CSV untuk menambahkan supplier secara massal
             </DialogDescription>
           </DialogHeader>
-          <CsvImporter
-            title="Import Supplier"
-            description="Import data supplier dari file CSV"
-            templateName="template-supplier.csv"
-            apiEndpoint="/api/purchasing/import/suppliers"
-            onSuccess={() => {
-              fetchSuppliers();
-            }}
-            columns={[
-              { key: "kode", label: "Kode", required: true, type: "text" },
-              { key: "nama", label: "Nama Supplier", required: true, type: "text" },
-              { key: "email", label: "Email", required: false, type: "email" },
-              { key: "telepon", label: "Telepon", required: false, type: "text" },
-              { key: "alamat", label: "Alamat", required: false, type: "text" },
-              { key: "kota", label: "Kota", required: false, type: "text" },
-              { key: "provinsi", label: "Provinsi", required: false, type: "text" },
-              { key: "kode_pos", label: "Kode Pos", required: false, type: "text" },
-              { key: "npwp", label: "NPWP", required: false, type: "text" },
-              { key: "termin_pembayaran", label: "Termin Pembayaran (hari)", required: false, type: "number" },
-              { key: "mata_uang", label: "Mata Uang", required: false, type: "text" },
-              { key: "kategori", label: "Kategori", required: false, type: "text" },
-              { key: "deskripsi", label: "Deskripsi", required: false, type: "text" },
-              { key: "status", label: "Status", required: false, type: "text" },
-            ]}
-          />
+          <div className="px-5 py-4">
+            <CsvImporter
+              title="Import Supplier"
+              description="Import data supplier dari file CSV"
+              templateName="template-supplier.csv"
+              apiEndpoint="/api/purchasing/import/suppliers"
+              onSuccess={() => {
+                fetchSuppliers();
+              }}
+              columns={[
+                { key: "kode", label: "Kode", required: true, type: "text" },
+                { key: "nama", label: "Nama Supplier", required: true, type: "text" },
+                { key: "email", label: "Email", required: false, type: "email" },
+                { key: "telepon", label: "Telepon", required: false, type: "text" },
+                { key: "alamat", label: "Alamat", required: false, type: "text" },
+                { key: "kota", label: "Kota", required: false, type: "text" },
+                { key: "provinsi", label: "Provinsi", required: false, type: "text" },
+                { key: "kode_pos", label: "Kode Pos", required: false, type: "text" },
+                { key: "npwp", label: "NPWP", required: false, type: "text" },
+                { key: "termin_pembayaran", label: "Termin Pembayaran (hari)", required: false, type: "number" },
+                { key: "mata_uang", label: "Mata Uang", required: false, type: "text" },
+                { key: "kategori", label: "Kategori", required: false, type: "text" },
+                { key: "deskripsi", label: "Deskripsi", required: false, type: "text" },
+                { key: "status", label: "Status", required: false, type: "text" },
+              ]}
+            />
+          </div>
         </DialogContent>
       </Dialog>
     </div>

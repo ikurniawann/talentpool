@@ -1,9 +1,11 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Combobox } from "@/components/ui/combobox";
 import {
   Table,
   TableBody,
@@ -20,25 +22,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Plus, Search, MoreVertical, FileText, CheckCircle, Send, XCircle, Download, Trash2, Truck } from "lucide-react";
+import { Plus, Search, FileText, CheckCircle, Send, XCircle, Download, Trash2, Truck, Pencil } from "lucide-react";
 import { toast } from "sonner";
 import { PurchaseOrderWithStats, POStatus } from "@/types/purchasing";
 import { listPurchaseOrders, approvePurchaseOrder, sendPurchaseOrder, cancelPurchaseOrder } from "@/lib/purchasing";
 import { convertToCSV, downloadCSV, formatDateForCSV, formatCurrencyForCSV } from "@/lib/utils/csv-export";
-import {
-  Pagination,
-  PaginationContent,
-  PaginationItem,
-  PaginationLink,
-  PaginationNext,
-  PaginationPrevious,
-} from "@/components/ui/pagination";
 import {
   Dialog,
   DialogContent,
@@ -48,9 +36,10 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
+import { BreadcrumbNav } from "@/modules/purchasing/components/breadcrumb/BreadcrumbNav";
 
-const STATUS_OPTIONS: { value: POStatus | ""; label: string }[] = [
-  { value: "", label: "Semua Status" },
+const STATUS_OPTIONS: { value: POStatus | "all"; label: string }[] = [
+  { value: "all", label: "Semua Status" },
   { value: "draft", label: "Draft" },
   { value: "pending_approval", label: "Menunggu Persetujuan" },
   { value: "approved", label: "Disetujui" },
@@ -75,7 +64,8 @@ export default function PurchaseOrdersPage() {
     total_pages: 0,
   });
   const [searchQuery, setSearchQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState<POStatus | "">("");
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<POStatus | "all">("all");
   
   // Dialog states
   const [isCancelDialogOpen, setIsCancelDialogOpen] = useState(false);
@@ -90,24 +80,12 @@ export default function PurchaseOrdersPage() {
   const [isProcessingBulk, setIsProcessingBulk] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
 
-  useEffect(() => {
-    loadPOs();
-  }, [pagination.page, statusFilter]);
-
-  // Debounce search
-  useEffect(() => {
-    const timeout = setTimeout(() => {
-      loadPOs();
-    }, 300);
-    return () => clearTimeout(timeout);
-  }, [searchQuery]);
-
-  const loadPOs = async () => {
+  const loadPOs = useCallback(async () => {
     try {
       setLoading(true);
       const response = await listPurchaseOrders({
-        search: searchQuery || undefined,
-        status: statusFilter || undefined,
+        search: search || undefined,
+        status: statusFilter === "all" ? undefined : statusFilter,
         page: pagination.page,
         limit: pagination.limit,
       });
@@ -123,15 +101,19 @@ export default function PurchaseOrdersPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [pagination.limit, pagination.page, search, statusFilter]);
+
+  useEffect(() => {
+    loadPOs();
+  }, [loadPOs]);
 
   const handleExportCSV = async () => {
     try {
       setIsExporting(true);
       // Fetch all data (not paginated)
       const response = await listPurchaseOrders({
-        search: searchQuery || undefined,
-        status: statusFilter || undefined,
+        search: search || undefined,
+        status: statusFilter === "all" ? undefined : statusFilter,
         page: 1,
         limit: 1000, // Get more data for export
       });
@@ -349,54 +331,91 @@ export default function PurchaseOrdersPage() {
     return new Date(dateStr).toLocaleDateString("id-ID");
   };
 
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    setSearch(searchQuery.trim());
+    setPagination((prev) => ({ ...prev, page: 1 }));
+  };
+
+  const handleResetFilters = () => {
+    setSearchQuery("");
+    setSearch("");
+    setStatusFilter("all");
+    setPagination((prev) => ({ ...prev, page: 1 }));
+  };
+
   return (
-    <div className="container mx-auto py-6 space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+    <div className="space-y-6">
+      <BreadcrumbNav
+        items={[
+          { label: "Purchasing", href: "/dashboard/purchasing" },
+          { label: "Procurement", href: "/dashboard/purchasing/procurement" },
+          { label: "Purchase Order" },
+        ]}
+      />
+
+      <div className="flex flex-col items-start justify-between gap-4 border-b border-gray-200/70 pb-4 sm:flex-row sm:items-center">
         <div>
-          <h1 className="text-xl sm:text-2xl font-bold">Purchase Orders</h1>
-          <p className="text-muted-foreground">
-            Kelola Purchase Order dari pembuatan hingga penerimaan
+          <h1 className="text-2xl font-bold text-gray-900">Purchase Order</h1>
+          <p className="text-sm text-gray-500">
+            Kelola Purchase Order dari pembuatan hingga penerimaan — {pagination.total} total
           </p>
         </div>
         <div className="flex gap-2 w-full sm:w-auto">
-          <Button variant="outline" onClick={handleExportCSV} disabled={isExporting} className="flex-1 sm:flex-none">
+          <Button variant="outline" onClick={handleExportCSV} disabled={isExporting} className="h-10 flex-1 gap-2 rounded-lg border-pink-200 bg-white px-3 text-sm font-medium text-pink-700 shadow-sm hover:!border-pink-200 hover:!bg-pink-50 hover:!text-pink-700 sm:flex-none">
             <Download className="w-4 h-4 mr-2" />
             {isExporting ? "Exporting..." : "Export CSV"}
           </Button>
           <Link href="/dashboard/purchasing/po/new">
-            <Button className="w-full sm:w-auto">
+            <Button className="h-10 w-full gap-2 rounded-lg bg-pink-600 px-3 text-sm font-semibold text-white shadow-sm hover:bg-pink-700 sm:w-auto">
               <Plus className="w-4 h-4 mr-2" />
-              Buat PO Baru
+              Buat PO dari PR
             </Button>
           </Link>
         </div>
       </div>
 
-      {/* Filters */}
-      <div className="flex flex-col sm:flex-wrap gap-4">
-        <div className="relative w-full">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input
-            placeholder="Cari nomor PO atau supplier..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10"
-          />
-        </div>
-        <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as POStatus | "")}>
-          <SelectTrigger className="w-full sm:w-[200px]">
-            <SelectValue placeholder="Status" />
-          </SelectTrigger>
-          <SelectContent>
-            {STATUS_OPTIONS.map((opt) => (
-              <SelectItem key={opt.value || "all"} value={opt.value || "all"}>
-                {opt.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
+      <Card>
+        <CardContent className="p-4">
+          <div className="flex flex-col gap-3 md:flex-row md:items-center">
+            <form onSubmit={handleSearch} className="flex flex-1 gap-2">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                <Input
+                  placeholder="Cari nomor PO atau supplier..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="h-9 pl-10 text-sm"
+                />
+              </div>
+              <Button type="submit" variant="outline" className="h-9 flex-shrink-0">
+                Cari
+              </Button>
+            </form>
+
+            <div className="flex min-w-0 items-center gap-2 md:w-[260px]">
+              <Combobox
+                options={STATUS_OPTIONS}
+                value={statusFilter}
+                onChange={(value) => {
+                  setStatusFilter(value as POStatus | "all");
+                  setPagination((prev) => ({ ...prev, page: 1 }));
+                }}
+                placeholder="Filter status..."
+                searchPlaceholder="Cari status..."
+                emptyMessage="Status tidak ditemukan"
+                className="!w-full h-9 text-sm"
+              />
+            </div>
+
+            {(search || statusFilter !== "all" || pagination.page > 1) && (
+              <Button variant="outline" onClick={handleResetFilters} className="h-9 flex-shrink-0">
+                Reset
+              </Button>
+            )}
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Bulk Actions */}
       {selectedIds.size > 0 && (
@@ -432,12 +451,18 @@ export default function PurchaseOrdersPage() {
         </div>
       )}
 
-      {/* Table */}
-      <div className="border rounded-lg overflow-x-auto">
-        <div>
+      <Card>
+        <CardHeader className="border-b border-gray-200/70 pb-3">
+          <CardTitle className="text-base flex items-center gap-2">
+            <FileText className="w-5 h-5" />
+            Daftar Purchase Order
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="p-0">
+        <div className="overflow-x-auto px-4">
           <Table>
           <TableHeader>
-            <TableRow>
+            <TableRow className="hover:bg-transparent">
               <TableHead className="w-[50px]">
                 <input
                   type="checkbox"
@@ -446,25 +471,25 @@ export default function PurchaseOrdersPage() {
                   className="rounded border-gray-300"
                 />
               </TableHead>
-              <TableHead>Nomor PO</TableHead>
-              <TableHead>Supplier</TableHead>
-              <TableHead>Tanggal</TableHead>
-              <TableHead className="text-right">Total</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Progress</TableHead>
-              <TableHead className="w-[50px]"></TableHead>
+              <TableHead className="text-gray-900">Nomor PO</TableHead>
+              <TableHead className="text-gray-900">Supplier</TableHead>
+              <TableHead className="text-gray-900">Tanggal</TableHead>
+              <TableHead className="text-right text-gray-900">Total</TableHead>
+              <TableHead className="text-center text-gray-900">Status</TableHead>
+              <TableHead className="text-gray-900">Progress</TableHead>
+              <TableHead className="text-right text-gray-900">Aksi</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={7} className="text-center py-8">
+                <TableCell colSpan={8} className="text-center py-12">
                   Memuat data...
                 </TableCell>
               </TableRow>
             ) : pos.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={7} className="text-center py-8">
+                <TableCell colSpan={8} className="text-center py-14">
                   Tidak ada data PO
                 </TableCell>
               </TableRow>
@@ -492,8 +517,8 @@ export default function PurchaseOrdersPage() {
                   <TableCell className="text-right font-medium">
                     {formatCurrency(po.grand_total || 0)}
                   </TableCell>
-                  <TableCell>{getStatusBadge(po.status)}</TableCell>
-                  <TableCell>
+                  <TableCell className="text-center">{getStatusBadge(po.status)}</TableCell>
+                  <TableCell className="text-right">
                     {normalizeStatus(po.status) !== "draft" && normalizeStatus(po.status) !== "cancelled" && (
                       <div className="flex items-center gap-2">
                         <div className="w-24 h-2 bg-gray-200 rounded-full overflow-hidden">
@@ -514,54 +539,43 @@ export default function PurchaseOrdersPage() {
                       </div>
                     )}
                   </TableCell>
-                  <TableCell>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger className="relative z-10 inline-flex h-8 w-8 items-center justify-center rounded-md text-gray-600 hover:bg-gray-100 hover:text-gray-900">
-                        <MoreVertical className="w-4 h-4" />
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="z-50 bg-white shadow-lg border border-gray-200">
-                        <Link href={`/dashboard/purchasing/po/${po.id}`}>
-                          <DropdownMenuItem>
-                            <FileText className="w-4 h-4 mr-2" />
-                            Lihat Detail
-                          </DropdownMenuItem>
-                        </Link>
-                        {normalizeStatus(po.status) === "draft" && (
-                          <>
-                            <Link href={`/dashboard/purchasing/po/${po.id}/edit`}>
-                              <DropdownMenuItem>
-                                <FileText className="w-4 h-4 mr-2 text-pink-600" />
-                                Edit PO
-                              </DropdownMenuItem>
-                            </Link>
-                            <DropdownMenuItem onClick={() => handleApprove(po)}>
-                              <CheckCircle className="w-4 h-4 mr-2 text-green-600" />
-                              Approve
-                            </DropdownMenuItem>
-                          </>
-                        )}
-                        {normalizeStatus(po.status) === "approved" && (
-                          <DropdownMenuItem onClick={() => handleOpenSend(po)}>
-                            <Send className="w-4 h-4 mr-2 text-pink-600" />
-                            Kirim ke Supplier
-                          </DropdownMenuItem>
-                        )}
-                        {["approved", "sent", "partially_received"].includes(normalizeStatus(po.status)) && (
-                          <Link href={`/dashboard/purchasing/delivery/new?po_id=${po.id}`}>
-                            <DropdownMenuItem>
-                              <Truck className="w-4 h-4 mr-2 text-pink-600" />
-                              Buat Delivery
-                            </DropdownMenuItem>
+                  <TableCell className="text-right">
+                    <div className="flex items-center justify-end gap-2">
+                      <Link href={`/dashboard/purchasing/po/${po.id}`}>
+                        <Button variant="ghost" size="sm" className="cursor-pointer" title="Lihat detail">
+                          <FileText className="w-4 h-4" />
+                        </Button>
+                      </Link>
+                      {normalizeStatus(po.status) === "draft" && (
+                        <>
+                          <Link href={`/dashboard/purchasing/po/${po.id}/edit`}>
+                            <Button variant="ghost" size="sm" className="cursor-pointer" title="Edit PO">
+                              <Pencil className="w-4 h-4" />
+                            </Button>
                           </Link>
-                        )}
-                        {normalizeStatus(po.status) !== "received" && normalizeStatus(po.status) !== "cancelled" && (
-                          <DropdownMenuItem onClick={() => handleOpenCancel(po)}>
-                            <XCircle className="w-4 h-4 mr-2 text-red-600" />
-                            Batalkan
-                          </DropdownMenuItem>
-                        )}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                          <Button variant="ghost" size="sm" onClick={() => handleApprove(po)} title="Approve">
+                            <CheckCircle className="w-4 h-4 text-green-600" />
+                          </Button>
+                        </>
+                      )}
+                      {normalizeStatus(po.status) === "approved" && (
+                        <Button variant="ghost" size="sm" onClick={() => handleOpenSend(po)} title="Kirim ke supplier">
+                          <Send className="w-4 h-4 text-pink-600" />
+                        </Button>
+                      )}
+                      {["approved", "sent", "partially_received"].includes(normalizeStatus(po.status)) && (
+                        <Link href={`/dashboard/purchasing/delivery/new?po_id=${po.id}`}>
+                          <Button variant="ghost" size="sm" className="cursor-pointer" title="Buat delivery">
+                            <Truck className="w-4 h-4 text-pink-600" />
+                          </Button>
+                        </Link>
+                      )}
+                      {normalizeStatus(po.status) !== "received" && normalizeStatus(po.status) !== "cancelled" && (
+                        <Button variant="ghost" size="sm" onClick={() => handleOpenCancel(po)} title="Batalkan">
+                          <XCircle className="w-4 h-4 text-red-600" />
+                        </Button>
+                      )}
+                    </div>
                   </TableCell>
                 </TableRow>
               ))
@@ -569,64 +583,35 @@ export default function PurchaseOrdersPage() {
           </TableBody>
         </Table>
         </div>
-      </div>
 
       {/* Pagination */}
-      {pagination.total_pages > 1 && (
-        <Pagination currentPage={pagination.page} totalPages={pagination.total_pages}>
-          <PaginationContent>
-            <PaginationItem>
-              <PaginationPrevious
-                onClick={() =>
-                  setPagination((prev) => ({
-                    ...prev,
-                    page: Math.max(1, prev.page - 1),
-                  }))
-                }
-                className={
-                  pagination.page <= 1
-                    ? "pointer-events-none opacity-50"
-                    : "cursor-pointer"
-                }
-              />
-            </PaginationItem>
-            {Array.from(
-              { length: Math.min(5, pagination.total_pages) },
-              (_, i) => {
-                const pageNum = i + 1;
-                return (
-                  <PaginationItem key={pageNum}>
-                    <PaginationLink
-                      onClick={() =>
-                        setPagination((prev) => ({ ...prev, page: pageNum }))
-                      }
-                      isActive={pageNum === pagination.page}
-                      className="cursor-pointer"
-                    >
-                      {pageNum}
-                    </PaginationLink>
-                  </PaginationItem>
-                );
-              }
-            )}
-            <PaginationItem>
-              <PaginationNext
-                onClick={() =>
-                  setPagination((prev) => ({
-                    ...prev,
-                    page: Math.min(pagination.total_pages, prev.page + 1),
-                  }))
-                }
-                className={
-                  pagination.page >= pagination.total_pages
-                    ? "pointer-events-none opacity-50"
-                    : "cursor-pointer"
-                }
-              />
-            </PaginationItem>
-          </PaginationContent>
-        </Pagination>
-      )}
+        <div className="border-t border-gray-200/70">
+          <div className="flex items-center justify-between px-4 py-3">
+            <p className="text-sm text-gray-500">
+              Halaman {pagination.page} dari {Math.max(1, pagination.total_pages)}
+            </p>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setPagination((prev) => ({ ...prev, page: Math.max(1, prev.page - 1) }))}
+                disabled={pagination.page === 1}
+              >
+                Sebelumnya
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setPagination((prev) => ({ ...prev, page: Math.min(Math.max(1, pagination.total_pages), prev.page + 1) }))}
+                disabled={pagination.page >= Math.max(1, pagination.total_pages)}
+              >
+                Berikutnya
+              </Button>
+            </div>
+          </div>
+        </div>
+        </CardContent>
+      </Card>
 
       {/* Send Dialog */}
       <Dialog open={isSendDialogOpen} onOpenChange={setIsSendDialogOpen}>
@@ -657,10 +642,10 @@ export default function PurchaseOrdersPage() {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsSendDialogOpen(false)}>
+            <Button variant="outline" onClick={() => setIsSendDialogOpen(false)} className="purchasing-secondary-button">
               Batal
             </Button>
-            <Button onClick={handleSend}>Kirim</Button>
+            <Button onClick={handleSend} className="purchasing-main-button">Kirim</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -686,13 +671,14 @@ export default function PurchaseOrdersPage() {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsCancelDialogOpen(false)}>
+            <Button variant="outline" onClick={() => setIsCancelDialogOpen(false)} className="purchasing-secondary-button">
               Batal
             </Button>
             <Button
               variant="destructive"
               onClick={handleCancel}
               disabled={!cancelReason}
+              className="purchasing-main-button"
             >
               Batalkan PO
             </Button>
@@ -710,10 +696,10 @@ export default function PurchaseOrdersPage() {
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsBulkApproveDialogOpen(false)} disabled={isProcessingBulk}>
+            <Button variant="outline" onClick={() => setIsBulkApproveDialogOpen(false)} disabled={isProcessingBulk} className="purchasing-secondary-button">
               Cancel
             </Button>
-            <Button onClick={handleBulkApprove} disabled={isProcessingBulk}>
+            <Button onClick={handleBulkApprove} disabled={isProcessingBulk} className="purchasing-main-button">
               {isProcessingBulk ? "Processing..." : `Approve ${selectedIds.size} PO`}
             </Button>
           </DialogFooter>
@@ -730,10 +716,10 @@ export default function PurchaseOrdersPage() {
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsBulkDeleteDialogOpen(false)} disabled={isProcessingBulk}>
+            <Button variant="outline" onClick={() => setIsBulkDeleteDialogOpen(false)} disabled={isProcessingBulk} className="purchasing-secondary-button">
               Cancel
             </Button>
-            <Button variant="destructive" onClick={handleBulkDelete} disabled={isProcessingBulk}>
+            <Button variant="destructive" onClick={handleBulkDelete} disabled={isProcessingBulk} className="purchasing-main-button">
               {isProcessingBulk ? "Processing..." : `Hapus ${selectedIds.size} PO`}
             </Button>
           </DialogFooter>

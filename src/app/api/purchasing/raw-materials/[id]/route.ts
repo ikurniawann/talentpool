@@ -126,6 +126,7 @@ export async function PUT(
       .from("raw_materials")
       .select("*")
       .eq("id", id)
+      .is("deleted_at", null)
       .single();
 
     if (findError || !existingMaterial) {
@@ -158,6 +159,7 @@ export async function PUT(
         updated_at: new Date().toISOString(),
       })
       .eq("id", id)
+      .is("deleted_at", null)
       .select()
       .single();
 
@@ -205,12 +207,14 @@ export async function DELETE(
   try {
     const { id } = await params;
     const supabase = await createClient();
+    const { data: authData } = await supabase.auth.getUser();
 
     // Cek apakah material ada
     const { data: material, error: findError } = await supabase
       .from("raw_materials")
       .select("*")
       .eq("id", id)
+      .is("deleted_at", null)
       .single();
 
     if (findError || !material) {
@@ -261,14 +265,17 @@ export async function DELETE(
       .update({
         is_active: false,
         deleted_at: new Date().toISOString(),
+        deleted_by: authData.user?.id ?? null,
+        updated_at: new Date().toISOString(),
       })
-      .eq("id", id);
+      .eq("id", id)
+      .is("deleted_at", null);
 
     if (error) throw error;
 
     return Response.json({
       success: true,
-      message: "Bahan baku berhasil dinonaktifkan",
+      message: "Bahan baku berhasil dihapus",
     });
   } catch (error: unknown) {
     console.error("Error deleting raw material:", error);

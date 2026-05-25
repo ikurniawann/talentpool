@@ -67,26 +67,34 @@ export function Combobox({
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger
+        data-slot="select-trigger"
         type="button"
         role="combobox"
         aria-expanded={open}
         className={cn(
-          "border-input bg-background hover:bg-accent hover:text-accent-foreground inline-flex h-10 w-full items-center justify-between gap-2 rounded-md border px-3 py-2 text-sm whitespace-nowrap shadow-xs transition-colors outline-none disabled:pointer-events-none disabled:opacity-50",
+          "flex h-10 w-full min-w-0 items-center justify-between gap-2 rounded-lg border border-gray-200/80 bg-transparent px-2.5 text-sm outline-none transition-colors hover:border-gray-300 hover:bg-muted focus-visible:border-pink-200 focus-visible:ring-3 focus-visible:ring-pink-100 disabled:pointer-events-none disabled:opacity-50",
           className
         )}
         disabled={disabled}
       >
-        <span className={cn("truncate", !selectedOption && "text-muted-foreground")}>
+        <span className={cn("min-w-0 truncate", !selectedOption && "text-muted-foreground")}>
           {selectedOption ? selectedOption.label : placeholder}
         </span>
         <div className="flex items-center gap-2">
           {allowClear && value && (
             <span
               role="button"
-              tabIndex={-1}
+              tabIndex={0}
               onClick={(e) => {
                 e.stopPropagation();
                 onChange("");
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  onChange("");
+                }
               }}
               className="text-muted-foreground hover:text-foreground"
             >
@@ -97,7 +105,7 @@ export function Combobox({
         </div>
       </PopoverTrigger>
       <PopoverContent 
-        className="w-[--radix-popover-trigger-width] p-0 shadow-xl z-[9999] border border-gray-200 bg-white" 
+        className="z-[9999] w-[--radix-popover-trigger-width] min-w-[--radix-popover-trigger-width] border border-gray-200/80 bg-white p-0 shadow-xl ring-1 ring-gray-200/60" 
         align="start"
         sideOffset={4}
       >
@@ -105,10 +113,12 @@ export function Combobox({
           <div className="flex items-center border-b border-gray-200 px-3 py-2.5">
             <Search className="w-4 h-4 text-gray-400 mr-2 flex-shrink-0" />
             <input
+              data-combobox-search="true"
               value={searchValue}
               onChange={(e) => setSearchValue(e.target.value)}
               placeholder={searchPlaceholder}
-              className="w-full text-sm bg-transparent border-none outline-none placeholder:text-gray-400 text-gray-900"
+              className="w-full border-0! bg-transparent text-sm text-gray-900 shadow-none! outline-none! ring-0! placeholder:text-gray-400 focus:border-0! focus:shadow-none! focus:outline-none! focus:ring-0!"
+              style={{ border: 0, boxShadow: "none", outline: "none" }}
             />
           </div>
           <CommandList className="max-h-[300px] overflow-y-auto bg-white p-1">
@@ -118,16 +128,16 @@ export function Combobox({
                 <CommandItem
                   key={option.value}
                   value={option.value}
-                  onSelect={(currentValue) => {
-                    onChange(currentValue === value ? "" : currentValue);
+                  onSelect={() => {
+                    onChange(allowClear && option.value === value ? "" : option.value);
                     setOpen(false);
                     setSearchValue("");
                   }}
                   className="hover:bg-gray-100 data-[selected=true]:bg-gray-200 cursor-pointer py-2 px-3 bg-white rounded-sm"
                 >
-                  {option.label}
+                  <span className="min-w-0 truncate">{option.label}</span>
                   {option.description && (
-                    <span className="ml-2 text-xs text-muted-foreground">
+                    <span className="ml-2 shrink-0 text-xs text-muted-foreground">
                       {option.description}
                     </span>
                   )}

@@ -16,6 +16,7 @@ import {
   ArrowUturnLeftIcon,
   ArchiveBoxIcon,
   DocumentChartBarIcon,
+  DocumentTextIcon,
   ChevronDownIcon,
   ScaleIcon,
   TagIcon,
@@ -31,14 +32,21 @@ const MASTER_ITEMS = [
   { href: "/dashboard/purchasing/price-list", label: "Daftar Harga", icon: TagIcon },
 ];
 
-// Transaksi Items
-const TRANSAKSI_ITEMS = [
+// Procurement Items
+const PROCUREMENT_ITEMS = [
+  { href: "/dashboard/purchasing/pr", label: "Purchase Request", icon: DocumentTextIcon },
   { href: "/dashboard/purchasing/po", label: "Purchase Order", icon: ShoppingCartIcon },
   { href: "/dashboard/purchasing/grn", label: "Barang Masuk", icon: TruckIcon },
   { href: "/dashboard/purchasing/production", label: "Produksi", icon: Cog6ToothIcon },
   { href: "/dashboard/purchasing/production/recipes", label: "Recipe/BOM", icon: CubeTransparentIcon },
   { href: "/dashboard/purchasing/qc", label: "QC", icon: CheckBadgeIcon },
   { href: "/dashboard/purchasing/returns", label: "Retur", icon: ArrowUturnLeftIcon },
+];
+
+// Approval Items
+const APPROVAL_ITEMS = [
+  { href: "/dashboard/purchasing/approval/pr", label: "Approval PR", icon: DocumentTextIcon },
+  { href: "/dashboard/purchasing/approval/po", label: "Approval PO", icon: ShoppingCartIcon },
 ];
 
 // Report Items
@@ -52,9 +60,13 @@ const REPORT_ITEMS = [
 export default function PurchasingLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [masterOpen, setMasterOpen] = useState(false);
+  const [procurementOpen, setProcurementOpen] = useState(false);
+  const [approvalOpen, setApprovalOpen] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
   const [userOpen, setUserOpen] = useState(false);
   const masterRef = useRef<HTMLDivElement>(null);
+  const procurementRef = useRef<HTMLDivElement>(null);
+  const approvalRef = useRef<HTMLDivElement>(null);
   const reportRef = useRef<HTMLDivElement>(null);
   const userRef = useRef<HTMLDivElement>(null);
 
@@ -70,6 +82,12 @@ export default function PurchasingLayout({ children }: { children: React.ReactNo
       if (masterRef.current && !masterRef.current.contains(e.target as Node)) {
         setMasterOpen(false);
       }
+      if (procurementRef.current && !procurementRef.current.contains(e.target as Node)) {
+        setProcurementOpen(false);
+      }
+      if (approvalRef.current && !approvalRef.current.contains(e.target as Node)) {
+        setApprovalOpen(false);
+      }
       if (reportRef.current && !reportRef.current.contains(e.target as Node)) {
         setReportOpen(false);
       }
@@ -81,7 +99,14 @@ export default function PurchasingLayout({ children }: { children: React.ReactNo
     return () => document.removeEventListener("mousedown", handleClick);
   }, []);
 
-  const isInMasterSection = MASTER_ITEMS.some(item => pathname === item.href);
+  const isInMasterSection =
+    pathname === "/dashboard/purchasing/main" ||
+    MASTER_ITEMS.some(item => pathname === item.href || pathname?.startsWith(`${item.href}/`));
+  const isInProcurementSection =
+    pathname === "/dashboard/purchasing/procurement" ||
+    ["/dashboard/purchasing/pr", "/dashboard/purchasing/po", "/dashboard/purchasing/grn", "/dashboard/purchasing/qc", "/dashboard/purchasing/returns"]
+      .some((href) => pathname === href || pathname?.startsWith(`${href}/`));
+  const isInApprovalSection = pathname?.startsWith("/dashboard/purchasing/approval");
   const isInReportSection = pathname?.startsWith("/dashboard/purchasing/reports");
 
   return (
@@ -127,24 +152,77 @@ export default function PurchasingLayout({ children }: { children: React.ReactNo
               )}
             </div>
 
-            {/* Transaksi - direct links */}
-            {TRANSAKSI_ITEMS.map((item) => {
-              const active = pathname === item.href;
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={clsx(
-                    "flex items-center gap-1.5 px-2 sm:px-3 py-2 text-xs sm:text-sm font-medium border-b-2 transition-colors whitespace-nowrap",
-                    active ? "border-pink-600 text-pink-600" : "border-transparent text-gray-900 hover:text-pink-600 hover:border-pink-400"
-                  )}
-                >
-                  <item.icon className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                  <span className="hidden sm:inline">{item.label}</span>
-                  <span className="sm:hidden">{item.label.split(' ')[0]}</span>
-                </Link>
-              );
-            })}
+            {/* Procurement — dropdown */}
+            <div className="relative z-[9999]" ref={procurementRef}>
+              <button
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setProcurementOpen((v) => !v);
+                }}
+                className={clsx(
+                  "flex items-center gap-1.5 px-2 sm:px-3 py-2 text-xs sm:text-sm font-medium border-b-2 transition-colors cursor-pointer whitespace-nowrap",
+                  isInProcurementSection
+                    ? "border-pink-600 text-pink-600"
+                    : "border-transparent text-gray-900 hover:text-pink-600 hover:border-pink-400"
+                )}
+              >
+                <ShoppingCartIcon className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                <span className="hidden sm:inline">Procurement</span>
+                <span className="sm:hidden">Proc</span>
+                <ChevronDownIcon className={clsx("w-3 h-3 sm:w-3.5 sm:h-3.5 transition-transform", procurementOpen && "rotate-180")} />
+              </button>
+
+              {procurementOpen && (
+                <div className="absolute left-0 top-full mt-2 rounded-xl shadow-xl z-[9999] py-1 min-w-52" style={{ background: "rgba(255,255,255,0.85)", backdropFilter: "blur(20px) saturate(1.8)", WebkitBackdropFilter: "blur(20px) saturate(1.8)", border: "1px solid rgba(209,213,219,0.35)" }}>
+                  {PROCUREMENT_ITEMS.map((item) => (
+                    <DropdownItem
+                      key={item.href}
+                      href={item.href}
+                      label={item.label}
+                      icon={item.icon}
+                      onClick={() => setProcurementOpen(false)}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Approval — dropdown */}
+            <div className="relative z-[9999]" ref={approvalRef}>
+              <button
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setApprovalOpen((v) => !v);
+                }}
+                className={clsx(
+                  "flex items-center gap-1.5 px-2 sm:px-3 py-2 text-xs sm:text-sm font-medium border-b-2 transition-colors cursor-pointer whitespace-nowrap",
+                  isInApprovalSection
+                    ? "border-pink-600 text-pink-600"
+                    : "border-transparent text-gray-900 hover:text-pink-600 hover:border-pink-400"
+                )}
+              >
+                <CheckBadgeIcon className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                <span className="hidden sm:inline">Approval</span>
+                <span className="sm:hidden">Approve</span>
+                <ChevronDownIcon className={clsx("w-3 h-3 sm:w-3.5 sm:h-3.5 transition-transform", approvalOpen && "rotate-180")} />
+              </button>
+
+              {approvalOpen && (
+                <div className="absolute left-0 top-full mt-2 rounded-xl shadow-xl z-[9999] py-1 min-w-48" style={{ background: "rgba(255,255,255,0.85)", backdropFilter: "blur(20px) saturate(1.8)", WebkitBackdropFilter: "blur(20px) saturate(1.8)", border: "1px solid rgba(209,213,219,0.35)" }}>
+                  {APPROVAL_ITEMS.map((item) => (
+                    <DropdownItem
+                      key={item.href}
+                      href={item.href}
+                      label={item.label}
+                      icon={item.icon}
+                      onClick={() => setApprovalOpen(false)}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
 
             {/* Laporan — dropdown */}
             <div className="relative z-[9999]" ref={reportRef}>
@@ -169,7 +247,6 @@ export default function PurchasingLayout({ children }: { children: React.ReactNo
 
               {reportOpen && (
                 <div className="absolute left-0 top-full mt-2 rounded-xl shadow-xl z-[9999] py-1 min-w-48" style={{ background: "rgba(255,255,255,0.85)", backdropFilter: "blur(20px) saturate(1.8)", WebkitBackdropFilter: "blur(20px) saturate(1.8)", border: "1px solid rgba(209,213,219,0.35)" }}>
-                  <p className="px-3 py-1 text-xs font-semibold text-gray-400 uppercase tracking-wide">Laporan</p>
                   {REPORT_ITEMS.map((item) => (
                     <DropdownItem 
                       key={item.href} 

@@ -46,7 +46,8 @@ export async function GET(request: NextRequest) {
     // Build query
     let query = supabase
       .from("v_raw_materials_stock")
-      .select("*", { count: "exact" });
+      .select("*", { count: "exact" })
+      .is("deleted_at", null);
 
     // Filters
     if (search) {
@@ -115,6 +116,7 @@ export async function POST(request: NextRequest) {
         .from("raw_materials")
  .select("kode")
         .ilike("kode", `BHN-${year}-%`)
+        .is("deleted_at", null)
         .order("kode", { ascending: false })
         .limit(1)
         .single();
@@ -134,6 +136,7 @@ export async function POST(request: NextRequest) {
       .from("raw_materials")
       .select("id")
       .eq("kode", finalKode)
+      .is("deleted_at", null)
       .single();
 
     if (existing) {

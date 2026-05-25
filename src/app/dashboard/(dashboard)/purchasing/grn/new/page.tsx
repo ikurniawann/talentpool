@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -101,12 +101,7 @@ export default function CreateGrnPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [openDelivery, setOpenDelivery] = useState(false);
 
-  // Fetch deliveries that can be received
-  useEffect(() => {
-    fetchDeliveries();
-  }, []);
-
-  async function fetchDeliveries() {
+  const fetchDeliveries = useCallback(async () => {
     setFetchingDeliveries(true);
     try {
       const res = await fetch("/api/purchasing/delivery?limit=100");
@@ -148,7 +143,12 @@ export default function CreateGrnPage() {
     } finally {
       setFetchingDeliveries(false);
     }
-  }
+  }, [toast]);
+
+  // Fetch deliveries that can be received
+  useEffect(() => {
+    fetchDeliveries();
+  }, [fetchDeliveries]);
 
   useEffect(() => {
     const deliveryId = searchParams.get("delivery_id");
@@ -161,18 +161,7 @@ export default function CreateGrnPage() {
   }, [deliveries, searchParams, selectedDelivery]);
 
   // Fetch PO items when delivery selected
-  useEffect(() => {
-    const poId = selectedDelivery?.purchase_order_id;
-    if (poId) {
-      console.log('Fetching PO items for:', poId);
-      fetchPOItems(poId);
-    } else {
-      setPoItems([]);
-      setGrnItems([]);
-    }
-  }, [selectedDelivery]);
-
-  async function fetchPOItems(poId: string) {
+  const fetchPOItems = useCallback(async (poId: string) => {
     try {
       const res = await fetch(`/api/purchasing/po/${poId}/items`);
       const data = await res.json();
@@ -209,7 +198,18 @@ export default function CreateGrnPage() {
         variant: "destructive" 
       });
     }
-  }
+  }, [toast]);
+
+  useEffect(() => {
+    const poId = selectedDelivery?.purchase_order_id;
+    if (poId) {
+      console.log('Fetching PO items for:', poId);
+      fetchPOItems(poId);
+    } else {
+      setPoItems([]);
+      setGrnItems([]);
+    }
+  }, [fetchPOItems, selectedDelivery]);
 
   const handleAddItem = () => {
     setGrnItems([
@@ -622,10 +622,10 @@ export default function CreateGrnPage() {
                 )}
               </CardContent>
               <div className="border-t border-gray-200 px-4 py-4 flex justify-end gap-3 bg-gray-50">
-                <Button type="button" variant="outline" onClick={() => router.back()} className="px-6">
+                <Button type="button" variant="outline" onClick={() => router.back()} className="purchasing-secondary-button px-6">
                   Batal
                 </Button>
-                <Button type="submit" disabled={loading || grnItems.length === 0} className="px-6">
+                <Button type="submit" disabled={loading || grnItems.length === 0} className="purchasing-main-button px-6">
                   <ClipboardDocumentCheckIcon className="w-4 h-4 mr-2" />
                   {loading ? "Menyimpan..." : "Simpan Penerimaan"}
                 </Button>

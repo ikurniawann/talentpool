@@ -48,8 +48,8 @@ export async function PUT(
       );
     }
 
-    // Cek status PO - hanya bisa edit jika DRAFT
-    if (String(item.purchase_order.status).toLowerCase() !== "draft") {
+    // Cek status PO - hanya bisa edit jika draft
+    if (item.purchase_order.status !== "draft") {
       return Response.json(
         { success: false, message: "Item hanya bisa diedit saat PO status draft" },
         { status: 400 }
@@ -121,8 +121,8 @@ export async function DELETE(
       );
     }
 
-    // Cek status PO - hanya bisa hapus jika DRAFT
-    if (String(item.purchase_order.status).toLowerCase() !== "draft") {
+    // Cek status PO - hanya bisa hapus jika draft
+    if (item.purchase_order.status !== "draft") {
       return Response.json(
         { success: false, message: "Item hanya bisa dihapus saat PO status draft" },
         { status: 400 }

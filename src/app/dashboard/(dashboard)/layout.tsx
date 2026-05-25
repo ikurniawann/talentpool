@@ -38,13 +38,41 @@ export default async function DashboardGroupLayout({
                 icon: "shopping",
                 children: [
                   { href: "/dashboard/purchasing", label: "Dashboard", icon: "home" },
-                  { href: "/dashboard/purchasing/main", label: "Master Data", icon: "database" },
-                  { href: "/dashboard/purchasing/pr", label: "Purchase Request", icon: "clipboard" },
-                  { href: "/dashboard/purchasing/po", label: "Purchase Order", icon: "clipboard-document-check" },
-                  { href: "/dashboard/purchasing/grn", label: "Penerimaan", icon: "arrow-down-on-square" },
-                  { href: "/dashboard/purchasing/products", label: "Produk", icon: "cube" },
-                  { href: "/dashboard/purchasing/raw-materials", label: "Bahan Baku", icon: "circle-stack" },
-                  { href: "/dashboard/purchasing/suppliers", label: "Supplier", icon: "users" },
+                  {
+                    href: "/dashboard/purchasing/main",
+                    label: "Master Data",
+                    icon: "database",
+                    children: [
+                      { href: "/dashboard/purchasing/units", label: "Satuan", icon: "cube" },
+                      { href: "/dashboard/purchasing/raw-materials", label: "Bahan Baku", icon: "circle-stack" },
+                      { href: "/dashboard/purchasing/products", label: "Produk", icon: "cube" },
+                      { href: "/dashboard/purchasing/suppliers", label: "Supplier", icon: "users" },
+                      { href: "/dashboard/purchasing/price-list", label: "Daftar Harga", icon: "document-text" },
+                    ],
+                  },
+                  {
+                    href: "/dashboard/purchasing/procurement",
+                    label: "Procurement",
+                    icon: "shopping",
+                    children: [
+                      { href: "/dashboard/purchasing/procurement", label: "Menu Procurement", icon: "shopping" },
+                      { href: "/dashboard/purchasing/pr", label: "Purchase Request", icon: "clipboard" },
+                      { href: "/dashboard/purchasing/po", label: "Purchase Order", icon: "clipboard-document-check" },
+                      { href: "/dashboard/purchasing/grn", label: "Penerimaan", icon: "arrow-down-on-square" },
+                      { href: "/dashboard/purchasing/qc", label: "QC", icon: "check-circle" },
+                      { href: "/dashboard/purchasing/returns", label: "Retur", icon: "truck" },
+                    ],
+                  },
+                  {
+                    href: "/dashboard/purchasing/approval",
+                    label: "Approval",
+                    icon: "check-circle",
+                    children: [
+                      { href: "/dashboard/purchasing/approval", label: "Menu Approval", icon: "check-circle" },
+                      { href: "/dashboard/purchasing/approval/pr", label: "Approval PR", icon: "clipboard" },
+                      { href: "/dashboard/purchasing/approval/po", label: "Approval PO", icon: "clipboard-document-check" },
+                    ],
+                  },
                   { href: "/dashboard/purchasing/reports", label: "Laporan", icon: "chart" },
                 ],
               },
@@ -162,33 +190,10 @@ export default async function DashboardGroupLayout({
               user.role === "qc_staff"
               ? [
                   { href: "/dashboard/purchasing", label: "Dashboard", icon: "home" },
-                  {
-                    href: "/dashboard/purchasing",
-                    label: "Purchasing",
-                    icon: "shopping",
-                    children: [
-                      { href: "/dashboard/purchasing/main", label: "Master Data", icon: "database" },
-                      { href: "/dashboard/purchasing/units", label: "Satuan", icon: "cube" },
-                      { href: "/dashboard/purchasing/raw-materials", label: "Bahan Baku", icon: "circle-stack" },
-                      { href: "/dashboard/purchasing/products", label: "Produk", icon: "cube" },
-                      { href: "/dashboard/purchasing/suppliers", label: "Supplier", icon: "users" },
-                      { href: "/dashboard/purchasing/price-list", label: "Daftar Harga", icon: "document-text" },
-                      { href: "/dashboard/purchasing/po", label: "Purchase Order", icon: "clipboard-document-check" },
-                      { href: "/dashboard/purchasing/grn", label: "Penerimaan", icon: "arrow-down-on-square" },
-                      { href: "/dashboard/purchasing/delivery", label: "Pengiriman", icon: "truck" },
-                    ],
-                  },
-                  {
-                    href: "/dashboard/purchasing/reports",
-                    label: "Laporan",
-                    icon: "chart",
-                    children: [
-                      { href: "/dashboard/purchasing/reports/inventory-valuation", label: "Valuasi Inventory", icon: "chart-bar" },
-                      { href: "/dashboard/purchasing/reports/po-summary", label: "Ringkasan PO", icon: "document-text" },
-                      { href: "/dashboard/purchasing/reports/po-detail", label: "Detail PO", icon: "document-magnifying-glass" },
-                      { href: "/dashboard/purchasing/reports/supplier-performance", label: "Performa Supplier", icon: "chart-pie" },
-                    ],
-                  },
+                  { href: "/dashboard/purchasing/main", label: "Master Data", icon: "database" },
+                  { href: "/dashboard/purchasing/procurement", label: "Procurement", icon: "shopping" },
+                  { href: "/dashboard/purchasing/approval", label: "Approval", icon: "check-circle" },
+                  { href: "/dashboard/purchasing/reports", label: "Laporan", icon: "chart" },
                 ]
               : [
                   { href: "/dashboard", label: "Beranda", icon: "home" },

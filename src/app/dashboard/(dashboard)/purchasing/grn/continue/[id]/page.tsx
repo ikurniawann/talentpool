@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -9,7 +9,6 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
-import { DatePicker } from "@/components/ui/datepicker";
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { BreadcrumbNav } from "@/modules/purchasing/components/breadcrumb/BreadcrumbNav";
@@ -56,6 +55,25 @@ interface GRNData {
   items: GrnItem[];
 }
 
+type ApiLineItem = {
+  id: string;
+  grn_id?: string;
+  purchase_order_item_id?: string;
+  raw_material_id: string;
+  nama_bahan?: string;
+  qty_ordered?: number;
+  qty_received?: number;
+  qty_diterima?: number;
+  raw_material?: {
+    nama?: string;
+    nama_bahan?: string;
+  } | null;
+  satuan?: {
+    nama?: string;
+    nama_satuan?: string;
+  } | null;
+};
+
 export default function ContinueGrnPage() {
   const params = useParams();
   const router = useRouter();
@@ -74,85 +92,7 @@ export default function ContinueGrnPage() {
     catatan: "",
   });
 
-  useEffect(() => {
-    if (grnId) {
-      fetchGrnData();
-    }
-  }, [grnId]);
-
-  async function fetchGrnData() {
-    setLoading(true);
-    try {
-      // Fetch GRN detail
-      const res = await fetch(`/api/purchasing/grn/${grnId}`);
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.error?.message || "Gagal memuat data GRN");
-      }
-
-      const grn = data.data;
-      setGrnData(grn);
-      setFormData({
-        tanggal_penerimaan: grn.tanggal_penerimaan || new Date().toISOString().split("T")[0],
-        catatan: grn.catatan || "",
-      });
-
-      // Initialize GRN items with existing data
-      if (grn.items && grn.items.length > 0) {
-        console.log("=== GRN ITEMS ===");
-        console.log("GRN Items:", grn.items);
-        
-        const mappedItems = grn.items.map((item: any) => {
-          console.log("Mapping GRN item:", {
-            id: item.id,
-            purchase_order_item_id: item.purchase_order_item_id,
-            raw_material_id: item.raw_material_id,
-            qty_diterima: item.qty_diterima,
-          });
-          
-          return {
-            id: item.id,
-            grn_id: item.grn_id,
-            purchase_order_item_id: item.purchase_order_item_id,
-            raw_material_id: item.raw_material_id,
-            nama_bahan: item.raw_material?.nama || item.nama_bahan || "Unknown",
-            qty_diterima: 0, // Reset to 0 for new receiving
-            qty_ditolak: 0,  // Reset to 0 for new receiving
-            kondisi: "baik" as "baik" | "rusak" | "cacat",
-            catatan: "",
-            satuan: item.satuan?.nama || item.satuan?.nama_satuan || "pcs",
-          };
-        });
-        
-        setGrnItems(mappedItems);
-        
-        // After loading GRN items, try to enrich with PO data
-        console.log("=== CHECKING PO_ID ===");
-        console.log("GRN po_id:", grn.po_id);
-        console.log("GRN purchase_order_id:", grn.purchase_order_id);
-        
-        if (grn.po_id) {
-          console.log("Fetching PO items for PO ID:", grn.po_id);
-          await fetchPOItems(grn.po_id);
-        } else {
-          console.error("❌ No PO ID found in GRN data!");
-          console.error("GRN data:", grn);
-        }
-      }
-    } catch (error: any) {
-      console.error("Fetch error:", error);
-      toast({
-        title: "❌ Error",
-        description: error.message || "Gagal memuat data GRN",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  async function fetchPOItems(poId: string) {
+  const fetchPOItems = useCallback(async (poId: string) => {
     try {
       console.log("=== FETCH PO ITEMS ===");
       console.log("PO ID:", poId);
@@ -165,7 +105,7 @@ export default function ContinueGrnPage() {
       console.log("PO API Response data:", JSON.stringify(data, null, 2));
 
       if (data.data?.items && data.data.items.length > 0) {
-        const items = data.data.items.map((item: any) => ({
+        const items = (data.data.items as ApiLineItem[]).map((item) => ({
           id: item.id,
           raw_material_id: item.raw_material_id,
           nama_bahan: item.raw_material?.nama || item.raw_material?.nama_bahan || "Unknown",
@@ -186,7 +126,7 @@ export default function ContinueGrnPage() {
       console.log("Direct PO Items API Response:", JSON.stringify(directData, null, 2));
       
       if (directData.data && directData.data.length > 0) {
-        const items = directData.data.map((item: any) => ({
+        const items = (directData.data as ApiLineItem[]).map((item) => ({
           id: item.id,
           raw_material_id: item.raw_material_id,
           nama_bahan: item.raw_material?.nama || item.raw_material?.nama_bahan || "Unknown",
@@ -203,24 +143,73 @@ export default function ContinueGrnPage() {
     } catch (e) {
       console.error("❌ Failed to fetch PO items:", e);
     }
-  }
+  }, []);
 
-  function updateGrnItem(index: number, field: keyof GrnItem, value: any) {
+  const fetchGrnData = useCallback(async () => {
+    setLoading(true);
+    try {
+      // Fetch GRN detail
+      const res = await fetch(`/api/purchasing/grn/${grnId}`);
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error?.message || "Gagal memuat data GRN");
+      }
+
+      const grn = data.data as GRNData & { purchase_order_id?: string };
+      setGrnData(grn);
+      setFormData({
+        tanggal_penerimaan: grn.tanggal_penerimaan || new Date().toISOString().split("T")[0],
+        catatan: grn.catatan || "",
+      });
+
+      // Initialize GRN items with existing data
+      if (grn.items && grn.items.length > 0) {
+        const mappedItems = grn.items.map((item) => ({
+          id: item.id,
+          grn_id: item.grn_id,
+          purchase_order_item_id: item.purchase_order_item_id,
+          raw_material_id: item.raw_material_id,
+          nama_bahan: item.nama_bahan || "Unknown",
+          qty_diterima: 0,
+          qty_ditolak: 0,
+          kondisi: "baik" as const,
+          catatan: "",
+          satuan: item.satuan || "pcs",
+        }));
+
+        setGrnItems(mappedItems);
+
+        if (grn.po_id) {
+          await fetchPOItems(grn.po_id);
+        } else {
+          console.error("No PO ID found in GRN data", grn);
+        }
+      }
+    } catch (error: unknown) {
+      console.error("Fetch error:", error);
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Gagal memuat data GRN",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  }, [fetchPOItems, grnId, toast]);
+
+  useEffect(() => {
+    if (grnId) {
+      fetchGrnData();
+    }
+  }, [fetchGrnData, grnId]);
+
+  function updateGrnItem(index: number, field: keyof GrnItem, value: GrnItem[keyof GrnItem]) {
     setGrnItems((prev) => {
       const updated = [...prev];
       updated[index] = { ...updated[index], [field]: value };
       return updated;
     });
-  }
-
-  function getRemainingQty(poItemId: string): number {
-    const poItem = poItems.find((p) => p.id === poItemId);
-    if (!poItem) return 0;
-
-    const grnItem = grnItems.find((g) => g.purchase_order_item_id === poItemId);
-    const alreadyReceivedInThisGrn = grnItem?.qty_diterima || 0;
-
-    return poItem.qty_ordered - poItem.qty_received - alreadyReceivedInThisGrn;
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -308,12 +297,12 @@ export default function ContinueGrnPage() {
       } else {
         throw new Error(data.error?.message || data.message || "Gagal mengupdate GRN");
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Submit error:", error);
       // Show error modal
       setModalData({
         success: false,
-        message: error.message || "Gagal mengupdate GRN",
+        message: error instanceof Error ? error.message : "Gagal mengupdate GRN",
       });
       setShowModal(true);
     } finally {
@@ -594,7 +583,7 @@ export default function ContinueGrnPage() {
             <Button
               type="submit"
               disabled={saving}
-              className="bg-blue-600 hover:bg-blue-700"
+              className="purchasing-main-button"
             >
               {saving ? "Menyimpan..." : "Simpan Perubahan"}
             </Button>
@@ -619,7 +608,7 @@ export default function ContinueGrnPage() {
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button onClick={handleModalClose} className="w-full">
+            <Button onClick={handleModalClose} className="purchasing-main-button w-full">
               OK
             </Button>
           </DialogFooter>

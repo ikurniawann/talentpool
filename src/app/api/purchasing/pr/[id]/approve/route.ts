@@ -1,13 +1,27 @@
 import { createClient } from "@/lib/supabase/server";
 import { requireUser } from "@/lib/supabase/auth";
 import { NextRequest, NextResponse } from "next/server";
-import { getRequiredApprovalLevel, getNextPRStatus } from "@/lib/purchasing/utils";
 import { z } from "zod";
 
 const approvalSchema = z.object({
   action: z.enum(["approve", "reject"]),
   reason: z.string().optional(),
 });
+
+type PRApprovalUpdate = {
+  updated_at: string;
+  status?: "approved" | "rejected";
+  current_approval_level?: string | null;
+  approved_by_head?: string;
+  approved_at_head?: string;
+  approved_by_finance?: string;
+  approved_at_finance?: string;
+  approved_by_direksi?: string;
+  approved_at_direksi?: string;
+  rejected_by?: string;
+  rejected_at?: string;
+  rejection_reason?: string | null;
+};
 
 export async function POST(
   request: NextRequest,
@@ -53,14 +67,12 @@ export async function POST(
         return (
           user.role === "hrd" ||
           user.role === "purchasing_manager" ||
+          user.role === "purchasing_admin" ||
+          user.role === "super_admin" ||
+          user.role === "admin" ||
+          user.role === "pos_supervisor" ||
           user.role === "direksi"
         );
-      }
-      if (pr.status === "pending_finance") {
-        return user.role === "finance_staff" || user.role === "direksi";
-      }
-      if (pr.status === "pending_direksi") {
-        return user.role === "direksi";
       }
       return false;
     };
@@ -72,7 +84,7 @@ export async function POST(
       );
     }
 
-    const updates: any = {
+    const updates: PRApprovalUpdate = {
       updated_at: new Date().toISOString(),
     };
 
@@ -89,12 +101,8 @@ export async function POST(
         updates.approved_at_direksi = new Date().toISOString();
       }
 
-      // Determine next status based on amount
-      const approvalInfo = getRequiredApprovalLevel(pr.total_amount);
-      const nextStatus = getNextPRStatus(pr.status, pr.total_amount);
-      updates.status = nextStatus;
-      updates.current_approval_level =
-        nextStatus === "approved" ? null : approvalInfo.level;
+      updates.status = "approved";
+      updates.current_approval_level = null;
     } else {
       // Reject
       updates.status = "rejected";

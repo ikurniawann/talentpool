@@ -237,7 +237,7 @@ export default function NewReturnPage() {
           </p>
         </div>
         <Link href="/dashboard/purchasing/returns">
-          <Button variant="outline">
+          <Button variant="outline" className="purchasing-secondary-button">
             <ArrowLeft className="w-4 h-4 mr-2" />
             Kembali
           </Button>
@@ -523,7 +523,7 @@ export default function NewReturnPage() {
 
                 <Button
                   type="submit"
-                  className="w-full"
+                  className="purchasing-main-button w-full"
                   disabled={
                     isSubmitting ||
                     selectedCount === 0 ||
@@ -537,7 +537,7 @@ export default function NewReturnPage() {
                 <Button
                   type="button"
                   variant="outline"
-                  className="w-full"
+                  className="purchasing-secondary-button w-full"
                   onClick={() => router.back()}
                   disabled={isSubmitting}
                 >

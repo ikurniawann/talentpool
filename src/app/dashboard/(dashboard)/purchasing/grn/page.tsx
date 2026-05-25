@@ -6,15 +6,23 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Combobox } from "@/components/ui/combobox";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { BreadcrumbNav } from "@/modules/purchasing/components/breadcrumb/BreadcrumbNav";
 import {
   ArrowPathIcon,
   ClipboardDocumentCheckIcon,
-  MagnifyingGlassIcon,
   PlusIcon,
   TruckIcon,
 } from "@heroicons/react/24/outline";
+import { Search } from "lucide-react";
 
 type ReceivingStatus =
   | "waiting_delivery"
@@ -134,6 +142,7 @@ export default function ReceivingWorkspacePage() {
   const [grns, setGrns] = useState<GrnRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<ReceivingStatus | "all">("all");
 
   useEffect(() => {
@@ -273,6 +282,17 @@ export default function ReceivingWorkspacePage() {
     {} as Record<ReceivingStatus, number>
   );
 
+  function handleSearch(event: React.FormEvent) {
+    event.preventDefault();
+    setSearch(searchQuery.trim());
+  }
+
+  function handleResetFilters() {
+    setSearch("");
+    setSearchQuery("");
+    setStatusFilter("all");
+  }
+
   function renderAction(row: ReceivingRow) {
     if (row.status === "waiting_delivery" && row.poId) {
       return (
@@ -334,24 +354,24 @@ export default function ReceivingWorkspacePage() {
     <div className="space-y-6">
       <BreadcrumbNav
         items={[
-          { label: "Dashboard", href: "/dashboard" },
           { label: "Purchasing", href: "/dashboard/purchasing" },
+          { label: "Procurement", href: "/dashboard/purchasing/procurement" },
           { label: "Barang Masuk" },
         ]}
       />
 
-      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+      <div className="flex flex-col items-start justify-between gap-4 border-b border-gray-200/70 pb-4 sm:flex-row sm:items-center">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Barang Masuk</h1>
-          <p className="text-sm text-gray-500">Satu tempat untuk delivery, penerimaan, dan status barang masuk stok</p>
+          <p className="text-sm text-gray-500">Satu tempat untuk delivery, penerimaan, dan status barang masuk stok — {filteredRows.length} total</p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" onClick={fetchReceivingData} disabled={loading}>
+          <Button variant="outline" onClick={fetchReceivingData} disabled={loading} className="h-10 gap-2 rounded-lg border-pink-200 bg-white px-3 text-sm font-medium text-pink-700 shadow-sm hover:!border-pink-200 hover:!bg-pink-50 hover:!text-pink-700">
             <ArrowPathIcon className="w-4 h-4 mr-2" />
             Refresh
           </Button>
           <Link href="/dashboard/purchasing/grn/new">
-            <Button className="bg-pink-600 hover:bg-pink-700">
+            <Button className="h-10 gap-2 rounded-lg bg-pink-600 px-3 text-sm font-semibold text-white shadow-sm hover:bg-pink-700">
               <PlusIcon className="w-4 h-4 mr-2" />
               Input Penerimaan
             </Button>
@@ -361,7 +381,7 @@ export default function ReceivingWorkspacePage() {
 
       <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
         {(["waiting_delivery", "in_delivery", "partially_received", "received"] as ReceivingStatus[]).map((status) => (
-          <Card key={status} className="border-gray-100">
+          <Card key={status} className="border-gray-200/70 shadow-xs">
             <CardContent className="p-4">
               <p className="text-xs font-medium text-gray-500">{STATUS_LABELS[status]}</p>
               <p className="mt-1 text-2xl font-bold text-gray-900">{counts[status] || 0}</p>
@@ -371,71 +391,86 @@ export default function ReceivingWorkspacePage() {
       </div>
 
       <Card>
-        <CardContent className="flex flex-col gap-3 p-4 md:flex-row">
-          <div className="relative flex-1">
-            <MagnifyingGlassIcon className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-            <Input
-              placeholder="Cari PO, supplier, surat jalan, resi, atau dokumen penerimaan..."
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              className="pl-10"
+        <CardContent className="p-4">
+          <div className="flex flex-col gap-3 md:flex-row md:items-center">
+          <form onSubmit={handleSearch} className="flex flex-1 gap-2">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+              <Input
+                placeholder="Cari PO, supplier, surat jalan, resi, atau dokumen penerimaan..."
+                value={searchQuery}
+                onChange={(event) => setSearchQuery(event.target.value)}
+                className="h-9 pl-10 text-sm"
+              />
+            </div>
+            <Button type="submit" variant="outline" className="h-9 flex-shrink-0">
+              Cari
+            </Button>
+          </form>
+          <div className="flex min-w-0 items-center gap-2 md:w-[260px]">
+            <Combobox
+              options={[
+                { value: "all", label: "Semua Status" },
+                { value: "waiting_delivery", label: "Menunggu Delivery" },
+                { value: "in_delivery", label: "Dalam Delivery" },
+                { value: "partially_received", label: "Diterima Sebagian" },
+                { value: "received", label: "Diterima Penuh" },
+                { value: "rejected", label: "Ditolak" },
+                { value: "cancelled", label: "Dibatalkan" },
+              ]}
+              value={statusFilter}
+              onChange={(value) => setStatusFilter(value as ReceivingStatus | "all")}
+              placeholder="Filter status..."
+              searchPlaceholder="Cari status..."
+              emptyMessage="Status tidak ditemukan"
+              className="!w-full h-9 text-sm"
             />
           </div>
-          <Select value={statusFilter} onValueChange={(value) => setStatusFilter(value as ReceivingStatus | "all")}>
-            <SelectTrigger className="w-full md:w-[220px]">
-              <SelectValue placeholder="Semua status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Semua Status</SelectItem>
-              <SelectItem value="waiting_delivery">Menunggu Delivery</SelectItem>
-              <SelectItem value="in_delivery">Dalam Delivery</SelectItem>
-              <SelectItem value="partially_received">Diterima Sebagian</SelectItem>
-              <SelectItem value="received">Diterima Penuh</SelectItem>
-              <SelectItem value="rejected">Ditolak</SelectItem>
-              <SelectItem value="cancelled">Dibatalkan</SelectItem>
-            </SelectContent>
-          </Select>
+          {(search || statusFilter !== "all") && (
+            <Button variant="outline" onClick={handleResetFilters} className="h-9 flex-shrink-0">
+              Reset
+            </Button>
+          )}
+          </div>
         </CardContent>
       </Card>
 
       <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-lg">
-            <ClipboardDocumentCheckIcon className="w-5 h-5 text-pink-600" />
+        <CardHeader className="border-b border-gray-200/70 pb-3">
+          <CardTitle className="flex items-center gap-2 text-base">
+            <ClipboardDocumentCheckIcon className="w-5 h-5" />
             Workspace Penerimaan
           </CardTitle>
         </CardHeader>
-        <CardContent>
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="border-b bg-gray-50">
-                <tr>
-                  {["Status", "PO", "Supplier", "Delivery / Surat Jalan", "Penerimaan", "Qty", "Tanggal", "Aksi"].map((heading) => (
-                    <th key={heading} className="px-4 py-3 text-left text-sm font-medium text-gray-700">{heading}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody className="divide-y">
-                {loading ? (
-                  <tr>
-                    <td colSpan={8} className="py-10 text-center text-gray-400">Memuat data penerimaan...</td>
-                  </tr>
-                ) : filteredRows.length === 0 ? (
-                  <tr>
-                    <td colSpan={8} className="py-12 text-center text-gray-400">
-                      <TruckIcon className="mx-auto mb-3 h-10 w-10 opacity-30" />
-                      Belum ada data sesuai filter
-                    </td>
-                  </tr>
-                ) : (
-                  filteredRows.map((row) => (
-                    <tr key={row.key} className="hover:bg-gray-50">
-                      <td className="px-4 py-3">
+        <CardContent className="p-0">
+          {loading ? (
+            <div className="py-12 text-center">
+              <p className="text-sm text-gray-500">Memuat data penerimaan...</p>
+            </div>
+          ) : filteredRows.length === 0 ? (
+            <div className="py-14 text-center">
+              <TruckIcon className="mx-auto mb-4 h-12 w-12 text-gray-300" />
+              <p className="text-gray-500">Belum ada data sesuai filter</p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto px-4">
+              <Table>
+                <TableHeader>
+                  <TableRow className="hover:bg-transparent">
+                    {["Status", "PO", "Supplier", "Delivery / Surat Jalan", "Penerimaan", "Qty", "Tanggal", "Aksi"].map((heading) => (
+                      <TableHead key={heading} className="text-gray-900">{heading}</TableHead>
+                    ))}
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredRows.map((row) => (
+                    <TableRow key={row.key}>
+                      <TableCell>
                         <Badge variant="outline" className={STATUS_STYLES[row.status]}>
                           {STATUS_LABELS[row.status]}
                         </Badge>
-                      </td>
-                      <td className="px-4 py-3">
+                      </TableCell>
+                      <TableCell>
                         {row.poId ? (
                           <Link href={`/dashboard/purchasing/po/${row.poId}`} className="font-medium text-pink-700 hover:underline">
                             {row.poNumber}
@@ -443,13 +478,13 @@ export default function ReceivingWorkspacePage() {
                         ) : (
                           <span className="font-medium">{row.poNumber}</span>
                         )}
-                      </td>
-                      <td className="px-4 py-3 text-sm">{row.supplierName}</td>
-                      <td className="px-4 py-3 text-sm">
+                      </TableCell>
+                      <TableCell className="text-sm">{row.supplierName}</TableCell>
+                      <TableCell className="text-sm">
                         <div className="font-medium">{row.deliveryNumber || "-"}</div>
                         <div className="text-xs text-gray-500">{row.suratJalan || "-"}</div>
-                      </td>
-                      <td className="px-4 py-3 text-sm">
+                      </TableCell>
+                      <TableCell className="text-sm">
                         {row.grnId ? (
                           <Link href={`/dashboard/purchasing/grn/${row.grnId}`} className="font-medium text-pink-700 hover:underline">
                             {row.grnNumber}
@@ -457,19 +492,19 @@ export default function ReceivingWorkspacePage() {
                         ) : (
                           <span className="text-gray-400">Belum Diterima</span>
                         )}
-                      </td>
-                      <td className="px-4 py-3 text-sm">
+                      </TableCell>
+                      <TableCell className="text-sm">
                         <div>{row.receivedQty || 0} / {row.orderedQty || 0}</div>
                         {(row.rejectedQty || 0) > 0 && <div className="text-xs text-red-600">{row.rejectedQty} ditolak</div>}
-                      </td>
-                      <td className="px-4 py-3 text-sm">{formatDate(row.date)}</td>
-                      <td className="px-4 py-3">{renderAction(row)}</td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
+                      </TableCell>
+                      <TableCell className="text-sm">{formatDate(row.date)}</TableCell>
+                      <TableCell>{renderAction(row)}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

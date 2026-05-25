@@ -196,11 +196,44 @@ export default function SidebarClient({ user, navItems, children }: SidebarClien
   // --------------------------------------------------------------------------
 
   const isActive = (href: string, isChildItem = false): boolean => {
+    const isInSection = (paths: string[]) =>
+      paths.some((path) => pathname === path || pathname.startsWith(`${path}/`));
+
     if (href === "/dashboard") {
       return pathname === "/dashboard";
     }
+    if (href === "/dashboard/purchasing") {
+      return pathname === "/dashboard/purchasing";
+    }
+    if (href === "/dashboard/purchasing/main") {
+      return isInSection([
+        "/dashboard/purchasing/main",
+        "/dashboard/purchasing/units",
+        "/dashboard/purchasing/raw-materials",
+        "/dashboard/purchasing/products",
+        "/dashboard/purchasing/suppliers",
+        "/dashboard/purchasing/price-list",
+      ]);
+    }
+    if (href === "/dashboard/purchasing/procurement") {
+      return isInSection([
+        "/dashboard/purchasing/procurement",
+        "/dashboard/purchasing/pr",
+        "/dashboard/purchasing/po",
+        "/dashboard/purchasing/grn",
+        "/dashboard/purchasing/qc",
+        "/dashboard/purchasing/returns",
+      ]);
+    }
+    if (href === "/dashboard/purchasing/approval") {
+      return isInSection([
+        "/dashboard/purchasing/approval",
+        "/dashboard/purchasing/approval/pr",
+        "/dashboard/purchasing/approval/po",
+      ]);
+    }
     if (isChildItem) {
-      return pathname === href;
+      return pathname === href || pathname.startsWith(`${href}/`);
     }
 
     // Special handling for performance menu to match both paths

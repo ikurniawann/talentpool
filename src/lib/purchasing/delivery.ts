@@ -8,6 +8,21 @@ import { SupabaseClient } from "@supabase/supabase-js";
 
 export type DeliveryStatus = "pending" | "shipped" | "in_transit" | "delivered" | "cancelled";
 
+type DeliveryPO = {
+  id: string;
+  nomor_po?: string | null;
+  status?: string | null;
+  supplier_id?: string | null;
+  is_active?: boolean | null;
+};
+
+type DeliveryWithPO = {
+  id: string;
+  status?: string | null;
+  purchase_order_id?: string | null;
+  purchase_order?: DeliveryPO | null;
+};
+
 export const DELIVERY_TRANSITIONS: Record<DeliveryStatus, DeliveryStatus[]> = {
   pending: ["shipped", "in_transit", "cancelled"],
   shipped: ["in_transit", "cancelled"],
@@ -82,31 +97,32 @@ export function validateReturnTransition(from: ReturnStatus, to: ReturnStatus): 
 }
 
 // ============================================================
-// Generate delivery number: DEV-{YYYY}{MM}-{SEQ:4}
+// Generate delivery number: DEV-{YYYY}{MM}{DD}-{SEQ:4}
 // ============================================================
 
 export async function generateDeliveryNumber(supabase: SupabaseClient): Promise<string> {
   const now = new Date();
   const year = now.getFullYear();
   const month = String(now.getMonth() + 1).padStart(2, "0");
+  const day = String(now.getDate()).padStart(2, "0");
+  const prefix = `DEV-${year}${month}${day}`;
 
   const { data } = await supabase
     .from("deliveries")
     .select("nomor_resi")
-    .ilike("nomor_resi", `DEV-${year}${month}-%`)
+    .ilike("nomor_resi", `${prefix}-%`)
     .order("nomor_resi", { ascending: false })
     .limit(1);
 
   let seq = 1;
   if (data && data.length > 0) {
-    // Try pattern DEV-YYYYMM-####
-    const match = data[0].nomor_resi.match(/DEV-\d{6}-(\d+)$/);
+    const match = data[0].nomor_resi.match(/^DEV-\d{8}-(\d+)$/);
     if (match) {
       seq = parseInt(match[1]) + 1;
     }
   }
 
-  return `DEV-${year}${month}-${String(seq).padStart(4, "0")}`;
+  return `${prefix}-${String(seq).padStart(4, "0")}`;
 }
 
 // ============================================================
@@ -116,7 +132,7 @@ export async function generateDeliveryNumber(supabase: SupabaseClient): Promise<
 export async function validatePOCanDelivery(
   supabase: SupabaseClient,
   poId: string
-): Promise<{ valid: boolean; errors: string[]; po?: any }> {
+): Promise<{ valid: boolean; errors: string[]; po?: DeliveryPO }> {
   const errors: string[] = [];
 
   console.log("=== validatePOCanDelivery ===");
@@ -162,7 +178,7 @@ export async function validatePOCanDelivery(
 export async function validateDeliveryForGRN(
   supabase: SupabaseClient,
   deliveryId: string
-): Promise<{ valid: boolean; errors: string[]; delivery?: any }> {
+): Promise<{ valid: boolean; errors: string[]; delivery?: DeliveryWithPO }> {
   const errors: string[] = [];
 
   const { data: delivery } = await supabase

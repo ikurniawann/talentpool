@@ -8,6 +8,7 @@ import { z } from "zod";
 
 const poSchema = z.object({
   supplier_id: z.string().uuid("Supplier wajib dipilih"),
+  pr_id: z.string().uuid().optional(),
   tanggal_po: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Format tanggal: YYYY-MM-DD"),
   tanggal_kirim_estimasi: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
   catatan: z.string().optional(),

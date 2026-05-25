@@ -1,6 +1,16 @@
 import { createClient } from "@/lib/supabase/server";
-import { notFound } from "next/navigation";
-import { formatRupiah, formatDate, getPOStatusLabel } from "@/lib/purchasing/utils";
+import Link from "next/link";
+import { formatRupiah, formatDate } from "@/lib/purchasing/utils";
+
+type PrintPOItem = {
+  id: string;
+  qty_ordered: number;
+  harga_satuan: number;
+  subtotal: number;
+  catatan?: string | null;
+  raw_material?: { kode?: string; nama?: string } | null;
+  satuan?: { nama?: string } | null;
+};
 
 interface PrintPOPageProps {
   params: Promise<{ id: string }>;
@@ -14,8 +24,12 @@ export default async function PrintPOPage({ params }: PrintPOPageProps) {
     .from("purchase_orders")
     .select(`
       *,
-      items:po_items(*),
-      vendor:vendors(*),
+      items:purchase_order_items(
+        *,
+        raw_material:raw_material_id(kode, nama),
+        satuan:satuan_id(nama)
+      ),
+      supplier:suppliers(*),
       pr:purchase_requests(pr_number)
     `)
     .eq("id", id)
@@ -29,18 +43,16 @@ export default async function PrintPOPage({ params }: PrintPOPageProps) {
           <h1 className="text-2xl font-bold text-red-600 mb-4">Data PO Tidak Ditemukan</h1>
           <p className="text-gray-600 mb-4">ID: {id}</p>
           <p className="text-gray-500">{error?.message || "PO tidak ada di database"}</p>
-          <a 
+          <Link 
             href="/dashboard/purchasing/po" 
             className="mt-6 inline-block px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
           >
             Kembali ke List PO
-          </a>
+          </Link>
         </div>
       </div>
     );
   }
-
-  const statusBadge = getPOStatusLabel(po.status);
 
   return (
     <div className="min-h-screen bg-white p-8 print:p-0">
@@ -75,8 +87,8 @@ export default async function PrintPOPage({ params }: PrintPOPageProps) {
             <p className="text-xl text-gray-600 mt-1">Pesanan Pembelian</p>
           </div>
           <div className="text-right">
-            <p className="text-2xl font-bold">{po.po_number}</p>
-            <p className="text-sm text-gray-600">Tanggal: {formatDate(po.order_date)}</p>
+            <p className="text-2xl font-bold">{po.nomor_po}</p>
+            <p className="text-sm text-gray-600">Tanggal: {formatDate(po.tanggal_po)}</p>
           </div>
         </div>
       </div>
@@ -85,11 +97,11 @@ export default async function PrintPOPage({ params }: PrintPOPageProps) {
       <div className="grid grid-cols-2 gap-8 mb-8">
         <div>
           <h3 className="font-bold text-sm uppercase text-gray-500 mb-2">Kepada:</h3>
-          <p className="font-bold text-lg">{po.vendor?.name}</p>
-          <p className="text-gray-700">{po.vendor?.address}</p>
-          <p className="text-gray-600 mt-2">Attn: {po.vendor?.contact_person}</p>
-          <p className="text-gray-600">Telp: {po.vendor?.phone}</p>
-          <p className="text-gray-600">Email: {po.vendor?.email}</p>
+          <p className="font-bold text-lg">{po.supplier?.nama_supplier}</p>
+          <p className="text-gray-700">{po.supplier?.alamat}</p>
+          <p className="text-gray-600 mt-2">Attn: {po.supplier?.pic_name}</p>
+          <p className="text-gray-600">Telp: {po.supplier?.telepon}</p>
+          <p className="text-gray-600">Email: {po.supplier?.email}</p>
         </div>
         <div>
           <h3 className="font-bold text-sm uppercase text-gray-500 mb-2">Dari:</h3>
@@ -118,22 +130,25 @@ export default async function PrintPOPage({ params }: PrintPOPageProps) {
           </tr>
         </thead>
         <tbody>
-          {po.items?.map((item: any, index: number) => (
+          {po.items?.map((item: PrintPOItem, index: number) => (
             <tr key={item.id} className="border-b">
               <td className="py-3 px-3 text-sm text-center">{index + 1}</td>
               <td className="py-3 px-3 text-sm">
-                {item.description}
-                {item.notes && (
-                  <p className="text-xs text-gray-500">{item.notes}</p>
+                {item.raw_material?.nama || item.catatan}
+                {item.raw_material?.kode && (
+                  <p className="text-xs text-gray-500">{item.raw_material.kode}</p>
+                )}
+                {item.catatan && (
+                  <p className="text-xs text-gray-500">{item.catatan}</p>
                 )}
               </td>
-              <td className="py-3 px-3 text-sm text-center">{item.qty}</td>
-              <td className="py-3 px-3 text-sm text-center">{item.unit}</td>
+              <td className="py-3 px-3 text-sm text-center">{item.qty_ordered}</td>
+              <td className="py-3 px-3 text-sm text-center">{item.satuan?.nama || "-"}</td>
               <td className="py-3 px-3 text-sm text-right">
-                {formatRupiah(item.unit_price)}
+                {formatRupiah(item.harga_satuan)}
               </td>
               <td className="py-3 px-3 text-sm text-right font-medium">
-                {formatRupiah(item.total)}
+                {formatRupiah(item.subtotal)}
               </td>
             </tr>
           ))}
@@ -148,24 +163,17 @@ export default async function PrintPOPage({ params }: PrintPOPageProps) {
             <span>{formatRupiah(po.subtotal)}</span>
           </div>
           
-          {po.discount_amount > 0 && (
+          {po.diskon_nominal > 0 && (
             <div className="flex justify-between py-2">
-              <span>Diskon ({po.discount_percent}%)</span>
-              <span>-{formatRupiah(po.discount_amount)}</span>
+              <span>Diskon ({po.diskon_persen}%)</span>
+              <span>-{formatRupiah(po.diskon_nominal)}</span>
             </div>
           )}
           
           <div className="flex justify-between py-2">
-            <span>PPN ({po.tax_percent}%)</span>
-            <span>{formatRupiah(po.tax_amount)}</span>
+            <span>PPN ({po.ppn_persen}%)</span>
+            <span>{formatRupiah(po.ppn_nominal)}</span>
           </div>
-          
-          {po.shipping_cost > 0 && (
-            <div className="flex justify-between py-2">
-              <span>Biaya Pengiriman</span>
-              <span>{formatRupiah(po.shipping_cost)}</span>
-            </div>
-          )}
           
           <div className="flex justify-between py-3 border-t-2 border-gray-800 font-bold text-lg">
             <span>TOTAL</span>
@@ -179,25 +187,25 @@ export default async function PrintPOPage({ params }: PrintPOPageProps) {
         <div>
           <h4 className="font-bold text-sm uppercase text-gray-500 mb-2">Ketentuan Pembayaran:</h4>
           <p className="text-sm text-gray-700 capitalize">
-            {po.payment_terms ? po.payment_terms.replace("_", " ") : "Net 14 Hari"}
+            Net 14 Hari
           </p>
           
           <h4 className="font-bold text-sm uppercase text-gray-500 mt-4 mb-2">Alamat Pengiriman:</h4>
-          <p className="text-sm text-gray-700 whitespace-pre-wrap">{po.delivery_address}</p>
+          <p className="text-sm text-gray-700 whitespace-pre-wrap">{po.alamat_pengiriman}</p>
           
-          {po.delivery_date && (
+          {po.tanggal_kirim_estimasi && (
             <>
               <h4 className="font-bold text-sm uppercase text-gray-500 mt-4 mb-2">Estimasi Pengiriman:</h4>
-              <p className="text-sm text-gray-700">{formatDate(po.delivery_date)}</p>
+              <p className="text-sm text-gray-700">{formatDate(po.tanggal_kirim_estimasi)}</p>
             </>
           )}
         </div>
         
         <div>
-          {po.notes && (
+          {po.catatan && (
             <>
               <h4 className="font-bold text-sm uppercase text-gray-500 mb-2">Catatan:</h4>
-              <p className="text-sm text-gray-700 whitespace-pre-wrap">{po.notes}</p>
+              <p className="text-sm text-gray-700 whitespace-pre-wrap">{po.catatan}</p>
             </>
           )}
         </div>

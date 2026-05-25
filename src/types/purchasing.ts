@@ -70,24 +70,36 @@ export interface PaginatedResponse<T> {
   };
 }
 
+export interface POListParams {
+  search?: string;
+  status?: POStatus;
+  supplier_id?: string;
+  tanggal_mulai?: string;
+  tanggal_sampai?: string;
+  page?: number;
+  limit?: number;
+}
+
 // ============================================
 // PURCHASE REQUEST TYPES
 // ============================================
 
 export type PRStatus = 
   | 'draft'
-  | 'pending_approval'
+  | 'pending_head'
+  | 'pending_finance'
+  | 'pending_direksi'
   | 'approved'
   | 'rejected'
-  | 'ordered'
-  | 'cancelled';
+  | 'converted';
 
 export interface PRItem {
   id: string;
   pr_id: string;
-  raw_material_id: string;
-  qty_requested: number;
-  qty_approved: number;
+  raw_material_id?: string | null;
+  satuan_id?: string | null;
+  qty_requested?: number;
+  qty_approved?: number;
   unit_price?: number;
   subtotal?: number;
   notes?: string;
@@ -98,26 +110,35 @@ export interface PRItem {
   total?: number;
   
   raw_material?: {
+    id?: string;
     kode: string;
     nama: string;
     satuan?: string;
   };
+  satuan?: { id?: string; nama: string };
 }
 
 export interface PurchaseRequest {
   id: string;
   pr_number: string;
-  request_date: string;
+  request_date?: string;
+  requester_id?: string;
+  department_id?: string;
   status: PRStatus;
   total_amount?: number;
+  priority?: "low" | "medium" | "high" | "urgent";
   notes?: string;
+  required_date?: string | null;
   requested_by?: string;
   approved_by?: string;
   approved_at?: string | null;
+  converted_po_id?: string | null;
   created_at: string;
   updated_at: string;
   
   items?: PRItem[];
+  department?: { name: string; code?: string };
+  requester?: { full_name: string };
 }
 
 export interface SupplierPriceListFormData {
@@ -479,6 +500,7 @@ export type ReturnFormData = PurchaseReturnFormData;
 
 export interface PurchaseOrderFormData {
   supplier_id: string;
+  pr_id?: string;
   tanggal_po: string;
   tanggal_kirim_estimasi: string;
   catatan: string;
@@ -494,6 +516,8 @@ export interface PurchaseOrderFormData {
 
 export interface PurchaseOrderItemFormData {
   raw_material_id: string;
+  pr_item_id?: string;
+  satuan_id?: string;
   qty_ordered: number;
   harga_satuan: number;
   notes: string;
@@ -502,6 +526,8 @@ export interface PurchaseOrderItemFormData {
 export interface PurchaseOrder {
   id: string;
   nomor_po: string;
+  pr_id?: string | null;
+  pr_number?: string | null;
   supplier_id: string;
   tanggal_po: string;
   tanggal_kirim_estimasi: string | null;

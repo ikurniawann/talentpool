@@ -15,6 +15,10 @@ const productSchema = z.object({
   harga_jual: z.number().min(0).default(0),
 });
 
+function getErrorMessage(error: unknown, fallback: string) {
+  return error instanceof Error ? error.message : fallback;
+}
+
 // GET /api/purchasing/products
 export async function GET(request: NextRequest) {
   try {
@@ -28,7 +32,8 @@ export async function GET(request: NextRequest) {
 
     let query = supabase
       .from("v_products_cogs")
-      .select("*", { count: "exact" });
+      .select("*", { count: "exact" })
+      .is("deleted_at", null);
 
     if (search) {
       query = query.or(`nama.ilike.%${search}%,kode.ilike.%${search}%`);
@@ -56,10 +61,10 @@ export async function GET(request: NextRequest) {
         total_pages: Math.ceil((count || 0) / limit),
       },
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error fetching products:", error);
     return Response.json(
-      { success: false, message: error.message || "Gagal mengambil data produk" },
+      { success: false, message: getErrorMessage(error, "Gagal mengambil data produk") },
       { status: 500 }
     );
   }
@@ -101,6 +106,7 @@ export async function POST(request: NextRequest) {
         .from("products")
         .select("id")
         .eq("kode", kode)
+        .is("deleted_at", null)
         .single();
 
       if (existing) {
@@ -127,7 +133,7 @@ export async function POST(request: NextRequest) {
       { success: true, data, message: "Produk berhasil ditambahkan" },
       { status: 201 }
     );
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error creating product:", error);
 
     if (error instanceof z.ZodError) {
@@ -142,7 +148,7 @@ export async function POST(request: NextRequest) {
     }
 
     return Response.json(
-      { success: false, message: error.message || "Gagal menambahkan produk" },
+      { success: false, message: getErrorMessage(error, "Gagal menambahkan produk") },
       { status: 500 }
     );
   }

@@ -10,9 +10,19 @@ import { z } from "zod";
 const unitSchema = z.object({
   kode: z.string().min(1, "Kode satuan wajib diisi").max(10),
   nama: z.string().min(1, "Nama satuan wajib diisi").max(50),
-  tipe: z.enum(["BESAR", "KECIL", "KONVERSI"]),
+  tipe: z.enum(["BESAR", "KECIL", "KONVERSI"], {
+    message: "Tipe satuan wajib dipilih",
+  }),
   deskripsi: z.string().optional(),
 });
+
+function getErrorMessage(error: unknown, fallback: string) {
+  return error instanceof Error ? error.message : fallback;
+}
+
+function getValidationMessage(error: z.ZodError) {
+  return error.issues[0]?.message || "Validasi gagal";
+}
 
 // GET /api/purchasing/units
 export async function GET(request: NextRequest) {
@@ -28,6 +38,7 @@ export async function GET(request: NextRequest) {
     let query = supabase
       .from("units")
       .select("*", { count: "exact" })
+      .is("deleted_at", null)
       .order("nama", { ascending: true });
     
     // Search filter
@@ -56,10 +67,10 @@ export async function GET(request: NextRequest) {
         total_pages: Math.ceil((count || 0) / limit),
       }
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error fetching units:", error);
     return Response.json(
-      { message: error.message || "Gagal mengambil data satuan" },
+      { message: getErrorMessage(error, "Gagal mengambil data satuan") },
       { status: 500 }
     );
   }
@@ -79,6 +90,7 @@ export async function POST(request: NextRequest) {
       .from("units")
       .select("id")
       .eq("kode", validated.kode)
+      .is("deleted_at", null)
       .single();
     
     if (existing) {
@@ -104,21 +116,21 @@ export async function POST(request: NextRequest) {
       { data },
       { status: 201 }
     );
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error creating unit:", error);
     
     if (error instanceof z.ZodError) {
       return Response.json(
-        { 
-          message: "Validasi gagal", 
-          errors: error.flatten().fieldErrors 
+        {
+          message: getValidationMessage(error),
+          errors: error.flatten().fieldErrors
         },
         { status: 400 }
       );
     }
     
     return Response.json(
-      { message: error.message || "Gagal menambahkan satuan" },
+      { message: getErrorMessage(error, "Gagal menambahkan satuan") },
       { status: 500 }
     );
   }

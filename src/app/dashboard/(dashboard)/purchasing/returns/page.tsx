@@ -1,18 +1,12 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Combobox } from "@/components/ui/combobox";
 import {
   Table,
   TableHeader,
@@ -48,14 +42,11 @@ export default function PurchaseReturnsPage() {
   const [loading, setLoading] = useState(true);
   const [pagination, setPagination] = useState({ page: 1, total: 0, total_pages: 1 });
   const [search, setSearch] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<ReturnStatus | "all">("all");
   const [reasonFilter, setReasonFilter] = useState<ReturnReasonType | "all">("all");
 
-  useEffect(() => {
-    loadReturns();
-  }, [pagination.page, statusFilter, reasonFilter]);
-
-  const loadReturns = async () => {
+  const loadReturns = useCallback(async () => {
     setLoading(true);
     try {
       const result = await listReturns({
@@ -76,235 +67,255 @@ export default function PurchaseReturnsPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [pagination.page, reasonFilter, search, statusFilter]);
+
+  useEffect(() => {
+    loadReturns();
+  }, [loadReturns]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
+    setSearch(searchQuery.trim());
     setPagination((p) => ({ ...p, page: 1 }));
-    loadReturns();
+  };
+
+  const handleResetFilters = () => {
+    setSearch("");
+    setSearchQuery("");
+    setStatusFilter("all");
+    setReasonFilter("all");
+    setPagination((p) => ({ ...p, page: 1 }));
   };
 
   return (
-    <div className="p-6">
+    <div className="space-y-6">
       <BreadcrumbNav
         items={[
           { label: "Purchasing", href: "/dashboard/purchasing" },
+          { label: "Procurement", href: "/dashboard/purchasing/procurement" },
           { label: "Retur Pembelian" },
         ]}
       />
 
-      <div className="flex items-center justify-between mt-4 mb-6">
+      <div className="flex flex-col items-start justify-between gap-4 border-b border-gray-200/70 pb-4 sm:flex-row sm:items-center">
         <div>
-          <h1 className="text-2xl font-bold">Retur Pembelian</h1>
-          <p className="text-sm text-gray-500">Kelola retur barang ke supplier</p>
+          <h1 className="text-2xl font-bold text-gray-900">Retur Pembelian</h1>
+          <p className="text-sm text-gray-500">Kelola retur barang ke supplier — {pagination.total} total</p>
         </div>
         <Link href="/dashboard/purchasing/returns/new">
-          <Button>
+          <Button className="h-10 w-full gap-2 rounded-lg bg-pink-600 px-3 text-sm font-semibold text-white shadow-sm hover:bg-pink-700 sm:w-auto">
             <PlusIcon className="w-4 h-4 mr-2" />
             Buat Return
           </Button>
         </Link>
       </div>
 
-      {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-gray-500">Total Return</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-bold">{pagination.total}</p>
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
+        <Card className="border-gray-200/70 shadow-xs">
+          <CardContent className="p-4">
+            <p className="text-xs font-medium text-gray-500">Total Return</p>
+            <p className="mt-1 text-2xl font-bold text-gray-900">{pagination.total}</p>
           </CardContent>
         </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-gray-500">Pending Approval</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-bold text-yellow-600">
+        <Card className="border-gray-200/70 shadow-xs">
+          <CardContent className="p-4">
+            <p className="text-xs font-medium text-gray-500">Pending Approval</p>
+            <p className="mt-1 text-2xl font-bold text-amber-600">
               {returns.filter((r) => r.status === "pending_approval").length}
             </p>
           </CardContent>
         </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-gray-500">Approved</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-bold text-green-600">
+        <Card className="border-gray-200/70 shadow-xs">
+          <CardContent className="p-4">
+            <p className="text-xs font-medium text-gray-500">Approved</p>
+            <p className="mt-1 text-2xl font-bold text-emerald-600">
               {returns.filter((r) => r.status === "approved").length}
             </p>
           </CardContent>
         </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-gray-500">Total Nilai</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-bold text-pink-600">
+        <Card className="border-gray-200/70 shadow-xs">
+          <CardContent className="p-4">
+            <p className="text-xs font-medium text-gray-500">Total Nilai</p>
+            <p className="mt-1 text-2xl font-bold text-pink-600">
               {formatRupiah(returns.reduce((sum, r) => sum + (r.total_amount || 0), 0))}
             </p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Filters */}
-      <Card className="mb-4">
-        <CardContent className="pt-4">
-          <form onSubmit={handleSearch} className="flex flex-col sm:flex-row gap-3">
+      <Card>
+        <CardContent className="p-4">
+          <form onSubmit={handleSearch} className="flex flex-col gap-3 md:flex-row md:items-center">
             <div className="relative flex-1">
               <MagnifyingGlassIcon className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
               <Input
                 placeholder="Cari nomor return atau catatan..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="pl-10"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="h-9 pl-10 text-sm"
               />
             </div>
-            <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as ReturnStatus | "all")}>
-              <SelectTrigger className="w-full sm:w-48">
-                <SelectValue placeholder="Status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Semua Status</SelectItem>
-                <SelectItem value="draft">Draft</SelectItem>
-                <SelectItem value="pending_approval">Pending Approval</SelectItem>
-                <SelectItem value="approved">Approved</SelectItem>
-                <SelectItem value="rejected">Rejected</SelectItem>
-                <SelectItem value="completed">Completed</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select
+            <Combobox
+              options={[
+                { value: "all", label: "Semua Status" },
+                { value: "draft", label: "Draft" },
+                { value: "pending_approval", label: "Pending Approval" },
+                { value: "approved", label: "Approved" },
+                { value: "rejected", label: "Rejected" },
+                { value: "completed", label: "Completed" },
+              ]}
+              value={statusFilter}
+              onChange={(value) => {
+                setStatusFilter(value as ReturnStatus | "all");
+                setPagination((p) => ({ ...p, page: 1 }));
+              }}
+              placeholder="Filter status..."
+              searchPlaceholder="Cari status..."
+              emptyMessage="Status tidak ditemukan"
+              className="!w-full h-9 text-sm md:!w-[220px]"
+            />
+            <Combobox
+              options={[
+                { value: "all", label: "Semua Alasan" },
+                { value: "damaged", label: "Barang Rusak" },
+                { value: "wrong_item", label: "Barang Salah" },
+                { value: "expired", label: "Expired" },
+                { value: "overstock", label: "Overstock" },
+                { value: "specification_mismatch", label: "Tidak Sesuai Spek" },
+                { value: "other", label: "Lainnya" },
+              ]}
               value={reasonFilter}
-              onValueChange={(value) => setReasonFilter(value as ReturnReasonType | "all")}
-            >
-              <SelectTrigger className="w-full sm:w-48">
-                <SelectValue placeholder="Alasan" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Semua Alasan</SelectItem>
-                <SelectItem value="damaged">Barang Rusak</SelectItem>
-                <SelectItem value="wrong_item">Barang Salah</SelectItem>
-                <SelectItem value="expired">Expired</SelectItem>
-                <SelectItem value="overstock">Overstock</SelectItem>
-                <SelectItem value="specification_mismatch">Tidak Sesuai Spek</SelectItem>
-                <SelectItem value="other">Lainnya</SelectItem>
-              </SelectContent>
-            </Select>
-            <Button type="submit" variant="outline">
-              <ArrowPathIcon className="w-4 h-4 mr-2" />
-              Refresh
+              onChange={(value) => {
+                setReasonFilter(value as ReturnReasonType | "all");
+                setPagination((p) => ({ ...p, page: 1 }));
+              }}
+              placeholder="Filter alasan..."
+              searchPlaceholder="Cari alasan..."
+              emptyMessage="Alasan tidak ditemukan"
+              className="!w-full h-9 text-sm md:!w-[220px]"
+            />
+            <Button type="submit" variant="outline" className="h-9 flex-shrink-0">
+              Cari
             </Button>
+            {(search || statusFilter !== "all" || reasonFilter !== "all" || pagination.page > 1) && (
+              <Button type="button" variant="outline" onClick={handleResetFilters} className="h-9 flex-shrink-0">
+                Reset
+              </Button>
+            )}
           </form>
         </CardContent>
       </Card>
 
-      {/* Table */}
       <Card>
+        <CardHeader className="border-b border-gray-200/70 pb-3">
+          <CardTitle className="text-base flex items-center gap-2">
+            <ArrowPathIcon className="w-5 h-5" />
+            Daftar Retur Pembelian
+          </CardTitle>
+        </CardHeader>
         <CardContent className="p-0">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="bg-gray-50 border-b">
-                <tr>
-                  <th className="text-left px-4 py-3 font-medium">No. Return</th>
-                  <th className="text-left px-4 py-3 font-medium">Tanggal</th>
-                  <th className="text-left px-4 py-3 font-medium">Supplier</th>
-                  <th className="text-left px-4 py-3 font-medium">Alasan</th>
-                  <th className="text-left px-4 py-3 font-medium">GRN</th>
-                  <th className="text-right px-4 py-3 font-medium">Total</th>
-                  <th className="text-left px-4 py-3 font-medium">Status</th>
-                  <th className="text-left px-4 py-3 font-medium">Aksi</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y">
-                {loading ? (
-                  <tr>
-                    <td colSpan={8} className="text-center py-8 text-gray-400">
-                      Memuat...
-                    </td>
-                  </tr>
-                ) : returns.length === 0 ? (
-                  <tr>
-                    <td colSpan={8} className="text-center py-12 text-gray-400">
-                      Belum ada data return
-                    </td>
-                  </tr>
-                ) : (
-                  returns.map((ret) => (
-                    <tr key={ret.id} className="hover:bg-gray-50">
-                      <td className="px-4 py-3 font-mono text-xs font-medium text-pink-600">
+          {loading ? (
+            <div className="py-12 text-center">
+              <p className="text-sm text-gray-500">Memuat data...</p>
+            </div>
+          ) : returns.length === 0 ? (
+            <div className="py-14 text-center">
+              <ArrowPathIcon className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+              <p className="text-gray-500">Belum ada data return</p>
+            </div>
+          ) : (
+            <>
+            <div className="overflow-x-auto px-4">
+            <Table>
+              <TableHeader>
+                <TableRow className="hover:bg-transparent">
+                  <TableHead className="text-gray-900">No. Return</TableHead>
+                  <TableHead className="text-gray-900">Tanggal</TableHead>
+                  <TableHead className="text-gray-900">Supplier</TableHead>
+                  <TableHead className="text-gray-900">Alasan</TableHead>
+                  <TableHead className="text-gray-900">GRN</TableHead>
+                  <TableHead className="text-right text-gray-900">Total</TableHead>
+                  <TableHead className="text-center text-gray-900">Status</TableHead>
+                  <TableHead className="text-right text-gray-900">Aksi</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {returns.map((ret) => (
+                    <TableRow key={ret.id}>
+                      <TableCell className="font-mono text-xs font-medium text-pink-600">
                         {ret.return_number}
-                      </td>
-                      <td className="px-4 py-3">
+                      </TableCell>
+                      <TableCell>
                         <div className="flex items-center gap-2">
                           <CalendarIcon className="w-4 h-4 text-gray-400" />
                           {format(new Date(ret.return_date), "dd MMM yyyy", { locale: localeId })}
                         </div>
-                      </td>
-                      <td className="px-4 py-3">
+                      </TableCell>
+                      <TableCell>
                         <div className="flex items-center gap-2">
                           <BuildingOfficeIcon className="w-4 h-4 text-gray-400" />
                           {ret.supplier?.nama_supplier || "-"}
                         </div>
-                      </td>
-                      <td className="px-4 py-3">
+                      </TableCell>
+                      <TableCell>
                         <Badge variant="outline">
                           {RETURN_REASON_LABELS[ret.reason_type as ReturnReasonType]}
                         </Badge>
-                      </td>
-                      <td className="px-4 py-3 font-mono text-xs">
+                      </TableCell>
+                      <TableCell className="font-mono text-xs">
                         {ret.grn?.grn_number || "-"}
-                      </td>
-                      <td className="px-4 py-3 text-right font-medium">
+                      </TableCell>
+                      <TableCell className="text-right font-medium">
                         {formatRupiah(ret.total_amount)}
-                      </td>
-                      <td className="px-4 py-3">
+                      </TableCell>
+                      <TableCell className="text-center">
                         <Badge className={RETURN_STATUS_COLORS[ret.status as ReturnStatus]}>
                           {RETURN_STATUS_LABELS[ret.status as ReturnStatus]}
                         </Badge>
-                      </td>
-                      <td className="px-4 py-3">
+                      </TableCell>
+                      <TableCell className="text-right">
                         <Link href={`/dashboard/purchasing/returns/${ret.id}`}>
-                          <Button variant="ghost" size="sm">
+                          <Button variant="ghost" size="sm" className="cursor-pointer">
                             <EyeIcon className="w-4 h-4" />
                           </Button>
                         </Link>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+              </TableBody>
+            </Table>
           </div>
+            {pagination.total_pages > 1 && (
+              <div className="border-t border-gray-200/70">
+                <div className="flex items-center justify-between px-4 py-3">
+                  <p className="text-sm text-gray-500">
+                    Halaman {pagination.page} dari {pagination.total_pages}
+                  </p>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setPagination((p) => ({ ...p, page: Math.max(1, p.page - 1) }))}
+                      disabled={pagination.page === 1}
+                    >
+                      Sebelumnya
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setPagination((p) => ({ ...p, page: Math.min(pagination.total_pages, p.page + 1) }))}
+                      disabled={pagination.page >= pagination.total_pages}
+                    >
+                      Berikutnya
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </>
+          )}
         </CardContent>
       </Card>
-
-      {/* Pagination */}
-      {pagination.total_pages > 1 && (
-        <div className="flex justify-between items-center mt-4">
-          <p className="text-sm text-gray-500">
-            Halaman {pagination.page} dari {pagination.total_pages} ({pagination.total} total)
-          </p>
-          <div className="flex gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setPagination((p) => ({ ...p, page: p.page - 1 }))}
-              disabled={pagination.page === 1}
-            >
-              Previous
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setPagination((p) => ({ ...p, page: p.page + 1 }))}
-              disabled={pagination.page >= pagination.total_pages}
-            >
-              Next
-            </Button>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

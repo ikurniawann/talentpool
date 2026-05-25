@@ -1,7 +1,19 @@
 import { createClient } from "@/lib/supabase/server";
 import { notFound } from "next/navigation";
 import { formatRupiah, formatDate, getPRStatusLabel } from "@/lib/purchasing/utils";
-import { PurchaseRequest, PRItem } from "@/types/purchasing";
+import { PRItem } from "@/types/purchasing";
+import { PrintFloatingButton } from "@/components/purchasing/print-floating-button";
+import { PrintDocumentTitle } from "@/components/purchasing/print-document-title";
+
+type UserRow = {
+  id: string;
+  full_name: string;
+};
+
+type DepartmentRow = {
+  name: string;
+  code?: string | null;
+};
 
 interface PrintPRPageProps {
   params: Promise<{ id: string }>;
@@ -15,12 +27,11 @@ export default async function PrintPRPage({ params }: PrintPRPageProps) {
     .from("purchase_requests")
     .select(`
       *,
-      items:pr_items(*),
-      requester:users(full_name),
-      department:departments(name, code),
-      approved_head:users!purchase_requests_approved_by_head_fkey(full_name),
-      approved_finance:users!purchase_requests_approved_by_finance_fkey(full_name),
-      approved_direksi:users!purchase_requests_approved_by_direksi_fkey(full_name)
+      items:pr_items(
+        *,
+        raw_material:raw_material_id(id, kode, nama),
+        satuan:satuan_id(id, nama)
+      )
     `)
     .eq("id", id)
     .single();
@@ -30,9 +41,33 @@ export default async function PrintPRPage({ params }: PrintPRPageProps) {
   }
 
   const statusBadge = getPRStatusLabel(pr.status);
+  const relatedUserIds = [
+    pr.requester_id,
+    pr.approved_by_head,
+    pr.rejected_by,
+  ].filter(Boolean);
+  const { data: relatedUsers } = relatedUserIds.length
+    ? await supabase.from("users").select("id, full_name").in("id", relatedUserIds)
+    : { data: [] };
+  const userNameById = new Map(
+    ((relatedUsers || []) as UserRow[]).map((user) => [user.id, user.full_name])
+  );
+  const { data: department } = pr.department_id
+    ? await supabase
+        .from("departments")
+        .select("name, code")
+        .eq("id", pr.department_id)
+        .single()
+    : { data: null };
+  const departmentData = department as DepartmentRow | null;
+  const requesterName = userNameById.get(pr.requester_id) || "-";
+  const approverName = pr.approved_by_head ? userNameById.get(pr.approved_by_head) || "-" : "-";
+  const printTitle = `Purchase Request - ${pr.pr_number}`;
 
   return (
-    <div className="min-h-screen bg-white p-8 print:p-0">
+    <div className="min-h-screen bg-gray-50 px-4 py-8 text-gray-900 print:bg-white print:p-0">
+      <PrintDocumentTitle title={printTitle} />
+
       {/* Print Styles via inline style tag */}
       <style
         dangerouslySetInnerHTML={{
@@ -40,197 +75,183 @@ export default async function PrintPRPage({ params }: PrintPRPageProps) {
             @media print {
               @page {
                 size: A4;
-                margin: 15mm;
+                margin: 0;
               }
+              html,
               body {
+                margin: 0 !important;
+                padding: 0 !important;
+                background: #ffffff !important;
                 print-color-adjust: exact;
                 -webkit-print-color-adjust: exact;
               }
+              body * {
+                visibility: hidden !important;
+              }
               .no-print {
                 display: none !important;
+              }
+              .print-root,
+              .print-root * {
+                visibility: visible !important;
+              }
+              .print-root {
+                position: absolute !important;
+                left: 0 !important;
+                top: 0 !important;
+                width: 100% !important;
+                min-height: auto !important;
+                box-sizing: border-box !important;
+                padding: 12mm !important;
+                background: #ffffff !important;
+              }
+              .print-sheet {
+                box-shadow: none !important;
+                border: 0 !important;
+                border-radius: 0 !important;
+                margin: 0 !important;
+                max-width: none !important;
+                width: 100% !important;
+                padding: 12mm !important;
               }
             }
           `,
         }}
       />
 
-      {/* Header */}
-      <div className="text-center mb-8 border-b pb-6">
-        <h1 className="text-2xl font-bold uppercase tracking-wide">
-          Purchase Request
-        </h1>
-        <p className="text-gray-600 mt-1">Permintaan Pembelian</p>
-      </div>
-
-      {/* Document Info */}
-      <div className="grid grid-cols-2 gap-8 mb-8">
-        <div>
-          <table className="text-sm">
-            <tbody>
-              <tr>
-                <td className="pr-4 py-1 font-medium">No. PR</td>
-                <td className="py-1">: {pr.pr_number}</td>
-              </tr>
-              <tr>
-                <td className="pr-4 py-1 font-medium">Tanggal</td>
-                <td className="py-1">: {formatDate(pr.created_at)}</td>
-              </tr>
-              <tr>
-                <td className="pr-4 py-1 font-medium">Departemen</td>
-                <td className="py-1">: {pr.department?.name || "-"}</td>
-              </tr>
-              <tr>
-                <td className="pr-4 py-1 font-medium">Requester</td>
-                <td className="py-1">: {pr.requester?.full_name || "-"}</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-        <div className="text-right">
-          <div className={`inline-block px-4 py-2 rounded border ${statusBadge.color.replace('bg-', 'border-').replace('text-', 'bg-opacity-10 bg-')}`}>
-            <span className={`font-semibold ${statusBadge.color.split(' ')[1]}`}>
+      <main className="print-root print-sheet mx-auto max-w-4xl rounded-2xl border border-gray-200/70 bg-white p-8 shadow-sm">
+        {/* Header */}
+        <div className="mb-6 flex items-start justify-between gap-6 border-b border-gray-200/70 pb-5">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-pink-600">
+              Purchase Request
+            </p>
+            <h1 className="mt-2 text-2xl font-bold tracking-tight text-gray-900">
+              Permintaan Pembelian
+            </h1>
+            <p className="mt-1 text-sm text-gray-500">Dokumen kebutuhan pembelian internal</p>
+          </div>
+          <div className="text-right">
+            <p className="text-sm text-gray-500">No. PR</p>
+            <p className="text-xl font-bold text-gray-900">{pr.pr_number}</p>
+            <span className={`mt-2 inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${statusBadge.color}`}>
               {statusBadge.label}
             </span>
           </div>
-          {pr.required_date && (
-            <p className="text-sm text-gray-600 mt-2">
-              Dibutuhkan: {formatDate(pr.required_date)}
-            </p>
-          )}
         </div>
-      </div>
 
-      {/* Items Table */}
-      <table className="w-full border-collapse mb-8">
-        <thead>
-          <tr className="bg-gray-100 border-b-2 border-gray-800">
-            <th className="text-left py-3 px-4 text-sm font-semibold w-12">No</th>
-            <th className="text-left py-3 px-4 text-sm font-semibold">Deskripsi Barang/Jasa</th>
-            <th className="text-center py-3 px-4 text-sm font-semibold w-20">Qty</th>
-            <th className="text-center py-3 px-4 text-sm font-semibold w-24">Satuan</th>
-            <th className="text-right py-3 px-4 text-sm font-semibold w-32">Est. Harga</th>
-            <th className="text-right py-3 px-4 text-sm font-semibold w-32">Total</th>
-          </tr>
-        </thead>
-        <tbody>
-          {pr.items?.map((item: PRItem, index: number) => (
-            <tr key={item.id} className="border-b">
-              <td className="py-3 px-4 text-sm text-center">{index + 1}</td>
-              <td className="py-3 px-4 text-sm">{item.description}</td>
-              <td className="py-3 px-4 text-sm text-center">{item.qty}</td>
-              <td className="py-3 px-4 text-sm text-center">{item.unit}</td>
-              <td className="py-3 px-4 text-sm text-right">
-                {formatRupiah(item.estimated_price || 0)}
-              </td>
-              <td className="py-3 px-4 text-sm text-right font-medium">
-                {formatRupiah(item.total || 0)}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-        <tfoot>
-          <tr className="border-t-2 border-gray-800">
-            <td colSpan={5} className="py-4 px-4 text-right font-bold">
-              TOTAL ESTIMASI
-            </td>
-            <td className="py-4 px-4 text-right font-bold text-lg">
-              {formatRupiah(pr.total_amount)}
-            </td>
-          </tr>
-        </tfoot>
-      </table>
-
-      {/* Notes */}
-      {pr.notes && (
-        <div className="mb-8">
-          <h4 className="font-semibold text-sm mb-2">Catatan:</h4>
-          <p className="text-sm text-gray-700 bg-gray-50 p-3 rounded">
-            {pr.notes}
-          </p>
-        </div>
-      )}
-
-      {/* Approval Section */}
-      <div className="mt-12">
-        <h4 className="font-semibold text-sm mb-4 border-b pb-2">
-          Persetujuan / Approval
-        </h4>
-        <div className="grid grid-cols-3 gap-8">
-          {/* Requester */}
-          <div className="text-center">
-            <p className="text-xs text-gray-500 mb-8">Diajukan oleh,</p>
-            <div className="border-t border-gray-400 pt-2 mx-4">
-              <p className="font-medium text-sm">{pr.requester?.full_name || "-"}</p>
+        {/* Document Info */}
+        <section className="mb-6 grid grid-cols-1 gap-4 rounded-xl border border-gray-200/70 bg-gray-50/60 p-4 sm:grid-cols-2">
+          <div className="space-y-3">
+            <div>
+              <p className="text-xs text-gray-500">Tanggal PR</p>
+              <p className="text-sm font-medium text-gray-900">{formatDate(pr.created_at)}</p>
+            </div>
+            <div>
+              <p className="text-xs text-gray-500">Departemen</p>
+              <p className="text-sm font-medium text-gray-900">{departmentData?.name || "-"}</p>
+              {departmentData?.code && <p className="text-xs text-gray-500">{departmentData.code}</p>}
+            </div>
+          </div>
+          <div className="space-y-3">
+            <div>
               <p className="text-xs text-gray-500">Requester</p>
+              <p className="text-sm font-medium text-gray-900">{requesterName}</p>
+            </div>
+            <div>
+              <p className="text-xs text-gray-500">Tanggal Dibutuhkan</p>
+              <p className="text-sm font-medium text-gray-900">
+                {pr.required_date ? formatDate(pr.required_date) : "-"}
+              </p>
             </div>
           </div>
+        </section>
 
-          {/* Head Dept */}
-          <div className="text-center">
-            <p className="text-xs text-gray-500 mb-8">Disetujui oleh,</p>
-            <div className="border-t border-gray-400 pt-2 mx-4">
-              {pr.approved_by_head ? (
-                <>
-                  <p className="font-medium text-sm">{pr.approved_head?.full_name}</p>
-                  <p className="text-xs text-gray-500">
-                    Head Dept ({formatDate(pr.approved_at_head)})
-                  </p>
-                </>
-              ) : (
-                <>
-                  <p className="text-gray-300">........................</p>
-                  <p className="text-xs text-gray-400">Head Dept</p>
-                </>
-              )}
+        {/* Items Table */}
+        <section className="mb-6 overflow-hidden rounded-xl border border-gray-200/70">
+          <table className="w-full border-collapse">
+            <thead className="bg-gray-50">
+              <tr className="border-b border-gray-200/70">
+                <th className="w-12 px-3 py-3 text-left text-xs font-semibold text-gray-700">No</th>
+                <th className="px-3 py-3 text-left text-xs font-semibold text-gray-700">Deskripsi</th>
+                <th className="w-20 px-3 py-3 text-center text-xs font-semibold text-gray-700">Qty</th>
+                <th className="w-24 px-3 py-3 text-center text-xs font-semibold text-gray-700">Satuan</th>
+                <th className="w-32 px-3 py-3 text-right text-xs font-semibold text-gray-700">Est. Harga</th>
+                <th className="w-32 px-3 py-3 text-right text-xs font-semibold text-gray-700">Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              {pr.items?.map((item: PRItem, index: number) => (
+                <tr key={item.id} className="border-b border-gray-200/60 last:border-0">
+                  <td className="px-3 py-3 text-sm">{index + 1}</td>
+                  <td className="px-3 py-3 text-sm">
+                    <p className="font-medium text-gray-900">{item.raw_material?.nama || item.description}</p>
+                    {item.raw_material?.kode && <p className="text-xs text-gray-500">{item.raw_material.kode}</p>}
+                    {item.description && item.raw_material?.nama && (
+                      <p className="text-xs text-gray-500">{item.description}</p>
+                    )}
+                  </td>
+                  <td className="px-3 py-3 text-center text-sm">{item.qty}</td>
+                  <td className="px-3 py-3 text-center text-sm">{item.satuan?.nama || item.unit}</td>
+                  <td className="px-3 py-3 text-right text-sm">{formatRupiah(item.estimated_price || 0)}</td>
+                  <td className="px-3 py-3 text-right text-sm font-semibold">{formatRupiah(item.total || 0)}</td>
+                </tr>
+              ))}
+            </tbody>
+            <tfoot>
+              <tr className="border-t border-gray-200/70 bg-gray-50">
+                <td colSpan={5} className="px-3 py-3 text-right text-sm font-semibold text-gray-700">
+                  Total Estimasi
+                </td>
+                <td className="px-3 py-3 text-right text-base font-bold text-gray-900">
+                  {formatRupiah(pr.total_amount)}
+                </td>
+              </tr>
+            </tfoot>
+          </table>
+        </section>
+
+        {/* Notes */}
+        {pr.notes && (
+          <section className="mb-6 rounded-xl border border-gray-200/70 bg-gray-50/60 p-4">
+            <h2 className="text-sm font-semibold text-gray-900">Catatan</h2>
+            <p className="mt-2 whitespace-pre-wrap text-sm text-gray-600">{pr.notes}</p>
+          </section>
+        )}
+
+        {/* Approval Section */}
+        <section className="mt-8">
+          <div className="mb-4 border-b border-gray-200/70 pb-2">
+            <h2 className="text-sm font-semibold text-gray-900">Persetujuan</h2>
+            <p className="text-xs text-gray-500">Approval kebutuhan barang dan kuantitas</p>
+          </div>
+          <div className="grid grid-cols-2 gap-8">
+            <div className="text-center">
+              <p className="mb-12 text-xs text-gray-500">Diajukan oleh,</p>
+              <div className="mx-4 border-t border-gray-300 pt-2">
+                <p className="text-sm font-semibold text-gray-900">{requesterName}</p>
+                <p className="text-xs text-gray-500">Requester</p>
+              </div>
+            </div>
+            <div className="text-center">
+              <p className="mb-12 text-xs text-gray-500">Disetujui oleh,</p>
+              <div className="mx-4 border-t border-gray-300 pt-2">
+                <p className="text-sm font-semibold text-gray-900">{approverName}</p>
+                <p className="text-xs text-gray-500">
+                  Head Department{pr.approved_at_head ? ` (${formatDate(pr.approved_at_head)})` : ""}
+                </p>
+              </div>
             </div>
           </div>
+        </section>
 
-          {/* Finance / Direksi */}
-          <div className="text-center">
-            <p className="text-xs text-gray-500 mb-8">Disetujui oleh,</p>
-            <div className="border-t border-gray-400 pt-2 mx-4">
-              {pr.approved_by_finance ? (
-                <>
-                  <p className="font-medium text-sm">{pr.approved_finance?.full_name}</p>
-                  <p className="text-xs text-gray-500">
-                    Finance ({formatDate(pr.approved_at_finance)})
-                  </p>
-                </>
-              ) : pr.approved_by_direksi ? (
-                <>
-                  <p className="font-medium text-sm">{pr.approved_direksi?.full_name}</p>
-                  <p className="text-xs text-gray-500">
-                    Direksi ({formatDate(pr.approved_at_direksi)})
-                  </p>
-                </>
-              ) : (
-                <>
-                  <p className="text-gray-300">........................</p>
-                  <p className="text-xs text-gray-400">Finance / Direksi</p>
-                </>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
+        <footer className="mt-10 border-t border-gray-200/70 pt-4 text-center text-xs text-gray-400">
+          <p>Generated by Aapex Purchasing System</p>
+          <p className="mt-1">Printed: {new Date().toLocaleString("id-ID")}</p>
+        </footer>
+      </main>
 
-      {/* Print Button */}
-      <div className="no-print fixed bottom-6 right-6">
-        <button
-          onClick={() => window.print()}
-          className="bg-blue-600 text-white px-6 py-3 rounded-lg shadow-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
-        >
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
-          </svg>
-          Print / Cetak
-        </button>
-      </div>
-
-      {/* Footer */}
-      <div className="fixed bottom-4 left-0 right-0 text-center text-xs text-gray-400 no-print">
-        <p>Generated by Aapex Purchasing System</p>
-      </div>
+      <PrintFloatingButton />
     </div>
   );
 }

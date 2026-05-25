@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -111,13 +111,7 @@ export default function PODetailPage() {
     };
   }, []);
 
-  useEffect(() => {
-    if (poId) {
-      loadPO();
-    }
-  }, [poId]);
-
-  const loadPO = async () => {
+  const loadPO = useCallback(async () => {
     try {
       setLoading(true);
       const data = await getPurchaseOrder(poId);
@@ -129,7 +123,13 @@ export default function PODetailPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [poId]);
+
+  useEffect(() => {
+    if (poId) {
+      loadPO();
+    }
+  }, [loadPO, poId]);
 
   const handleApprove = async () => {
     try {
@@ -258,7 +258,7 @@ export default function PODetailPage() {
               <Link href={`/dashboard/purchasing/po/${po.id}/edit`}>
                 <Button variant="outline">Edit</Button>
               </Link>
-              <Button onClick={() => setIsApproveDialogOpen(true)}>
+              <Button onClick={() => setIsApproveDialogOpen(true)} className="purchasing-main-button">
                 <CheckCircle className="w-4 h-4 mr-2" />
                 Approve
               </Button>
@@ -266,7 +266,7 @@ export default function PODetailPage() {
           )}
           
           {normalizedStatus === "approved" && (
-            <Button onClick={() => setIsSendDialogOpen(true)}>
+            <Button onClick={() => setIsSendDialogOpen(true)} className="purchasing-main-button">
               <Send className="w-4 h-4 mr-2" />
               Kirim ke Supplier
             </Button>
@@ -282,7 +282,7 @@ export default function PODetailPage() {
           )}
           
           {normalizedStatus !== "received" && normalizedStatus !== "cancelled" && (
-            <Button variant="destructive" onClick={() => setIsCancelDialogOpen(true)}>
+            <Button variant="destructive" onClick={() => setIsCancelDialogOpen(true)} className="purchasing-main-button">
               <XCircle className="w-4 h-4 mr-2" />
               Batal
             </Button>
@@ -544,10 +544,10 @@ export default function PODetailPage() {
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsApproveDialogOpen(false)}>
+            <Button variant="outline" onClick={() => setIsApproveDialogOpen(false)} className="purchasing-secondary-button">
               Batal
             </Button>
-            <Button onClick={handleApprove}>Approve</Button>
+            <Button onClick={handleApprove} className="purchasing-main-button">Approve</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -578,10 +578,10 @@ export default function PODetailPage() {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsSendDialogOpen(false)}>
+            <Button variant="outline" onClick={() => setIsSendDialogOpen(false)} className="purchasing-secondary-button">
               Batal
             </Button>
-            <Button onClick={handleSend}>Kirim</Button>
+            <Button onClick={handleSend} className="purchasing-main-button">Kirim</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -607,13 +607,14 @@ export default function PODetailPage() {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsCancelDialogOpen(false)}>
+            <Button variant="outline" onClick={() => setIsCancelDialogOpen(false)} className="purchasing-secondary-button">
               Batal
             </Button>
             <Button
               variant="destructive"
               onClick={handleCancel}
               disabled={!cancelReason}
+              className="purchasing-main-button"
             >
               Batalkan PO
             </Button>

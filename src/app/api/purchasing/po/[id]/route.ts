@@ -91,7 +91,7 @@ export async function PUT(
     // Validasi input
     const validated = poSchema.parse(body);
 
-    // Cek PO ada dan status masih bisa diedit (hanya DRAFT)
+    // Cek PO ada dan status masih bisa diedit (hanya draft)
     const { data: po, error: findError } = await supabase
       .from("purchase_orders")
       .select("*")
@@ -105,7 +105,7 @@ export async function PUT(
       );
     }
 
-    if (String(po.status).toLowerCase() !== "draft") {
+    if (po.status !== "draft") {
       return Response.json(
         { success: false, message: "PO hanya bisa diedit saat status draft" },
         { status: 400 }
@@ -174,9 +174,9 @@ export async function DELETE(
       );
     }
 
-    // Hanya bisa hapus/cancel jika belum received
-    const normalizedStatus = String(po.status).toLowerCase();
+    const normalizedStatus = String(po.status || "").toLowerCase();
 
+    // Hanya bisa hapus/cancel jika belum received
     if (normalizedStatus === "received") {
       return Response.json(
         { success: false, message: "PO yang sudah diterima tidak bisa dibatalkan" },

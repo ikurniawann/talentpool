@@ -32,7 +32,7 @@ const createSupplierSchema = z.object({
 
 const queryParamsSchema = z.object({
   search: z.string().optional(),
-  is_active: z.coerce.boolean().default(true),
+  is_active: z.coerce.boolean().optional(),
   status: z.enum(["active", "inactive", "probation", "blocked", "draft"]).optional(),
   payment_terms: z.enum(["CBD", "TOP7", "TOP14", "TOP30", "TOP45", "TOP60"]).optional(),
   page: z.coerce.number().min(1).default(1),
@@ -90,13 +90,13 @@ export async function GET(request: NextRequest) {
 
     let query = supabase
       .from("suppliers")
-      .select("*", { count: "exact" });
+      .select("*", { count: "exact" })
+      .is("deleted_at", null);
 
     // Filter by status if provided (for draft support)
     if (status) {
       query = query.eq("status", status);
-    } else {
-      // Default: filter by is_active only when status not specified
+    } else if (is_active !== undefined) {
       query = query.eq("is_active", is_active);
     }
 
@@ -158,6 +158,7 @@ export async function POST(request: NextRequest) {
       .from("suppliers")
       .select("id")
       .eq("kode", kodeSupplier)
+      .is("deleted_at", null)
       .single();
 
     if (existing) {

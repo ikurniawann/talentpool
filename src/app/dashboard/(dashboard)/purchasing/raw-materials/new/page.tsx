@@ -367,10 +367,10 @@ export default function NewRawMaterialPage() {
 
         {/* Action Buttons */}
         <div className="flex items-center justify-end gap-3 mt-6 pt-4 border-t">
-          <Button type="button" variant="outline" onClick={() => router.back()} className="px-6">
+          <Button type="button" variant="outline" onClick={() => router.back()} className="purchasing-secondary-button px-6">
             Batal
           </Button>
-          <Button type="submit" disabled={loading} className="px-6">
+          <Button type="submit" disabled={loading} className="purchasing-main-button px-6">
             <Save className="w-4 h-4 mr-2" />
             {loading ? "Menyimpan..." : "Simpan Bahan Baku"}
           </Button>

@@ -8,6 +8,7 @@ import { z } from "zod";
 
 const poItemSchema = z.object({
   raw_material_id: z.string().uuid("Bahan baku wajib dipilih"),
+  pr_item_id: z.string().uuid().optional(),
   qty_ordered: z.number().min(0.0001, "Jumlah pesanan minimal 0.0001"),
   satuan_id: z.string().uuid().optional(),
   harga_satuan: z.number().min(0, "Harga tidak boleh negatif"),
@@ -78,7 +79,7 @@ export async function POST(
       );
     }
 
-    if (String(po.status).toLowerCase() !== "draft") {
+    if (po.status !== "draft") {
       return Response.json(
         { success: false, message: "Item hanya bisa ditambahkan saat PO status draft" },
         { status: 400 }

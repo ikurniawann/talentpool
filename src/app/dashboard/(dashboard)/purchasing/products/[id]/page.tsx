@@ -318,10 +318,10 @@ export default function ProductDetailPage() {
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)}>
+            <Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)} className="purchasing-secondary-button">
               Batal
             </Button>
-            <Button variant="destructive" onClick={handleDelete}>
+            <Button variant="destructive" onClick={handleDelete} className="purchasing-main-button">
               Nonaktifkan
             </Button>
           </DialogFooter>

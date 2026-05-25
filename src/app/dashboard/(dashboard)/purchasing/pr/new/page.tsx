@@ -3,12 +3,14 @@ import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { PRForm } from "@/components/purchasing/pr-form";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { generatePRNumber } from "@/lib/purchasing/utils";
+import { BreadcrumbNav } from "@/modules/purchasing/components/breadcrumb/BreadcrumbNav";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
-import { generatePRNumber, getRequiredApprovalLevel } from "@/lib/purchasing/utils";
 
-type PRItemInput = {
+type PRFormItemInput = {
+  raw_material_id: string;
+  satuan_id?: string;
   description: string;
   qty: number;
   unit: string;
@@ -20,7 +22,7 @@ type PRFormInput = {
   priority: "low" | "medium" | "high" | "urgent";
   required_date?: string;
   notes?: string;
-  items: PRItemInput[];
+  items: PRFormItemInput[];
 };
 
 export default async function NewPRPage() {
@@ -28,7 +30,15 @@ export default async function NewPRPage() {
   const supabase = await createClient();
 
   // Check access
-  const allowedRoles = ["purchasing_staff", "purchasing_manager", "hrd"];
+  const allowedRoles = [
+    "purchasing_staff",
+    "purchasing_manager",
+    "purchasing_admin",
+    "super_admin",
+    "admin",
+    "pos_supervisor",
+    "hrd",
+  ];
   if (!allowedRoles.includes(user.role)) {
     redirect("/dashboard/purchasing");
   }
@@ -40,11 +50,24 @@ export default async function NewPRPage() {
     .eq("is_active", true)
     .order("name");
 
+  const { data: materials } = await supabase
+    .from("v_raw_materials_stock")
+    .select("id, kode, nama, satuan_besar_id, satuan_besar_nama, avg_cost")
+    .eq("is_active", true)
+    .order("nama");
+
+  const { data: units } = await supabase
+    .from("units")
+    .select("id, nama")
+    .eq("is_active", true)
+    .order("nama");
+
   async function handleCreatePR(formData: PRFormInput, action: "draft" | "submit") {
     "use server";
     
     const supabase = await createClient();
     const user = await requireUser();
+    let redirectPath = "/dashboard/purchasing/pr?created=submit";
     
     try {
       // Calculate total
@@ -53,9 +76,6 @@ export default async function NewPRPage() {
         0
       );
 
-      // Get required approval level
-      const approvalInfo = getRequiredApprovalLevel(totalAmount);
-      
       // Generate PR number
       const prNumber = await generatePRNumber(supabase);
       
@@ -66,13 +86,12 @@ export default async function NewPRPage() {
           pr_number: prNumber,
           requester_id: user.id,
           department_id: formData.department_id,
-          status: action === "draft" ? "draft" : 
-                  approvalInfo.level ? "pending_head" : "approved",
+          status: action === "draft" ? "draft" : "pending_head",
           total_amount: totalAmount,
           priority: formData.priority,
           notes: formData.notes || null,
           required_date: formData.required_date || null,
-          current_approval_level: action === "draft" ? null : approvalInfo.level,
+          current_approval_level: action === "draft" ? null : "head_dept",
         })
         .select()
         .single();
@@ -82,6 +101,8 @@ export default async function NewPRPage() {
       // Insert items
       const items = formData.items.map((item) => ({
         pr_id: pr.id,
+        raw_material_id: item.raw_material_id,
+        satuan_id: item.satuan_id || null,
         description: item.description,
         qty: item.qty,
         unit: item.unit,
@@ -94,38 +115,50 @@ export default async function NewPRPage() {
         .insert(items);
       
       if (itemsError) throw itemsError;
-      
-      redirect(action === "draft" ? `/dashboard/purchasing/pr/${pr.id}` : "/dashboard/purchasing");
+
+      redirectPath = action === "draft" ? `/dashboard/purchasing/pr/${pr.id}?created=draft` : "/dashboard/purchasing/pr?created=submit";
     } catch (error) {
       console.error("Error creating PR:", error);
       throw error;
     }
+
+    redirect(redirectPath);
   }
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center gap-4">
-        <Link href="/dashboard/purchasing">
-          <Button variant="ghost" size="sm">
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Kembali
-          </Button>
+      <BreadcrumbNav
+        items={[
+          { label: "Purchasing", href: "/dashboard/purchasing" },
+          { label: "Procurement", href: "/dashboard/purchasing/procurement" },
+          { label: "Purchase Request", href: "/dashboard/purchasing/pr" },
+          { label: "Buat PR" },
+        ]}
+      />
+
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center gap-4">
+          <Link href="/dashboard/purchasing/pr">
+            <Button variant="ghost" size="icon" className="h-9 w-9">
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+          </Link>
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">Buat Purchase Request</h1>
+            <p className="text-sm text-gray-500">Isi kebutuhan pembelian sebelum dibuatkan PO</p>
+          </div>
+        </div>
+        <Link href="/dashboard/purchasing/pr">
+          <Button variant="outline" className="purchasing-secondary-button">Kembali ke PR</Button>
         </Link>
-        <h1 className="text-2xl font-bold">Buat Purchase Request Baru</h1>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Form Purchase Request</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <PRForm 
-            departments={departments || []} 
-            onSubmit={handleCreatePR}
-          />
-        </CardContent>
-      </Card>
+      <PRForm
+        departments={departments || []}
+        materials={materials || []}
+        units={units || []}
+        onSubmit={handleCreatePR}
+      />
     </div>
   );
 }

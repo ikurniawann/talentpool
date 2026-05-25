@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -8,21 +8,30 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, Save, Plus, Trash2, Package, Search, User } from "lucide-react";
 import { toast } from "sonner";
 import { Combobox } from "@/components/ui/combobox";
 import { DatePicker } from "@/components/ui/datepicker";
 import { Supplier, RawMaterialWithStock, PurchaseOrderFormData, PurchaseOrderItemFormData, Unit } from "@/types/purchasing";
-import { listSuppliers, listRawMaterials, listUnits, createPurchaseOrder, createPOItem } from "@/lib/purchasing";
+import { listSuppliers, listRawMaterials, listUnits, convertPRToPurchaseOrder } from "@/lib/purchasing";
 
 interface POItemForm extends PurchaseOrderItemFormData {
   id: string;
+  pr_item_id?: string;
   raw_material_name?: string;
   raw_material_unit?: string;
   subtotal: number;
@@ -37,6 +46,28 @@ function getErrorMessage(error: unknown, fallback: string) {
   return error instanceof Error ? error.message : fallback;
 }
 
+interface PRForPO {
+  id: string;
+  pr_number: string;
+  status: string;
+  converted_po_id?: string | null;
+  department?: { name: string };
+  requester_name?: string;
+  department_name?: string;
+  items?: Array<{
+    id: string;
+    pr_id?: string;
+    raw_material_id?: string | null;
+    satuan_id?: string | null;
+    description: string;
+    qty: number;
+    unit: string;
+    estimated_price: number;
+    raw_material?: { id: string; kode: string; nama: string; satuan?: string };
+    satuan?: { id: string; nama: string };
+  }>;
+}
+
 export default function NewPOPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -44,12 +75,17 @@ export default function NewPOPage() {
   const [materials, setMaterials] = useState<RawMaterialWithStock[]>([]);
   const [units, setUnits] = useState<Unit[]>([]);
   const [loading, setLoading] = useState(true);
+  const [approvedPrs, setApprovedPrs] = useState<PRForPO[]>([]);
+  const [selectedPR, setSelectedPR] = useState<PRForPO | null>(null);
+  const [loadingPR, setLoadingPR] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [supplierModalOpen, setSupplierModalOpen] = useState(false);
   const [supplierSearch, setSupplierSearch] = useState("");
+  const prId = searchParams.get("pr_id");
   const [prefillApplied, setPrefillApplied] = useState(false);
   const [formData, setFormData] = useState<PurchaseOrderFormData>({
     supplier_id: "",
+    pr_id: prId || undefined,
     tanggal_po: new Date().toISOString().split("T")[0],
     tanggal_kirim_estimasi: "",
     catatan: "",
@@ -63,6 +99,7 @@ export default function NewPOPage() {
     items: [],
   });
   const [items, setItems] = useState<POItemForm[]>([]);
+  const isPrSourced = Boolean(formData.pr_id);
 
   // Auto-fill from URL query params (from Low Stock Report / Production shortage)
   useEffect(() => {
@@ -151,11 +188,13 @@ export default function NewPOPage() {
     }
   }, [searchParams, materials, suppliers, units, formData.supplier_id, prefillApplied]);
 
-  useEffect(() => {
-    loadData();
+  const loadApprovedPRs = useCallback(async () => {
+    const response = await fetch("/api/purchasing/pr?status=approved&limit=100");
+    const data = await response.json();
+    setApprovedPrs((data.data || []).filter((pr: PRForPO) => !pr.converted_po_id));
   }, []);
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     setLoading(true);
     try {
       // Load suppliers
@@ -193,6 +232,7 @@ export default function NewPOPage() {
         console.error("Failed to load units:", getErrorMessage(err, "Unknown error"));
         // Units are optional, continue
       }
+      await loadApprovedPRs();
     } catch (error: unknown) {
       console.error("Error loading data:", error);
       console.error("Error details:", JSON.stringify(error, null, 2));
@@ -200,6 +240,58 @@ export default function NewPOPage() {
     } finally {
       setLoading(false);
     }
+  }, [loadApprovedPRs]);
+
+  const loadPRForPO = useCallback(async (id: string) => {
+    setLoadingPR(true);
+    try {
+      const response = await fetch(`/api/purchasing/pr?status=approved&limit=100`);
+      const listData = await response.json();
+      const pr = ((listData.data || []) as PRForPO[]).find((item) => item.id === id);
+
+      if (!pr || pr.converted_po_id) {
+        toast.error("PR tidak ditemukan, belum approved, atau sudah dibuatkan PO");
+        setSelectedPR(null);
+        return;
+      }
+
+      setSelectedPR(pr);
+      setFormData((prev) => ({ ...prev, pr_id: id }));
+      const mappedItems: POItemForm[] = (pr.items || []).map((item) => ({
+        id: item.id,
+        pr_item_id: item.id,
+        raw_material_id: item.raw_material_id || "",
+        satuan_id: item.satuan_id || undefined,
+        qty_ordered: item.qty,
+        harga_satuan: item.estimated_price || 0,
+        notes: item.description,
+        subtotal: item.qty * (item.estimated_price || 0),
+        raw_material_name: item.raw_material?.nama || item.description,
+        raw_material_unit: item.satuan?.nama || item.unit,
+      }));
+      setItems(mappedItems);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Unknown error";
+      console.error("Error loading PR:", error);
+      toast.error(message || "Gagal memuat PR");
+    } finally {
+      setLoadingPR(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
+
+  useEffect(() => {
+    if (prId) {
+      loadPRForPO(prId);
+    }
+  }, [loadPRForPO, prId]);
+
+  const handleSelectPR = (id: string) => {
+    router.replace(`/dashboard/purchasing/po/new?pr_id=${id}`);
+    loadPRForPO(id);
   };
 
   const getSelectedSupplier = () => {
@@ -241,8 +333,8 @@ export default function NewPOPage() {
 
     // Recalculate subtotal
     if (field === "qty_ordered" || field === "harga_satuan") {
-      const qty = field === "qty_ordered" ? value : newItems[index].qty_ordered;
-      const price = field === "harga_satuan" ? value : newItems[index].harga_satuan;
+      const qty = Number(field === "qty_ordered" ? value : newItems[index].qty_ordered);
+      const price = Number(field === "harga_satuan" ? value : newItems[index].harga_satuan);
       newItems[index].subtotal = qty * price;
     }
 
@@ -278,24 +370,17 @@ export default function NewPOPage() {
       toast.error("Tambahkan minimal 1 item");
       return;
     }
+    if (!formData.pr_id) {
+      toast.error("Pilih PR approved terlebih dahulu");
+      return;
+    }
 
     setIsSubmitting(true);
     try {
       console.log("Creating PO with formData:", formData);
-      // Create PO
-      const po = await createPurchaseOrder(formData);
+      const po = await convertPRToPurchaseOrder(formData.pr_id, formData);
 
       console.log("PO created:", po);
-
-      // Create items
-      for (const item of items) {
-        await createPOItem(po.id, {
-          raw_material_id: item.raw_material_id,
-          qty_ordered: item.qty_ordered,
-          harga_satuan: item.harga_satuan,
-          notes: item.notes,
-        });
-      }
 
       toast.success("PO berhasil dibuat");
       router.push(`/dashboard/purchasing/po/${po.id}`);
@@ -345,10 +430,53 @@ export default function NewPOPage() {
         <div>
           <h1 className="text-2xl font-bold">Buat Purchase Order Baru</h1>
           <p className="text-muted-foreground">
-            Buat PO baru untuk supplier
+            {selectedPR ? `Dari PR ${selectedPR.pr_number}` : "Pilih PR approved lalu buat PO"}
           </p>
         </div>
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Purchase Request Source</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {selectedPR ? (
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="font-semibold">{selectedPR.pr_number}</span>
+                  <Badge>{selectedPR.status}</Badge>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  {selectedPR.department_name || selectedPR.department?.name || "-"} · {selectedPR.items?.length || 0} item
+                </p>
+              </div>
+              <Button type="button" variant="outline" onClick={() => router.push(`/dashboard/purchasing/pr/${selectedPR.id}`)}>
+                Lihat PR
+              </Button>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              <Label>Pilih PR Approved</Label>
+              <Select onValueChange={handleSelectPR}>
+                <SelectTrigger className={loading || loadingPR ? "pointer-events-none opacity-50" : undefined}>
+                  <SelectValue placeholder="Pilih PR yang sudah approved..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {approvedPrs.map((pr) => (
+                    <SelectItem key={pr.id} value={pr.id}>
+                      {pr.pr_number} - {pr.department_name || pr.department?.name || "-"}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                PO normal dibuat dari PR yang sudah approved dan belum converted.
+              </p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       <form onSubmit={handleSubmit} className="space-y-6">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -534,7 +662,7 @@ export default function NewPOPage() {
                       searchPlaceholder="Cari bahan (nama/kode)..."
                       emptyMessage="Bahan baku tidak ditemukan"
                       allowClear
-                      disabled={loading}
+                      disabled={loading || isPrSourced}
                     />
                   </div>
 
@@ -545,6 +673,7 @@ export default function NewPOPage() {
                       step="0.0001"
                       min="0"
                       value={item.qty_ordered}
+                      disabled={isPrSourced}
                       onChange={(e) =>
                         updateItem(
                           index,
@@ -586,6 +715,7 @@ export default function NewPOPage() {
                       variant="ghost"
                       size="icon"
                       onClick={() => removeItem(index)}
+                      disabled={isPrSourced}
                     >
                       <Trash2 className="w-4 h-4 text-red-500" />
                     </Button>
@@ -605,11 +735,11 @@ export default function NewPOPage() {
         {/* Actions */}
         <div className="flex justify-end gap-4">
           <Link href="/dashboard/purchasing/po">
-            <Button variant="outline" disabled={isSubmitting}>
+            <Button variant="outline" disabled={isSubmitting} className="purchasing-secondary-button">
               Batal
             </Button>
           </Link>
-          <Button type="submit" disabled={isSubmitting}>
+          <Button type="submit" disabled={isSubmitting || !formData.pr_id} className="purchasing-main-button">
             <Save className="w-4 h-4 mr-2" />
             {isSubmitting ? "Menyimpan..." : "Simpan PO"}
           </Button>
@@ -673,6 +803,7 @@ export default function NewPOPage() {
                   setSupplierModalOpen(false);
                   setSupplierSearch("");
                 }}
+                className="purchasing-secondary-button"
               >
                 Batal
               </Button>

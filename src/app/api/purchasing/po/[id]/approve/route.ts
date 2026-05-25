@@ -33,7 +33,7 @@ export async function POST(
     }
 
     // Validasi status
-    if (String(po.status).toLowerCase() !== "draft") {
+    if (po.status !== "draft") {
       return Response.json(
         { success: false, message: "PO hanya bisa diapprove saat status draft" },
         { status: 400 }

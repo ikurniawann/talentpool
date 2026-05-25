@@ -2,96 +2,81 @@
 
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Building2, Package, ShoppingCart, Truck, Warehouse, ArrowLeftRight, FileText, ArrowRight } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { BreadcrumbNav } from "@/modules/purchasing/components/breadcrumb/BreadcrumbNav";
+import { ArrowRight, Building2, Package, Ruler, Utensils } from "lucide-react";
 
 export default function PurchasingMainMenuPage() {
   const modules = [
     {
+      title: "Satuan",
+      href: "/dashboard/purchasing/units",
+      icon: Ruler,
+      description: "Kelola satuan pembelian, stok, dan konversi bahan baku.",
+      accent: "text-slate-600",
+      bg: "bg-slate-50",
+    },
+    {
       title: "Supplier",
       href: "/dashboard/purchasing/suppliers",
       icon: Building2,
-      description: "Kelola data supplier & vendor",
-      features: ["Add/Edit Supplier", "Payment Terms", "Contact Info"],
+      description: "Kelola data supplier, kontak, alamat, dan informasi vendor.",
+      accent: "text-pink-600",
+      bg: "bg-pink-50",
     },
     {
       title: "Bahan Baku",
       href: "/dashboard/purchasing/raw-materials",
       icon: Package,
-      description: "Master data bahan baku",
-      features: ["Raw Materials", "Stock Tracking", "Unit Conversion"],
+      description: "Master bahan baku beserta satuan, kategori, dan stok minimum.",
+      accent: "text-blue-600",
+      bg: "bg-blue-50",
     },
     {
-      title: "Purchase Order",
-      href: "/dashboard/purchasing/po",
-      icon: ShoppingCart,
-      description: "Create & manage PO",
-      features: ["New PO", "Approval Workflow", "Print PO"],
-    },
-    {
-      title: "Barang Masuk",
-      href: "/dashboard/purchasing/grn",
-      icon: Truck,
-      description: "Goods Receipt Note (GRN)",
-      features: ["Receive Items", "Partial Receive", "Update Stock"],
-    },
-    {
-      title: "Inventory",
-      href: "/dashboard/inventory",
-      icon: Warehouse,
-      description: "Manage warehouse stock",
-      features: ["Stock List", "Low Stock Alert", "Movements"],
-    },
-    {
-      title: "Retur",
-      href: "/dashboard/purchasing/returns",
-      icon: ArrowLeftRight,
-      description: "Return to supplier",
-      features: ["Create Return", "Track Status", "Credit Note"],
-    },
-    {
-      title: "Laporan",
-      href: "/dashboard/inventory/low-stock",
-      icon: FileText,
-      description: "Analytics & reports",
-      features: ["Low Stock Report", "PO Summary", "Valuation"],
+      title: "Produk",
+      href: "/dashboard/purchasing/products",
+      icon: Utensils,
+      description: "Kelola produk dan relasi kebutuhan bahan baku.",
+      accent: "text-amber-600",
+      bg: "bg-amber-50",
     },
   ];
 
   return (
-    <div className="space-y-4">
-      {/* Header */}
-      <div>
-        <h1 className="text-xl font-bold text-gray-900">🛒 Purchasing Modules</h1>
-        <p className="text-xs text-gray-500">Pilih modul untuk memulai</p>
+    <div className="space-y-6">
+      <BreadcrumbNav
+        items={[
+          { label: "Purchasing", href: "/dashboard/purchasing" },
+          { label: "Master Data" },
+        ]}
+      />
+
+      <div className="border-b border-gray-200/70 pb-4">
+        <h1 className="text-2xl font-bold text-gray-900">Master Data Purchasing</h1>
+        <p className="mt-1 text-sm text-gray-500">Pilih master data yang ingin dikelola</p>
       </div>
 
-      {/* Modules Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
         {modules.map((module) => (
-          <Link key={module.href} href={module.href}>
-            <Card className="border-0 shadow-md hover:shadow-lg transition-all cursor-pointer h-full group">
-              <CardHeader className="pb-2">
-                <div className="flex items-start justify-between gap-2">
-                  <div className="w-10 h-10 bg-gray-900 rounded-lg flex items-center justify-center group-hover:scale-105 transition-transform">
-                    <module.icon className="w-5 h-5 text-white" />
-                  </div>
-                  <ArrowRight className="w-4 h-4 text-gray-400 group-hover:text-gray-600 group-hover:translate-x-1 transition-all" />
+          <Card key={module.href} className="transition-shadow hover:shadow-md">
+            <CardHeader className="pb-3">
+              <div className="flex items-center gap-3">
+                <div className={`rounded-lg p-2 ${module.bg}`}>
+                  <module.icon className={`h-6 w-6 ${module.accent}`} />
                 </div>
-                <CardTitle className="text-sm font-semibold mt-2">{module.title}</CardTitle>
-              </CardHeader>
-              <CardContent className="pt-0">
-                <p className="text-xs text-gray-600 mb-2">{module.description}</p>
-                <div className="space-y-1">
-                  {module.features.map((feature, idx) => (
-                    <div key={idx} className="flex items-center gap-1.5 text-xs text-gray-500">
-                      <div className="w-1 h-1 bg-gray-400 rounded-full flex-shrink-0" />
-                      <span className="truncate">{feature}</span>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          </Link>
+                <CardTitle className="text-lg">{module.title}</CardTitle>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <p className="text-sm text-gray-600">{module.description}</p>
+              <Link href={module.href}>
+                <Button variant="outline" size="sm" className={`w-full border-current ${module.accent}`}>
+                  Buka Menu
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </Button>
+              </Link>
+            </CardContent>
+          </Card>
         ))}
       </div>
     </div>

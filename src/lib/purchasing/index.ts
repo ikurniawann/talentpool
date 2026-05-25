@@ -166,6 +166,20 @@ export async function updateUnit(
   return response.data;
 }
 
+export async function updateUnitStatus(
+  id: string,
+  isActive: boolean
+): Promise<Unit> {
+  const response = await fetchApi<{ data: Unit }>(
+    `${BASE}/units/${id}`,
+    {
+      method: "PUT",
+      body: JSON.stringify({ is_active: isActive }),
+    }
+  );
+  return response.data;
+}
+
 export async function deleteUnit(id: string): Promise<void> {
   await fetchApi(`${BASE}/units/${id}`, { method: "DELETE" });
 }
@@ -222,6 +236,20 @@ export async function updateRawMaterial(
     {
       method: "PUT",
       body: JSON.stringify(payload),
+    }
+  );
+  return response.data;
+}
+
+export async function updateRawMaterialStatus(
+  id: string,
+  isActive: boolean
+): Promise<RawMaterial> {
+  const response = await fetchApi<{ data: RawMaterial }>(
+    `${BASE}/raw-materials/${id}`,
+    {
+      method: "PUT",
+      body: JSON.stringify({ is_active: isActive }),
     }
   );
   return response.data;
@@ -353,6 +381,20 @@ export async function updateProduct(
     {
       method: "PUT",
       body: JSON.stringify(payload),
+    }
+  );
+  return response.data;
+}
+
+export async function updateProductStatus(
+  id: string,
+  isActive: boolean
+): Promise<Product> {
+  const response = await fetchApi<{ data: Product }>(
+    `${BASE}/products/${id}`,
+    {
+      method: "PUT",
+      body: JSON.stringify({ is_active: isActive }),
     }
   );
   return response.data;
@@ -525,6 +567,20 @@ export async function createPurchaseOrder(
 ): Promise<PurchaseOrder> {
   const response = await fetchApi<{ data: PurchaseOrder }>(
     `${BASE}/po`,
+    {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }
+  );
+  return response.data;
+}
+
+export async function convertPRToPurchaseOrder(
+  prId: string,
+  payload: PurchaseOrderFormData
+): Promise<PurchaseOrder> {
+  const response = await fetchApi<{ data: PurchaseOrder }>(
+    `${BASE}/pr/${prId}/convert-to-po`,
     {
       method: "POST",
       body: JSON.stringify(payload),

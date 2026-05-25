@@ -149,6 +149,7 @@ export async function PUT(
       .from("products")
       .select("*")
       .eq("id", id)
+      .is("deleted_at", null)
       .single();
 
     if (findError || !existingProduct) {
@@ -166,6 +167,7 @@ export async function PUT(
         updated_at: new Date().toISOString(),
       })
       .eq("id", id)
+      .is("deleted_at", null)
       .select()
       .single();
 
@@ -205,12 +207,14 @@ export async function DELETE(
   try {
     const { id } = await params;
     const supabase = await createClient();
+    const { data: authData } = await supabase.auth.getUser();
 
     // Cek apakah produk ada
     const { data: product, error: findError } = await supabase
       .from("products")
       .select("*")
       .eq("id", id)
+      .is("deleted_at", null)
       .single();
 
     if (findError || !product) {
@@ -226,14 +230,17 @@ export async function DELETE(
       .update({
         is_active: false,
         deleted_at: new Date().toISOString(),
+        deleted_by: authData.user?.id ?? null,
+        updated_at: new Date().toISOString(),
       })
-      .eq("id", id);
+      .eq("id", id)
+      .is("deleted_at", null);
 
     if (error) throw error;
 
     return Response.json({
       success: true,
-      message: "Produk berhasil dinonaktifkan",
+      message: "Produk berhasil dihapus",
     });
   } catch (error: unknown) {
     console.error("Error deleting product:", error);

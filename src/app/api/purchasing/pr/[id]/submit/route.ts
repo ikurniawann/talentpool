@@ -1,7 +1,12 @@
 import { createClient } from "@/lib/supabase/server";
 import { requireUser } from "@/lib/supabase/auth";
 import { NextRequest, NextResponse } from "next/server";
-import { getRequiredApprovalLevel, getNextPRStatus } from "@/lib/purchasing/utils";
+
+type PRSubmitUpdate = {
+  status: "pending_head";
+  current_approval_level: "head_dept";
+  updated_at: string;
+};
 
 export async function POST(
   request: NextRequest,
@@ -42,13 +47,9 @@ export async function POST(
       );
     }
 
-    // Calculate required approval level
-    const approvalInfo = getRequiredApprovalLevel(pr.total_amount);
-    const nextStatus = getNextPRStatus("draft", pr.total_amount);
-
-    const updates: any = {
-      status: nextStatus,
-      current_approval_level: approvalInfo.level,
+    const updates: PRSubmitUpdate = {
+      status: "pending_head",
+      current_approval_level: "head_dept",
       updated_at: new Date().toISOString(),
     };
 

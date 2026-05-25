@@ -27,6 +27,41 @@
   display: none;
 }
 
+.purchasing-main-button {
+  height: 2.5rem !important;
+  gap: 0.5rem !important;
+  border-radius: 0.5rem !important;
+  background-color: #db2777 !important;
+  padding-inline: 0.75rem !important;
+  font-size: 0.875rem !important;
+  font-weight: 600 !important;
+  color: #ffffff !important;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08) !important;
+}
+
+.purchasing-main-button:hover {
+  background-color: #be185d !important;
+}
+
+.purchasing-secondary-button {
+  height: 2.5rem !important;
+  gap: 0.5rem !important;
+  border-radius: 0.5rem !important;
+  border-color: #fbcfe8 !important;
+  background-color: #ffffff !important;
+  padding-inline: 0.75rem !important;
+  font-size: 0.875rem !important;
+  font-weight: 500 !important;
+  color: #be185d !important;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08) !important;
+}
+
+.purchasing-secondary-button:hover {
+  border-color: #fbcfe8 !important;
+  background-color: #fdf2f8 !important;
+  color: #be185d !important;
+}
+
 /* Make interactive UI communicate clickability consistently. */
 a[href],
 button:not(:disabled),
@@ -97,6 +132,37 @@ select,
 [data-slot="textarea"] {
   border-color: rgba(209, 213, 219, 0.6) !important;
   background: rgba(255, 255, 255, 0.7) !important;
+}
+
+input:not([type="checkbox"]):not([type="radio"]):focus,
+input:not([type="checkbox"]):not([type="radio"]):focus-visible,
+textarea:focus,
+textarea:focus-visible,
+select:focus,
+select:focus-visible,
+[data-slot="input"]:focus,
+[data-slot="input"]:focus-visible,
+[data-slot="select-trigger"]:focus,
+[data-slot="select-trigger"]:focus-visible,
+[data-slot="textarea"]:focus,
+[data-slot="textarea"]:focus-visible {
+  border-color: rgba(209, 213, 219, 0.95) !important;
+  box-shadow: 0 0 0 1px rgba(229, 231, 235, 0.85) !important;
+  outline: none !important;
+}
+
+input[data-combobox-search="true"],
+input[data-combobox-search="true"]:focus,
+input[data-combobox-search="true"]:focus-visible {
+  border: 0 !important;
+  box-shadow: none !important;
+  background: transparent !important;
+}
+
+input[data-master-readonly="true"] {
+  background: rgba(229, 231, 235, 0.9) !important;
+  color: #4b5563 !important;
+  border-color: rgba(209, 213, 219, 0.9) !important;
 }
 
 /* Separator / dividers */

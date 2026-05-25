@@ -42,16 +42,14 @@ export async function POST(
     }
 
     // Validasi status - tidak bisa cancel jika sudah fully received
-    const normalizedStatus = String(po.status).toLowerCase();
-
-    if (normalizedStatus === "received") {
+    if (po.status === "received") {
       return Response.json(
         { success: false, message: "PO yang sudah diterima sepenuhnya tidak bisa dibatalkan" },
         { status: 400 }
       );
     }
 
-    if (normalizedStatus === "cancelled") {
+    if (po.status === "cancelled") {
       return Response.json(
         { success: false, message: "PO sudah dibatalkan sebelumnya" },
         { status: 400 }

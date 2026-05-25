@@ -6,6 +6,8 @@ import { requireUser } from "@/lib/supabase/auth";
 
 const prItemSchema = z.object({
   product_id: z.string().optional(),
+  raw_material_id: z.string().uuid("Bahan baku wajib dipilih"),
+  satuan_id: z.string().uuid().optional(),
   description: z.string().min(1, "Deskripsi barang wajib diisi"),
   qty: z.number().min(1, "Jumlah minimal 1"),
   unit: z.string().min(1, "Satuan wajib diisi"),
@@ -37,9 +39,11 @@ export async function GET(request: NextRequest) {
       .select(
         `
         *,
-        items:pr_items(*),
-        requester:users(full_name),
-        department:departments(name)
+        items:pr_items(
+          *,
+          raw_material:raw_material_id(id, kode, nama),
+          satuan:satuan_id(id, nama)
+        )
       `,
         { count: "exact" }
       )
@@ -72,8 +76,39 @@ export async function GET(request: NextRequest) {
 
     if (error) throw error;
 
+    const requesterIds = [
+      ...new Set((prs || []).map((pr) => pr.requester_id).filter(Boolean)),
+    ];
+    const { data: requesters } = requesterIds.length
+      ? await supabase
+          .from("users")
+          .select("id, full_name")
+          .in("id", requesterIds)
+      : { data: [] };
+    const requesterById = new Map(
+      (requesters || []).map((requester) => [requester.id, requester.full_name])
+    );
+    const departmentIds = [
+      ...new Set((prs || []).map((pr) => pr.department_id).filter(Boolean)),
+    ];
+    const { data: departments } = departmentIds.length
+      ? await supabase
+          .from("departments")
+          .select("id, name")
+          .in("id", departmentIds)
+      : { data: [] };
+    const departmentById = new Map(
+      (departments || []).map((department) => [department.id, department.name])
+    );
+
+    const mappedPrs = (prs || []).map((pr: any) => ({
+      ...pr,
+      requester_name: requesterById.get(pr.requester_id),
+      department_name: departmentById.get(pr.department_id),
+    }));
+
     return NextResponse.json({
-      data: prs,
+      data: mappedPrs,
       pagination: {
         page,
         limit,
@@ -96,7 +131,15 @@ export async function POST(request: NextRequest) {
     const user = await requireUser();
     
     // Check authorization
-    const allowedRoles = ["purchasing_staff", "purchasing_manager", "hrd"];
+    const allowedRoles = [
+      "purchasing_staff",
+      "purchasing_manager",
+      "purchasing_admin",
+      "super_admin",
+      "admin",
+      "pos_supervisor",
+      "hrd",
+    ];
     if (!allowedRoles.includes(user.role)) {
       return NextResponse.json(
         { error: "Anda tidak memiliki akses untuk membuat PR" },
@@ -139,6 +182,8 @@ export async function POST(request: NextRequest) {
     const itemsWithTotal = validated.items.map((item) => ({
       pr_id: pr.id,
       product_id: item.product_id || null,
+      raw_material_id: item.raw_material_id,
+      satuan_id: item.satuan_id || null,
       description: item.description,
       qty: item.qty,
       unit: item.unit,
