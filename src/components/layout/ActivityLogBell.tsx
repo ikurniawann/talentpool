@@ -76,7 +76,7 @@ export function ActivityLogBell({ posShift }: { posShift?: PosShiftBellInfo }) {
       </DropdownMenuTrigger>
       <DropdownMenuContent 
         align="end" 
-        className="w-80 max-h-[500px] p-0 z-50 shadow-2xl border-gray-200 bg-white" 
+        className="z-[10000] w-80 max-h-[500px] p-0 shadow-2xl border-gray-200 bg-white"
         sideOffset={8}
       >
         {/* Header */}

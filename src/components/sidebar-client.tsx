@@ -62,6 +62,7 @@ import {
   TruckIcon as TruckIconSolid,
   DocumentMagnifyingGlassIcon as DocumentMagnifyingGlassIconSolid,
 } from "@heroicons/react/24/solid";
+import { ActivityLogBell } from "./layout/ActivityLogBell";
 import { NotificationBell } from "./hris/NotificationBell";
 
 // ============================================================================
@@ -190,6 +191,7 @@ export default function SidebarClient({ user, navItems, children }: SidebarClien
   const [expandedMenus, setExpandedMenus] = useState<string[]>(["HRIS Modules"]);
   const [collapsed, setCollapsed] = useState(false);
   const [accountOpen, setAccountOpen] = useState(false);
+  const useActivityNotification = pathname.startsWith("/dashboard/purchasing");
 
   // --------------------------------------------------------------------------
   // Active State Logic
@@ -353,7 +355,7 @@ export default function SidebarClient({ user, navItems, children }: SidebarClien
             <NavIcon name="home" className="w-4 h-4" isActive={true} />
             Desktop
           </Link>
-          <NotificationBell />
+          {useActivityNotification ? <ActivityLogBell /> : <NotificationBell />}
           <div className="h-6 w-px bg-gray-200" />
           <button
             type="button"

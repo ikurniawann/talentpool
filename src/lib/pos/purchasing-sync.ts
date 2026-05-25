@@ -1,0 +1,216 @@
+import { createServiceClient } from "@/lib/supabase/service-client";
+
+type SupabaseServiceClient = ReturnType<typeof createServiceClient>;
+
+type PurchasingProduct = {
+  id: string;
+  kode?: string | null;
+  nama?: string | null;
+  deskripsi?: string | null;
+  kategori?: string | null;
+  harga_jual?: number | string | null;
+  hpp_estimasi?: number | string | null;
+  estimated_cogs?: number | string | null;
+  is_active?: boolean | null;
+};
+
+type PosCategory = {
+  id: string;
+  name?: string | null;
+};
+
+type PosProductCostRow = {
+  id: string;
+  sku?: string | null;
+  name?: string | null;
+  base_price?: number | string | null;
+  cost_price?: number | string | null;
+};
+
+function toNumber(value: unknown) {
+  const numeric = Number(value);
+  return Number.isFinite(numeric) ? numeric : 0;
+}
+
+function normalizeStation(value?: string | null) {
+  const station = String(value || "").trim().toLowerCase();
+  if (["kitchen", "bar", "bakery", "dessert", "merchandise", "photobooth"].includes(station)) {
+    return station;
+  }
+  return "kitchen";
+}
+
+function normalizeCategoryName(value?: string | null) {
+  const category = String(value || "").trim();
+  if (!category) return "Makanan";
+  if (/minuman|drink|coffee|kopi|tea|bar/i.test(category)) return "Minuman";
+  if (/dessert|roti|cake|bakery|pastry/i.test(category)) return "Dessert";
+  if (/snack|cemilan/i.test(category)) return "Snack";
+  return category;
+}
+
+function skuForPurchasingProduct(product: Pick<PurchasingProduct, "id" | "kode">) {
+  return `PUR-${product.kode || product.id.slice(0, 8)}`;
+}
+
+async function findOrCreateCategory(
+  supabase: SupabaseServiceClient,
+  name: string
+) {
+  const { data: existing, error: existingError } = await supabase
+    .from("pos_categories")
+    .select("id, name")
+    .ilike("name", name)
+    .limit(1)
+    .maybeSingle();
+
+  if (existingError && existingError.code !== "PGRST116") throw existingError;
+  if (existing) return (existing as PosCategory).id;
+
+  const { data: created, error: createError } = await supabase
+    .from("pos_categories")
+    .insert({ name, is_active: true })
+    .select("id")
+    .single();
+
+  if (createError) {
+    console.warn("POS category create warning:", createError.message);
+    return null;
+  }
+
+  return (created as { id: string }).id;
+}
+
+export async function syncPurchasingProductToPos(
+  supabase: SupabaseServiceClient,
+  purchasingProductId: string,
+  options: { station?: string | null; costPriceOverride?: number | null } = {}
+) {
+  const { data: product, error: productError } = await supabase
+    .from("v_products_cogs")
+    .select("*")
+    .eq("id", purchasingProductId)
+    .single();
+
+  if (productError || !product) {
+    throw productError ?? new Error("Purchasing product not found");
+  }
+
+  const purchasingProduct = product as PurchasingProduct;
+  const sku = skuForPurchasingProduct(purchasingProduct);
+  const categoryName = normalizeCategoryName(purchasingProduct.kategori);
+  const categoryId = await findOrCreateCategory(supabase, categoryName);
+  const basePrice = toNumber(purchasingProduct.harga_jual);
+  const costPrice = options.costPriceOverride != null
+    ? toNumber(options.costPriceOverride)
+    : toNumber(purchasingProduct.hpp_estimasi ?? purchasingProduct.estimated_cogs);
+  const now = new Date().toISOString();
+
+  const payload = {
+    sku,
+    name: purchasingProduct.nama || sku,
+    description: purchasingProduct.deskripsi || `Synced from Purchasing product ${purchasingProduct.kode || purchasingProduct.id}`,
+    category_id: categoryId,
+    base_price: basePrice,
+    cost_price: costPrice,
+    is_active: purchasingProduct.is_active !== false,
+    is_available: true,
+    inventory_tracking: false,
+    station: normalizeStation(options.station),
+    updated_at: now,
+  };
+
+  const { data: existing, error: existingError } = await supabase
+    .from("pos_products")
+    .select("id")
+    .eq("sku", sku)
+    .maybeSingle();
+
+  if (existingError && existingError.code !== "PGRST116") throw existingError;
+
+  if (existing?.id) {
+    const { data: updated, error: updateError } = await supabase
+      .from("pos_products")
+      .update(payload)
+      .eq("id", existing.id)
+      .select("*")
+      .single();
+
+    if (updateError) throw updateError;
+    return buildSyncResult("updated", updated as PosProductCostRow, costPrice);
+  }
+
+  const { data: created, error: createError } = await supabase
+    .from("pos_products")
+    .insert({
+      ...payload,
+      created_at: now,
+    })
+    .select("*")
+    .single();
+
+  if (createError) throw createError;
+  return buildSyncResult("created", created as PosProductCostRow, costPrice);
+}
+
+export async function syncProductionHppToPos(
+  supabase: SupabaseServiceClient,
+  purchasingProductId: string,
+  hppPerUnit: number
+) {
+  return syncPurchasingProductToPos(supabase, purchasingProductId, {
+    costPriceOverride: hppPerUnit,
+  });
+}
+
+function buildSyncResult(mode: "created" | "updated", product: PosProductCostRow, costPrice: number) {
+  const basePrice = toNumber(product.base_price);
+  const grossProfit = basePrice - costPrice;
+  const marginPct = basePrice > 0 ? Math.round((grossProfit / basePrice) * 10000) / 100 : 0;
+
+  return {
+    mode,
+    product,
+    cost_price: costPrice,
+    base_price: basePrice,
+    gross_profit: grossProfit,
+    margin_percentage: marginPct,
+  };
+}
+
+export async function loadPosProductCostMap(
+  supabase: SupabaseServiceClient,
+  productIds: string[]
+) {
+  const ids = Array.from(new Set(productIds.filter(Boolean)));
+  if (ids.length === 0) return new Map<string, PosProductCostRow>();
+
+  const { data, error } = await supabase
+    .from("pos_products")
+    .select("id, sku, name, base_price, cost_price")
+    .in("id", ids);
+
+  if (error) throw error;
+
+  return new Map(
+    ((data || []) as PosProductCostRow[]).map((product) => [product.id, product])
+  );
+}
+
+export function buildCostSnapshot(
+  product: PosProductCostRow | undefined,
+  quantity: number,
+  totalAmount: number
+) {
+  const costPrice = toNumber(product?.cost_price);
+  const costTotal = Math.round(costPrice * quantity * 100) / 100;
+  const grossProfit = Math.round((totalAmount - costTotal) * 100) / 100;
+  const grossMarginPct = totalAmount > 0 ? Math.round((grossProfit / totalAmount) * 10000) / 100 : 0;
+
+  return {
+    cost_price: costPrice,
+    cost_total: costTotal,
+    gross_profit: grossProfit,
+    gross_margin_pct: grossMarginPct,
+  };
+}

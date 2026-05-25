@@ -3,6 +3,7 @@ import { z } from "zod";
 import { createServiceClient } from "@/lib/supabase/service-client";
 import { requireApiRole, ApiError } from "@/lib/api/auth";
 import { addInventoryFromProduction } from "@/lib/inventory";
+import { syncProductionHppToPos } from "@/lib/pos/purchasing-sync";
 
 const updateProductionSchema = z.object({
   action: z.enum(["recheck_stock", "release", "start", "complete", "cancel"]),
@@ -387,9 +388,9 @@ export async function PATCH(
       return NextResponse.json({ success: false, message: "Action tidak valid" }, { status: 400 });
     }
 
-    if (!["RELEASED", "IN_PROGRESS"].includes(order.status)) {
+    if (order.status !== "IN_PROGRESS") {
       return NextResponse.json(
-        { success: false, message: "Produksi harus RELEASED atau IN_PROGRESS sebelum completed" },
+        { success: false, message: "Produksi harus IN_PROGRESS sebelum completed" },
         { status: 400 }
       );
     }
@@ -645,18 +646,16 @@ export async function PATCH(
 
     if (completeError) throw completeError;
 
-    const productCode = order.product?.kode;
-    if (outputType === "FINISHED_GOOD" && productCode) {
-      await supabase
-        .from("pos_products")
-        .update({ cost_price: hppPerUnit, updated_at: now })
-        .eq("sku", `PUR-${productCode}`);
-    }
+    const posSync = outputType === "FINISHED_GOOD"
+      ? await syncProductionHppToPos(supabase, order.product_id, hppPerUnit)
+      : null;
 
     return NextResponse.json({
       success: true,
-      data: { order: updatedOrder, batch },
-      message: `Produksi ${order.nomor_produksi} selesai. HPP aktual Rp ${Math.round(hppPerUnit).toLocaleString("id-ID")}`,
+      data: { order: updatedOrder, batch, pos_sync: posSync },
+      message: outputType === "FINISHED_GOOD" && posSync
+        ? `Produksi ${order.nomor_produksi} selesai. HPP aktual Rp ${Math.round(hppPerUnit).toLocaleString("id-ID")} tersinkron ke POS. Margin POS ${posSync.margin_percentage}%.`
+        : `Produksi ${order.nomor_produksi} selesai. HPP aktual Rp ${Math.round(hppPerUnit).toLocaleString("id-ID")}`,
     });
   } catch (error) {
     if (error instanceof ApiError) return error.toResponse();

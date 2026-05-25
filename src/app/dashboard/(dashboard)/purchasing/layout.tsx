@@ -4,7 +4,6 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, useRef, useEffect } from "react";
 import { Toaster } from "sonner";
-import { ActivityLogBell } from "@/components/layout/ActivityLogBell";
 import { UserCircle, LogOut } from "lucide-react";
 import {
   BuildingOfficeIcon,
@@ -15,6 +14,7 @@ import {
   CheckBadgeIcon,
   ArrowUturnLeftIcon,
   ArchiveBoxIcon,
+  ClipboardDocumentListIcon,
   DocumentChartBarIcon,
   ChevronDownIcon,
   ScaleIcon,
@@ -43,6 +43,7 @@ const TRANSAKSI_ITEMS = [
 
 // Report Items
 const REPORT_ITEMS = [
+  { href: "/dashboard/purchasing/reports/stock-card", label: "Stock Card", icon: ClipboardDocumentListIcon },
   { href: "/dashboard/purchasing/reports/inventory-valuation", label: "Valuasi Inventori", icon: ArchiveBoxIcon },
   { href: "/dashboard/purchasing/reports/po-summary", label: "Ringkasan PO", icon: ShoppingCartIcon },
   { href: "/dashboard/purchasing/reports/po-detail", label: "Detail PO", icon: DocumentChartBarIcon },
@@ -184,9 +185,8 @@ export default function PurchasingLayout({ children }: { children: React.ReactNo
             </div>
           </div>
           
-          {/* Right - Bell icon and user profile */}
+          {/* Right - user profile */}
           <div className="flex items-center gap-2 sm:gap-4 pl-2 sm:pl-4 flex-shrink-0" style={{ borderLeft: "1px solid rgba(209,213,219,0.4)" }}>
-            <ActivityLogBell />
             <div className="relative z-[9999]" ref={userRef}>
               <button
                 onMouseDown={(e) => { e.preventDefault(); setUserOpen(v => !v); }}

@@ -533,6 +533,7 @@ export default function ProductsPage() {
                     </td>
                     <td className="p-4">
                       <div className="font-medium text-gray-900">{formatCurrency(product.price)}</div>
+                      <div className="text-xs text-gray-400">HPP {formatCurrency(product.cost)}</div>
                     </td>
                     <td className="p-4">
                       <span className="text-green-600 font-medium">{product.margin}%</span>

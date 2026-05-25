@@ -183,6 +183,7 @@ export default async function DashboardGroupLayout({
                     label: "Laporan",
                     icon: "chart",
                     children: [
+                      { href: "/dashboard/purchasing/reports/stock-card", label: "Stock Card", icon: "clipboard" },
                       { href: "/dashboard/purchasing/reports/inventory-valuation", label: "Valuasi Inventory", icon: "chart-bar" },
                       { href: "/dashboard/purchasing/reports/po-summary", label: "Ringkasan PO", icon: "document-text" },
                       { href: "/dashboard/purchasing/reports/po-detail", label: "Detail PO", icon: "document-magnifying-glass" },
