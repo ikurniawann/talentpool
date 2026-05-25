@@ -139,7 +139,7 @@ export default function ReturnDetailPage() {
   const isApproved = ret.status === "approved" || ret.status === "completed";
 
   return (
-    <div className="p-6">
+    <div className="space-y-6">
       <BreadcrumbNav
         items={[
           { label: "Purchasing", href: "/dashboard/purchasing" },
@@ -148,32 +148,34 @@ export default function ReturnDetailPage() {
         ]}
       />
 
-      <div className="flex items-center justify-between mt-4 mb-6">
-        <div className="flex items-center gap-4">
+      <div className="flex flex-col items-start justify-between gap-4 border-b border-gray-200/70 pb-4 sm:flex-row sm:items-center">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <h1 className="text-2xl font-bold text-gray-900">{ret.return_number}</h1>
+            <Badge className={RETURN_STATUS_COLORS[ret.status]}>
+              {RETURN_STATUS_LABELS[ret.status]}
+            </Badge>
+          </div>
+          <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-gray-500">
+            <span>{format(new Date(ret.return_date), "dd MMMM yyyy", { locale: localeId })}</span>
+            <span className="text-gray-300">•</span>
+            <span>{ret.supplier?.nama_supplier || "-"}</span>
+            <span className="text-gray-300">•</span>
+            <span>{RETURN_REASON_LABELS[ret.reason_type]}</span>
+          </div>
+        </div>
+        <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap">
           <Link href="/dashboard/purchasing/returns">
-            <Button variant="ghost" size="sm">
+            <Button variant="outline" className="purchasing-secondary-button w-full sm:w-auto">
               <ArrowLeft className="w-4 h-4 mr-2" />
               Kembali
             </Button>
           </Link>
-          <div>
-            <div className="flex items-center gap-3">
-              <h1 className="text-2xl font-bold">{ret.return_number}</h1>
-              <Badge className={RETURN_STATUS_COLORS[ret.status]}>
-                {RETURN_STATUS_LABELS[ret.status]}
-              </Badge>
-            </div>
-            <p className="text-sm text-gray-500">
-              Return date: {format(new Date(ret.return_date), "dd MMMM yyyy", { locale: localeId })}
-            </p>
-          </div>
-        </div>
-        <div className="flex gap-2">
-          <Button variant="outline" size="sm">
+          <Button variant="outline" className="purchasing-secondary-button w-full sm:w-auto">
             <Printer className="w-4 h-4 mr-2" />
             Print
           </Button>
-          <Button variant="outline" size="sm">
+          <Button variant="outline" className="purchasing-secondary-button w-full sm:w-auto">
             <Download className="w-4 h-4 mr-2" />
             Export PDF
           </Button>
@@ -181,8 +183,7 @@ export default function ReturnDetailPage() {
             <>
               <Button
                 variant="outline"
-                size="sm"
-                className="text-green-600 border-green-600 hover:bg-green-50"
+                className="h-10 w-full rounded-lg border-green-200 bg-white px-3 text-sm font-medium text-green-600 shadow-sm hover:!border-green-200 hover:!bg-green-50 hover:!text-green-700 sm:w-auto"
                 onClick={() => setApproveDialogOpen(true)}
               >
                 <CheckCircle className="w-4 h-4 mr-2" />
@@ -190,8 +191,7 @@ export default function ReturnDetailPage() {
               </Button>
               <Button
                 variant="outline"
-                size="sm"
-                className="text-red-600 border-red-600 hover:bg-red-50"
+                className="h-10 w-full rounded-lg border-red-200 bg-white px-3 text-sm font-medium text-red-600 shadow-sm hover:!border-red-200 hover:!bg-red-50 hover:!text-red-700 sm:w-auto"
                 onClick={() => setRejectDialogOpen(true)}
               >
                 <XCircle className="w-4 h-4 mr-2" />

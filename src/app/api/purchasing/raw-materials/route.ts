@@ -20,6 +20,11 @@ const materialSchema = z.object({
   shelf_life_days: z.number().min(0).optional().nullable(),
   storage_condition: z.enum(["SUHU_RUANG", "DINGIN", "BEKU", "KHUSUS"]).optional().nullable(),
   coa: z.enum(["PRODUCTION", "RND", "ASSET"]).optional().nullable(),
+  unit_conversions: z.array(z.object({
+    satuan_id: z.string().uuid(),
+    qty_in_base_unit: z.number().min(0.000001),
+    is_base: z.boolean().optional(),
+  })).optional().default([]),
 });
 
 function getErrorMessage(error: unknown, fallback: string) {
@@ -80,8 +85,38 @@ export async function GET(request: NextRequest) {
       throw error;
     }
 
+    let materialsWithConversions = data || [];
+    const materialIds = materialsWithConversions.map((material) => material.id).filter(Boolean);
+
+    if (materialIds.length > 0) {
+      const { data: conversions, error: conversionsError } = await supabase
+        .from("raw_material_unit_conversions")
+        .select(`
+          *,
+          satuan:satuan_id (*)
+        `)
+        .in("raw_material_id", materialIds)
+        .eq("is_active", true)
+        .order("is_base", { ascending: false })
+        .order("qty_in_base_unit", { ascending: true });
+
+      if (conversionsError) throw conversionsError;
+
+      const conversionsByMaterial = new Map<string, typeof conversions>();
+      for (const conversion of conversions || []) {
+        const current = conversionsByMaterial.get(conversion.raw_material_id) || [];
+        current.push(conversion);
+        conversionsByMaterial.set(conversion.raw_material_id, current);
+      }
+
+      materialsWithConversions = materialsWithConversions.map((material) => ({
+        ...material,
+        unit_conversions: conversionsByMaterial.get(material.id) || [],
+      }));
+    }
+
     return Response.json({
-      data,
+      data: materialsWithConversions,
       pagination: {
         page,
         limit,
@@ -146,11 +181,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const { unit_conversions, ...materialPayload } = validated;
+
     // Insert data
     const { data, error } = await supabase
       .from("raw_materials")
       .insert({
-        ...validated,
+        ...materialPayload,
         kode: finalKode,
         is_active: true,
       })
@@ -158,6 +195,38 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (error) throw error;
+
+    const conversions = [
+      ...(data.satuan_kecil_id
+        ? [{ satuan_id: data.satuan_kecil_id, qty_in_base_unit: 1, is_base: true }]
+        : []),
+      { satuan_id: data.satuan_besar_id, qty_in_base_unit: data.satuan_kecil_id ? data.konversi_factor || 1 : 1, is_base: !data.satuan_kecil_id },
+      ...unit_conversions.map((conversion) => ({ ...conversion, is_base: conversion.is_base ?? false })),
+    ];
+
+    if (conversions.length > 0) {
+      const conversionsByUnit = new Map<string, (typeof conversions)[number]>();
+      for (const conversion of conversions) {
+        if (!conversionsByUnit.has(conversion.satuan_id)) {
+          conversionsByUnit.set(conversion.satuan_id, conversion);
+        }
+      }
+      const uniqueConversions = Array.from(conversionsByUnit.values());
+      const { error: conversionError } = await supabase
+        .from("raw_material_unit_conversions")
+        .upsert(
+          uniqueConversions.map((conversion) => ({
+            raw_material_id: data.id,
+            satuan_id: conversion.satuan_id,
+            qty_in_base_unit: conversion.qty_in_base_unit,
+            is_base: conversion.is_base,
+            is_active: true,
+          })),
+          { onConflict: "raw_material_id,satuan_id" }
+        );
+
+      if (conversionError) throw conversionError;
+    }
 
     return Response.json(
       { success: true, data, message: "Bahan baku berhasil ditambahkan" },

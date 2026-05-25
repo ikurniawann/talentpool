@@ -134,28 +134,31 @@ export default function QCDetailPage() {
         ]}
       />
 
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <Link href="/dashboard/purchasing/qc">
-            <Button variant="ghost" size="icon">
-              <ArrowLeft className="w-5 h-5" />
-            </Button>
-          </Link>
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-              <BeakerIcon className="w-6 h-6" />
-              Detail QC Inspection
-            </h1>
-            <p className="text-sm text-gray-500">
+      <div className="flex flex-col items-start justify-between gap-4 border-b border-gray-200/70 pb-4 sm:flex-row sm:items-center">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <h1 className="text-2xl font-bold text-gray-900">
               {qc.qc_number || `QC ${qc.id.slice(0, 8)}`}
-            </p>
+            </h1>
+            <Badge className={`${STATUS_COLORS[qc.hasil]} border px-3 py-1.5 text-sm font-medium`}>
+              <StatusIcon className="w-4 h-4 mr-1.5" />
+              {STATUS_LABELS[qc.hasil]}
+            </Badge>
+          </div>
+          <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-gray-500">
+            <span>{qc.bahan_baku?.nama || qc.bahan_baku_id}</span>
+            <span className="text-gray-300">•</span>
+            <span>GRN {qc.grn_number || qc.goods_receipt_id.slice(0, 8)}</span>
+            <span className="text-gray-300">•</span>
+            <span>{qc.rekomendasi}</span>
           </div>
         </div>
-        <Badge className={`${STATUS_COLORS[qc.hasil]} border px-3 py-1.5 text-sm font-medium`}>
-          <StatusIcon className="w-4 h-4 mr-1.5" />
-          {STATUS_LABELS[qc.hasil]}
-        </Badge>
+        <Link href="/dashboard/purchasing/qc" className="w-full sm:w-auto">
+          <Button variant="outline" className="purchasing-secondary-button w-full sm:w-auto">
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Kembali
+          </Button>
+        </Link>
       </div>
 
       {/* Main Content Grid */}

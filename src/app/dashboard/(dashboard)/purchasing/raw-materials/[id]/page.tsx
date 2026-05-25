@@ -7,7 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowLeft, Package, AlertCircle, Edit, Trash2 } from "lucide-react";
+import { BreadcrumbNav } from "@/modules/purchasing/components/breadcrumb/BreadcrumbNav";
+import { ArrowLeft, Package, AlertCircle, Edit, Trash2, Boxes, Banknote, Settings2 } from "lucide-react";
 import { toast } from "sonner";
 import { RawMaterialWithStock } from "@/types/purchasing";
 import { getRawMaterial, deleteRawMaterial } from "@/lib/purchasing";
@@ -98,6 +99,30 @@ export default function RawMaterialDetailPage() {
     }
   };
 
+  const getCategoryLabel = (category?: string) => {
+    return category ? category.replace(/_/g, " ") : "-";
+  };
+
+  const satuanBesarName = material?.satuan_besar_nama || material?.satuan_besar?.nama || "-";
+  const satuanKecilName = material?.satuan_kecil_nama || "-";
+  const storageLabel = material?.storage_condition ? material.storage_condition.replace(/_/g, " ") : "-";
+  const unitConversions = material?.unit_conversions?.filter((conversion) => conversion.is_active !== false) || [];
+  const baseConversion = unitConversions.find((conversion) => conversion.is_base) || unitConversions[0];
+  const baseUnitLabel =
+    baseConversion?.satuan?.simbol ||
+    baseConversion?.satuan?.kode ||
+    baseConversion?.satuan?.nama ||
+    (material?.satuan_kecil_id ? satuanKecilName : satuanBesarName);
+  const alternativeConversions = unitConversions.filter((conversion) => !conversion.is_base);
+
+  const getConversionUnitLabel = (conversion: NonNullable<RawMaterialWithStock["unit_conversions"]>[number]) => (
+    conversion.satuan?.simbol || conversion.satuan?.kode || conversion.satuan?.nama || "-"
+  );
+
+  const getConversionUnitName = (conversion: NonNullable<RawMaterialWithStock["unit_conversions"]>[number]) => (
+    conversion.satuan?.nama || getConversionUnitLabel(conversion)
+  );
+
   if (loading) {
     return (
       <div className="container mx-auto py-6">
@@ -115,50 +140,137 @@ export default function RawMaterialDetailPage() {
   }
 
   return (
-    <div className="container mx-auto py-6 space-y-6">
-      {/* Header */}
-      <div className="flex justify-between items-start">
-        <div className="flex items-center gap-4">
-          <Link href="/dashboard/purchasing/raw-materials">
-            <Button variant="ghost" size="icon">
-              <ArrowLeft className="w-5 h-5" />
-            </Button>
-          </Link>
-          <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-2xl font-bold">{material.nama}</h1>
-              {getStockStatusBadge(material.status_stok || "")}
-            </div>
-            <p className="text-muted-foreground">{material.kode}</p>
+    <div className="space-y-6">
+      <BreadcrumbNav
+        items={[
+          { label: "Purchasing", href: "/dashboard/purchasing" },
+          { label: "Master Data", href: "/dashboard/purchasing/main" },
+          { label: "Bahan Baku", href: "/dashboard/purchasing/raw-materials" },
+          { label: material.nama },
+        ]}
+      />
+
+      <div className="flex flex-col items-start justify-between gap-4 border-b border-gray-200/70 pb-4 sm:flex-row sm:items-center">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <h1 className="text-2xl font-bold text-gray-900">{material.nama}</h1>
+            {getStockStatusBadge(material.status_stok || "")}
+          </div>
+          <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-gray-500">
+            <span className="rounded-md bg-gray-100 px-2 py-0.5 font-mono text-xs text-gray-700">{material.kode}</span>
+            <span className="text-gray-300">•</span>
+            <span>{getCategoryLabel(material.kategori)}</span>
+            <span className="text-gray-300">•</span>
+            <span>{satuanBesarName}</span>
           </div>
         </div>
-        <div className="flex gap-2">
+        <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+          <Link href="/dashboard/purchasing/raw-materials">
+            <Button variant="outline" className="purchasing-secondary-button w-full sm:w-auto">
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Kembali
+            </Button>
+          </Link>
           <Link href={`/dashboard/purchasing/raw-materials/${material.id}/edit`}>
-            <Button variant="outline">
+            <Button variant="outline" className="purchasing-secondary-button w-full sm:w-auto">
               <Edit className="w-4 h-4 mr-2" />
               Edit
             </Button>
           </Link>
-          <Button variant="destructive" onClick={() => setIsDeleteDialogOpen(true)}>
+          <Button variant="outline" onClick={() => setIsDeleteDialogOpen(true)} className="h-10 w-full rounded-lg border-red-200 bg-white px-3 text-sm font-medium text-red-600 shadow-sm hover:!border-red-200 hover:!bg-red-50 hover:!text-red-700 sm:w-auto">
             <Trash2 className="w-4 h-4 mr-2" />
             Hapus
           </Button>
         </div>
       </div>
 
-      <Tabs defaultValue="info" className="space-y-6">
-        <TabsList>
-          <TabsTrigger value="info">Informasi</TabsTrigger>
-          <TabsTrigger value="stock">Stok & Harga</TabsTrigger>
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <Card className="border-gray-200/70 shadow-xs">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <span className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-pink-50 text-pink-600">
+                <Boxes className="h-5 w-5" />
+              </span>
+              <div>
+                <p className="text-xs font-medium text-gray-500">Qty Onhand</p>
+                <p className="text-lg font-bold text-gray-900">{formatNumber(material.qty_onhand)} {satuanBesarName}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card className="border-gray-200/70 shadow-xs">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <span className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-amber-50 text-amber-600">
+                <AlertCircle className="h-5 w-5" />
+              </span>
+              <div>
+                <p className="text-xs font-medium text-gray-500">Stok Minimum</p>
+                <p className="text-lg font-bold text-gray-900">{formatNumber(material.stok_minimum)} {satuanBesarName}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card className="border-gray-200/70 shadow-xs">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <span className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-blue-50 text-blue-600">
+                <Settings2 className="h-5 w-5" />
+              </span>
+              <div>
+                <p className="text-xs font-medium text-gray-500">Stok Maksimum</p>
+                <p className="text-lg font-bold text-gray-900">{formatNumber(material.stok_maximum)} {satuanBesarName}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card className="border-gray-200/70 shadow-xs">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <span className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600">
+                <Banknote className="h-5 w-5" />
+              </span>
+              <div>
+                <p className="text-xs font-medium text-gray-500">Average Cost</p>
+                <p className="text-lg font-bold text-gray-900">{formatCurrency(material.avg_cost)}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      <Tabs defaultValue="info" className="flex-col space-y-4">
+        <TabsList
+          variant="line"
+          className="flex h-auto w-full justify-start gap-6 rounded-none border-b border-gray-200 bg-transparent p-0"
+        >
+          <TabsTrigger
+            value="info"
+            className="h-11 flex-none rounded-none border-0 border-b-2 border-transparent bg-transparent px-0 text-sm font-semibold text-gray-500 shadow-none data-active:border-pink-600 data-active:!bg-transparent data-active:text-pink-700 data-active:shadow-none"
+          >
+            Informasi
+          </TabsTrigger>
+          <TabsTrigger
+            value="stock"
+            className="h-11 flex-none rounded-none border-0 border-b-2 border-transparent bg-transparent px-0 text-sm font-semibold text-gray-500 shadow-none data-active:border-pink-600 data-active:!bg-transparent data-active:text-pink-700 data-active:shadow-none"
+          >
+            Stok & Harga
+          </TabsTrigger>
+          <TabsTrigger
+            value="conversions"
+            className="h-11 flex-none rounded-none border-0 border-b-2 border-transparent bg-transparent px-0 text-sm font-semibold text-gray-500 shadow-none data-active:border-pink-600 data-active:!bg-transparent data-active:text-pink-700 data-active:shadow-none"
+          >
+            Konversi Satuan
+          </TabsTrigger>
         </TabsList>
 
         {/* Info Tab */}
         <TabsContent value="info" className="space-y-6">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
             {/* Material Info */}
-            <Card className="lg:col-span-2">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
+            <Card className="border-gray-200/70 shadow-sm lg:col-span-2">
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center gap-2 text-base">
                   <Package className="w-5 h-5" />
                   Informasi Bahan Baku
                 </CardTitle>
@@ -171,9 +283,7 @@ export default function RawMaterialDetailPage() {
                   </div>
                   <div>
                     <p className="text-sm text-muted-foreground">Kategori</p>
-                    <p className="font-medium">
-                      {material.kategori?.replace(/_/g, " ") || "-"}
-                    </p>
+                    <p className="font-medium">{getCategoryLabel(material.kategori)}</p>
                   </div>
                 </div>
                 <div>
@@ -183,23 +293,25 @@ export default function RawMaterialDetailPage() {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <p className="text-sm text-muted-foreground">Satuan Besar</p>
-                    <p className="font-medium">{material.satuan_besar?.nama || "-"}</p>
+                    <p className="font-medium">{satuanBesarName}</p>
                   </div>
                   <div>
                     <p className="text-sm text-muted-foreground">Satuan Kecil</p>
-                    <p className="font-medium">{material.satuan_kecil_id || "-"}</p>
+                    <p className="font-medium">{satuanKecilName}</p>
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <p className="text-sm text-muted-foreground">Konversi</p>
-                    <p className="font-medium">{material.konversi_factor || 1} {material.satuan_kecil_id || "unit"} = 1 {material.satuan_besar?.nama || "unit"}</p>
+                    <p className="font-medium">
+                      {material.satuan_kecil_id
+                        ? `1 ${satuanBesarName} = ${formatNumber(material.konversi_factor || 1)} ${satuanKecilName}`
+                        : "Tidak ada konversi"}
+                    </p>
                   </div>
                   <div>
                     <p className="text-sm text-muted-foreground">Storage</p>
-                    <p className="font-medium">
-                      {material.storage_condition ? material.storage_condition.replace(/_/g, " ") : "-"}
-                    </p>
+                    <p className="font-medium">{storageLabel}</p>
                   </div>
                 </div>
                 {material.shelf_life_days && (
@@ -212,18 +324,18 @@ export default function RawMaterialDetailPage() {
             </Card>
 
             {/* Stock Settings */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Stock Settings</CardTitle>
+            <Card className="border-gray-200/70 shadow-sm">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base">Pengaturan Stok</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Minimum</span>
-                  <span className="font-medium">{formatNumber(material.stok_minimum)}</span>
+                  <span className="font-medium">{formatNumber(material.stok_minimum)} {satuanBesarName}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Maximum</span>
-                  <span className="font-medium">{formatNumber(material.stok_maximum)}</span>
+                  <span className="font-medium">{formatNumber(material.stok_maximum)} {satuanBesarName}</span>
                 </div>
               </CardContent>
             </Card>
@@ -232,31 +344,112 @@ export default function RawMaterialDetailPage() {
 
         {/* Stock & Price Tab */}
         <TabsContent value="stock">
-          <Card>
-            <CardHeader>
-              <CardTitle>Stok Real-time & Harga</CardTitle>
+          <Card className="border-gray-200/70 shadow-sm">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base">Stok Real-time & Harga</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
                   <p className="text-sm text-muted-foreground">Qty Onhand</p>
-                  <p className="text-2xl font-bold">{formatNumber(material.qty_onhand)}</p>
+                  <p className="text-2xl font-bold">{formatNumber(material.qty_onhand)} {satuanBesarName}</p>
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Qty Reserved</p>
-                  <p className="text-2xl font-bold">{formatNumber(material.qty_reserved)}</p>
+                  <p className="text-2xl font-bold">{formatNumber(material.qty_reserved)} {satuanBesarName}</p>
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Qty On Order</p>
-                  <p className="text-2xl font-bold">{formatNumber(material.qty_on_order)}</p>
+                  <p className="text-2xl font-bold">{formatNumber(material.qty_on_order)} {satuanBesarName}</p>
                 </div>
               </div>
-              <div className="border-t pt-4">
+              <div className="border-t border-gray-200/70 pt-4">
                 <div className="flex justify-between items-center">
                   <span className="text-muted-foreground">Average Cost</span>
                   <span className="text-xl font-semibold">{formatCurrency(material.avg_cost)}</span>
                 </div>
               </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Unit Conversions Tab */}
+        <TabsContent value="conversions" className="space-y-4">
+          <Card className="border-gray-200/70 shadow-sm">
+            <CardHeader className="pb-3">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                  <CardTitle className="text-base">Konversi Satuan</CardTitle>
+                  <p className="mt-1 text-sm text-gray-500">
+                    Daftar satuan yang bisa dipakai untuk pembelian, price list, dan referensi stok.
+                  </p>
+                </div>
+                <Link href={`/dashboard/purchasing/raw-materials/${material.id}/edit`}>
+                  <Button variant="outline" className="purchasing-secondary-button w-full sm:w-auto">
+                    <Edit className="mr-2 h-4 w-4" />
+                    Edit Konversi
+                  </Button>
+                </Link>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid gap-3 md:grid-cols-2">
+                <div className="rounded-xl border border-gray-200/70 bg-gray-50/60 p-4">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Satuan dasar stok</p>
+                  <p className="mt-2 text-lg font-bold text-gray-900">
+                    {baseConversion ? getConversionUnitName(baseConversion) : baseUnitLabel}
+                  </p>
+                  <p className="mt-1 text-sm text-gray-500">
+                    Nilai konversi dasar selalu dihitung sebagai 1 {baseUnitLabel}.
+                  </p>
+                </div>
+                <div className="rounded-xl border border-gray-200/70 bg-gray-50/60 p-4">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Konversi utama</p>
+                  <p className="mt-2 text-lg font-bold text-gray-900">
+                    {material.satuan_kecil_id
+                      ? `1 ${satuanBesarName} = ${formatNumber(material.konversi_factor || 1)} ${baseUnitLabel}`
+                      : `1 ${satuanBesarName} = 1 ${baseUnitLabel}`}
+                  </p>
+                  <p className="mt-1 text-sm text-gray-500">Diambil dari satuan besar dan faktor konversi utama bahan baku.</p>
+                </div>
+              </div>
+
+              {alternativeConversions.length === 0 ? (
+                <div className="rounded-xl border border-dashed border-gray-200 bg-white px-4 py-8 text-center">
+                  <p className="text-sm font-medium text-gray-700">Belum ada satuan alternatif</p>
+                  <p className="mt-1 text-sm text-gray-500">
+                    Tambahkan satuan alternatif di halaman edit jika supplier menjual bahan ini dengan satuan berbeda.
+                  </p>
+                </div>
+              ) : (
+                <div className="overflow-hidden rounded-xl border border-gray-200/70">
+                  <table className="w-full text-sm">
+                    <thead className="bg-gray-50 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
+                      <tr className="border-b border-gray-200/70">
+                        <th className="px-4 py-3">Satuan</th>
+                        <th className="px-4 py-3">Isi Dalam Satuan Dasar</th>
+                        <th className="px-4 py-3">Keterangan</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100 bg-white">
+                      {alternativeConversions.map((conversion) => (
+                        <tr key={conversion.id || conversion.satuan_id} className="hover:bg-gray-50/70">
+                          <td className="px-4 py-3">
+                            <div className="font-semibold text-gray-900">{getConversionUnitName(conversion)}</div>
+                            <div className="text-xs text-gray-500">{getConversionUnitLabel(conversion)}</div>
+                          </td>
+                          <td className="px-4 py-3 font-mono font-semibold text-gray-900">
+                            {formatNumber(conversion.qty_in_base_unit)} {baseUnitLabel}
+                          </td>
+                          <td className="px-4 py-3 text-gray-600">
+                            1 {getConversionUnitLabel(conversion)} = {formatNumber(conversion.qty_in_base_unit)} {baseUnitLabel}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>

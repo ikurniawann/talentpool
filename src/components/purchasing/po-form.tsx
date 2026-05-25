@@ -406,7 +406,7 @@ export function POForm({ vendors, prData, onSubmit, isLoading }: POFormProps) {
                 <span>{formatRupiah(shippingCost || 0)}</span>
               </div>
 
-              <div className="flex justify-between py-2 border-t border-gray-300 mt-2">
+              <div className="mt-2 flex justify-between border-t border-gray-200/70 py-2">
                 <span className="font-bold text-lg">TOTAL:</span>
                 <span className="font-bold text-2xl text-gray-900">
                   {formatRupiah(calculations.total)}
@@ -418,7 +418,7 @@ export function POForm({ vendors, prData, onSubmit, isLoading }: POFormProps) {
       </Card>
 
       {/* Submit */}
-      <div className="flex justify-end gap-3 pt-4 border-t">
+      <div className="flex justify-end gap-3 border-t border-gray-200/70 pt-4">
         <Button type="submit" variant="outline" disabled={isLoading} className="purchasing-secondary-button">
           Simpan Draft
         </Button>

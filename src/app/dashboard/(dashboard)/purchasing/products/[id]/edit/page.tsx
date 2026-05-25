@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, Save, Plus, Trash2, Package, Calculator, Edit } from "lucide-react";
 import { toast } from "sonner";
 import { Combobox } from "@/components/ui/combobox";
+import { NumericInput } from "@/components/ui/numeric-input";
 import { ProductFormData, ProductWithCOGS, BOMItem, RawMaterialWithStock, Unit } from "@/types/purchasing";
 import { getProduct, updateProduct, listBOMItems, createBOMItem, updateBOMItem, deleteBOMItem, listRawMaterials, listUnits } from "@/lib/purchasing";
 
@@ -20,6 +21,34 @@ interface BOMFormItem extends Partial<BOMItem> {
   raw_material_name?: string;
   raw_material_unit?: string;
   subtotal: number;
+}
+
+function getBomQty(item: Partial<BOMItem>) {
+  return item.qty_needed ?? item.qty_required ?? item.qty ?? 0;
+}
+
+function getBomWastePercent(item: Partial<BOMItem>) {
+  if (item.waste_persen !== undefined && item.waste_persen !== null) {
+    return item.waste_persen;
+  }
+  return (item.waste_factor ?? 0) * 100;
+}
+
+function getMaterialSmallUnitLabel(material?: RawMaterialWithStock) {
+  return material?.satuan_kecil_nama || material?.satuan || "Unit";
+}
+
+function getMaterialCost(material?: RawMaterialWithStock) {
+  return material?.avg_cost ?? material?.harga_avg ?? material?.harga_terakhir ?? 0;
+}
+
+function calculatePriceFromMarkup(hpp: number, markup: number) {
+  return Math.round(hpp * (1 + markup / 100));
+}
+
+function calculateMarkupFromPrice(hpp: number, price: number) {
+  if (hpp <= 0) return 0;
+  return Number((((price - hpp) / hpp) * 100).toFixed(2));
 }
 
 export default function EditProductPage() {
@@ -33,6 +62,7 @@ export default function EditProductPage() {
   const [bomItems, setBomItems] = useState<BOMItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [pricingSource, setPricingSource] = useState<"markup" | "price">("price");
 
   const [formData, setFormData] = useState<ProductFormData>({
     nama: "",
@@ -64,7 +94,7 @@ export default function EditProductPage() {
         kategori: productData.kategori || "",
         deskripsi: productData.deskripsi || "",
         harga_jual: productData.harga_jual || 0,
-        markup_persen: productData.markup_persen || 30,
+        markup_persen: productData.markup_persen ?? 30,
         is_active: productData.is_active ?? true,
       });
     } catch (error) {
@@ -78,11 +108,45 @@ export default function EditProductPage() {
   const calculateTotalCost = () => {
     return bomItems.reduce((sum, item) => {
       const material = materials.find(m => m.id === item.raw_material_id);
-      const qty = item.qty_needed || 0;
-      const waste = item.waste_persen || 0;
-      const price = material?.harga_avg || 0;
+      const qty = getBomQty(item);
+      const waste = getBomWastePercent(item);
+      const price = getMaterialCost(material);
       return sum + (price * qty * (1 + waste / 100));
     }, 0);
+  };
+
+  const totalCost = calculateTotalCost();
+
+  useEffect(() => {
+    if (loading) return;
+
+    setFormData((prev) => {
+      if (pricingSource === "markup") {
+        const nextPrice = calculatePriceFromMarkup(totalCost, prev.markup_persen || 0);
+        return prev.harga_jual === nextPrice ? prev : { ...prev, harga_jual: nextPrice };
+      }
+
+      const nextMarkup = calculateMarkupFromPrice(totalCost, prev.harga_jual || 0);
+      return prev.markup_persen === nextMarkup ? prev : { ...prev, markup_persen: nextMarkup };
+    });
+  }, [loading, pricingSource, totalCost]);
+
+  const handleMarkupChange = (value: number) => {
+    setPricingSource("markup");
+    setFormData((prev) => ({
+      ...prev,
+      markup_persen: value,
+      harga_jual: calculatePriceFromMarkup(totalCost, value),
+    }));
+  };
+
+  const handlePriceChange = (value: number) => {
+    setPricingSource("price");
+    setFormData((prev) => ({
+      ...prev,
+      harga_jual: value,
+      markup_persen: calculateMarkupFromPrice(totalCost, value),
+    }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -97,7 +161,7 @@ export default function EditProductPage() {
     try {
       await updateProduct(productId, {
         ...formData,
-        harga_modal: calculateTotalCost(),
+        harga_modal: totalCost,
       });
       toast.success("Produk berhasil diupdate");
       router.push(`/dashboard/purchasing/products/${productId}`);
@@ -201,36 +265,52 @@ export default function EditProductPage() {
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="space-y-1.5">
                   <Label htmlFor="harga_modal" className="text-xs">Harga Modal (HPP)</Label>
-                  <Input
-                    id="harga_modal"
-                    type="number"
-                    value={calculateTotalCost()}
-                    disabled
-                    className="h-9 text-sm bg-gray-50 font-mono"
-                  />
+                  <div className="flex rounded-lg border border-gray-300 bg-gray-50 focus-within:border-gray-400 focus-within:ring-2 focus-within:ring-gray-100">
+                    <div className="flex min-w-12 items-center justify-center rounded-l-lg border-r border-gray-200 bg-gray-50 px-3 text-xs font-semibold text-gray-500">
+                      Rp
+                    </div>
+                    <NumericInput
+                      id="harga_modal"
+                      value={totalCost}
+                      onValueChange={() => undefined}
+                      decimalScale={0}
+                      disabled
+                      className="h-9 rounded-l-none border-0 bg-gray-50 text-sm font-mono shadow-none focus-visible:ring-0"
+                    />
+                  </div>
                   <p className="text-xs text-gray-500">Dari BOM</p>
                 </div>
                 <div className="space-y-1.5">
                   <Label htmlFor="markup" className="text-xs">Markup (%)</Label>
-                  <Input
-                    id="markup"
-                    type="number"
-                    min="0"
-                    max="1000"
-                    value={formData.markup_persen}
-                    onChange={(e) => setFormData({ ...formData, markup_persen: parseFloat(e.target.value) || 0 })}
-                    className="h-9 text-sm"
-                  />
+                  <div className="flex rounded-lg border border-gray-300 bg-white focus-within:border-gray-400 focus-within:ring-2 focus-within:ring-gray-100">
+                    <NumericInput
+                      id="markup"
+                      min="0"
+                      max="1000"
+                      value={formData.markup_persen}
+                      onValueChange={handleMarkupChange}
+                      decimalScale={2}
+                      className="h-9 rounded-r-none border-0 text-sm shadow-none focus-visible:ring-0"
+                    />
+                    <div className="flex min-w-12 items-center justify-center rounded-r-lg border-l border-gray-200 bg-gray-50 px-3 text-xs font-semibold text-gray-500">
+                      %
+                    </div>
+                  </div>
                 </div>
                 <div className="space-y-1.5">
                   <Label htmlFor="harga_jual" className="text-xs">Harga Jual</Label>
-                  <Input
-                    id="harga_jual"
-                    type="number"
-                    value={formData.harga_jual}
-                    onChange={(e) => setFormData({ ...formData, harga_jual: parseFloat(e.target.value) || 0 })}
-                    className="h-9 text-sm font-mono"
-                  />
+                  <div className="flex rounded-lg border border-gray-300 bg-white focus-within:border-gray-400 focus-within:ring-2 focus-within:ring-gray-100">
+                    <div className="flex min-w-12 items-center justify-center rounded-l-lg border-r border-gray-200 bg-gray-50 px-3 text-xs font-semibold text-gray-500">
+                      Rp
+                    </div>
+                    <NumericInput
+                      id="harga_jual"
+                      value={formData.harga_jual}
+                      onValueChange={handlePriceChange}
+                      decimalScale={0}
+                      className="h-9 rounded-l-none border-0 text-sm font-mono shadow-none focus-visible:ring-0"
+                    />
+                  </div>
                 </div>
               </div>
             </CardContent>
@@ -256,31 +336,53 @@ export default function EditProductPage() {
                 <div className="space-y-2">
                   {bomItems.map((item) => {
                     const material = materials.find(m => m.id === item.raw_material_id);
-                    const subtotal = (material?.harga_avg || 0) * (item.qty_needed || 0) * (1 + (item.waste_persen || 0) / 100);
+                    const qty = getBomQty(item);
+                    const wastePercent = getBomWastePercent(item);
+                    const smallUnitLabel = getMaterialSmallUnitLabel(material);
+                    const subtotal = getMaterialCost(material) * qty * (1 + wastePercent / 100);
                     return (
-                      <div key={item.id} className="grid grid-cols-12 gap-3 items-center p-3 border rounded-md bg-gray-50">
-                        <div className="col-span-5">
+                      <div key={item.id} className="grid grid-cols-12 gap-4 rounded-lg border border-gray-200/70 bg-white p-3 shadow-sm">
+                        <div className="col-span-12 min-w-0 md:col-span-5">
                           <p className="text-sm font-medium">{material?.nama || "Unknown"}</p>
                           <p className="text-xs text-gray-500">{material?.kode}</p>
                         </div>
-                        <div className="col-span-2 text-right">
-                          <p className="text-sm">{item.qty_needed}</p>
-                          <p className="text-xs text-gray-500">{material?.satuan_besar?.nama}</p>
+                        <div className="col-span-12 space-y-1 md:col-span-2">
+                          <p className="text-xs font-medium text-gray-500">Qty</p>
+                          <div className="flex rounded-lg border border-gray-200/70 bg-gray-50">
+                            <div className="flex h-9 flex-1 items-center justify-end px-3 text-sm text-gray-900">{qty}</div>
+                            <div className="flex min-w-14 items-center justify-center rounded-r-lg border-l border-gray-200 bg-gray-50 px-3 text-xs font-semibold uppercase text-gray-500">
+                              {smallUnitLabel}
+                            </div>
+                          </div>
                         </div>
-                        <div className="col-span-2 text-right">
-                          <p className="text-sm">{item.waste_persen}%</p>
+                        <div className="col-span-12 space-y-1 md:col-span-2">
+                          <p className="text-xs font-medium text-gray-500">Waste</p>
+                          <div className="flex rounded-lg border border-gray-200/70 bg-gray-50">
+                            <div className="flex h-9 flex-1 items-center justify-end px-3 text-sm text-gray-900">{wastePercent}</div>
+                            <div className="flex min-w-9 items-center justify-center rounded-r-lg border-l border-gray-200 bg-gray-50 px-2 text-xs font-semibold text-gray-500">
+                              %
+                            </div>
+                          </div>
                         </div>
-                        <div className="col-span-3 text-right font-mono text-sm">
-                          Rp {subtotal.toLocaleString('id-ID')}
+                        <div className="col-span-12 space-y-1 md:col-span-3">
+                          <p className="text-xs font-medium text-gray-500">Subtotal</p>
+                          <div className="flex rounded-lg border border-gray-200/70 bg-gray-50">
+                            <div className="flex min-w-12 items-center justify-center rounded-l-lg border-r border-gray-200 bg-gray-50 px-3 text-xs font-semibold text-gray-500">
+                              Rp
+                            </div>
+                            <div className="flex h-9 flex-1 items-center justify-end px-3 font-mono text-sm text-gray-900">
+                              {subtotal.toLocaleString('id-ID')}
+                            </div>
+                          </div>
                         </div>
                       </div>
                     );
                   })}
                   
-                  <div className="flex justify-end pt-3 border-t">
+                  <div className="flex justify-end border-t border-gray-200/70 pt-3">
                     <div className="text-right">
                       <p className="text-xs text-gray-500">Total HPP</p>
-                      <p className="text-lg font-bold text-gray-900">Rp {calculateTotalCost().toLocaleString('id-ID')}</p>
+                      <p className="text-lg font-bold text-gray-900">Rp {totalCost.toLocaleString('id-ID')}</p>
                     </div>
                   </div>
                 </div>
@@ -291,7 +393,7 @@ export default function EditProductPage() {
         </div>
 
         {/* Action Buttons */}
-        <div className="flex items-center justify-end gap-3 mt-6 pt-4 border-t">
+        <div className="mt-6 flex items-center justify-end gap-3 border-t border-gray-200/70 pt-4">
           <Button type="button" variant="outline" onClick={() => router.back()} className="purchasing-secondary-button px-6">
             Batal
           </Button>

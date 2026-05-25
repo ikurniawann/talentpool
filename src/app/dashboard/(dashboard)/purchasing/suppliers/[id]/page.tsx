@@ -19,7 +19,7 @@ import PurchasingGuard from "@/modules/purchasing/components/auth/PurchasingGuar
 import { SupplierPriceHistoryPanel } from "@/modules/purchasing/components/supplier-price-history/SupplierPriceHistoryPanel";
 import {
   Building2, Pencil, Power, ArrowLeft, Phone, Mail, MapPin, 
-  CreditCard, FileText, TrendingUp, Truck, User, CheckCircle2, X,
+  CreditCard, FileText, TrendingUp, Truck, User,
   type LucideIcon,
 } from "lucide-react";
 import { SupplierDetail, SupplierPOSummary } from "@/types/supplier";
@@ -141,52 +141,42 @@ function SupplierDetailInner() {
         { label: supplier.nama_supplier },
       ]} />
 
-      {/* Header */}
-      <Card>
-        <CardContent className="p-6">
-          <div className="flex items-start justify-between gap-4">
-            <div className="flex items-start gap-4 flex-1 min-w-0">
-              <div className="w-16 h-16 rounded-xl bg-blue-50 flex items-center justify-center shrink-0">
-                <Building2 className="w-8 h-8 text-blue-600" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-3 flex-wrap mb-2">
-                  <h1 className="text-xl font-bold text-gray-900 truncate">{supplier.nama_supplier}</h1>
-                  <Badge variant={supplier.is_active ? "default" : "secondary"} className={supplier.is_active ? "bg-green-100 text-green-700 hover:bg-green-100" : ""}>
-                    {supplier.is_active ? <><CheckCircle2 className="w-3 h-3 mr-1" />Aktif</> : <><X className="w-3 h-3 mr-1" />Nonaktif</>}
-                  </Badge>
-                </div>
-                <div className="flex items-center gap-2 text-sm text-gray-500 flex-wrap">
-                  {supplier.kode && <span className="font-mono bg-gray-100 px-2 py-0.5 rounded text-xs">{supplier.kode}</span>}
-                  {supplier.kode && supplier.kota && <span className="text-gray-300">•</span>}
-                  {supplier.kota && <span>{supplier.kota}</span>}
-                  {(supplier.kode || supplier.kota) && supplier.created_at && <span className="text-gray-300">•</span>}
-                  {supplier.created_at && <span>Bergabung {formatDate(supplier.created_at)}</span>}
-                </div>
-              </div>
-            </div>
-            <div className="flex items-center gap-2 shrink-0">
-              <Link href="/dashboard/purchasing/suppliers">
-                <Button variant="outline" size="sm">
-                  <ArrowLeft className="w-4 h-4 mr-1" />Kembali
-                </Button>
-              </Link>
-              {isAdmin && supplier.is_active && (
-                <Button variant="outline" size="sm" onClick={() => setDeactivateDialog(true)} className="text-red-600 hover:text-red-700 hover:bg-red-50">
-                  <Power className="w-4 h-4 mr-1" />Nonaktifkan
-                </Button>
-              )}
-              {isAdmin && (
-                <Link href={`/dashboard/purchasing/suppliers/${supplier.id}/edit`}>
-                  <Button size="sm">
-                    <Pencil className="w-4 h-4 mr-1" />Edit
-                  </Button>
-                </Link>
-              )}
-            </div>
+      <div className="flex flex-col items-start justify-between gap-4 border-b border-gray-200/70 pb-4 sm:flex-row sm:items-center">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <h1 className="text-2xl font-bold text-gray-900">{supplier.nama_supplier}</h1>
+            <Badge variant={supplier.is_active ? "default" : "secondary"} className={supplier.is_active ? "bg-green-100 text-green-700 hover:bg-green-100" : ""}>
+              {supplier.is_active ? "Aktif" : "Nonaktif"}
+            </Badge>
           </div>
-        </CardContent>
-      </Card>
+          <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-gray-500">
+            {supplier.kode && <span className="rounded-md bg-gray-100 px-2 py-0.5 font-mono text-xs text-gray-700">{supplier.kode}</span>}
+            {supplier.kode && supplier.kota && <span className="text-gray-300">•</span>}
+            {supplier.kota && <span>{supplier.kota}</span>}
+            {(supplier.kode || supplier.kota) && supplier.created_at && <span className="text-gray-300">•</span>}
+            {supplier.created_at && <span>Bergabung {formatDate(supplier.created_at)}</span>}
+          </div>
+        </div>
+        <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+          <Link href="/dashboard/purchasing/suppliers">
+            <Button variant="outline" className="purchasing-secondary-button w-full sm:w-auto">
+              <ArrowLeft className="mr-2 h-4 w-4" />Kembali
+            </Button>
+          </Link>
+          {isAdmin && supplier.is_active && (
+            <Button variant="outline" onClick={() => setDeactivateDialog(true)} className="h-10 w-full rounded-lg border-red-200 bg-white px-3 text-sm font-medium text-red-600 shadow-sm hover:!border-red-200 hover:!bg-red-50 hover:!text-red-700 sm:w-auto">
+              <Power className="mr-2 h-4 w-4" />Nonaktifkan
+            </Button>
+          )}
+          {isAdmin && (
+            <Link href={`/dashboard/purchasing/suppliers/${supplier.id}/edit`}>
+              <Button variant="outline" className="purchasing-secondary-button w-full sm:w-auto">
+                <Pencil className="mr-2 h-4 w-4" />Edit
+              </Button>
+            </Link>
+          )}
+        </div>
+      </div>
 
       {/* Stats */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
@@ -272,7 +262,7 @@ function SupplierDetailInner() {
             <InfoRow label="NPWP" value={supplier.npwp} />
             <InfoRow label="Mata Uang" value={supplier.currency} />
             {supplier.alamat && (
-              <div className="pt-3 border-t">
+              <div className="border-t border-gray-200/70 pt-3">
                 <div className="flex gap-2">
                   <MapPin className="w-4 h-4 text-gray-400 mt-0.5 shrink-0" />
                   <div>
@@ -295,7 +285,7 @@ function SupplierDetailInner() {
           <CardContent className="space-y-3 text-sm">
             <InfoRow label="Payment Terms" value={supplier.payment_terms?.replace("TOP", "TOP ")} />
             {(supplier.bank_nama || supplier.bank_rekening || supplier.bank_atas_nama) && (
-              <div className="pt-3 border-t space-y-3">
+              <div className="space-y-3 border-t border-gray-200/70 pt-3">
                 <InfoRow label="Bank" value={supplier.bank_nama} />
                 <InfoRow label="No. Rekening" value={supplier.bank_rekening} />
                 <InfoRow label="Atas Nama" value={supplier.bank_atas_nama} />
@@ -349,7 +339,7 @@ function SupplierDetailInner() {
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
-                <thead className="bg-gray-50 border-b">
+                <thead className="border-b border-gray-200/70 bg-gray-50">
                   <tr>
                     <th className="px-4 py-2.5 text-left font-medium text-gray-600">No. PO</th>
                     <th className="px-4 py-2.5 text-left font-medium text-gray-600">Tanggal</th>
@@ -358,7 +348,7 @@ function SupplierDetailInner() {
                     <th className="px-4 py-2.5 text-right font-medium text-gray-600">Total</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y">
+                <tbody className="divide-y divide-gray-100">
                   {poHistory.map((po) => (
                     <tr key={po.id} className="hover:bg-gray-50">
                       <td className="px-4 py-3 font-mono text-blue-600 font-medium">{po.po_number}</td>

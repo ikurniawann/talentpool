@@ -25,6 +25,7 @@ import {
   User,
 } from "lucide-react";
 import { toast } from "sonner";
+import { BreadcrumbNav } from "@/modules/purchasing/components/breadcrumb/BreadcrumbNav";
 
 type GrnDetailItem = {
   id: string;
@@ -210,31 +211,44 @@ export default function GRNDetailPage() {
   const qcStatus = String(qc?.status || qc?.hasil || "").toLowerCase();
 
   return (
-    <div className="container mx-auto space-y-6 py-6 print:py-0">
-      <div className="flex flex-col gap-4 border-b border-gray-200/70 pb-4 print:hidden lg:flex-row lg:items-start lg:justify-between">
-        <div className="flex items-center gap-4">
-          <Link href="/dashboard/purchasing/grn">
-            <Button variant="ghost" size="icon" className="cursor-pointer">
-              <ArrowLeft className="h-5 w-5" />
-            </Button>
-          </Link>
-          <div>
-            <div className="flex flex-wrap items-center gap-2">
-              <h1 className="text-2xl font-bold text-gray-900">Detail Barang Masuk</h1>
-              {statusBadge(grn.status)}
-            </div>
-            <p className="text-sm text-gray-500">{grn.nomor_grn}</p>
+    <div className="space-y-6">
+      <BreadcrumbNav
+        items={[
+          { label: "Purchasing", href: "/dashboard/purchasing" },
+          { label: "Procurement", href: "/dashboard/purchasing/procurement" },
+          { label: "Barang Masuk", href: "/dashboard/purchasing/grn" },
+          { label: grn.nomor_grn || "Detail Barang Masuk" },
+        ]}
+      />
+
+      <div className="flex flex-col items-start justify-between gap-4 border-b border-gray-200/70 pb-4 sm:flex-row sm:items-center">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <h1 className="text-2xl font-bold text-gray-900">Detail Barang Masuk</h1>
+            {statusBadge(grn.status)}
+          </div>
+          <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-gray-500">
+            <span className="rounded-md bg-gray-100 px-2 py-0.5 font-mono text-xs text-gray-700">{grn.nomor_grn}</span>
+            <span className="text-gray-300">•</span>
+            <span>PO {grn.po_number || grn.purchase_order?.nomor_po || "-"}</span>
+            <span className="text-gray-300">•</span>
+            <span>{formatDate(grn.tanggal_penerimaan)}</span>
           </div>
         </div>
-
-        <div className="flex flex-wrap gap-2">
-          <Button variant="outline" onClick={handlePrint} className="cursor-pointer">
-            <Printer className="mr-2 h-4 w-4" />
+        <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+          <Link href="/dashboard/purchasing/grn">
+            <Button variant="outline" className="purchasing-secondary-button w-full sm:w-auto">
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Kembali
+            </Button>
+          </Link>
+          <Button variant="outline" onClick={handlePrint} className="purchasing-secondary-button w-full sm:w-auto">
+            <Printer className="w-4 h-4 mr-2" />
             Print
           </Button>
           {["received", "partially_received"].includes(String(grn.status || "")) && (
             <Link href={`/dashboard/purchasing/returns/new?grn_id=${grn.id}`}>
-              <Button variant="outline" className="cursor-pointer border-orange-200 text-orange-700 hover:bg-orange-50">
+              <Button variant="outline" className="purchasing-secondary-button w-full sm:w-auto">
                 <RotateCcw className="mr-2 h-4 w-4" />
                 Buat Retur
               </Button>
@@ -242,8 +256,8 @@ export default function GRNDetailPage() {
           )}
           {grn.status !== "rejected" && (
             <Link href={`/dashboard/purchasing/grn/${grn.id}/qc`}>
-              <Button className="cursor-pointer bg-pink-600 text-white hover:bg-pink-700">
-                <ClipboardCheck className="mr-2 h-4 w-4" />
+              <Button className="purchasing-main-button w-full sm:w-auto">
+                <ClipboardCheck className="w-4 h-4 mr-2" />
                 Proses QC
               </Button>
             </Link>

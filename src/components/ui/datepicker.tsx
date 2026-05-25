@@ -18,6 +18,7 @@ interface DatePickerProps {
   maxDate?: Date;
   showClear?: boolean;
   id?: string;
+  variant?: "outline" | "neutral";
 }
 
 export function DatePicker({
@@ -30,6 +31,7 @@ export function DatePicker({
   maxDate,
   showClear = true,
   id,
+  variant = "outline",
 }: DatePickerProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [displayDate, setDisplayDate] = useState<string>(value || "");
@@ -113,9 +115,11 @@ export function DatePicker({
       
       {/* Visible button that triggers calendar */}
       <Button
-        variant="outline"
+        variant={variant === "neutral" ? "ghost" : "outline"}
         className={cn(
           "w-full justify-start text-left font-normal h-9 text-sm cursor-pointer",
+          variant === "neutral" &&
+            "border border-gray-300 bg-white text-gray-900 shadow-xs hover:!border-gray-300 hover:!bg-white hover:!text-gray-900 focus-visible:!border-gray-400 focus-visible:!ring-gray-100 aria-expanded:!border-gray-300 aria-expanded:!bg-white aria-expanded:!text-gray-900 [&_svg]:text-gray-400",
           !displayDate && "text-muted-foreground",
           className
         )}

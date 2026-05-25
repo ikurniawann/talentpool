@@ -57,6 +57,16 @@ export interface Unit {
   is_active: boolean;
 }
 
+export interface RawMaterialUnitConversion {
+  id?: string;
+  raw_material_id?: string;
+  satuan_id: string;
+  qty_in_base_unit: number;
+  is_base?: boolean;
+  is_active?: boolean;
+  satuan?: Unit;
+}
+
 export interface PaginatedResponse<T> {
   data: T[];
   total: number;
@@ -283,7 +293,15 @@ export interface BOMItem {
   created_at: string;
   updated_at: string;
   
-  raw_material?: { kode: string; nama: string; satuan?: string };
+  raw_material?: {
+    kode: string;
+    nama: string;
+    satuan?: string;
+    satuan_kecil_nama?: string;
+    satuan_besar_nama?: string;
+    satuan_kecil?: { nama?: string; kode?: string; simbol?: string };
+    satuan_besar?: { nama?: string; kode?: string; simbol?: string };
+  };
   unit?: { nama: string; simbol?: string };
   satuan?: { nama: string };
   
@@ -340,6 +358,7 @@ export interface RawMaterialWithStock {
   hpp?: number;
   avg_cost?: number;
   satuan_besar_nama?: string;
+  satuan_kecil_nama?: string;
   stok_akhir?: number;
   status_stok?: string;
   qty_onhand?: number;
@@ -348,6 +367,7 @@ export interface RawMaterialWithStock {
   qty_on_order?: number;
   material_type?: "PURCHASED" | "WIP";
   source_product_id?: string | null;
+  unit_conversions?: RawMaterialUnitConversion[];
 }
 
 export type RawMaterial = RawMaterialWithStock;
@@ -370,6 +390,7 @@ export interface RawMaterialFormData {
   coa_asset?: string;
   deskripsi?: string;
   is_active?: boolean;
+  unit_conversions?: RawMaterialUnitConversion[];
 }
 
 export interface RawMaterialListParams {

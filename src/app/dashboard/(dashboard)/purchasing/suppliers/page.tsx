@@ -5,18 +5,9 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Combobox } from "@/components/ui/combobox";
 import { Switch } from "@/components/ui/switch";
-import {
-  Table,
-  TableHeader,
-  TableBody,
-  TableRow,
-  TableHead,
-  TableCell,
-} from "@/components/ui/table";
 import {
   Dialog,
   DialogContent,
@@ -26,17 +17,16 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { BreadcrumbNav } from "@/modules/purchasing/components/breadcrumb/BreadcrumbNav";
+import { PurchasingListSection } from "@/modules/purchasing/components/list/PurchasingListSection";
+import { PurchasingTablePagination } from "@/modules/purchasing/components/pagination/PurchasingTablePagination";
 import { CsvImporter } from "@/components/ui/csv-importer";
 import {
   BuildingOfficeIcon,
   PlusIcon,
   MagnifyingGlassIcon,
   ArrowUpTrayIcon,
-  EyeIcon,
-  PencilSquareIcon,
-  TrashIcon,
 } from "@heroicons/react/24/outline";
-import { Loader2, X } from "lucide-react";
+import { Eye, Filter, Loader2, Pencil, Trash2, X } from "lucide-react";
 import {
   Supplier,
   SupplierListParams,
@@ -83,6 +73,7 @@ function SuppliersListInner() {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "active" | "inactive" | "draft">("all");
   const [paymentFilter, setPaymentFilter] = useState<PaymentTerms | "all">("all");
+  const [filterOpen, setFilterOpen] = useState(false);
 
   // Pagination
   const [page, setPage] = useState(1);
@@ -137,6 +128,15 @@ function SuppliersListInner() {
     fetchSuppliers();
   }, [fetchSuppliers]);
 
+  useEffect(() => {
+    const timeout = window.setTimeout(() => {
+      setSearch(searchQuery.trim());
+      setPage(1);
+    }, 300);
+
+    return () => window.clearTimeout(timeout);
+  }, [searchQuery]);
+
   // ── Actions ──────────────────────────────────────────────────
 
   async function handleDelete(supplier: Supplier) {
@@ -188,15 +188,10 @@ function SuppliersListInner() {
     setPage(1);
   }
 
-  function handleSearch(e: React.FormEvent) {
-    e.preventDefault();
-    setSearch(searchQuery.trim());
-    setPage(1);
-  }
-
   // ── Render ───────────────────────────────────────────────────
 
   const isAdmin = user?.role === "purchasing_admin";
+  const isFilterActive = statusFilter !== "all" || paymentFilter !== "all";
 
   return (
     <div className="space-y-6">
@@ -231,17 +226,19 @@ function SuppliersListInner() {
         )}
       </div>
 
-      <Card>
-        <CardContent className="p-4">
-          <div className="flex flex-col gap-3 md:flex-row md:items-center">
-            <form onSubmit={handleSearch} className="flex flex-1 gap-2">
-              <div className="relative flex-1">
+      <PurchasingListSection
+        icon={BuildingOfficeIcon}
+        title="Daftar Supplier"
+        description="Kelola vendor, payment terms, status aktif, dan kontak supplier."
+        toolbar={
+          <div className="flex w-full flex-col gap-3 sm:w-auto md:flex-row md:items-center">
+            <label className="relative w-full md:w-80">
                 <MagnifyingGlassIcon className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
                 <Input
-                  placeholder="Cari kode, nama, atau kota supplier..."
+                  placeholder="Cari supplier..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="h-9 pl-10 pr-10 text-sm"
+                  className="h-10 bg-white pl-10 pr-10 text-sm focus:border-pink-400 focus:ring-2 focus:ring-pink-100"
                 />
                 {searchQuery && (
                   <button
@@ -253,68 +250,98 @@ function SuppliersListInner() {
                     <X className="h-4 w-4" />
                   </button>
                 )}
-              </div>
-              <Button type="submit" variant="outline" className="h-9 flex-shrink-0">
-                Cari
-              </Button>
-            </form>
+            </label>
 
-            <Combobox
-              options={[
-                { value: "all", label: "Semua Status" },
-                { value: "active", label: "Aktif" },
-                { value: "inactive", label: "Nonaktif" },
-                { value: "draft", label: "Draft" },
-              ]}
-              value={statusFilter}
-              onChange={(value) => {
-                setStatusFilter(value as typeof statusFilter);
-                setPage(1);
-              }}
-              placeholder="Filter status..."
-              searchPlaceholder="Cari status..."
-              emptyMessage="Status tidak ditemukan"
-              className="!w-full h-9 text-sm md:!w-[220px]"
-            />
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setFilterOpen((open) => !open)}
+              className={
+                isFilterActive
+                  ? "h-10 gap-2 rounded-lg border-pink-600 bg-pink-600 px-3 text-sm font-semibold !text-white shadow-sm hover:!border-pink-700 hover:!bg-pink-700 hover:!text-white [&_*]:!text-white [&_svg]:!text-white"
+                  : "h-10 gap-2 rounded-lg border-gray-200 bg-white px-3 text-sm font-medium text-gray-700 shadow-sm hover:!border-pink-200 hover:!bg-pink-50 hover:!text-pink-700"
+              }
+            >
+              <Filter className={isFilterActive ? "h-4 w-4 text-white" : "h-4 w-4"} />
+              Filter
+              {isFilterActive && (
+                <span className="ml-1 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-white/20 px-1.5 text-xs text-white">
+                  {[statusFilter !== "all", paymentFilter !== "all"].filter(Boolean).length}
+                </span>
+              )}
+            </Button>
 
-            <Combobox
-              options={[
-                { value: "all", label: "Semua Terms" },
-                ...PAYMENT_TERMS_OPTIONS.map((pt) => ({ value: pt, label: pt })),
-              ]}
-              value={paymentFilter}
-              onChange={(value) => {
-                setPaymentFilter(value as PaymentTerms | "all");
-                setPage(1);
-              }}
-              placeholder="Filter terms..."
-              searchPlaceholder="Cari terms..."
-              emptyMessage="Terms tidak ditemukan"
-              className="!w-full h-9 text-sm md:!w-[200px]"
-            />
-
-            <Button variant="outline" onClick={handleExportCSV} title="Export CSV">
+            <Button
+              variant="outline"
+              onClick={handleExportCSV}
+              title="Export CSV"
+              className="h-10 gap-2 rounded-lg border-pink-200 bg-white px-3 text-sm font-medium text-pink-700 shadow-sm hover:!border-pink-200 hover:!bg-pink-50 hover:!text-pink-700"
+            >
               <ArrowUpTrayIcon className="mr-2 h-4 w-4" />
               Export
             </Button>
 
-            {(search || statusFilter !== "all" || paymentFilter !== "all" || page > 1) && (
-              <Button variant="outline" onClick={handleResetFilters} className="h-9 flex-shrink-0">
+            {(search || isFilterActive || page > 1) && (
+              <Button variant="outline" onClick={handleResetFilters} className="h-10 flex-shrink-0 rounded-lg">
                 Reset
               </Button>
             )}
           </div>
-        </CardContent>
-      </Card>
+        }
+      >
+        <div>
+          {filterOpen && (
+            <div className="border-b border-gray-100 bg-gray-50/70 px-5 py-4">
+              <div className="grid gap-3 md:grid-cols-2">
+                <div className="space-y-1.5">
+                  <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-gray-500">
+                    <Filter className="h-3.5 w-3.5 text-pink-500" />
+                    Status
+                  </div>
+                  <Combobox
+                    options={[
+                      { value: "all", label: "Semua Status" },
+                      { value: "active", label: "Aktif" },
+                      { value: "inactive", label: "Nonaktif" },
+                      { value: "draft", label: "Draft" },
+                    ]}
+                    value={statusFilter}
+                    onChange={(value) => {
+                      setStatusFilter(value as typeof statusFilter);
+                      setPage(1);
+                    }}
+                    placeholder="Filter status..."
+                    searchPlaceholder="Cari status..."
+                    emptyMessage="Status tidak ditemukan"
+                    className="!w-full h-9 text-sm"
+                  />
+                </div>
 
-      <Card>
-        <CardHeader className="border-b border-gray-200/70 pb-3">
-          <CardTitle className="text-base flex items-center gap-2">
-            <BuildingOfficeIcon className="w-5 h-5" />
-            Daftar Supplier
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="p-0">
+                <div className="space-y-1.5">
+                  <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-gray-500">
+                    <Filter className="h-3.5 w-3.5 text-pink-500" />
+                    Payment Terms
+                  </div>
+                  <Combobox
+                    options={[
+                      { value: "all", label: "Semua Terms" },
+                      ...PAYMENT_TERMS_OPTIONS.map((pt) => ({ value: pt, label: pt })),
+                    ]}
+                    value={paymentFilter}
+                    onChange={(value) => {
+                      setPaymentFilter(value as PaymentTerms | "all");
+                      setPage(1);
+                    }}
+                    placeholder="Filter terms..."
+                    searchPlaceholder="Cari terms..."
+                    emptyMessage="Terms tidak ditemukan"
+                    className="!w-full h-9 text-sm"
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+
           {loading ? (
             <div className="py-12 text-center">
               <Loader2 className="mx-auto h-8 w-8 animate-spin text-pink-600" />
@@ -334,47 +361,47 @@ function SuppliersListInner() {
             </div>
           ) : (
             <>
-              <div className="overflow-x-auto px-4">
-                <Table>
-                  <TableHeader>
-                    <TableRow className="hover:bg-transparent">
-                      <TableHead className="w-12 text-gray-900">No</TableHead>
-                      <TableHead className="text-gray-900">Kode</TableHead>
-                      <TableHead className="text-gray-900">Nama Supplier</TableHead>
-                      <TableHead className="text-gray-900">Kota</TableHead>
-                      <TableHead className="text-gray-900">PIC + Telepon</TableHead>
-                      <TableHead className="text-gray-900">Payment Terms</TableHead>
-                      <TableHead className="text-center text-gray-900">Status</TableHead>
-                      {isAdmin && <TableHead className="text-right text-gray-900">Aksi</TableHead>}
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
+              <div className="overflow-x-auto">
+                <table className="min-w-full text-sm">
+                  <thead className="border-b border-gray-100 bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
+                    <tr>
+                      <th className="w-12 px-4 py-3 text-left font-semibold">No</th>
+                      <th className="px-4 py-3 text-left font-semibold">Kode</th>
+                      <th className="px-4 py-3 text-left font-semibold">Nama Supplier</th>
+                      <th className="px-4 py-3 text-left font-semibold">Kota</th>
+                      <th className="px-4 py-3 text-left font-semibold">PIC + Telepon</th>
+                      <th className="px-4 py-3 text-left font-semibold">Payment Terms</th>
+                      <th className="px-4 py-3 text-center font-semibold">Status</th>
+                      {isAdmin && <th className="px-4 py-3 text-right font-semibold">Aksi</th>}
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
                     {suppliers.map((supplier, idx) => (
-                      <TableRow
+                      <tr
                         key={supplier.id}
-                        className="cursor-pointer"
+                        className="cursor-pointer hover:bg-gray-50"
                         onClick={() => router.push(`/dashboard/purchasing/suppliers/${supplier.id}`)}
                       >
-                        <TableCell className="text-sm text-gray-400">
+                        <td className="px-4 py-3 text-sm text-gray-400">
                           {(page - 1) * limit + idx + 1}
-                        </TableCell>
-                        <TableCell>
+                        </td>
+                        <td className="px-4 py-3">
                           <span className="font-medium text-gray-900">{supplier.kode}</span>
-                        </TableCell>
-                        <TableCell className="font-medium text-gray-900">{supplier.nama_supplier}</TableCell>
-                        <TableCell className="text-gray-600">{supplier.kota ?? "-"}</TableCell>
-                        <TableCell>
+                        </td>
+                        <td className="px-4 py-3 font-medium text-gray-900">{supplier.nama_supplier}</td>
+                        <td className="px-4 py-3 text-gray-600">{supplier.kota ?? "-"}</td>
+                        <td className="px-4 py-3">
                           <div className="text-gray-700">
                             {supplier.pic_name ?? <span className="text-gray-400">-</span>}
                           </div>
                           {supplier.pic_phone && (
                             <div className="text-xs text-gray-500">{supplier.pic_phone}</div>
                           )}
-                        </TableCell>
-                        <TableCell>
+                        </td>
+                        <td className="px-4 py-3">
                           <Badge variant="outline">{getPaymentTermsLabel(supplier.payment_terms)}</Badge>
-                        </TableCell>
-                        <TableCell className="text-center" onClick={(e) => e.stopPropagation()}>
+                        </td>
+                        <td className="px-4 py-3 text-center" onClick={(e) => e.stopPropagation()}>
                           <div className="flex items-center justify-center">
                             <Switch
                               checked={supplier.is_active}
@@ -385,19 +412,19 @@ function SuppliersListInner() {
                               aria-label={`Ubah status ${supplier.nama_supplier}`}
                             />
                           </div>
-                        </TableCell>
+                        </td>
                         {isAdmin && (
-                          <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
+                          <td className="px-4 py-3 text-right" onClick={(e) => e.stopPropagation()}>
                             <div className="flex items-center justify-end gap-2">
                               <Link href={`/dashboard/purchasing/suppliers/${supplier.id}`}>
                                 <Button variant="ghost" size="sm" title="Detail" className="cursor-pointer">
-                                  <EyeIcon className="h-4 w-4" />
+                                  <Eye className="h-4 w-4" />
                                 </Button>
                               </Link>
                               {(supplier.is_active || supplier.status === "draft") && (
                                 <Link href={`/dashboard/purchasing/suppliers/${supplier.id}/edit`}>
                                   <Button variant="ghost" size="sm" title="Edit" className="cursor-pointer">
-                                    <PencilSquareIcon className="h-4 w-4" />
+                                    <Pencil className="h-4 w-4" />
                                   </Button>
                                 </Link>
                               )}
@@ -408,46 +435,28 @@ function SuppliersListInner() {
                                 className="cursor-pointer text-red-500 hover:text-red-600"
                                 onClick={() => setDeleteDialog({ open: true, supplier })}
                               >
-                                <TrashIcon className="h-4 w-4" />
+                                <Trash2 className="h-4 w-4" />
                               </Button>
                             </div>
-                          </TableCell>
+                          </td>
                         )}
-                      </TableRow>
+                      </tr>
                     ))}
-                  </TableBody>
-                </Table>
+                  </tbody>
+                </table>
               </div>
 
-              <div className="border-t border-gray-200/70">
-                <div className="flex items-center justify-between px-4 py-3">
-                  <p className="text-sm text-gray-500">
-                    Halaman {page} dari {Math.max(1, totalPages)}
-                  </p>
-                  <div className="flex items-center gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setPage((p) => Math.max(1, p - 1))}
-                      disabled={page === 1}
-                    >
-                      Sebelumnya
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setPage((p) => Math.min(Math.max(1, totalPages), p + 1))}
-                      disabled={page >= Math.max(1, totalPages)}
-                    >
-                      Berikutnya
-                    </Button>
-                  </div>
-                </div>
-              </div>
+              <PurchasingTablePagination
+                page={page}
+                totalPages={Math.max(1, totalPages)}
+                totalItems={total}
+                pageSize={limit}
+                onPageChange={setPage}
+              />
             </>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </PurchasingListSection>
 
       {/* Status Dialog */}
       <Dialog

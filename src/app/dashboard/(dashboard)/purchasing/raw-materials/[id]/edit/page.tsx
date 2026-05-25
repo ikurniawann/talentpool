@@ -8,11 +8,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { NumericInput } from "@/components/ui/numeric-input";
+import { BreadcrumbNav } from "@/modules/purchasing/components/breadcrumb/BreadcrumbNav";
 import { ArrowLeft, Save, Package, AlertCircle, BookOpen } from "lucide-react";
 import { toast } from "sonner";
 import { Combobox } from "@/components/ui/combobox";
 import { RawMaterialWithStock, Unit, MaterialCategory } from "@/types/purchasing";
 import { getRawMaterial, updateRawMaterial, listUnits } from "@/lib/purchasing";
+import { RawMaterialUnitConversionsEditor } from "@/modules/purchasing/components/raw-materials/RawMaterialUnitConversionsEditor";
 
 const CATEGORY_OPTIONS: { value: MaterialCategory; label: string }[] = [
   { value: "BAHAN_PANGAN", label: "Bahan Pangan" },
@@ -31,6 +34,12 @@ const STORAGE_OPTIONS = [
 
 function getErrorMessage(error: unknown, fallback: string) {
   return error instanceof Error ? error.message : fallback;
+}
+
+function formatQuantity(value?: number | null) {
+  return new Intl.NumberFormat("id-ID", {
+    maximumFractionDigits: 4,
+  }).format(value ?? 0);
 }
 
 export default function EditRawMaterialPage() {
@@ -57,6 +66,7 @@ export default function EditRawMaterialPage() {
     coa_production: "",
     coa_rnd: "",
     coa_asset: "",
+    unit_conversions: [] as NonNullable<RawMaterialWithStock["unit_conversions"]>,
   });
 
   const loadMaterial = useCallback(async () => {
@@ -77,6 +87,9 @@ export default function EditRawMaterialPage() {
         coa_production: data.coa_production || "",
         coa_rnd: data.coa_rnd || "",
         coa_asset: data.coa_asset || "",
+        unit_conversions: (data.unit_conversions || []).filter(
+          (conversion) => conversion.satuan_id !== data.satuan_besar_id && conversion.satuan_id !== data.satuan_kecil_id
+        ),
       });
     } catch (error) {
       console.error("Failed to load material:", error);
@@ -102,6 +115,8 @@ export default function EditRawMaterialPage() {
 
   const satuanBesar = units.filter(u => u.tipe === "BESAR" || u.tipe === "KONVERSI");
   const satuanKecil = units.filter(u => u.tipe === "KECIL" || u.tipe === "KONVERSI");
+  const selectedSatuanBesar = satuanBesar.find((u) => u.id === formData.satuan_besar_id);
+  const satuanBesarCode = selectedSatuanBesar?.kode || selectedSatuanBesar?.simbol || "-";
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -118,6 +133,13 @@ export default function EditRawMaterialPage() {
         coa_production: formData.coa_production || undefined,
         coa_rnd: formData.coa_rnd || undefined,
         coa_asset: formData.coa_asset || undefined,
+        unit_conversions: (formData.unit_conversions || [])
+          .filter((conversion) => conversion.satuan_id && conversion.qty_in_base_unit > 0)
+          .map((conversion) => ({
+            satuan_id: conversion.satuan_id,
+            qty_in_base_unit: conversion.qty_in_base_unit,
+            is_base: false,
+          })),
       });
       toast.success("Bahan baku berhasil diupdate");
       router.push(`/dashboard/purchasing/raw-materials/${materialId}`);
@@ -139,17 +161,27 @@ export default function EditRawMaterialPage() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center gap-4">
-        <Link href={`/dashboard/purchasing/raw-materials/${materialId}`}>
-          <Button variant="ghost" size="icon" className="h-9 w-9">
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
-        </Link>
+      <BreadcrumbNav
+        items={[
+          { label: "Purchasing", href: "/dashboard/purchasing" },
+          { label: "Master Data", href: "/dashboard/purchasing/main" },
+          { label: "Bahan Baku", href: "/dashboard/purchasing/raw-materials" },
+          { label: material?.nama || "Edit Bahan Baku", href: `/dashboard/purchasing/raw-materials/${materialId}` },
+          { label: "Edit" },
+        ]}
+      />
+
+      <div className="flex flex-col items-start justify-between gap-4 border-b border-gray-200/70 pb-4 sm:flex-row sm:items-center">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Edit Bahan Baku</h1>
-          <p className="text-sm text-gray-500">Update detail bahan baku</p>
+          <p className="mt-1 text-sm text-gray-500">Update detail bahan baku</p>
         </div>
+        <Link href={`/dashboard/purchasing/raw-materials/${materialId}`}>
+          <Button variant="outline" className="purchasing-secondary-button">
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Kembali
+          </Button>
+        </Link>
       </div>
 
       <form onSubmit={handleSubmit}>
@@ -262,20 +294,30 @@ export default function EditRawMaterialPage() {
                 {formData.satuan_kecil_id && (
                   <div className="space-y-1.5">
                     <Label htmlFor="konversi" className="text-xs">Faktor Konversi</Label>
-                    <Input
+                    <NumericInput
                       id="konversi"
-                      type="number"
-                      step="0.0001"
                       min="0"
                       value={formData.konversi_factor}
-                      onChange={(e) => setFormData({ ...formData, konversi_factor: parseFloat(e.target.value) || 1 })}
+                      onValueChange={(value) => setFormData({ ...formData, konversi_factor: value || 1 })}
+                      decimalScale={4}
                       className="h-9 text-sm"
                     />
                     <p className="text-xs text-gray-500">
-                      1 {satuanBesar.find(u => u.id === formData.satuan_besar_id)?.nama} = {formData.konversi_factor} {satuanKecil.find(u => u.id === formData.satuan_kecil_id)?.nama}
+                      1 {satuanBesar.find(u => u.id === formData.satuan_besar_id)?.nama} = {formatQuantity(formData.konversi_factor)} {satuanKecil.find(u => u.id === formData.satuan_kecil_id)?.nama}
                     </p>
                   </div>
                 )}
+
+                <RawMaterialUnitConversionsEditor
+                  units={units}
+                  baseUnitId={formData.satuan_kecil_id || formData.satuan_besar_id}
+                  bigUnitId={formData.satuan_besar_id}
+                  bigUnitFactor={formData.satuan_kecil_id ? formData.konversi_factor : 1}
+                  conversions={(formData.unit_conversions || []).filter(
+                    (conversion) => conversion.satuan_id !== formData.satuan_besar_id && conversion.satuan_id !== formData.satuan_kecil_id
+                  )}
+                  onChange={(unit_conversions) => setFormData({ ...formData, unit_conversions })}
+                />
               </CardContent>
             </Card>
 
@@ -293,26 +335,34 @@ export default function EditRawMaterialPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1.5">
                   <Label htmlFor="stok_minimum" className="text-xs">Stok Minimum</Label>
-                  <Input
-                    id="stok_minimum"
-                    type="number"
-                    min="0"
-                    value={formData.stok_minimum}
-                    onChange={(e) => setFormData({ ...formData, stok_minimum: parseFloat(e.target.value) || 0 })}
-                    className="h-9 text-sm"
-                  />
-                  <p className="text-xs text-gray-500">Alert saat stok ≤ nilai ini</p>
+                  <div className="flex rounded-lg border border-gray-300 bg-white focus-within:border-gray-400 focus-within:ring-2 focus-within:ring-gray-100">
+                    <NumericInput
+                      id="stok_minimum"
+                      value={formData.stok_minimum}
+                      onValueChange={(value) => setFormData({ ...formData, stok_minimum: value })}
+                      decimalScale={4}
+                      className="h-9 rounded-r-none border-0 text-sm shadow-none focus-visible:ring-0"
+                    />
+                    <div className="flex min-w-14 items-center justify-center rounded-r-lg border-l border-gray-200 bg-gray-50 px-3 text-xs font-semibold uppercase text-gray-500">
+                      {satuanBesarCode}
+                    </div>
+                  </div>
+                  <p className="text-xs text-gray-500">Alert saat stok satuan besar ≤ nilai ini</p>
                 </div>
                 <div className="space-y-1.5">
                   <Label htmlFor="stok_maximum" className="text-xs">Stok Maksimum</Label>
-                  <Input
-                    id="stok_maximum"
-                    type="number"
-                    min="0"
-                    value={formData.stok_maximum}
-                    onChange={(e) => setFormData({ ...formData, stok_maximum: parseFloat(e.target.value) || 0 })}
-                    className="h-9 text-sm"
-                  />
+                  <div className="flex rounded-lg border border-gray-300 bg-white focus-within:border-gray-400 focus-within:ring-2 focus-within:ring-gray-100">
+                    <NumericInput
+                      id="stok_maximum"
+                      value={formData.stok_maximum}
+                      onValueChange={(value) => setFormData({ ...formData, stok_maximum: value })}
+                      decimalScale={4}
+                      className="h-9 rounded-r-none border-0 text-sm shadow-none focus-visible:ring-0"
+                    />
+                    <div className="flex min-w-14 items-center justify-center rounded-r-lg border-l border-gray-200 bg-gray-50 px-3 text-xs font-semibold uppercase text-gray-500">
+                      {satuanBesarCode}
+                    </div>
+                  </div>
                 </div>
               </div>
 
@@ -403,7 +453,7 @@ export default function EditRawMaterialPage() {
         </div>
 
         {/* Action Buttons */}
-        <div className="flex items-center justify-end gap-3 mt-6 pt-4 border-t">
+        <div className="mt-6 flex items-center justify-end gap-3 border-t border-gray-200/70 pt-4">
           <Button type="button" variant="outline" onClick={() => router.back()} className="purchasing-secondary-button px-6">
             Batal
           </Button>

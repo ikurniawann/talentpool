@@ -88,6 +88,35 @@ export async function PUT(
 
     const validated = updatePriceListSchema.parse(body);
 
+    const { data: existingPriceList, error: existingError } = await supabase
+      .from("supplier_price_lists")
+      .select("bahan_baku_id,satuan_id")
+      .eq("id", id)
+      .single();
+
+    if (existingError) throw existingError;
+
+    const nextMaterialId = validated.bahan_baku_id || existingPriceList.bahan_baku_id;
+    const nextUnitId = validated.satuan_id || existingPriceList.satuan_id;
+
+    if (nextMaterialId && nextUnitId) {
+      const { data: conversion, error: conversionError } = await supabase
+        .from("raw_material_unit_conversions")
+        .select("id")
+        .eq("raw_material_id", nextMaterialId)
+        .eq("satuan_id", nextUnitId)
+        .eq("is_active", true)
+        .maybeSingle();
+
+      if (conversionError) throw conversionError;
+      if (!conversion) {
+        return Response.json(
+          { success: false, message: "Satuan belum dikonfigurasi pada master bahan baku" },
+          { status: 400 }
+        );
+      }
+    }
+
     const { data, error } = await supabase
       .from("supplier_price_lists")
       .update({

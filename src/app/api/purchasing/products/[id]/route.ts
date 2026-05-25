@@ -12,6 +12,8 @@ const productSchema = z.object({
   kategori: z.string().optional().nullable(),
   satuan_id: z.string().uuid().optional().nullable(),
   harga_jual: z.number().min(0).optional(),
+  harga_modal: z.number().min(0).optional(),
+  markup_persen: z.number().optional(),
   is_active: z.boolean().optional(),
 });
 

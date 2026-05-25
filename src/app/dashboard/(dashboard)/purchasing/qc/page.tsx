@@ -4,22 +4,16 @@ import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { BreadcrumbNav } from "@/modules/purchasing/components/breadcrumb/BreadcrumbNav";
+import { PurchasingListSection } from "@/modules/purchasing/components/list/PurchasingListSection";
+import { PurchasingTablePagination } from "@/modules/purchasing/components/pagination/PurchasingTablePagination";
 import {
   BeakerIcon,
   MagnifyingGlassIcon,
   EyeIcon,
 } from "@heroicons/react/24/outline";
+import { X } from "lucide-react";
 
 const STATUS_COLORS: Record<string, string> = {
   pending: "bg-yellow-100 text-yellow-800",
@@ -57,6 +51,7 @@ export default function QCListPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [total, setTotal] = useState(0);
   const limit = 15;
 
   const fetchQC = useCallback(async () => {
@@ -71,7 +66,9 @@ export default function QCListPage() {
       const data = await res.json();
       if (data.data) {
         setRecords(data.data);
-        setTotalPages(Math.ceil((data.pagination?.total || 0) / limit));
+        const totalRows = data.pagination?.total || 0;
+        setTotal(totalRows);
+        setTotalPages(Math.max(1, Math.ceil(totalRows / limit)));
       }
     } catch (e) {
       console.error(e);
@@ -84,11 +81,14 @@ export default function QCListPage() {
     fetchQC();
   }, [fetchQC]);
 
-  function handleSearch(e: React.FormEvent) {
-    e.preventDefault();
-    setSearch(searchQuery.trim());
-    setPage(1);
-  }
+  useEffect(() => {
+    const timeout = window.setTimeout(() => {
+      setSearch(searchQuery.trim());
+      setPage(1);
+    }, 300);
+
+    return () => window.clearTimeout(timeout);
+  }, [searchQuery]);
 
   function handleResetFilters() {
     setSearch("");
@@ -113,40 +113,40 @@ export default function QCListPage() {
         </div>
       </div>
 
-      <Card>
-        <CardContent className="p-4">
-          <div className="flex flex-col gap-3 md:flex-row md:items-center">
-            <form onSubmit={handleSearch} className="flex flex-1 gap-2">
-              <div className="relative flex-1">
+      <PurchasingListSection
+        icon={BeakerIcon}
+        title="Daftar QC"
+        description="Pantau inspeksi QC, hasil penerimaan, dan dokumen GRN terkait."
+        toolbar={
+          <div className="flex w-full flex-col gap-3 sm:w-auto md:flex-row md:items-center">
+            <label className="relative w-full md:w-80">
                 <MagnifyingGlassIcon className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
                 <Input
                   placeholder="Cari hasil QC..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="h-9 pl-10 text-sm"
+                  className="h-10 bg-white pl-10 pr-10 text-sm focus:border-pink-400 focus:ring-2 focus:ring-pink-100"
                 />
-              </div>
-              <Button type="submit" variant="outline" className="h-9 flex-shrink-0">
-                Cari
-              </Button>
-            </form>
+                {searchQuery && (
+                  <button
+                    type="button"
+                    onClick={() => setSearchQuery("")}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 transition-colors hover:text-gray-700"
+                    aria-label="Hapus pencarian"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                )}
+            </label>
             {(search || page > 1) && (
               <Button variant="outline" onClick={handleResetFilters} className="h-9 flex-shrink-0">
                 Reset
               </Button>
             )}
           </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader className="border-b border-gray-200/70 pb-3">
-          <CardTitle className="text-base flex items-center gap-2">
-            <BeakerIcon className="w-5 h-5" />
-            Daftar QC
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="p-0">
+        }
+      >
+        <div>
           {loading ? (
             <div className="py-12 text-center">
               <p className="text-sm text-gray-500">Memuat data...</p>
@@ -158,59 +158,55 @@ export default function QCListPage() {
             </div>
           ) : (
             <>
-            <div className="overflow-x-auto px-4">
-              <Table>
-                <TableHeader>
-                  <TableRow className="hover:bg-transparent">
+            <div className="overflow-x-auto">
+              <table className="min-w-full text-sm">
+                <thead className="border-b border-gray-100 bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
+                  <tr>
                     {["No. QC", "GRN", "Bahan Baku", "Jumlah Diperiksa", "Diterima", "Ditolak", "Hasil", "Tanggal", "Aksi"].map((h) => (
-                      <TableHead key={h} className="text-gray-900">{h}</TableHead>
+                      <th key={h} className="px-4 py-3 text-left font-semibold">{h}</th>
                     ))}
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
                   {records.map((q) => {
                     const first = q.items?.[0] || {};
                     return (
-                      <TableRow key={q.id}>
-                        <TableCell className="text-sm font-mono font-medium">{q.qc_number || q.id.slice(0, 8)}</TableCell>
-                        <TableCell className="text-sm">{q.grn_id?.slice(0, 8) || "—"}</TableCell>
-                        <TableCell className="text-sm">{first.bahan_baku_id || "—"}</TableCell>
-                        <TableCell className="text-center text-sm">{first.jumlah_diperiksa ?? "—"}</TableCell>
-                        <TableCell className="text-center text-sm text-green-600">{first.jumlah_diterima ?? "—"}</TableCell>
-                        <TableCell className="text-center text-sm text-red-600">{first.jumlah_ditolak ?? "—"}</TableCell>
-                        <TableCell>
+                      <tr key={q.id} className="hover:bg-gray-50">
+                        <td className="px-4 py-3 font-mono text-sm font-medium">{q.qc_number || q.id.slice(0, 8)}</td>
+                        <td className="px-4 py-3 text-sm">{q.grn_id?.slice(0, 8) || "—"}</td>
+                        <td className="px-4 py-3 text-sm">{first.bahan_baku_id || "—"}</td>
+                        <td className="px-4 py-3 text-center text-sm">{first.jumlah_diperiksa ?? "—"}</td>
+                        <td className="px-4 py-3 text-center text-sm text-green-600">{first.jumlah_diterima ?? "—"}</td>
+                        <td className="px-4 py-3 text-center text-sm text-red-600">{first.jumlah_ditolak ?? "—"}</td>
+                        <td className="px-4 py-3">
                           <Badge className={STATUS_COLORS[q.hasil] || "bg-gray-100"}>
                             {STATUS_LABELS[q.hasil] || q.hasil}
                           </Badge>
-                        </TableCell>
-                        <TableCell className="text-sm">{q.tanggal_inspeksi || q.created_at?.slice(0, 10) || "—"}</TableCell>
-                        <TableCell className="text-right">
+                        </td>
+                        <td className="px-4 py-3 text-sm">{q.tanggal_inspeksi || q.created_at?.slice(0, 10) || "—"}</td>
+                        <td className="px-4 py-3 text-right">
                           <Link href={`/dashboard/purchasing/qc/${q.id}`}>
                             <Button size="sm" variant="ghost"><EyeIcon className="w-4 h-4" /></Button>
                           </Link>
-                        </TableCell>
-                      </TableRow>
+                        </td>
+                      </tr>
                     );
                   })}
-                </TableBody>
-              </Table>
+                </tbody>
+              </table>
             </div>
 
-          {totalPages > 1 && (
-            <div className="border-t border-gray-200/70">
-            <div className="flex items-center justify-between px-4 py-3">
-              <p className="text-sm text-gray-500">Halaman {page} dari {totalPages}</p>
-              <div className="flex gap-2">
-                <Button size="sm" variant="outline" onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1}>Sebelumnya</Button>
-                <Button size="sm" variant="outline" onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page === totalPages}>Berikutnya</Button>
-              </div>
-            </div>
-            </div>
-          )}
+          <PurchasingTablePagination
+            page={page}
+            totalPages={Math.max(1, totalPages)}
+            totalItems={total}
+            pageSize={limit}
+            onPageChange={setPage}
+          />
             </>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </PurchasingListSection>
     </div>
   );
 }

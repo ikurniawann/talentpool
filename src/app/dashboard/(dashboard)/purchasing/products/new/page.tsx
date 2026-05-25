@@ -11,6 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowLeft, Save, Plus, Trash2, Package, Calculator } from "lucide-react";
 import { toast } from "sonner";
 import { Combobox } from "@/components/ui/combobox";
+import { NumericInput } from "@/components/ui/numeric-input";
 import { ProductFormData, RawMaterialWithStock, Unit, BOMItemFormData } from "@/types/purchasing";
 import { listRawMaterials, listUnits, createProduct, createBOMItem } from "@/lib/purchasing";
 
@@ -23,6 +24,19 @@ interface BOMFormItem extends Partial<BOMItemFormData> {
 
 function getErrorMessage(error: unknown, fallback: string) {
   return error instanceof Error ? error.message : fallback;
+}
+
+function getMaterialCost(material?: RawMaterialWithStock) {
+  return material?.avg_cost ?? material?.harga_avg ?? material?.harga_terakhir ?? 0;
+}
+
+function calculatePriceFromMarkup(hpp: number, markup: number) {
+  return Math.round(hpp * (1 + markup / 100));
+}
+
+function calculateMarkupFromPrice(hpp: number, price: number) {
+  if (hpp <= 0) return 0;
+  return Number((((price - hpp) / hpp) * 100).toFixed(2));
 }
 
 export default function NewProductPage() {
@@ -40,6 +54,7 @@ export default function NewProductPage() {
     markup_persen: 30,
     is_active: true,
   });
+  const [pricingSource, setPricingSource] = useState<"markup" | "price">("markup");
 
   const [bomItems, setBomItems] = useState<BOMFormItem[]>([]);
 
@@ -88,7 +103,7 @@ export default function NewProductPage() {
           const material = materials.find((m) => m.id === updated.raw_material_id);
           const qty = updated.qty_needed || 0;
           const waste = updated.waste_persen || 0;
-          const price = material?.harga_avg || 0;
+          const price = getMaterialCost(material);
           updated.subtotal = price * qty * (1 + waste / 100);
           return updated;
         }
@@ -99,6 +114,42 @@ export default function NewProductPage() {
 
   const calculateTotalCost = () => {
     return bomItems.reduce((sum, item) => sum + (item.subtotal || 0), 0);
+  };
+
+  const totalCost = calculateTotalCost();
+
+  useEffect(() => {
+    setFormData((prev) => {
+      if (pricingSource === "markup") {
+        const nextPrice = calculatePriceFromMarkup(totalCost, prev.markup_persen || 0);
+        return prev.harga_jual === nextPrice ? prev : { ...prev, harga_jual: nextPrice };
+      }
+
+      const nextMarkup = calculateMarkupFromPrice(totalCost, prev.harga_jual || 0);
+      return prev.markup_persen === nextMarkup ? prev : { ...prev, markup_persen: nextMarkup };
+    });
+  }, [pricingSource, totalCost]);
+
+  const handleMarkupChange = (value: number) => {
+    setPricingSource("markup");
+    setFormData((prev) => ({
+      ...prev,
+      markup_persen: value,
+      harga_jual: calculatePriceFromMarkup(totalCost, value),
+    }));
+  };
+
+  const handlePriceChange = (value: number) => {
+    setPricingSource("price");
+    setFormData((prev) => ({
+      ...prev,
+      harga_jual: value,
+      markup_persen: calculateMarkupFromPrice(totalCost, value),
+    }));
+  };
+
+  const getMaterialSmallUnitLabel = (material?: RawMaterialWithStock) => {
+    return material?.satuan_kecil_nama || material?.satuan || "Unit";
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -113,7 +164,7 @@ export default function NewProductPage() {
     try {
       const productData = {
         ...formData,
-        harga_modal: calculateTotalCost(),
+        harga_modal: totalCost,
       };
       const product = await createProduct(productData);
 
@@ -231,37 +282,53 @@ export default function NewProductPage() {
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="space-y-1.5">
                   <Label htmlFor="harga_modal" className="text-xs">Harga Modal (HPP)</Label>
-                  <Input
-                    id="harga_modal"
-                    type="number"
-                    value={calculateTotalCost()}
-                    disabled
-                    className="h-9 text-sm bg-gray-50 font-mono"
-                  />
+                  <div className="flex rounded-lg border border-gray-300 bg-gray-50 focus-within:border-gray-400 focus-within:ring-2 focus-within:ring-gray-100">
+                    <div className="flex min-w-12 items-center justify-center rounded-l-lg border-r border-gray-200 bg-gray-50 px-3 text-xs font-semibold text-gray-500">
+                      Rp
+                    </div>
+                    <NumericInput
+                      id="harga_modal"
+                      value={totalCost}
+                      onValueChange={() => undefined}
+                      decimalScale={0}
+                      disabled
+                      className="h-9 rounded-l-none border-0 bg-gray-50 text-sm font-mono shadow-none focus-visible:ring-0"
+                    />
+                  </div>
                   <p className="text-xs text-gray-500">Dari BOM</p>
                 </div>
                 <div className="space-y-1.5">
                   <Label htmlFor="markup" className="text-xs">Markup (%)</Label>
-                  <Input
-                    id="markup"
-                    type="number"
-                    min="0"
-                    max="1000"
-                    value={formData.markup_persen}
-                    onChange={(e) => setFormData({ ...formData, markup_persen: parseFloat(e.target.value) || 0 })}
-                    className="h-9 text-sm"
-                  />
+                  <div className="flex rounded-lg border border-gray-300 bg-white focus-within:border-gray-400 focus-within:ring-2 focus-within:ring-gray-100">
+                    <NumericInput
+                      id="markup"
+                      min="0"
+                      max="1000"
+                      value={formData.markup_persen}
+                      onValueChange={handleMarkupChange}
+                      decimalScale={2}
+                      className="h-9 rounded-r-none border-0 text-sm shadow-none focus-visible:ring-0"
+                    />
+                    <div className="flex min-w-12 items-center justify-center rounded-r-lg border-l border-gray-200 bg-gray-50 px-3 text-xs font-semibold text-gray-500">
+                      %
+                    </div>
+                  </div>
                 </div>
                 <div className="space-y-1.5">
                   <Label htmlFor="harga_jual" className="text-xs">Harga Jual</Label>
-                  <Input
-                    id="harga_jual"
-                    type="number"
-                    value={formData.harga_jual}
-                    onChange={(e) => setFormData({ ...formData, harga_jual: parseFloat(e.target.value) || 0 })}
-                    placeholder="Harga jual ke customer"
-                    className="h-9 text-sm font-mono"
-                  />
+                  <div className="flex rounded-lg border border-gray-300 bg-white focus-within:border-gray-400 focus-within:ring-2 focus-within:ring-gray-100">
+                    <div className="flex min-w-12 items-center justify-center rounded-l-lg border-r border-gray-200 bg-gray-50 px-3 text-xs font-semibold text-gray-500">
+                      Rp
+                    </div>
+                    <NumericInput
+                      id="harga_jual"
+                      value={formData.harga_jual}
+                      onValueChange={handlePriceChange}
+                      decimalScale={0}
+                      placeholder="Harga jual ke customer"
+                      className="h-9 rounded-l-none border-0 text-sm font-mono shadow-none focus-visible:ring-0"
+                    />
+                  </div>
                 </div>
               </div>
             </CardContent>
@@ -286,8 +353,12 @@ export default function NewProductPage() {
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {bomItems.map((item) => (
-                    <div key={item.id} className="grid grid-cols-12 gap-3 items-end p-3 border rounded-md bg-gray-50">
+                  {bomItems.map((item) => {
+                    const selectedMaterial = materials.find((material) => material.id === item.raw_material_id);
+                    const smallUnitLabel = getMaterialSmallUnitLabel(selectedMaterial);
+
+                    return (
+                    <div key={item.id} className="grid grid-cols-12 gap-3 items-end rounded-lg border border-gray-200/70 bg-white p-3 shadow-sm">
                       <div className="col-span-4 space-y-1.5">
                         <Label className="text-xs">Bahan Baku</Label>
                         <Combobox
@@ -303,34 +374,50 @@ export default function NewProductPage() {
                       </div>
                       <div className="col-span-2 space-y-1.5">
                         <Label className="text-xs">Qty</Label>
-                        <Input
-                          type="number"
-                          step="0.01"
-                          min="0"
-                          value={item.qty_needed}
-                          onChange={(e) => updateBOMItem(item.id, { qty_needed: parseFloat(e.target.value) || 0 })}
-                          className="h-9 text-sm"
-                        />
+                        <div className="flex rounded-lg border border-gray-300 bg-white focus-within:border-gray-400 focus-within:ring-2 focus-within:ring-gray-100">
+                          <NumericInput
+                            step="0.01"
+                            min="0"
+                            value={item.qty_needed}
+                            onValueChange={(value) => updateBOMItem(item.id, { qty_needed: value })}
+                            decimalScale={4}
+                            className="h-9 rounded-r-none border-0 text-sm shadow-none focus-visible:ring-0"
+                          />
+                          <div className="flex min-w-14 items-center justify-center rounded-r-lg border-l border-gray-200 bg-gray-50 px-3 text-xs font-semibold uppercase text-gray-500">
+                            {smallUnitLabel}
+                          </div>
+                        </div>
                       </div>
                       <div className="col-span-2 space-y-1.5">
                         <Label className="text-xs">Waste (%)</Label>
-                        <Input
-                          type="number"
-                          min="0"
-                          max="100"
-                          value={item.waste_persen}
-                          onChange={(e) => updateBOMItem(item.id, { waste_persen: parseFloat(e.target.value) || 0 })}
-                          className="h-9 text-sm"
-                        />
+                        <div className="flex rounded-lg border border-gray-300 bg-white focus-within:border-gray-400 focus-within:ring-2 focus-within:ring-gray-100">
+                          <NumericInput
+                            min="0"
+                            max="100"
+                            value={item.waste_persen}
+                            onValueChange={(value) => updateBOMItem(item.id, { waste_persen: value })}
+                            decimalScale={2}
+                            className="h-9 rounded-r-none border-0 text-sm shadow-none focus-visible:ring-0"
+                          />
+                          <div className="flex min-w-10 items-center justify-center rounded-r-lg border-l border-gray-200 bg-gray-50 px-3 text-xs font-semibold text-gray-500">
+                            %
+                          </div>
+                        </div>
                       </div>
                       <div className="col-span-3 space-y-1.5">
                         <Label className="text-xs">Subtotal</Label>
-                        <Input
-                          type="number"
-                          value={item.subtotal}
-                          disabled
-                          className="h-9 text-sm bg-gray-100 font-mono"
-                        />
+                        <div className="flex rounded-lg border border-gray-300 bg-gray-50 focus-within:border-gray-400 focus-within:ring-2 focus-within:ring-gray-100">
+                          <div className="flex min-w-12 items-center justify-center rounded-l-lg border-r border-gray-200 bg-gray-50 px-3 text-xs font-semibold text-gray-500">
+                            Rp
+                          </div>
+                          <NumericInput
+                            value={item.subtotal}
+                            onValueChange={() => undefined}
+                            decimalScale={0}
+                            disabled
+                            className="h-9 rounded-l-none border-0 bg-gray-50 text-sm font-mono shadow-none focus-visible:ring-0"
+                          />
+                        </div>
                       </div>
                       <div className="col-span-1 space-y-1.5">
                         <Button
@@ -344,12 +431,13 @@ export default function NewProductPage() {
                         </Button>
                       </div>
                     </div>
-                  ))}
+                    );
+                  })}
                   
-                  <div className="flex justify-end pt-3 border-t">
+                  <div className="flex justify-end border-t border-gray-200/70 pt-3">
                     <div className="text-right">
                       <p className="text-xs text-gray-500">Total HPP</p>
-                      <p className="text-lg font-bold text-gray-900">Rp {calculateTotalCost().toLocaleString('id-ID')}</p>
+                      <p className="text-lg font-bold text-gray-900">Rp {totalCost.toLocaleString('id-ID')}</p>
                     </div>
                   </div>
                 </div>
@@ -360,7 +448,7 @@ export default function NewProductPage() {
         </div>
 
         {/* Action Buttons */}
-        <div className="flex items-center justify-end gap-3 mt-6 pt-4 border-t">
+        <div className="mt-6 flex items-center justify-end gap-3 border-t border-gray-200/70 pt-4">
           <Button type="button" variant="outline" onClick={() => router.back()} className="purchasing-secondary-button px-6">
             Batal
           </Button>

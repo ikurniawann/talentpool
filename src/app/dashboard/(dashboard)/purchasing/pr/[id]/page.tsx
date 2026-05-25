@@ -118,25 +118,31 @@ export default async function PRDetailPage({ params }: PRDetailPageProps) {
         ]}
       />
 
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div className="flex items-center gap-4">
-          <Link href="/dashboard/purchasing/pr">
-            <Button variant="ghost" size="icon" className="h-9 w-9">
-              <ArrowLeft className="h-5 w-5" />
-            </Button>
-          </Link>
-          <div>
-            <h1 className="text-2xl font-bold">{pr.pr_number}</h1>
-            <p className="text-sm text-gray-500">
-              Dibuat {formatDate(pr.created_at)} oleh {requesterName}
-            </p>
+      <div className="flex flex-col items-start justify-between gap-4 border-b border-gray-200/70 pb-4 sm:flex-row sm:items-center">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <h1 className="text-2xl font-bold text-gray-900">{pr.pr_number}</h1>
+            <Badge className={statusBadge.color}>{statusBadge.label}</Badge>
+          </div>
+          <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-gray-500">
+            <span>Dibuat {formatDate(pr.created_at)}</span>
+            <span className="text-gray-300">•</span>
+            <span>{requesterName}</span>
+            <span className="text-gray-300">•</span>
+            <span>Prioritas {priorityBadge.label}</span>
           </div>
         </div>
         
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap">
+          <Link href="/dashboard/purchasing/pr">
+            <Button variant="outline" className="purchasing-secondary-button w-full sm:w-auto">
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Kembali
+            </Button>
+          </Link>
           {pr.status === "draft" && (
             <Link href={`/dashboard/purchasing/pr/${id}/edit`}>
-              <Button variant="outline">
+              <Button variant="outline" className="purchasing-secondary-button w-full sm:w-auto">
                 <Pencil className="w-4 h-4 mr-2" />
                 Edit
               </Button>
@@ -144,7 +150,7 @@ export default async function PRDetailPage({ params }: PRDetailPageProps) {
           )}
           {pr.status === "rejected" && <PRRevisionButton prId={id} />}
           <Link href={`/dashboard/purchasing/print/pr/${id}`} target="_blank">
-            <Button variant="outline" className="cursor-pointer">
+            <Button variant="outline" className="purchasing-secondary-button w-full cursor-pointer sm:w-auto">
               <Printer className="w-4 h-4 mr-2" />
               Cetak PR
             </Button>
@@ -152,7 +158,7 @@ export default async function PRDetailPage({ params }: PRDetailPageProps) {
           
           {canCreatePO() && (
             <Link href={`/dashboard/purchasing/po/new?pr_id=${id}`}>
-              <Button>
+              <Button className="purchasing-main-button w-full sm:w-auto">
                 <FileText className="w-4 h-4 mr-2" />
                 Buat PO
               </Button>
@@ -160,7 +166,7 @@ export default async function PRDetailPage({ params }: PRDetailPageProps) {
           )}
           {pr.status === "converted" && pr.converted_po_id && (
             <Link href={`/dashboard/purchasing/po/${pr.converted_po_id}`}>
-              <Button>
+              <Button className="purchasing-main-button w-full sm:w-auto">
                 <FileText className="w-4 h-4 mr-2" />
                 Lihat PO
               </Button>

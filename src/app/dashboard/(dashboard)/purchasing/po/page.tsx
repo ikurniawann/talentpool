@@ -4,16 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Combobox } from "@/components/ui/combobox";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import {
   Select,
   SelectContent,
@@ -22,7 +13,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Search, FileText, CheckCircle, Send, XCircle, Download, Trash2, Truck, Pencil } from "lucide-react";
+import { Plus, Search, Filter, FileText, CheckCircle, Send, XCircle, Download, Trash2, Truck, Pencil } from "lucide-react";
 import { toast } from "sonner";
 import { PurchaseOrderWithStats, POStatus } from "@/types/purchasing";
 import { listPurchaseOrders, approvePurchaseOrder, sendPurchaseOrder, cancelPurchaseOrder } from "@/lib/purchasing";
@@ -37,6 +28,8 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { BreadcrumbNav } from "@/modules/purchasing/components/breadcrumb/BreadcrumbNav";
+import { PurchasingListSection } from "@/modules/purchasing/components/list/PurchasingListSection";
+import { PurchasingTablePagination } from "@/modules/purchasing/components/pagination/PurchasingTablePagination";
 
 const STATUS_OPTIONS: { value: POStatus | "all"; label: string }[] = [
   { value: "all", label: "Semua Status" },
@@ -67,6 +60,7 @@ export default function PurchaseOrdersPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<POStatus | "all">("all");
+  const [filterOpen, setFilterOpen] = useState(false);
   
   // Dialog states
   const [isCancelDialogOpen, setIsCancelDialogOpen] = useState(false);
@@ -107,6 +101,15 @@ export default function PurchaseOrdersPage() {
   useEffect(() => {
     loadPOs();
   }, [loadPOs]);
+
+  useEffect(() => {
+    const timeout = window.setTimeout(() => {
+      setSearch(searchQuery.trim());
+      setPagination((prev) => ({ ...prev, page: 1 }));
+    }, 300);
+
+    return () => window.clearTimeout(timeout);
+  }, [searchQuery]);
 
   const handleExportCSV = async () => {
     try {
@@ -355,18 +358,14 @@ export default function PurchaseOrdersPage() {
     return new Date(dateStr).toLocaleDateString("id-ID");
   };
 
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    setSearch(searchQuery.trim());
-    setPagination((prev) => ({ ...prev, page: 1 }));
-  };
-
   const handleResetFilters = () => {
     setSearchQuery("");
     setSearch("");
     setStatusFilter("all");
     setPagination((prev) => ({ ...prev, page: 1 }));
   };
+
+  const isFilterActive = statusFilter !== "all";
 
   return (
     <div className="space-y-6">
@@ -399,47 +398,49 @@ export default function PurchaseOrdersPage() {
         </div>
       </div>
 
-      <Card>
-        <CardContent className="p-4">
-          <div className="flex flex-col gap-3 md:flex-row md:items-center">
-            <form onSubmit={handleSearch} className="flex flex-1 gap-2">
-              <div className="relative flex-1">
+      <PurchasingListSection
+        icon={FileText}
+        title="Daftar Purchase Order"
+        description="Pantau PO, supplier, status approval, dan progress penerimaan."
+        toolbar={
+          <div className="flex w-full flex-col gap-3 sm:w-auto md:flex-row md:items-center">
+            <label className="relative w-full md:w-80">
                 <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
                 <Input
                   placeholder="Cari nomor PO atau supplier..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="h-9 pl-10 text-sm"
+                  className="h-10 bg-white pl-10 text-sm focus:border-pink-400 focus:ring-2 focus:ring-pink-100"
                 />
-              </div>
-              <Button type="submit" variant="outline" className="h-9 flex-shrink-0">
-                Cari
-              </Button>
-            </form>
+            </label>
 
-            <div className="flex min-w-0 items-center gap-2 md:w-[260px]">
-              <Combobox
-                options={STATUS_OPTIONS}
-                value={statusFilter}
-                onChange={(value) => {
-                  setStatusFilter(value as POStatus | "all");
-                  setPagination((prev) => ({ ...prev, page: 1 }));
-                }}
-                placeholder="Filter status..."
-                searchPlaceholder="Cari status..."
-                emptyMessage="Status tidak ditemukan"
-                className="!w-full h-9 text-sm"
-              />
-            </div>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setFilterOpen((open) => !open)}
+              className={
+                isFilterActive
+                  ? "h-10 gap-2 rounded-lg border-pink-600 bg-pink-600 px-3 text-sm font-semibold !text-white shadow-sm hover:!border-pink-700 hover:!bg-pink-700 hover:!text-white [&_*]:!text-white [&_svg]:!text-white"
+                  : "h-10 gap-2 rounded-lg border-gray-200 bg-white px-3 text-sm font-medium text-gray-700 shadow-sm hover:!border-pink-200 hover:!bg-pink-50 hover:!text-pink-700"
+              }
+            >
+              <Filter className={isFilterActive ? "h-4 w-4 text-white" : "h-4 w-4"} />
+              Filter
+              {isFilterActive && (
+                <span className="ml-1 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-white/20 px-1.5 text-xs text-white">
+                  1
+                </span>
+              )}
+            </Button>
 
-            {(search || statusFilter !== "all" || pagination.page > 1) && (
-              <Button variant="outline" onClick={handleResetFilters} className="h-9 flex-shrink-0">
+            {(search || isFilterActive || pagination.page > 1) && (
+              <Button variant="outline" onClick={handleResetFilters} className="h-10 flex-shrink-0 rounded-lg">
                 Reset
               </Button>
             )}
           </div>
-        </CardContent>
-      </Card>
+        }
+      >
 
       {/* Bulk Actions */}
       {selectedIds.size > 0 && (
@@ -475,79 +476,97 @@ export default function PurchaseOrdersPage() {
         </div>
       )}
 
-      <Card>
-        <CardHeader className="border-b border-gray-200/70 pb-3">
-          <CardTitle className="text-base flex items-center gap-2">
-            <FileText className="w-5 h-5" />
-            Daftar Purchase Order
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="p-0">
-        <div className="overflow-x-auto px-4">
-          <Table>
-          <TableHeader>
-            <TableRow className="hover:bg-transparent">
-              <TableHead className="w-[50px]">
+        <div>
+        {filterOpen && (
+          <div className="border-b border-gray-100 bg-gray-50/70 px-5 py-4">
+            <div className="grid gap-3 md:grid-cols-2">
+              <div className="space-y-1.5">
+                <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-gray-500">
+                  <Filter className="h-3.5 w-3.5 text-pink-500" />
+                  Status
+                </div>
+                <Combobox
+                  options={STATUS_OPTIONS}
+                  value={statusFilter}
+                  onChange={(value) => {
+                    setStatusFilter(value as POStatus | "all");
+                    setPagination((prev) => ({ ...prev, page: 1 }));
+                  }}
+                  placeholder="Filter status..."
+                  searchPlaceholder="Cari status..."
+                  emptyMessage="Status tidak ditemukan"
+                  className="!w-full h-9 text-sm"
+                />
+              </div>
+            </div>
+          </div>
+        )}
+
+        <div className="overflow-x-auto">
+          <table className="min-w-full text-sm">
+          <thead className="border-b border-gray-100 bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
+            <tr>
+              <th className="w-[50px] px-4 py-3 text-left font-semibold">
                 <input
                   type="checkbox"
                   checked={selectedIds.size === pos.length && pos.length > 0}
                   onChange={(e) => toggleSelectAll(e.target.checked)}
                   className="rounded border-gray-300"
                 />
-              </TableHead>
-              <TableHead className="text-gray-900">Nomor PO</TableHead>
-              <TableHead className="text-gray-900">Supplier</TableHead>
-              <TableHead className="text-gray-900">Tanggal</TableHead>
-              <TableHead className="text-right text-gray-900">Total</TableHead>
-              <TableHead className="text-center text-gray-900">Status</TableHead>
-              <TableHead className="text-gray-900">Progress</TableHead>
-              <TableHead className="text-right text-gray-900">Aksi</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
+              </th>
+              <th className="px-4 py-3 text-left font-semibold">Nomor PO</th>
+              <th className="px-4 py-3 text-left font-semibold">Supplier</th>
+              <th className="px-4 py-3 text-left font-semibold">Tanggal</th>
+              <th className="px-4 py-3 text-right font-semibold">Total</th>
+              <th className="px-4 py-3 text-center font-semibold">Status</th>
+              <th className="px-4 py-3 text-left font-semibold">Progress</th>
+              <th className="px-4 py-3 text-right font-semibold">Aksi</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-100">
             {loading ? (
-              <TableRow>
-                <TableCell colSpan={8} className="text-center py-12">
+              <tr>
+                <td colSpan={8} className="py-12 text-center text-sm text-gray-500">
                   Memuat data...
-                </TableCell>
-              </TableRow>
+                </td>
+              </tr>
             ) : pos.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={8} className="text-center py-14">
+              <tr>
+                <td colSpan={8} className="py-14 text-center text-sm text-gray-500">
                   Tidak ada data PO
-                </TableCell>
-              </TableRow>
+                </td>
+              </tr>
             ) : (
               pos.map((po) => (
-                <TableRow key={po.id}>
-                  <TableCell>
+                <tr key={po.id} className="hover:bg-gray-50">
+                  <td className="px-4 py-3">
                     <input
                       type="checkbox"
                       checked={selectedIds.has(po.id)}
                       onChange={() => toggleSelectItem(po.id)}
                       className="rounded border-gray-300"
                     />
-                  </TableCell>
-                  <TableCell className="font-medium">
+                  </td>
+                  <td className="px-4 py-3 font-medium">
                     <Link
                       href={`/dashboard/purchasing/po/${po.id}`}
                       className="hover:underline text-pink-600"
                     >
                       {po.nomor_po}
                     </Link>
-                  </TableCell>
-                  <TableCell>{po.nama_supplier || po.supplier_kode}</TableCell>
-                  <TableCell>{formatDate(po.tanggal_po)}</TableCell>
-                  <TableCell className="text-right font-medium">
+                  </td>
+                  <td className="px-4 py-3 text-gray-700">{po.nama_supplier || po.supplier_kode}</td>
+                  <td className="px-4 py-3 text-gray-700">{formatDate(po.tanggal_po)}</td>
+                  <td className="px-4 py-3 text-right font-medium">
                     {formatCurrency(po.grand_total || 0)}
-                  </TableCell>
-                  <TableCell className="text-center">
+                  </td>
+                  <td className="px-4 py-3 text-center">
                     <div className="flex flex-col items-center gap-1">
                       {getStatusBadge(po.status)}
                       {getLifecycleBadge(po)}
                     </div>
-                  </TableCell>
-                  <TableCell className="text-right">
+                  </td>
+                  <td className="px-4 py-3">
                     {normalizeStatus(po.status) !== "draft" && normalizeStatus(po.status) !== "cancelled" && (
                       <div className="grid gap-1">
                         <div className="flex items-center gap-2">
@@ -572,8 +591,8 @@ export default function PurchaseOrdersPage() {
                         </div>
                       </div>
                     )}
-                  </TableCell>
-                  <TableCell className="text-right">
+                  </td>
+                  <td className="px-4 py-3 text-right">
                     <div className="flex items-center justify-end gap-2">
                       <Link href={`/dashboard/purchasing/po/${po.id}`}>
                         <Button variant="ghost" size="sm" className="cursor-pointer" title="Lihat detail">
@@ -610,42 +629,23 @@ export default function PurchaseOrdersPage() {
                         </Button>
                       )}
                     </div>
-                  </TableCell>
-                </TableRow>
+                  </td>
+                </tr>
               ))
             )}
-          </TableBody>
-        </Table>
+          </tbody>
+        </table>
         </div>
 
-      {/* Pagination */}
-        <div className="border-t border-gray-200/70">
-          <div className="flex items-center justify-between px-4 py-3">
-            <p className="text-sm text-gray-500">
-              Halaman {pagination.page} dari {Math.max(1, pagination.total_pages)}
-            </p>
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setPagination((prev) => ({ ...prev, page: Math.max(1, prev.page - 1) }))}
-                disabled={pagination.page === 1}
-              >
-                Sebelumnya
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setPagination((prev) => ({ ...prev, page: Math.min(Math.max(1, pagination.total_pages), prev.page + 1) }))}
-                disabled={pagination.page >= Math.max(1, pagination.total_pages)}
-              >
-                Berikutnya
-              </Button>
-            </div>
-          </div>
+        <PurchasingTablePagination
+          page={pagination.page}
+          totalPages={Math.max(1, pagination.total_pages)}
+          totalItems={pagination.total}
+          pageSize={pagination.limit}
+          onPageChange={(nextPage) => setPagination((prev) => ({ ...prev, page: nextPage }))}
+        />
         </div>
-        </CardContent>
-      </Card>
+      </PurchasingListSection>
 
       {/* Send Dialog */}
       <Dialog open={isSendDialogOpen} onOpenChange={setIsSendDialogOpen}>

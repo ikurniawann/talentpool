@@ -64,6 +64,7 @@ import {
   createPurchaseOrderPaymentTerm,
   createVendorPayment,
 } from "@/lib/purchasing";
+import { BreadcrumbNav } from "@/modules/purchasing/components/breadcrumb/BreadcrumbNav";
 
 export default function PODetailPage() {
   const params = useParams();
@@ -406,28 +407,45 @@ export default function PODetailPage() {
   }
 
   return (
-    <div className="container mx-auto py-6 space-y-6 print-area">
+    <div className="space-y-6 print-area">
+      <BreadcrumbNav
+        items={[
+          { label: "Purchasing", href: "/dashboard/purchasing" },
+          { label: "Procurement", href: "/dashboard/purchasing/procurement" },
+          { label: "Purchase Order", href: "/dashboard/purchasing/po" },
+          { label: po.nomor_po },
+        ]}
+      />
+
       {/* Header - Hide from print */}
-      <div className="flex justify-between items-start no-print">
-        <div className="flex items-center gap-4">
-          <Link href="/dashboard/purchasing/po">
-            <Button variant="ghost" size="icon">
-              <ArrowLeft className="w-5 h-5" />
-            </Button>
-          </Link>
-          <div>
-            <h1 className="text-2xl font-bold">Purchase Order Detail</h1>
-            <p className="text-muted-foreground">{po.nomor_po}</p>
+      <div className="no-print flex flex-col items-start justify-between gap-4 border-b border-gray-200/70 pb-4 sm:flex-row sm:items-center">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <h1 className="text-2xl font-bold text-gray-900">{po.nomor_po}</h1>
+            {getStatusBadge(po.status)}
+          </div>
+          <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-gray-500">
+            <span>{po.nama_supplier || "-"}</span>
+            <span className="text-gray-300">•</span>
+            <span>{formatDate(po.tanggal_po)}</span>
+            <span className="text-gray-300">•</span>
+            <span>{formatCurrency(po.grand_total || 0)}</span>
           </div>
         </div>
-        <div className="flex gap-2">
+        <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap">
+          <Link href="/dashboard/purchasing/po">
+            <Button variant="outline" className="purchasing-secondary-button w-full sm:w-auto">
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Kembali
+            </Button>
+          </Link>
           {normalizedStatus !== "draft" && normalizedStatus !== "cancelled" && (
-            <Button variant="outline" onClick={() => openPaymentDialog()}>
+            <Button variant="outline" onClick={() => openPaymentDialog()} className="purchasing-secondary-button w-full sm:w-auto">
               <CreditCard className="w-4 h-4 mr-2" />
               Catat Pembayaran
             </Button>
           )}
-          <Button variant="outline" onClick={handlePrint}>
+          <Button variant="outline" onClick={handlePrint} className="purchasing-secondary-button w-full sm:w-auto">
             <Printer className="w-4 h-4 mr-2" />
             Print
           </Button>
@@ -435,9 +453,9 @@ export default function PODetailPage() {
           {normalizedStatus === "draft" && (
             <>
               <Link href={`/dashboard/purchasing/po/${po.id}/edit`}>
-                <Button variant="outline">Edit</Button>
+                <Button variant="outline" className="purchasing-secondary-button w-full sm:w-auto">Edit</Button>
               </Link>
-              <Button onClick={() => setIsApproveDialogOpen(true)} className="purchasing-main-button">
+              <Button onClick={() => setIsApproveDialogOpen(true)} className="purchasing-main-button w-full sm:w-auto">
                 <CheckCircle className="w-4 h-4 mr-2" />
                 Approve
               </Button>
@@ -445,7 +463,7 @@ export default function PODetailPage() {
           )}
           
           {normalizedStatus === "approved" && (
-            <Button onClick={() => setIsSendDialogOpen(true)} className="purchasing-main-button">
+            <Button onClick={() => setIsSendDialogOpen(true)} className="purchasing-main-button w-full sm:w-auto">
               <Send className="w-4 h-4 mr-2" />
               Kirim ke Supplier
             </Button>
@@ -453,7 +471,7 @@ export default function PODetailPage() {
 
           {["approved", "sent", "partial", "partially_received"].includes(normalizedStatus || "") && (
             <Link href={`/dashboard/purchasing/delivery/new?po_id=${po.id}`}>
-              <Button variant="outline">
+              <Button variant="outline" className="purchasing-secondary-button w-full sm:w-auto">
                 <Truck className="w-4 h-4 mr-2" />
                 Buat Delivery
               </Button>
@@ -461,7 +479,7 @@ export default function PODetailPage() {
           )}
           
           {normalizedStatus !== "received" && normalizedStatus !== "cancelled" && (
-            <Button variant="destructive" onClick={() => setIsCancelDialogOpen(true)} className="purchasing-main-button">
+            <Button variant="outline" onClick={() => setIsCancelDialogOpen(true)} className="h-10 w-full rounded-lg border-red-200 bg-white px-3 text-sm font-medium text-red-600 shadow-sm hover:!border-red-200 hover:!bg-red-50 hover:!text-red-700 sm:w-auto">
               <XCircle className="w-4 h-4 mr-2" />
               Batal
             </Button>
@@ -1014,7 +1032,7 @@ export default function PODetailPage() {
                   {paymentTerms.map((term) => {
                     const remaining = Math.max(0, Number(term.amount || 0) - Number(term.paid_amount || 0));
                     return (
-                      <SelectItem key={term.id} value={term.id} disabled={remaining <= 0}>
+                      <SelectItem key={term.id} value={term.id}>
                         {term.description || `Termin ${term.term_no}`} - Sisa {formatCurrency(remaining)}
                       </SelectItem>
                     );

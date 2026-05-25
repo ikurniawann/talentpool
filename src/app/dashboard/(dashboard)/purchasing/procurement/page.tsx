@@ -4,7 +4,16 @@ import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { BreadcrumbNav } from "@/modules/purchasing/components/breadcrumb/BreadcrumbNav";
-import { ArrowLeftRight, ArrowRight, CheckCircle, ClipboardList, ShoppingCart, Truck } from "lucide-react";
+import {
+  ArrowLeftRight,
+  ArrowRight,
+  CheckCircle,
+  ClipboardList,
+  CookingPot,
+  Factory,
+  ShoppingCart,
+  Truck,
+} from "lucide-react";
 
 const PROCUREMENT_CARDS = [
   {
@@ -26,10 +35,26 @@ const PROCUREMENT_CARDS = [
   {
     href: "/dashboard/purchasing/grn",
     icon: Truck,
-    title: "Penerimaan",
+    title: "Barang Masuk",
     description: "Catat penerimaan barang dari supplier dan update progres penerimaan PO.",
     accent: "text-green-600",
     bg: "bg-green-50",
+  },
+  {
+    href: "/dashboard/purchasing/production",
+    icon: Factory,
+    title: "Produksi",
+    description: "Kelola kebutuhan produksi, order produksi, dan pemakaian bahan baku.",
+    accent: "text-violet-600",
+    bg: "bg-violet-50",
+  },
+  {
+    href: "/dashboard/purchasing/production/recipes",
+    icon: CookingPot,
+    title: "Recipe/BOM",
+    description: "Kelola resep produk dan komposisi bahan baku untuk perhitungan kebutuhan produksi.",
+    accent: "text-indigo-600",
+    bg: "bg-indigo-50",
   },
   {
     href: "/dashboard/purchasing/qc",
@@ -66,7 +91,7 @@ export default function ProcurementHubPage() {
 
       <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
         {PROCUREMENT_CARDS.map((card) => (
-          <Card key={card.href} className="transition-shadow hover:shadow-md">
+          <Card key={card.href} className="flex h-full flex-col transition-shadow hover:shadow-md">
             <CardHeader className="pb-3">
               <div className="flex items-center gap-3">
                 <div className={`rounded-lg p-2 ${card.bg}`}>
@@ -75,10 +100,10 @@ export default function ProcurementHubPage() {
                 <CardTitle className="text-lg">{card.title}</CardTitle>
               </div>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <p className="text-sm text-gray-600">{card.description}</p>
+            <CardContent className="flex flex-1 flex-col space-y-4">
+              <p className="flex-1 text-sm text-gray-600">{card.description}</p>
               <Link href={card.href}>
-                <Button variant="outline" size="sm" className={`w-full border-current ${card.accent}`}>
+                <Button variant="outline" size="sm" className="h-10 w-full gap-2 rounded-lg border-pink-200 bg-white px-3 text-sm font-medium text-pink-700 shadow-sm hover:!border-pink-200 hover:!bg-pink-50 hover:!text-pink-700">
                   Buka Menu
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </Button>

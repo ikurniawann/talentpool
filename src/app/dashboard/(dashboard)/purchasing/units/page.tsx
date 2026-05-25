@@ -4,7 +4,6 @@ import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -13,19 +12,12 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Combobox } from "@/components/ui/combobox";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { BreadcrumbNav } from "@/modules/purchasing/components/breadcrumb/BreadcrumbNav";
+import { PurchasingTablePagination } from "@/modules/purchasing/components/pagination/PurchasingTablePagination";
 import { Loader2, Pencil, Plus, Scale, Search, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 import { useActivityLogger } from "@/hooks/useActivityLogger";
@@ -122,6 +114,15 @@ export default function UnitsPage() {
   useEffect(() => {
     fetchUnits();
   }, [fetchUnits]);
+
+  useEffect(() => {
+    const timeout = window.setTimeout(() => {
+      setSearch(searchQuery.trim());
+      setPage(1);
+    }, 300);
+
+    return () => window.clearTimeout(timeout);
+  }, [searchQuery]);
 
   // ── Actions ──────────────────────────────────────────────────
 
@@ -233,18 +234,6 @@ export default function UnitsPage() {
     }
   };
 
-  const handleResetFilters = () => {
-    setSearchQuery("");
-    setSearch("");
-    setPage(1);
-  };
-
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    setSearch(searchQuery.trim());
-    setPage(1);
-  };
-
   // ── Helpers ──────────────────────────────────────────────────
 
   const getTipeBadge = (tipe: string) => {
@@ -285,51 +274,39 @@ export default function UnitsPage() {
         </Button>
       </div>
 
-      <Card>
-        <CardContent className="p-4">
-          <div className="flex flex-col gap-3 md:flex-row md:items-center">
-            <form onSubmit={handleSearch} className="flex flex-1 gap-2">
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-                <Input
-                  placeholder="Cari kode atau nama satuan..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="h-9 pl-10 pr-10 text-sm"
-                />
-                {searchQuery && (
-                  <button
-                    type="button"
-                    onClick={() => setSearchQuery("")}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 transition-colors hover:text-gray-700"
-                    aria-label="Hapus pencarian"
-                  >
-                    <X className="h-4 w-4" />
-                  </button>
-                )}
-              </div>
-              <Button type="submit" variant="outline" className="h-9 flex-shrink-0">
-                Cari
-              </Button>
-            </form>
-
-            {(search || page > 1) && (
-              <Button variant="outline" onClick={handleResetFilters} className="h-9 flex-shrink-0">
-                Reset
-              </Button>
-            )}
+      <section className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+        <div className="flex flex-col gap-3 border-b border-gray-100 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-3">
+            <span className="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-pink-50 text-pink-600">
+              <Scale className="h-5 w-5" />
+            </span>
+            <div>
+              <h2 className="text-base font-semibold text-gray-950">Daftar Satuan</h2>
+              <p className="text-xs text-gray-500">Kelola satuan besar, kecil, dan konversi untuk pembelian dan stok.</p>
+            </div>
           </div>
-        </CardContent>
-      </Card>
+          <label className="relative w-full sm:w-80">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+            <Input
+              placeholder="Cari satuan..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="h-10 bg-white pl-9 pr-9 text-sm focus:border-pink-400 focus:ring-2 focus:ring-pink-100"
+            />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery("")}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 transition-colors hover:text-gray-700"
+                aria-label="Hapus pencarian"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            )}
+          </label>
+        </div>
 
-      <Card>
-        <CardHeader className="border-b border-gray-200/70 pb-3">
-          <CardTitle className="flex items-center gap-2 text-base">
-            <Scale className="h-5 w-5" />
-            Daftar Satuan
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="p-0">
+        <div>
           {loading ? (
             <div className="py-12 text-center">
               <Loader2 className="mx-auto h-8 w-8 animate-spin text-pink-600" />
@@ -349,30 +326,30 @@ export default function UnitsPage() {
             </div>
           ) : (
             <>
-              <div className="px-4">
-                <Table>
-                  <TableHeader>
-                    <TableRow className="hover:bg-transparent">
-                      <TableHead className="text-gray-900">Kode</TableHead>
-                      <TableHead className="text-gray-900">Nama</TableHead>
-                      <TableHead className="text-gray-900">Tipe</TableHead>
-                      <TableHead className="text-gray-900">Deskripsi</TableHead>
-                      <TableHead className="text-center text-gray-900">Status</TableHead>
-                      <TableHead className="text-right text-gray-900">Aksi</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
+              <div className="overflow-x-auto">
+                <table className="min-w-full text-sm">
+                  <thead className="border-b border-gray-100 bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
+                    <tr>
+                      <th className="px-4 py-3 text-left font-semibold">Kode</th>
+                      <th className="px-4 py-3 text-left font-semibold">Nama</th>
+                      <th className="px-4 py-3 text-left font-semibold">Tipe</th>
+                      <th className="px-4 py-3 text-left font-semibold">Deskripsi</th>
+                      <th className="px-4 py-3 text-center font-semibold">Status</th>
+                      <th className="px-4 py-3 text-right font-semibold">Aksi</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
                     {units.map((unit) => (
-                      <TableRow key={unit.id}>
-                        <TableCell>
-                          <span className="font-medium text-gray-900">{unit.kode}</span>
-                        </TableCell>
-                        <TableCell className="text-gray-700">{unit.nama}</TableCell>
-                        <TableCell>{getTipeBadge(unit.tipe)}</TableCell>
-                        <TableCell className="max-w-[320px] truncate text-gray-600">
+                      <tr key={unit.id} className="hover:bg-gray-50">
+                        <td className="px-4 py-3">
+                          <span className="font-medium text-gray-950">{unit.kode}</span>
+                        </td>
+                        <td className="px-4 py-3 text-gray-700">{unit.nama}</td>
+                        <td className="px-4 py-3">{getTipeBadge(unit.tipe)}</td>
+                        <td className="max-w-[320px] truncate px-4 py-3 text-gray-600">
                           {unit.deskripsi || "-"}
-                        </TableCell>
-                        <TableCell className="text-center">
+                        </td>
+                        <td className="px-4 py-3 text-center">
                           <div className="flex items-center justify-center">
                             <Switch
                               checked={unit.is_active}
@@ -383,8 +360,8 @@ export default function UnitsPage() {
                               aria-label={`Ubah status ${unit.nama}`}
                             />
                           </div>
-                        </TableCell>
-                        <TableCell className="text-right">
+                        </td>
+                        <td className="px-4 py-3 text-right">
                           <div className="flex items-center justify-end gap-2">
                             <Button
                               variant="ghost"
@@ -403,42 +380,24 @@ export default function UnitsPage() {
                               <Trash2 className="h-4 w-4" />
                             </Button>
                           </div>
-                        </TableCell>
-                      </TableRow>
+                        </td>
+                      </tr>
                     ))}
-                  </TableBody>
-                </Table>
+                  </tbody>
+                </table>
               </div>
 
-              <div className="border-t border-gray-200/70">
-                <div className="flex items-center justify-between px-4 py-3">
-                  <p className="text-sm text-gray-500">
-                    Halaman {page} dari {totalPages}
-                  </p>
-                  <div className="flex items-center gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setPage((p) => Math.max(1, p - 1))}
-                      disabled={page === 1}
-                    >
-                      Sebelumnya
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                      disabled={page === totalPages}
-                    >
-                      Berikutnya
-                    </Button>
-                  </div>
-                </div>
-              </div>
+              <PurchasingTablePagination
+                page={page}
+                totalPages={totalPages}
+                totalItems={total}
+                pageSize={limit}
+                onPageChange={setPage}
+              />
             </>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </section>
 
       {/* Add/Edit Dialog */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
@@ -468,6 +427,7 @@ export default function UnitsPage() {
                   placeholder="Contoh: KG"
                   maxLength={10}
                   required
+                  className="h-9 text-sm"
                 />
               </div>
               <div className="space-y-1.5">
@@ -483,6 +443,7 @@ export default function UnitsPage() {
                   placeholder="Contoh: Kilogram"
                   maxLength={50}
                   required
+                  className="h-9 text-sm"
                 />
               </div>
               <div className="space-y-1.5">

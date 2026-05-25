@@ -106,7 +106,22 @@ export async function GET(request: NextRequest) {
 
     if (search) {
       query = query.or(
-        `nama_supplier.ilike.%${search}%,kode.ilike.%${search}%,kota.ilike.%${search}%`
+        [
+          `nama_supplier.ilike.%${search}%`,
+          `kode.ilike.%${search}%`,
+          `kota.ilike.%${search}%`,
+          `pic_name.ilike.%${search}%`,
+          `pic_phone.ilike.%${search}%`,
+          `pic_email.ilike.%${search}%`,
+          `telepon.ilike.%${search}%`,
+          `email.ilike.%${search}%`,
+          `alamat.ilike.%${search}%`,
+          `npwp.ilike.%${search}%`,
+          `payment_terms.ilike.%${search}%`,
+          `kategori.ilike.%${search}%`,
+          `catatan.ilike.%${search}%`,
+          `status.ilike.%${search}%`,
+        ].join(",")
       );
     }
 

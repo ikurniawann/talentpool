@@ -19,6 +19,7 @@ import { ArrowLeft, Package, Calculator, Edit, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { ProductWithCOGS, BOMItem } from "@/types/purchasing";
 import { getProduct, listBOMItems, deleteProduct } from "@/lib/purchasing";
+import { BreadcrumbNav } from "@/modules/purchasing/components/breadcrumb/BreadcrumbNav";
 import {
   Dialog,
   DialogContent,
@@ -30,6 +31,37 @@ import {
 
 function getErrorMessage(error: unknown, fallback: string) {
   return error instanceof Error ? error.message : fallback;
+}
+
+function getBomQty(item: BOMItem) {
+  return item.qty_needed ?? item.qty_required ?? item.qty ?? 0;
+}
+
+function getBomWastePercent(item: BOMItem) {
+  if (item.waste_persen !== undefined && item.waste_persen !== null) {
+    return item.waste_persen;
+  }
+  return (item.waste_factor ?? 0) * 100;
+}
+
+function getBomUnitLabel(item: BOMItem) {
+  return (
+    item.satuan?.nama ||
+    item.unit?.nama ||
+    item.raw_material?.satuan_kecil?.kode ||
+    item.raw_material?.satuan_kecil?.simbol ||
+    item.raw_material?.satuan_kecil?.nama ||
+    item.raw_material?.satuan_kecil_nama ||
+    item.raw_material?.satuan ||
+    item.raw_material?.satuan_besar?.kode ||
+    item.raw_material?.satuan_besar?.simbol ||
+    item.raw_material?.satuan_besar?.nama ||
+    "-"
+  );
+}
+
+function getBomSubtotal(item: BOMItem) {
+  return item.subtotal ?? item.total_cost ?? 0;
 }
 
 export default function ProductDetailPage() {
@@ -53,9 +85,9 @@ export default function ProductDetailPage() {
       // Map BOM data dengan fallback untuk field yang mungkin undefined
       const mappedBomItems = bomData.map((item) => ({
         ...item,
-        qty_needed: item.qty_required || item.qty_needed || 0,
-        waste_persen: ((item.waste_factor || 0) * 100) || 0,
-        subtotal: item.total_cost || item.subtotal || 0,
+        qty_needed: getBomQty(item),
+        waste_persen: getBomWastePercent(item),
+        subtotal: getBomSubtotal(item),
       }));
       
       setProduct(productData);
@@ -121,41 +153,52 @@ export default function ProductDetailPage() {
   const margin = calculateMargin();
 
   return (
-    <div className="container mx-auto py-6 space-y-6">
-      {/* Header */}
-      <div className="flex justify-between items-start">
-        <div className="flex items-center gap-4">
-          <Link href="/dashboard/purchasing/products">
-            <Button variant="ghost" size="icon">
-              <ArrowLeft className="w-5 h-5" />
-            </Button>
-          </Link>
-          <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-2xl font-bold">{product.nama}</h1>
-              {product.is_active ? (
-                <Badge className="bg-green-100 text-green-800">Aktif</Badge>
-              ) : (
-                <Badge variant="secondary">Nonaktif</Badge>
-              )}
-            </div>
-            <p className="text-muted-foreground">{product.kode_produk}</p>
+    <div className="space-y-6">
+      <BreadcrumbNav
+        items={[
+          { label: "Purchasing", href: "/dashboard/purchasing" },
+          { label: "Master Data", href: "/dashboard/purchasing/main" },
+          { label: "Produk", href: "/dashboard/purchasing/products" },
+          { label: product.nama },
+        ]}
+      />
+
+      <div className="flex flex-col items-start justify-between gap-4 border-b border-gray-200/70 pb-4 sm:flex-row sm:items-center">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <h1 className="text-2xl font-bold text-gray-900">{product.nama}</h1>
+            {product.is_active ? (
+              <Badge className="bg-green-100 text-green-800">Aktif</Badge>
+            ) : (
+              <Badge variant="secondary">Nonaktif</Badge>
+            )}
+          </div>
+          <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-gray-500">
+            <span className="rounded-md bg-gray-100 px-2 py-0.5 font-mono text-xs text-gray-700">{product.kode_produk}</span>
+            <span className="text-gray-300">•</span>
+            <span>{product.kategori || "-"}</span>
           </div>
         </div>
-        <div className="flex gap-2">
+        <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+          <Link href="/dashboard/purchasing/products">
+            <Button variant="outline" className="purchasing-secondary-button w-full sm:w-auto">
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Kembali
+            </Button>
+          </Link>
           <Link href={`/dashboard/purchasing/products/${product.id}/edit`}>
-            <Button variant="outline">
+            <Button variant="outline" className="purchasing-secondary-button w-full sm:w-auto">
               <Edit className="w-4 h-4 mr-2" />
               Edit
             </Button>
           </Link>
           <Link href={`/dashboard/purchasing/products/${product.id}/bom`}>
-            <Button variant="outline">
+            <Button variant="outline" className="purchasing-secondary-button w-full sm:w-auto">
               <Calculator className="w-4 h-4 mr-2" />
               Edit BOM
             </Button>
           </Link>
-          <Button variant="destructive" onClick={() => setIsDeleteDialogOpen(true)}>
+          <Button variant="outline" onClick={() => setIsDeleteDialogOpen(true)} className="h-10 w-full rounded-lg border-red-200 bg-white px-3 text-sm font-medium text-red-600 shadow-sm hover:!border-red-200 hover:!bg-red-50 hover:!text-red-700 sm:w-auto">
             <Trash2 className="w-4 h-4 mr-2" />
             Hapus
           </Button>
@@ -284,11 +327,11 @@ export default function ProductDetailPage() {
                           <div className="font-medium">{item.raw_material?.nama}</div>
                           <div className="text-sm text-muted-foreground">{item.raw_material?.kode}</div>
                         </TableCell>
-                        <TableCell className="text-right">{item.qty_needed}</TableCell>
-                        <TableCell>{item.satuan?.nama || "-"}</TableCell>
-                        <TableCell className="text-right">{item.waste_persen}%</TableCell>
+                        <TableCell className="text-right">{getBomQty(item)}</TableCell>
+                        <TableCell>{getBomUnitLabel(item)}</TableCell>
+                        <TableCell className="text-right">{getBomWastePercent(item)}%</TableCell>
                         <TableCell className="text-right">
-                          {formatCurrency(item.subtotal)}
+                          {formatCurrency(getBomSubtotal(item))}
                         </TableCell>
                       </TableRow>
                     ))}
@@ -297,7 +340,7 @@ export default function ProductDetailPage() {
                         Total HPP
                       </TableCell>
                       <TableCell className="text-right font-semibold">
-                        {formatCurrency(bomItems.reduce((sum, item) => sum + (item.subtotal || 0), 0))}
+                        {formatCurrency(bomItems.reduce((sum, item) => sum + getBomSubtotal(item), 0))}
                       </TableCell>
                     </TableRow>
                   </TableBody>

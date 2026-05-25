@@ -463,7 +463,7 @@ export default function CreateGrnPage() {
                 </div>
 
                 {selectedDelivery && (
-                  <div className="space-y-3 pt-4 border-t mt-4">
+                  <div className="mt-4 space-y-3 border-t border-gray-200/70 pt-4">
                     <div>
                       <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">No. Resi</span>
                       <p className="text-sm font-semibold text-gray-900 mt-0.5">{selectedDelivery.no_resi}</p>
@@ -486,7 +486,7 @@ export default function CreateGrnPage() {
                 )}
 
                 {/* Informasi Penerimaan */}
-                <div className="space-y-3 pt-4 border-t mt-4">
+                <div className="mt-4 space-y-3 border-t border-gray-200/70 pt-4">
                   <div className="space-y-1.5">
                     <Label htmlFor="tanggal">Tanggal Penerimaan</Label>
                     <DatePicker
@@ -633,7 +633,7 @@ export default function CreateGrnPage() {
                   </table>
                 )}
               </CardContent>
-              <div className="border-t border-gray-200 px-4 py-4 flex justify-end gap-3 bg-gray-50">
+              <div className="flex justify-end gap-3 border-t border-gray-200/70 bg-gray-50 px-4 py-4">
                 <Button type="button" variant="outline" onClick={() => router.back()} className="purchasing-secondary-button px-6">
                   Batal
                 </Button>

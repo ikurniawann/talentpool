@@ -13,6 +13,8 @@ const productSchema = z.object({
   kategori: z.string().optional(),
   satuan_id: z.string().uuid().optional(),
   harga_jual: z.number().min(0).default(0),
+  harga_modal: z.number().min(0).optional(),
+  markup_persen: z.number().optional(),
 });
 
 function getErrorMessage(error: unknown, fallback: string) {

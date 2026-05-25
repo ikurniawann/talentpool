@@ -3,20 +3,13 @@
 import { useState, useEffect, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
+import { Combobox } from "@/components/ui/combobox";
 import { PriceHistoryChart } from "./PriceHistoryChart";
 import { PriceHistoryTable } from "./PriceHistoryTable";
-import { LineChart, Table as TableIcon, RefreshCw, TrendingUp, TrendingDown, Minus } from "lucide-react";
+import { BarChart3, FileText, LineChart, Table as TableIcon, RefreshCw, TrendingUp, TrendingDown, Minus } from "lucide-react";
 import { toast } from "sonner";
 
 interface PriceHistoryData {
@@ -134,14 +127,26 @@ export function SupplierPriceHistoryPanel({
   const avgPriceChange = priceStats.length > 0 
     ? priceStats.reduce((sum, stat) => sum + stat.total_price_change_percent, 0) / priceStats.length 
     : 0;
+  const hasHistory = priceHistory.length > 0;
+  const materialOptions = [
+    { value: "all", label: "Semua Bahan Baku" },
+    ...materials.map((material) => ({ value: material.id, label: material.name })),
+  ];
+  const timeRangeOptions = [
+    { value: "3", label: "3 Bulan Terakhir" },
+    { value: "6", label: "6 Bulan Terakhir" },
+    { value: "12", label: "12 Bulan Terakhir" },
+    { value: "24", label: "24 Bulan Terakhir" },
+  ];
 
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 border-b border-gray-200/70 pb-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h2 className="text-xl font-bold text-gray-900">
-            📊 Riwayat Harga Supplier
+          <h2 className="flex items-center gap-2 text-xl font-bold text-gray-900">
+            <BarChart3 className="h-5 w-5 text-pink-600" />
+            Riwayat Harga Supplier
           </h2>
           <p className="text-sm text-gray-500">
             {supplierName || "Supplier"} - {totalMaterials} bahan baku • {totalPriceChanges} perubahan harga
@@ -152,6 +157,7 @@ export function SupplierPriceHistoryPanel({
           size="sm"
           onClick={fetchData}
           disabled={loading}
+          className="purchasing-secondary-button w-full sm:w-auto"
         >
           <RefreshCw className={`w-4 h-4 mr-2 ${loading ? "animate-spin" : ""}`} />
           Refresh
@@ -159,8 +165,8 @@ export function SupplierPriceHistoryPanel({
       </div>
 
       {/* Summary Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card className="border-0 shadow-sm">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+        <Card className="border-gray-200/70 shadow-sm">
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
@@ -174,7 +180,7 @@ export function SupplierPriceHistoryPanel({
           </CardContent>
         </Card>
 
-        <Card className="border-0 shadow-sm">
+        <Card className="border-gray-200/70 shadow-sm">
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
@@ -188,7 +194,7 @@ export function SupplierPriceHistoryPanel({
           </CardContent>
         </Card>
 
-        <Card className="border-0 shadow-sm">
+        <Card className="border-gray-200/70 shadow-sm">
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
@@ -212,77 +218,93 @@ export function SupplierPriceHistoryPanel({
       </div>
 
       {/* Filters */}
-      <Card className="border-0 shadow-sm">
+      <Card className="border-gray-200/70 shadow-sm">
         <CardContent className="p-4">
-          <div className="flex flex-wrap gap-4">
-            <div className="flex-1 min-w-[200px]">
+          <div className="grid gap-4 md:grid-cols-2">
+            <div>
               <Label className="text-xs font-medium text-gray-600 mb-1 block">
                 Filter Bahan Baku
               </Label>
-              <Select value={selectedMaterial} onValueChange={setSelectedMaterial}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Semua bahan baku" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Semua Bahan Baku</SelectItem>
-                  {materials.map((material) => (
-                    <SelectItem key={material.id} value={material.id}>
-                      {material.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Combobox
+                options={materialOptions}
+                value={selectedMaterial}
+                onChange={(value) => setSelectedMaterial(value || "all")}
+                placeholder="Semua bahan baku"
+                searchPlaceholder="Cari bahan baku..."
+                emptyMessage="Bahan tidak ditemukan"
+                className="h-9 text-sm"
+              />
             </div>
 
-            <div className="flex-1 min-w-[200px]">
+            <div>
               <Label className="text-xs font-medium text-gray-600 mb-1 block">
                 Periode Waktu
               </Label>
-              <Select value={String(timeRange)} onValueChange={(v) => setTimeRange(Number(v))}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="3">3 Bulan Terakhir</SelectItem>
-                  <SelectItem value="6">6 Bulan Terakhir</SelectItem>
-                  <SelectItem value="12">12 Bulan Terakhir</SelectItem>
-                  <SelectItem value="24">24 Bulan Terakhir</SelectItem>
-                </SelectContent>
-              </Select>
+              <Combobox
+                options={timeRangeOptions}
+                value={String(timeRange)}
+                onChange={(value) => setTimeRange(Number(value || 6))}
+                placeholder="Pilih periode..."
+                searchPlaceholder="Cari periode..."
+                emptyMessage="Periode tidak ditemukan"
+                className="h-9 text-sm"
+              />
             </div>
           </div>
         </CardContent>
       </Card>
 
       {/* Chart & Table */}
-      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)}>
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="chart">
+      <Tabs
+        value={activeTab}
+        onValueChange={(v) => setActiveTab(v as "chart" | "table")}
+        className="flex-col space-y-4"
+      >
+        <TabsList
+          variant="line"
+          className="flex h-auto w-full justify-start gap-6 rounded-none border-b border-gray-200 bg-transparent p-0"
+        >
+          <TabsTrigger
+            value="chart"
+            className="h-11 flex-none rounded-none border-0 border-b-2 border-transparent bg-transparent px-0 text-sm font-semibold text-gray-500 shadow-none data-active:border-pink-600 data-active:!bg-transparent data-active:text-pink-700 data-active:shadow-none"
+          >
             <LineChart className="w-4 h-4 mr-2" />
             Grafik Trend
           </TabsTrigger>
-          <TabsTrigger value="table">
+          <TabsTrigger
+            value="table"
+            className="h-11 flex-none rounded-none border-0 border-b-2 border-transparent bg-transparent px-0 text-sm font-semibold text-gray-500 shadow-none data-active:border-pink-600 data-active:!bg-transparent data-active:text-pink-700 data-active:shadow-none"
+          >
             <TableIcon className="w-4 h-4 mr-2" />
             Tabel Histori
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="chart" className="mt-4">
-          <Card className="border-0 shadow-sm">
-            <CardHeader>
+        <TabsContent value="chart" className="mt-0 w-full min-w-0">
+          <Card className="border-gray-200/70 shadow-sm">
+            <CardHeader className="border-b border-gray-200/70 px-4 py-3">
               <CardTitle className="text-base">
                 Trend Harga {selectedMaterial === "all" ? "Semua Bahan Baku" : materials.find(m => m.id === selectedMaterial)?.name}
               </CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="overflow-hidden p-4">
               {loading ? (
                 <div className="h-[300px] flex items-center justify-center text-gray-400">
                   Memuat data...
                 </div>
+              ) : !hasHistory ? (
+                <EmptyPriceHistory
+                  title="Belum ada histori harga"
+                  description={
+                    selectedMaterial === "all"
+                      ? "Supplier ini belum memiliki data daftar harga bahan baku pada periode yang dipilih."
+                      : "Bahan baku yang dipilih belum memiliki histori harga pada periode ini."
+                  }
+                />
               ) : selectedMaterial === "all" ? (
                 <div className="space-y-8">
                   {Object.entries(groupedHistory).slice(0, 5).map(([materialId, items]) => (
-                    <div key={materialId}>
+                    <div key={materialId} className="rounded-lg border border-gray-200/70 p-4">
                       <h4 className="text-sm font-semibold text-gray-700 mb-2">
                         {items[0]?.bahan_baku_nama}
                       </h4>
@@ -304,16 +326,21 @@ export function SupplierPriceHistoryPanel({
           </Card>
         </TabsContent>
 
-        <TabsContent value="table" className="mt-4">
-          <Card className="border-0 shadow-sm">
-            <CardHeader>
+        <TabsContent value="table" className="mt-0 w-full min-w-0">
+          <Card className="border-gray-200/70 shadow-sm">
+            <CardHeader className="border-b border-gray-200/70 px-4 py-3">
               <CardTitle className="text-base">
                 Detail Histori Perubahan Harga
               </CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="p-4">
               {loading ? (
                 <div className="text-center py-8 text-gray-400">Memuat data...</div>
+              ) : !hasHistory ? (
+                <EmptyPriceHistory
+                  title="Belum ada data tabel"
+                  description="Tidak ada histori harga yang bisa ditampilkan untuk filter saat ini."
+                />
               ) : (
                 <PriceHistoryTable 
                   data={priceHistory}
@@ -324,6 +351,23 @@ export function SupplierPriceHistoryPanel({
           </Card>
         </TabsContent>
       </Tabs>
+    </div>
+  );
+}
+
+function EmptyPriceHistory({ title, description }: { title: string; description: string }) {
+  return (
+    <div className="flex min-h-[220px] items-center justify-center rounded-lg border border-dashed border-gray-200 bg-gray-50/60 px-6 py-10 text-center">
+      <div>
+        <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-white text-gray-400 shadow-sm">
+          <FileText className="h-5 w-5" />
+        </div>
+        <p className="text-sm font-semibold text-gray-900">{title}</p>
+        <p className="mt-1 max-w-md text-sm text-gray-500">{description}</p>
+        <p className="mt-3 text-xs text-gray-400">
+          Tambahkan data di menu Daftar Harga agar grafik dan tabel histori muncul.
+        </p>
+      </div>
     </div>
   );
 }

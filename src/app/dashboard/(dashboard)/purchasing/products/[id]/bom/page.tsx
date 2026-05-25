@@ -5,10 +5,10 @@ import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardAction, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { BreadcrumbNav } from "@/modules/purchasing/components/breadcrumb/BreadcrumbNav";
 import { Combobox } from "@/components/ui/combobox";
+import { NumericInput } from "@/components/ui/numeric-input";
 import {
   ChevronLeft,
   Loader2,
@@ -62,6 +62,10 @@ function getErrorMessage(error: unknown, fallback: string) {
 
 function displayName(value?: string | null) {
   return (value || "-").replace(/\s+\d{8,}$/g, "").trim();
+}
+
+function getMaterialSmallUnitLabel(material?: RawMaterialWithStock) {
+  return material?.satuan_kecil_nama || material?.satuan || "Unit";
 }
 
 function mapBomItem(item: BOMItem): BomDraft {
@@ -311,7 +315,7 @@ export default function BOMEditorPage() {
               </div>
             </div>
             <table className="w-full min-w-[900px]">
-              <thead className="border-b bg-gray-50">
+              <thead className="border-b border-gray-200/70 bg-gray-50">
                 <tr>
                   {["Bahan Baku", "Qty", "Waste (%)", "Harga Satuan", "Subtotal", "Aksi"].map((heading) => (
                     <th key={heading} className="px-3 py-2 text-left text-sm font-medium text-gray-600">
@@ -331,7 +335,7 @@ export default function BOMEditorPage() {
                   bomItems.map((item) => {
                     const material = materialMap.get(item.raw_material_id);
                     return (
-                      <tr key={item.id} className="border-b align-top">
+                      <tr key={item.id} className="border-b border-gray-200/70 align-top">
                         <td className="px-3 py-3">
                           <Combobox
                             options={materials.map((materialOption) => ({
@@ -360,32 +364,64 @@ export default function BOMEditorPage() {
                         </td>
                         <td className="px-3 py-3">
                           <Label className="sr-only">Qty</Label>
-                          <Input
-                            type="number"
-                            min="0"
-                            step="0.0001"
-                            value={item.qty_required}
-                            onChange={(event) => updateItem(item.id, { qty_required: toNumber(event.target.value) })}
-                            className="w-28"
-                          />
+                          <div className="flex w-40 rounded-lg border border-gray-300 bg-white focus-within:border-gray-400 focus-within:ring-2 focus-within:ring-gray-100">
+                            <NumericInput
+                              min="0"
+                              step="0.0001"
+                              value={item.qty_required}
+                              onValueChange={(value) => updateItem(item.id, { qty_required: value })}
+                              decimalScale={4}
+                              className="h-9 rounded-r-none border-0 text-sm shadow-none focus-visible:ring-0"
+                            />
+                            <div className="flex min-w-14 items-center justify-center rounded-r-lg border-l border-gray-200 bg-gray-50 px-3 text-xs font-semibold uppercase text-gray-500">
+                              {getMaterialSmallUnitLabel(material)}
+                            </div>
+                          </div>
                         </td>
                         <td className="px-3 py-3">
                           <Label className="sr-only">Waste</Label>
-                          <Input
-                            type="number"
-                            min="0"
-                            max="100"
-                            step="0.1"
-                            value={Math.round(item.waste_factor * 10000) / 100}
-                            onChange={(event) => updateItem(item.id, { waste_factor: toNumber(event.target.value) / 100 })}
-                            className="w-28"
-                          />
+                          <div className="flex w-32 rounded-lg border border-gray-300 bg-white focus-within:border-gray-400 focus-within:ring-2 focus-within:ring-gray-100">
+                            <NumericInput
+                              min="0"
+                              max="100"
+                              step="0.1"
+                              value={Math.round(item.waste_factor * 10000) / 100}
+                              onValueChange={(value) => updateItem(item.id, { waste_factor: value / 100 })}
+                              decimalScale={2}
+                              className="h-9 rounded-r-none border-0 text-sm shadow-none focus-visible:ring-0"
+                            />
+                            <div className="flex min-w-10 items-center justify-center rounded-r-lg border-l border-gray-200 bg-gray-50 px-3 text-xs font-semibold text-gray-500">
+                              %
+                            </div>
+                          </div>
                         </td>
-                        <td className="px-3 py-3 text-sm text-gray-700">
-                          {formatRupiah(item.cost_per_unit)}
+                        <td className="px-3 py-3">
+                          <div className="flex w-36 rounded-lg border border-gray-300 bg-gray-50">
+                            <div className="flex min-w-12 items-center justify-center rounded-l-lg border-r border-gray-200 bg-gray-50 px-3 text-xs font-semibold text-gray-500">
+                              Rp
+                            </div>
+                            <NumericInput
+                              value={item.cost_per_unit}
+                              onValueChange={() => undefined}
+                              decimalScale={0}
+                              disabled
+                              className="h-9 rounded-l-none border-0 bg-gray-50 text-sm font-mono shadow-none focus-visible:ring-0"
+                            />
+                          </div>
                         </td>
-                        <td className="px-3 py-3 text-sm font-semibold text-gray-900">
-                          {formatRupiah(item.total_cost)}
+                        <td className="px-3 py-3">
+                          <div className="flex w-36 rounded-lg border border-gray-300 bg-gray-50">
+                            <div className="flex min-w-12 items-center justify-center rounded-l-lg border-r border-gray-200 bg-gray-50 px-3 text-xs font-semibold text-gray-500">
+                              Rp
+                            </div>
+                            <NumericInput
+                              value={item.total_cost}
+                              onValueChange={() => undefined}
+                              decimalScale={0}
+                              disabled
+                              className="h-9 rounded-l-none border-0 bg-gray-50 text-sm font-mono shadow-none focus-visible:ring-0"
+                            />
+                          </div>
                         </td>
                         <td className="px-3 py-3">
                           <div className="flex gap-2">
@@ -418,7 +454,7 @@ export default function BOMEditorPage() {
                   })
                 )}
               </tbody>
-              <tfoot className="border-t bg-gray-50">
+              <tfoot className="border-t border-gray-200/70 bg-gray-50">
                 <tr>
                   <td colSpan={4} className="px-3 py-3 text-right text-sm font-semibold">
                     TOTAL HPP

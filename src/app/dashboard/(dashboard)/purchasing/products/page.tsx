@@ -4,17 +4,10 @@ import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { Switch } from "@/components/ui/switch";
 import { BreadcrumbNav } from "@/modules/purchasing/components/breadcrumb/BreadcrumbNav";
+import { PurchasingListSection } from "@/modules/purchasing/components/list/PurchasingListSection";
+import { PurchasingTablePagination } from "@/modules/purchasing/components/pagination/PurchasingTablePagination";
 import { Calculator, Eye, Loader2, Package, Pencil, Plus, Search, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 import { ProductWithCOGS } from "@/types/purchasing";
@@ -83,6 +76,15 @@ export default function ProductsPage() {
     loadProducts();
   }, [loadProducts]);
 
+  useEffect(() => {
+    const timeout = window.setTimeout(() => {
+      setSearch(searchQuery.trim());
+      setPagination((prev) => ({ ...prev, page: 1 }));
+    }, 300);
+
+    return () => window.clearTimeout(timeout);
+  }, [searchQuery]);
+
   const handleOpenDelete = (product: ProductWithCOGS) => {
     setDeletingProduct(product);
     setIsDeleteDialogOpen(true);
@@ -130,12 +132,6 @@ export default function ProductsPage() {
     return `Rp ${num.toLocaleString("id-ID")}`;
   };
 
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    setSearch(searchQuery.trim());
-    setPagination((prev) => ({ ...prev, page: 1 }));
-  };
-
   const handleResetFilters = () => {
     setSearchQuery("");
     setSearch("");
@@ -167,17 +163,19 @@ export default function ProductsPage() {
         </Link>
       </div>
 
-      <Card>
-        <CardContent className="p-4">
-          <div className="flex flex-col gap-3 md:flex-row md:items-center">
-            <form onSubmit={handleSearch} className="flex flex-1 gap-2">
-              <div className="relative flex-1">
+      <PurchasingListSection
+        icon={Package}
+        title="Daftar Produk"
+        description="Kelola produk jadi, kategori, harga jual, dan estimasi HPP."
+        toolbar={
+          <div className="flex w-full flex-col gap-3 sm:w-auto md:flex-row md:items-center">
+            <label className="relative w-full md:w-80">
                 <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
                 <Input
-                  placeholder="Cari kode atau nama produk..."
+                  placeholder="Cari produk..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="h-9 pl-10 pr-10 text-sm"
+                  className="h-10 bg-white pl-10 pr-10 text-sm focus:border-pink-400 focus:ring-2 focus:ring-pink-100"
                 />
                 {searchQuery && (
                   <button
@@ -189,11 +187,7 @@ export default function ProductsPage() {
                     <X className="h-4 w-4" />
                   </button>
                 )}
-              </div>
-              <Button type="submit" variant="outline" className="h-9 flex-shrink-0">
-                Cari
-              </Button>
-            </form>
+            </label>
 
             {(search || pagination.page > 1) && (
               <Button variant="outline" onClick={handleResetFilters} className="h-9 flex-shrink-0">
@@ -201,17 +195,9 @@ export default function ProductsPage() {
               </Button>
             )}
           </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader className="border-b border-gray-200/70 pb-3">
-          <CardTitle className="flex items-center gap-2 text-base">
-            <Package className="h-5 w-5" />
-            Daftar Produk
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="p-0">
+        }
+      >
+        <div>
           {loading ? (
             <div className="py-12 text-center">
               <Loader2 className="mx-auto h-8 w-8 animate-spin text-pink-600" />
@@ -233,46 +219,46 @@ export default function ProductsPage() {
             </div>
           ) : (
             <>
-              <div className="px-4">
-                <Table>
-                  <TableHeader>
-                    <TableRow className="hover:bg-transparent">
-                      <TableHead className="text-gray-900">Kode</TableHead>
-                      <TableHead className="text-gray-900">Nama Produk</TableHead>
-                      <TableHead className="text-gray-900">Kategori</TableHead>
-                      <TableHead className="text-right text-gray-900">HPP Estimasi</TableHead>
-                      <TableHead className="text-right text-gray-900">Harga Jual</TableHead>
-                      <TableHead className="text-center text-gray-900">Status</TableHead>
-                      <TableHead className="text-right text-gray-900">Aksi</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
+              <div className="overflow-x-auto">
+                <table className="min-w-full text-sm">
+                  <thead className="border-b border-gray-100 bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
+                    <tr>
+                      <th className="px-4 py-3 text-left font-semibold">Kode</th>
+                      <th className="px-4 py-3 text-left font-semibold">Nama Produk</th>
+                      <th className="px-4 py-3 text-left font-semibold">Kategori</th>
+                      <th className="px-4 py-3 text-right font-semibold">HPP Estimasi</th>
+                      <th className="px-4 py-3 text-right font-semibold">Harga Jual</th>
+                      <th className="px-4 py-3 text-center font-semibold">Status</th>
+                      <th className="px-4 py-3 text-right font-semibold">Aksi</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
                     {products.map((product) => (
-                      <TableRow key={product.id}>
-                        <TableCell>
+                      <tr key={product.id} className="hover:bg-gray-50">
+                        <td className="px-4 py-3">
                           <span className="font-medium text-gray-900">
                             {product.kode_produk || product.kode || "-"}
                           </span>
-                        </TableCell>
-                        <TableCell>
+                        </td>
+                        <td className="px-4 py-3">
                           <Link
                             href={`/dashboard/purchasing/products/${product.id}`}
                             className="font-medium text-pink-600 hover:underline"
                           >
                             {product.nama}
                           </Link>
-                        </TableCell>
-                        <TableCell className="text-gray-700">{product.kategori || "-"}</TableCell>
-                        <TableCell className="text-right text-gray-700">
+                        </td>
+                        <td className="px-4 py-3 text-gray-700">{product.kategori || "-"}</td>
+                        <td className="px-4 py-3 text-right text-gray-700">
                           <div className="flex items-center justify-end gap-1">
                             <Calculator className="h-3 w-3 text-gray-400" />
                             {formatCurrency(product.hpp_estimasi || 0)}
                           </div>
-                        </TableCell>
-                        <TableCell className="text-right font-medium text-gray-900">
+                        </td>
+                        <td className="px-4 py-3 text-right font-medium text-gray-900">
                           {formatCurrency(product.harga_jual || 0)}
-                        </TableCell>
-                        <TableCell className="text-center">
+                        </td>
+                        <td className="px-4 py-3 text-center">
                           <div className="flex items-center justify-center">
                             <Switch
                               checked={product.is_active ?? true}
@@ -283,8 +269,8 @@ export default function ProductsPage() {
                               aria-label={`Ubah status ${product.nama}`}
                             />
                           </div>
-                        </TableCell>
-                        <TableCell className="text-right">
+                        </td>
+                        <td className="px-4 py-3 text-right">
                           <div className="flex items-center justify-end gap-2">
                             <Link href={`/dashboard/purchasing/products/${product.id}`}>
                               <Button variant="ghost" size="sm" className="cursor-pointer">
@@ -310,52 +296,24 @@ export default function ProductsPage() {
                               <Trash2 className="h-4 w-4" />
                             </Button>
                           </div>
-                        </TableCell>
-                      </TableRow>
+                        </td>
+                      </tr>
                     ))}
-                  </TableBody>
-                </Table>
+                  </tbody>
+                </table>
               </div>
 
-              <div className="border-t border-gray-200/70">
-                <div className="flex items-center justify-between px-4 py-3">
-                  <p className="text-sm text-gray-500">
-                    Halaman {pagination.page} dari {Math.max(1, pagination.total_pages)}
-                  </p>
-                  <div className="flex items-center gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() =>
-                        setPagination((prev) => ({
-                          ...prev,
-                          page: Math.max(1, prev.page - 1),
-                        }))
-                      }
-                      disabled={pagination.page === 1}
-                    >
-                      Sebelumnya
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() =>
-                        setPagination((prev) => ({
-                          ...prev,
-                          page: Math.min(Math.max(1, pagination.total_pages), prev.page + 1),
-                        }))
-                      }
-                      disabled={pagination.page >= Math.max(1, pagination.total_pages)}
-                    >
-                      Berikutnya
-                    </Button>
-                  </div>
-                </div>
-              </div>
+              <PurchasingTablePagination
+                page={pagination.page}
+                totalPages={Math.max(1, pagination.total_pages)}
+                totalItems={pagination.total}
+                pageSize={pagination.limit}
+                onPageChange={(nextPage) => setPagination((prev) => ({ ...prev, page: nextPage }))}
+              />
             </>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </PurchasingListSection>
 
       {/* Status Dialog */}
       <Dialog

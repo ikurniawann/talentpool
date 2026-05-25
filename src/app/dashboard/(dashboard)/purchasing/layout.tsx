@@ -102,6 +102,11 @@ export default function PurchasingLayout({ children }: { children: React.ReactNo
     return () => document.removeEventListener("mousedown", handleClick);
   }, []);
 
+  useEffect(() => {
+    document.body.classList.add("purchasing-ui");
+    return () => document.body.classList.remove("purchasing-ui");
+  }, []);
+
   const isInMasterSection =
     pathname === "/dashboard/purchasing/main" ||
     MASTER_ITEMS.some(item => pathname === item.href || pathname?.startsWith(`${item.href}/`));

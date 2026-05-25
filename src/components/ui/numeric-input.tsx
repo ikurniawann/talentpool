@@ -47,6 +47,10 @@ function formatNumber(value: number, decimalScale: number) {
   }).format(value);
 }
 
+function formatDisplayValue(value: number | null | undefined, decimalScale: number) {
+  return value === null || value === undefined ? "" : formatNumber(value, decimalScale);
+}
+
 export function NumericInput({
   value,
   onValueChange,
@@ -57,11 +61,11 @@ export function NumericInput({
   ...props
 }: NumericInputProps) {
   const [displayValue, setDisplayValue] = React.useState(
-    value ? formatNumber(value, decimalScale) : ""
+    formatDisplayValue(value, decimalScale)
   );
 
   React.useEffect(() => {
-    setDisplayValue(value ? formatNumber(value, decimalScale) : "");
+    setDisplayValue(formatDisplayValue(value, decimalScale));
   }, [decimalScale, value]);
 
   return (
@@ -77,7 +81,7 @@ export function NumericInput({
       }}
       onBlur={(event) => {
         const parsed = parseFormattedNumber(event.target.value, decimalScale, allowNegative);
-        setDisplayValue(parsed ? formatNumber(parsed, decimalScale) : "");
+        setDisplayValue(event.target.value === "" ? "" : formatNumber(parsed, decimalScale));
         onBlur?.(event);
       }}
       className={cn("text-left tabular-nums", className)}

@@ -18,6 +18,11 @@ const materialSchema = z.object({
   shelf_life_days: z.number().min(0).optional().nullable(),
   storage_condition: z.enum(["SUHU_RUANG", "DINGIN", "BEKU", "KHUSUS"]).optional().nullable(),
   is_active: z.boolean().optional(),
+  unit_conversions: z.array(z.object({
+    satuan_id: z.string().uuid(),
+    qty_in_base_unit: z.number().min(0.000001),
+    is_base: z.boolean().optional(),
+  })).optional(),
 });
 
 function getErrorMessage(error: unknown, fallback: string) {
@@ -62,7 +67,7 @@ export async function GET(
         ),
         satuan:satuan_id (*)
       `)
-      .eq("raw_material_id", id)
+      .eq("bahan_baku_id", id)
       .eq("is_active", true)
       .order("is_preferred", { ascending: false });
 
@@ -90,6 +95,19 @@ export async function GET(
 
     if (productsError) throw productsError;
 
+    const { data: unitConversions, error: conversionsError } = await supabase
+      .from("raw_material_unit_conversions")
+      .select(`
+        *,
+        satuan:satuan_id (*)
+      `)
+      .eq("raw_material_id", id)
+      .eq("is_active", true)
+      .order("is_base", { ascending: false })
+      .order("qty_in_base_unit", { ascending: true });
+
+    if (conversionsError) throw conversionsError;
+
     return Response.json({
       success: true,
       data: {
@@ -97,6 +115,7 @@ export async function GET(
         suppliers: suppliers || [],
         movements: movements || [],
         products: products || [],
+        unit_conversions: unitConversions || [],
       },
     });
   } catch (error: unknown) {
@@ -151,11 +170,13 @@ export async function PUT(
       }
     }
 
+    const { unit_conversions, ...materialPayload } = validated;
+
     // Update data
     const { data, error } = await supabase
       .from("raw_materials")
       .update({
-        ...validated,
+        ...materialPayload,
         updated_at: new Date().toISOString(),
       })
       .eq("id", id)
@@ -164,6 +185,64 @@ export async function PUT(
       .single();
 
     if (error) throw error;
+
+    if (unit_conversions) {
+      const conversions = [
+        ...(data.satuan_kecil_id
+          ? [{ satuan_id: data.satuan_kecil_id, qty_in_base_unit: 1, is_base: true }]
+          : []),
+        ...(data.satuan_besar_id
+          ? [{ satuan_id: data.satuan_besar_id, qty_in_base_unit: data.satuan_kecil_id ? data.konversi_factor || 1 : 1, is_base: !data.satuan_kecil_id }]
+          : []),
+        ...unit_conversions.map((conversion) => ({ ...conversion, is_base: conversion.is_base ?? false })),
+      ];
+      const conversionsByUnit = new Map<string, (typeof conversions)[number]>();
+      for (const conversion of conversions) {
+        if (!conversionsByUnit.has(conversion.satuan_id)) {
+          conversionsByUnit.set(conversion.satuan_id, conversion);
+        }
+      }
+      const uniqueConversions = Array.from(conversionsByUnit.values());
+
+      const { data: existingConversions, error: existingError } = await supabase
+        .from("raw_material_unit_conversions")
+        .select("id,satuan_id")
+        .eq("raw_material_id", id);
+
+      if (existingError) throw existingError;
+
+      const nextUnitIds = new Set(uniqueConversions.map((conversion) => conversion.satuan_id));
+      const inactiveIds = (existingConversions || [])
+        .filter((conversion) => !nextUnitIds.has(conversion.satuan_id))
+        .map((conversion) => conversion.id);
+
+      if (inactiveIds.length > 0) {
+        const { error: inactiveError } = await supabase
+          .from("raw_material_unit_conversions")
+          .update({ is_active: false, updated_at: new Date().toISOString() })
+          .in("id", inactiveIds);
+
+        if (inactiveError) throw inactiveError;
+      }
+
+      if (uniqueConversions.length > 0) {
+        const { error: conversionError } = await supabase
+          .from("raw_material_unit_conversions")
+          .upsert(
+            uniqueConversions.map((conversion) => ({
+              raw_material_id: id,
+              satuan_id: conversion.satuan_id,
+              qty_in_base_unit: conversion.qty_in_base_unit,
+              is_base: conversion.is_base,
+              is_active: true,
+              updated_at: new Date().toISOString(),
+            })),
+            { onConflict: "raw_material_id,satuan_id" }
+          );
+
+        if (conversionError) throw conversionError;
+      }
+    }
 
     return Response.json({
       success: true,

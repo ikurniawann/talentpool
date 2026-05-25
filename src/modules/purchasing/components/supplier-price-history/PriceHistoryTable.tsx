@@ -68,10 +68,10 @@ export function PriceHistoryTable({
   }
 
   return (
-    <div className="border rounded-lg overflow-hidden">
+    <div className="overflow-hidden rounded-lg border border-gray-200/70">
       <Table>
         <TableHeader>
-          <TableRow className="bg-gray-50 hover:bg-gray-50">
+          <TableRow className="border-b border-gray-200/70 bg-gray-50 hover:bg-gray-50">
             <TableHead className="w-32">Tanggal Berlaku</TableHead>
             {showMaterialName && <TableHead>Bahan Baku</TableHead>}
             <TableHead>Harga Satuan</TableHead>
@@ -84,7 +84,7 @@ export function PriceHistoryTable({
         </TableHeader>
         <TableBody>
           {data.map((item) => (
-            <TableRow key={item.id}>
+            <TableRow key={item.id} className="border-b border-gray-100 last:border-0">
               <TableCell className="font-medium">
                 <div>{formatDate(item.berlaku_dari)}</div>
                 {item.berlaku_sampai && (

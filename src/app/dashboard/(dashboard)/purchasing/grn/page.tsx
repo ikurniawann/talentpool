@@ -4,25 +4,19 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Combobox } from "@/components/ui/combobox";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { BreadcrumbNav } from "@/modules/purchasing/components/breadcrumb/BreadcrumbNav";
+import { PurchasingListSection } from "@/modules/purchasing/components/list/PurchasingListSection";
+import { PurchasingTablePagination } from "@/modules/purchasing/components/pagination/PurchasingTablePagination";
 import {
   ArrowPathIcon,
   ClipboardDocumentCheckIcon,
   PlusIcon,
   TruckIcon,
 } from "@heroicons/react/24/outline";
-import { Search } from "lucide-react";
+import { Filter, Search, X } from "lucide-react";
 
 type ReceivingStatus =
   | "waiting_delivery"
@@ -144,6 +138,9 @@ export default function ReceivingWorkspacePage() {
   const [search, setSearch] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<ReceivingStatus | "all">("all");
+  const [filterOpen, setFilterOpen] = useState(false);
+  const [page, setPage] = useState(1);
+  const limit = 10;
 
   useEffect(() => {
     fetchReceivingData();
@@ -274,6 +271,9 @@ export default function ReceivingWorkspacePage() {
     return matchesStatus && haystack.includes(search.toLowerCase());
   });
 
+  const totalPages = Math.max(1, Math.ceil(filteredRows.length / limit));
+  const paginatedRows = filteredRows.slice((page - 1) * limit, page * limit);
+
   const counts = rows.reduce(
     (acc, row) => {
       acc[row.status] = (acc[row.status] || 0) + 1;
@@ -282,16 +282,23 @@ export default function ReceivingWorkspacePage() {
     {} as Record<ReceivingStatus, number>
   );
 
-  function handleSearch(event: React.FormEvent) {
-    event.preventDefault();
-    setSearch(searchQuery.trim());
-  }
+  useEffect(() => {
+    const timeout = window.setTimeout(() => {
+      setSearch(searchQuery.trim());
+      setPage(1);
+    }, 300);
+
+    return () => window.clearTimeout(timeout);
+  }, [searchQuery]);
 
   function handleResetFilters() {
     setSearch("");
     setSearchQuery("");
     setStatusFilter("all");
+    setPage(1);
   }
+
+  const isFilterActive = statusFilter !== "all";
 
   function renderAction(row: ReceivingRow) {
     if (row.status === "waiting_delivery" && row.poId) {
@@ -390,59 +397,91 @@ export default function ReceivingWorkspacePage() {
         ))}
       </div>
 
-      <Card>
-        <CardContent className="p-4">
-          <div className="flex flex-col gap-3 md:flex-row md:items-center">
-          <form onSubmit={handleSearch} className="flex flex-1 gap-2">
-            <div className="relative flex-1">
+      <PurchasingListSection
+        icon={ClipboardDocumentCheckIcon}
+        title="Workspace Penerimaan"
+        description="Pantau delivery, surat jalan, dokumen GRN, jumlah diterima, dan tindak lanjut."
+        toolbar={
+          <div className="flex w-full flex-col gap-3 sm:w-auto md:flex-row md:items-center">
+          <label className="relative w-full md:w-96">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
               <Input
                 placeholder="Cari PO, supplier, surat jalan, resi, atau dokumen penerimaan..."
                 value={searchQuery}
                 onChange={(event) => setSearchQuery(event.target.value)}
-                className="h-9 pl-10 text-sm"
+                className="h-10 bg-white pl-10 pr-10 text-sm focus:border-pink-400 focus:ring-2 focus:ring-pink-100"
               />
-            </div>
-            <Button type="submit" variant="outline" className="h-9 flex-shrink-0">
-              Cari
-            </Button>
-          </form>
-          <div className="flex min-w-0 items-center gap-2 md:w-[260px]">
-            <Combobox
-              options={[
-                { value: "all", label: "Semua Status" },
-                { value: "waiting_delivery", label: "Menunggu Delivery" },
-                { value: "in_delivery", label: "Dalam Delivery" },
-                { value: "partially_received", label: "Diterima Sebagian" },
-                { value: "received", label: "Diterima Penuh" },
-                { value: "rejected", label: "Ditolak" },
-                { value: "cancelled", label: "Dibatalkan" },
-              ]}
-              value={statusFilter}
-              onChange={(value) => setStatusFilter(value as ReceivingStatus | "all")}
-              placeholder="Filter status..."
-              searchPlaceholder="Cari status..."
-              emptyMessage="Status tidak ditemukan"
-              className="!w-full h-9 text-sm"
-            />
-          </div>
-          {(search || statusFilter !== "all") && (
-            <Button variant="outline" onClick={handleResetFilters} className="h-9 flex-shrink-0">
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery("")}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 transition-colors hover:text-gray-700"
+                  aria-label="Hapus pencarian"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              )}
+          </label>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => setFilterOpen((open) => !open)}
+            className={
+              isFilterActive
+                ? "h-10 gap-2 rounded-lg border-pink-600 bg-pink-600 px-3 text-sm font-semibold !text-white shadow-sm hover:!border-pink-700 hover:!bg-pink-700 hover:!text-white [&_*]:!text-white [&_svg]:!text-white"
+                : "h-10 gap-2 rounded-lg border-gray-200 bg-white px-3 text-sm font-medium text-gray-700 shadow-sm hover:!border-pink-200 hover:!bg-pink-50 hover:!text-pink-700"
+            }
+          >
+            <Filter className={isFilterActive ? "h-4 w-4 text-white" : "h-4 w-4"} />
+            Filter
+            {isFilterActive && (
+              <span className="ml-1 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-white/20 px-1.5 text-xs text-white">
+                1
+              </span>
+            )}
+          </Button>
+          {(search || isFilterActive) && (
+            <Button variant="outline" onClick={handleResetFilters} className="h-10 flex-shrink-0 rounded-lg">
               Reset
             </Button>
           )}
           </div>
-        </CardContent>
-      </Card>
+        }
+      >
+        <div>
+          {filterOpen && (
+            <div className="border-b border-gray-100 bg-gray-50/70 px-5 py-4">
+              <div className="grid gap-3 md:grid-cols-2">
+                <div className="space-y-1.5">
+                  <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-gray-500">
+                    <Filter className="h-3.5 w-3.5 text-pink-500" />
+                    Status
+                  </div>
+                  <Combobox
+                    options={[
+                      { value: "all", label: "Semua Status" },
+                      { value: "waiting_delivery", label: "Menunggu Delivery" },
+                      { value: "in_delivery", label: "Dalam Delivery" },
+                      { value: "partially_received", label: "Diterima Sebagian" },
+                      { value: "received", label: "Diterima Penuh" },
+                      { value: "rejected", label: "Ditolak" },
+                      { value: "cancelled", label: "Dibatalkan" },
+                    ]}
+                    value={statusFilter}
+                    onChange={(value) => {
+                      setStatusFilter(value as ReceivingStatus | "all");
+                      setPage(1);
+                    }}
+                    placeholder="Filter status..."
+                    searchPlaceholder="Cari status..."
+                    emptyMessage="Status tidak ditemukan"
+                    className="!w-full h-9 text-sm"
+                  />
+                </div>
+              </div>
+            </div>
+          )}
 
-      <Card>
-        <CardHeader className="border-b border-gray-200/70 pb-3">
-          <CardTitle className="flex items-center gap-2 text-base">
-            <ClipboardDocumentCheckIcon className="w-5 h-5" />
-            Workspace Penerimaan
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="p-0">
           {loading ? (
             <div className="py-12 text-center">
               <p className="text-sm text-gray-500">Memuat data penerimaan...</p>
@@ -453,24 +492,25 @@ export default function ReceivingWorkspacePage() {
               <p className="text-gray-500">Belum ada data sesuai filter</p>
             </div>
           ) : (
-            <div className="overflow-x-auto px-4">
-              <Table>
-                <TableHeader>
-                  <TableRow className="hover:bg-transparent">
+            <>
+            <div className="overflow-x-auto">
+              <table className="min-w-full text-sm">
+                <thead className="border-b border-gray-100 bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
+                  <tr>
                     {["Status", "PO", "Supplier", "Delivery / Surat Jalan", "Penerimaan", "Qty", "Tanggal", "Aksi"].map((heading) => (
-                      <TableHead key={heading} className="text-gray-900">{heading}</TableHead>
+                      <th key={heading} className="px-4 py-3 text-left font-semibold">{heading}</th>
                     ))}
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredRows.map((row) => (
-                    <TableRow key={row.key}>
-                      <TableCell>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {paginatedRows.map((row) => (
+                    <tr key={row.key} className="hover:bg-gray-50">
+                      <td className="px-4 py-3">
                         <Badge variant="outline" className={STATUS_STYLES[row.status]}>
                           {STATUS_LABELS[row.status]}
                         </Badge>
-                      </TableCell>
-                      <TableCell>
+                      </td>
+                      <td className="px-4 py-3">
                         {row.poId ? (
                           <Link href={`/dashboard/purchasing/po/${row.poId}`} className="font-medium text-pink-700 hover:underline">
                             {row.poNumber}
@@ -478,13 +518,13 @@ export default function ReceivingWorkspacePage() {
                         ) : (
                           <span className="font-medium">{row.poNumber}</span>
                         )}
-                      </TableCell>
-                      <TableCell className="text-sm">{row.supplierName}</TableCell>
-                      <TableCell className="text-sm">
+                      </td>
+                      <td className="px-4 py-3 text-sm">{row.supplierName}</td>
+                      <td className="px-4 py-3 text-sm">
                         <div className="font-medium">{row.deliveryNumber || "-"}</div>
                         <div className="text-xs text-gray-500">{row.suratJalan || "-"}</div>
-                      </TableCell>
-                      <TableCell className="text-sm">
+                      </td>
+                      <td className="px-4 py-3 text-sm">
                         {row.grnId ? (
                           <Link href={`/dashboard/purchasing/grn/${row.grnId}`} className="font-medium text-pink-700 hover:underline">
                             {row.grnNumber}
@@ -492,21 +532,29 @@ export default function ReceivingWorkspacePage() {
                         ) : (
                           <span className="text-gray-400">Belum Diterima</span>
                         )}
-                      </TableCell>
-                      <TableCell className="text-sm">
+                      </td>
+                      <td className="px-4 py-3 text-sm">
                         <div>{row.receivedQty || 0} / {row.orderedQty || 0}</div>
                         {(row.rejectedQty || 0) > 0 && <div className="text-xs text-red-600">{row.rejectedQty} ditolak</div>}
-                      </TableCell>
-                      <TableCell className="text-sm">{formatDate(row.date)}</TableCell>
-                      <TableCell>{renderAction(row)}</TableCell>
-                    </TableRow>
+                      </td>
+                      <td className="px-4 py-3 text-sm">{formatDate(row.date)}</td>
+                      <td className="px-4 py-3">{renderAction(row)}</td>
+                    </tr>
                   ))}
-                </TableBody>
-              </Table>
+                </tbody>
+              </table>
             </div>
+            <PurchasingTablePagination
+              page={page}
+              totalPages={totalPages}
+              totalItems={filteredRows.length}
+              pageSize={limit}
+              onPageChange={setPage}
+            />
+            </>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </PurchasingListSection>
     </div>
   );
 }

@@ -341,7 +341,7 @@ export default function NewSupplierPage() {
         </div>
 
         {/* Action Buttons */}
-        <div className="flex items-center justify-end gap-3 mt-6 pt-4 border-t">
+        <div className="mt-6 flex items-center justify-end gap-3 border-t border-gray-200/70 pt-4">
           <Button type="button" variant="outline" onClick={() => router.back()} className="purchasing-secondary-button px-6">
             Batal
           </Button>

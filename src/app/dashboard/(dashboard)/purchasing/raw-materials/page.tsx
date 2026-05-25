@@ -4,19 +4,12 @@ import { useState, useCallback, useEffect } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Combobox } from "@/components/ui/combobox";
 import { Switch } from "@/components/ui/switch";
 import { BreadcrumbNav } from "@/modules/purchasing/components/breadcrumb/BreadcrumbNav";
+import { PurchasingListSection } from "@/modules/purchasing/components/list/PurchasingListSection";
+import { PurchasingTablePagination } from "@/modules/purchasing/components/pagination/PurchasingTablePagination";
 import { AlertCircle, Eye, Filter, Loader2, Package, Pencil, Plus, Search, Trash2, Upload, X } from "lucide-react";
 import { toast } from "sonner";
 import { RawMaterialWithStock, MaterialCategory } from "@/types/purchasing";
@@ -55,6 +48,7 @@ export default function RawMaterialsPage() {
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<MaterialCategory | "all">("all");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [filterOpen, setFilterOpen] = useState(false);
   const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deletingMaterial, setDeletingMaterial] = useState<RawMaterialWithStock | null>(null);
@@ -100,6 +94,15 @@ export default function RawMaterialsPage() {
     loadMaterials();
   }, [loadMaterials]);
 
+  useEffect(() => {
+    const timeout = window.setTimeout(() => {
+      setSearch(searchQuery.trim());
+      setPagination((prev) => ({ ...prev, page: 1 }));
+    }, 300);
+
+    return () => window.clearTimeout(timeout);
+  }, [searchQuery]);
+
   const getCategoryLabel = (category?: MaterialCategory | null) => {
     if (!category) return "-";
     const labels: Record<MaterialCategory, string> = {
@@ -143,12 +146,6 @@ export default function RawMaterialsPage() {
     return num.toLocaleString("id-ID", { maximumFractionDigits: 4 });
   };
 
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    setSearch(searchQuery.trim());
-    setPagination((prev) => ({ ...prev, page: 1 }));
-  };
-
   const handleResetFilters = () => {
     setSearchQuery("");
     setSearch("");
@@ -156,6 +153,8 @@ export default function RawMaterialsPage() {
     setStatusFilter("all");
     setPagination((prev) => ({ ...prev, page: 1 }));
   };
+
+  const isFilterActive = categoryFilter !== "all" || statusFilter !== "all";
 
   const handleConfirmToggleStatus = async () => {
     const material = statusDialog.material;
@@ -230,17 +229,19 @@ export default function RawMaterialsPage() {
         </div>
       </div>
 
-      <Card>
-        <CardContent className="p-4">
-          <div className="flex flex-col gap-3 md:flex-row md:items-center">
-            <form onSubmit={handleSearch} className="flex flex-1 gap-2">
-              <div className="relative flex-1">
+      <PurchasingListSection
+        icon={Package}
+        title="Daftar Bahan Baku"
+        description="Kelola bahan baku, kategori, COA, status stok, dan harga rata-rata."
+        toolbar={
+          <div className="flex w-full flex-col gap-3 sm:w-auto md:flex-row md:items-center">
+            <label className="relative w-full md:w-80">
                 <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
                 <Input
-                  placeholder="Cari kode atau nama bahan baku..."
+                  placeholder="Cari bahan baku..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="h-9 pl-10 pr-10 text-sm"
+                  className="h-10 bg-white pl-10 pr-10 text-sm focus:border-pink-400 focus:ring-2 focus:ring-pink-100"
                 />
                 {searchQuery && (
                   <button
@@ -252,61 +253,80 @@ export default function RawMaterialsPage() {
                     <X className="h-4 w-4" />
                   </button>
                 )}
-              </div>
-              <Button type="submit" variant="outline" className="h-9 flex-shrink-0">
-                Cari
-              </Button>
-            </form>
+            </label>
 
-            <div className="flex min-w-0 items-center gap-2 md:w-[240px]">
-              <Filter className="h-4 w-4 shrink-0 text-gray-400" />
-              <Combobox
-                options={CATEGORY_OPTIONS}
-                value={categoryFilter}
-                onChange={(value) => {
-                  setCategoryFilter(value as MaterialCategory | "all");
-                  setPagination((prev) => ({ ...prev, page: 1 }));
-                }}
-                placeholder="Filter kategori..."
-                searchPlaceholder="Cari kategori..."
-                emptyMessage="Kategori tidak ditemukan"
-                className="!w-full h-9 text-sm"
-              />
-            </div>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setFilterOpen((open) => !open)}
+              className={
+                isFilterActive
+                  ? "h-10 gap-2 rounded-lg border-pink-600 bg-pink-600 px-3 text-sm font-semibold !text-white shadow-sm hover:!border-pink-700 hover:!bg-pink-700 hover:!text-white [&_*]:!text-white [&_svg]:!text-white"
+                  : "h-10 gap-2 rounded-lg border-gray-200 bg-white px-3 text-sm font-medium text-gray-700 shadow-sm hover:!border-pink-200 hover:!bg-pink-50 hover:!text-pink-700"
+              }
+            >
+              <Filter className={isFilterActive ? "h-4 w-4 text-white" : "h-4 w-4"} />
+              Filter
+              {isFilterActive && (
+                <span className="ml-1 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-white/20 px-1.5 text-xs text-white">
+                  {[categoryFilter !== "all", statusFilter !== "all"].filter(Boolean).length}
+                </span>
+              )}
+            </Button>
 
-            <div className="flex min-w-0 items-center gap-2 md:w-[240px]">
-              <AlertCircle className="h-4 w-4 shrink-0 text-gray-400" />
-              <Combobox
-                options={STATUS_OPTIONS}
-                value={statusFilter}
-                onChange={(value) => {
-                  setStatusFilter(value);
-                  setPagination((prev) => ({ ...prev, page: 1 }));
-                }}
-                placeholder="Filter stok..."
-                searchPlaceholder="Cari status stok..."
-                emptyMessage="Status stok tidak ditemukan"
-                className="!w-full h-9 text-sm"
-              />
-            </div>
-
-            {(search || categoryFilter !== "all" || statusFilter !== "all" || pagination.page > 1) && (
-              <Button variant="outline" onClick={handleResetFilters} className="h-9 flex-shrink-0">
+            {(search || isFilterActive || pagination.page > 1) && (
+              <Button variant="outline" onClick={handleResetFilters} className="h-10 flex-shrink-0 rounded-lg">
                 Reset
               </Button>
             )}
           </div>
-        </CardContent>
-      </Card>
+        }
+      >
+        <div>
+          {filterOpen && (
+            <div className="border-b border-gray-100 bg-gray-50/70 px-5 py-4">
+              <div className="grid gap-3 md:grid-cols-2">
+                <div className="space-y-1.5">
+                  <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-gray-500">
+                    <Filter className="h-3.5 w-3.5 text-pink-500" />
+                    Kategori
+                  </div>
+                  <Combobox
+                    options={CATEGORY_OPTIONS}
+                    value={categoryFilter}
+                    onChange={(value) => {
+                      setCategoryFilter(value as MaterialCategory | "all");
+                      setPagination((prev) => ({ ...prev, page: 1 }));
+                    }}
+                    placeholder="Filter kategori..."
+                    searchPlaceholder="Cari kategori..."
+                    emptyMessage="Kategori tidak ditemukan"
+                    className="!w-full h-9 text-sm"
+                  />
+                </div>
 
-      <Card>
-        <CardHeader className="border-b border-gray-200/70 pb-3">
-          <CardTitle className="flex items-center gap-2 text-base">
-            <Package className="h-5 w-5" />
-            Daftar Bahan Baku
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="p-0">
+                <div className="space-y-1.5">
+                  <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-gray-500">
+                    <AlertCircle className="h-3.5 w-3.5 text-pink-500" />
+                    Status Stok
+                  </div>
+                  <Combobox
+                    options={STATUS_OPTIONS}
+                    value={statusFilter}
+                    onChange={(value) => {
+                      setStatusFilter(value);
+                      setPagination((prev) => ({ ...prev, page: 1 }));
+                    }}
+                    placeholder="Filter stok..."
+                    searchPlaceholder="Cari status stok..."
+                    emptyMessage="Status stok tidak ditemukan"
+                    className="!w-full h-9 text-sm"
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+
           {loading ? (
             <div className="py-12 text-center">
               <Loader2 className="mx-auto h-8 w-8 animate-spin text-pink-600" />
@@ -328,37 +348,54 @@ export default function RawMaterialsPage() {
             </div>
           ) : (
             <>
-              <div className="overflow-x-auto px-4">
-                <Table>
-                  <TableHeader>
-                    <TableRow className="hover:bg-transparent">
-                      <TableHead className="text-gray-900">Kode</TableHead>
-                      <TableHead className="text-gray-900">Nama Bahan</TableHead>
-                      <TableHead className="text-gray-900">Kategori</TableHead>
-                      <TableHead className="text-right text-gray-900">Stok Tersedia</TableHead>
-                      <TableHead className="text-right text-gray-900">Min. Stok</TableHead>
-                      <TableHead className="text-right text-gray-900">Harga Rata-rata</TableHead>
-                      <TableHead className="text-center text-gray-900">Status Stok</TableHead>
-                      <TableHead className="text-center text-gray-900">Aktif</TableHead>
-                      <TableHead className="text-right text-gray-900">Aksi</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
+              <div className="overflow-x-auto">
+                <table className="min-w-full text-sm">
+                  <thead className="border-b border-gray-100 bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
+                    <tr>
+                      <th className="px-4 py-3 text-left font-semibold">Kode</th>
+                      <th className="px-4 py-3 text-left font-semibold">Nama Bahan</th>
+                      <th className="px-4 py-3 text-left font-semibold">Kategori</th>
+                      <th className="px-4 py-3 text-left font-semibold">COA</th>
+                      <th className="px-4 py-3 text-right font-semibold">Stok Tersedia</th>
+                      <th className="px-4 py-3 text-right font-semibold">Min. Stok</th>
+                      <th className="px-4 py-3 text-right font-semibold">Harga Rata-rata</th>
+                      <th className="px-4 py-3 text-center font-semibold">Status Stok</th>
+                      <th className="px-4 py-3 text-center font-semibold">Aktif</th>
+                      <th className="px-4 py-3 text-right font-semibold">Aksi</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
                     {materials.map((material) => (
-                      <TableRow key={material.id}>
-                        <TableCell>
+                      <tr key={material.id} className="hover:bg-gray-50">
+                        <td className="px-4 py-3">
                           <span className="font-medium text-gray-900">{material.kode}</span>
-                        </TableCell>
-                        <TableCell>
+                        </td>
+                        <td className="px-4 py-3">
                           <Link
                             href={`/dashboard/purchasing/raw-materials/${material.id}`}
                             className="font-medium text-pink-600 hover:underline"
                           >
                             {material.nama}
                           </Link>
-                        </TableCell>
-                        <TableCell className="text-gray-700">{getCategoryLabel(material.kategori)}</TableCell>
-                        <TableCell className="text-right">
+                        </td>
+                        <td className="px-4 py-3 text-gray-700">{getCategoryLabel(material.kategori)}</td>
+                        <td className="px-4 py-3">
+                          <div className="flex flex-wrap gap-1">
+                            {material.coa_production && (
+                              <Badge className="bg-amber-100 text-amber-700">Prod</Badge>
+                            )}
+                            {material.coa_rnd && (
+                              <Badge className="bg-blue-100 text-blue-700">RnD</Badge>
+                            )}
+                            {material.coa_asset && (
+                              <Badge className="bg-green-100 text-green-700">Asset</Badge>
+                            )}
+                            {!material.coa_production && !material.coa_rnd && !material.coa_asset && (
+                              <span className="text-sm text-gray-400">-</span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 text-right">
                           <span
                             className={
                               (material.qty_onhand ?? 0) <= 0
@@ -373,19 +410,19 @@ export default function RawMaterialsPage() {
                           <span className="ml-1 text-sm text-gray-500">
                             {material.satuan_besar_nama || material.satuan_besar?.nama || "-"}
                           </span>
-                        </TableCell>
-                        <TableCell className="text-right text-gray-700">
+                        </td>
+                        <td className="px-4 py-3 text-right text-gray-700">
                           {formatNumber(material.stok_minimum ?? 0)}
-                        </TableCell>
-                        <TableCell className="text-right text-gray-700">
+                        </td>
+                        <td className="px-4 py-3 text-right text-gray-700">
                           {(material.avg_cost ?? 0) > 0
                             ? `Rp ${(material.avg_cost ?? 0).toLocaleString("id-ID")}`
                             : "-"}
-                        </TableCell>
-                        <TableCell className="text-center">
+                        </td>
+                        <td className="px-4 py-3 text-center">
                           {getStockStatusBadge(material.status_stok ?? "AMAN")}
-                        </TableCell>
-                        <TableCell className="text-center">
+                        </td>
+                        <td className="px-4 py-3 text-center">
                           <div className="flex items-center justify-center">
                             <Switch
                               checked={material.is_active ?? true}
@@ -396,8 +433,8 @@ export default function RawMaterialsPage() {
                               aria-label={`Ubah status ${material.nama}`}
                             />
                           </div>
-                        </TableCell>
-                        <TableCell className="text-right">
+                        </td>
+                        <td className="px-4 py-3 text-right">
                           <div className="flex items-center justify-end gap-2">
                             <Link href={`/dashboard/purchasing/raw-materials/${material.id}`}>
                               <Button variant="ghost" size="sm" className="cursor-pointer">
@@ -418,52 +455,24 @@ export default function RawMaterialsPage() {
                               <Trash2 className="h-4 w-4" />
                             </Button>
                           </div>
-                        </TableCell>
-                      </TableRow>
+                        </td>
+                      </tr>
                     ))}
-                  </TableBody>
-                </Table>
+                  </tbody>
+                </table>
               </div>
 
-              <div className="border-t border-gray-200/70">
-                <div className="flex items-center justify-between px-4 py-3">
-                  <p className="text-sm text-gray-500">
-                    Halaman {pagination.page} dari {Math.max(1, pagination.total_pages)}
-                  </p>
-                  <div className="flex items-center gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() =>
-                        setPagination((prev) => ({
-                          ...prev,
-                          page: Math.max(1, prev.page - 1),
-                        }))
-                      }
-                      disabled={pagination.page === 1}
-                    >
-                      Sebelumnya
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() =>
-                        setPagination((prev) => ({
-                          ...prev,
-                          page: Math.min(Math.max(1, pagination.total_pages), prev.page + 1),
-                        }))
-                      }
-                      disabled={pagination.page >= Math.max(1, pagination.total_pages)}
-                    >
-                      Berikutnya
-                    </Button>
-                  </div>
-                </div>
-              </div>
+              <PurchasingTablePagination
+                page={pagination.page}
+                totalPages={Math.max(1, pagination.total_pages)}
+                totalItems={pagination.total}
+                pageSize={pagination.limit}
+                onPageChange={(nextPage) => setPagination((prev) => ({ ...prev, page: nextPage }))}
+              />
             </>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </PurchasingListSection>
 
       <Dialog
         open={statusDialog.open}

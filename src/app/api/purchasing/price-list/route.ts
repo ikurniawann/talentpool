@@ -111,6 +111,24 @@ export async function POST(request: NextRequest) {
       validated.berlaku_dari = new Date().toISOString().split("T")[0];
     }
 
+    if (validated.satuan_id) {
+      const { data: conversion, error: conversionError } = await supabase
+        .from("raw_material_unit_conversions")
+        .select("id")
+        .eq("raw_material_id", validated.bahan_baku_id)
+        .eq("satuan_id", validated.satuan_id)
+        .eq("is_active", true)
+        .maybeSingle();
+
+      if (conversionError) throw conversionError;
+      if (!conversion) {
+        return Response.json(
+          { success: false, message: "Satuan belum dikonfigurasi pada master bahan baku" },
+          { status: 400 }
+        );
+      }
+    }
+
     // Insert new price list
     const { data, error } = await supabase
       .from("supplier_price_lists")
