@@ -86,11 +86,13 @@ type CompleteForm = {
   materials: Array<{
     id: string;
     name: string;
+    code: string;
     unitName: string;
     plannedQty: number;
     qtyActual: string;
     wasteQty: string;
     unitCost: number;
+    stockQty: number;
   }>;
 };
 
@@ -224,11 +226,13 @@ export default function ProductionOrderDetailPage() {
       materials: order.materials.map((material) => ({
         id: material.id,
         name: displayName(material.raw_material?.nama) || material.raw_material_id,
+        code: material.raw_material?.kode || material.raw_material_id,
         unitName: material.satuan?.nama || "",
         plannedQty: toNumber(material.qty_planned),
         qtyActual: String(toNumber(material.qty_actual || material.qty_planned)),
         wasteQty: String(toNumber(material.waste_qty)),
         unitCost: toNumber(material.unit_cost),
+        stockQty: toNumber(material.stock?.qty_onhand),
       })),
     });
   };
@@ -290,11 +294,39 @@ export default function ProductionOrderDetailPage() {
 
   const canRelease = order.status === "DRAFT";
   const canStart = order.status === "RELEASED";
-  const canComplete = ["RELEASED", "IN_PROGRESS"].includes(order.status);
+  const canComplete = order.status === "IN_PROGRESS";
   const canCancel = !["COMPLETED", "CANCELLED"].includes(order.status);
   const actualMaterialCost = toNumber(order.actual_material_cost) || toNumber(order.planned_material_cost);
   const shortageQuery = buildProcurementItems(insufficientMaterials);
   const productionOrderParam = encodeURIComponent(order.nomor_produksi);
+  const completePreview = completeForm
+    ? (() => {
+        const materialCost = completeForm.materials.reduce(
+          (sum, material) => sum + toNumber(material.qtyActual) * material.unitCost,
+          0
+        );
+        const overheadCost = toNumber(completeForm.overheadCost);
+        const laborCost = toNumber(completeForm.laborCost);
+        const packagingCost = toNumber(completeForm.packagingCost);
+        const wasteCost = toNumber(completeForm.wasteCost);
+        const totalCost = materialCost + overheadCost + laborCost + packagingCost + wasteCost;
+        const actualQty = toNumber(completeForm.actualQty);
+        const hppPerUnit = actualQty > 0 ? totalCost / actualQty : 0;
+        const shortageItems = completeForm.materials.filter((material) => toNumber(material.qtyActual) > material.stockQty);
+
+        return {
+          actualQty,
+          materialCost,
+          overheadCost,
+          laborCost,
+          packagingCost,
+          wasteCost,
+          totalCost,
+          hppPerUnit,
+          shortageItems,
+        };
+      })()
+    : null;
 
   return (
     <div className="mx-auto max-w-7xl space-y-6">
@@ -510,88 +542,168 @@ export default function ProductionOrderDetailPage() {
         </div>
       </section>
 
-      {completeForm && (
+      {completeForm && completePreview && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/35 p-4">
-          <div className="max-h-[90vh] w-full max-w-4xl overflow-hidden rounded-xl bg-white shadow-2xl">
+          <div className="max-h-[92vh] w-full max-w-6xl overflow-hidden rounded-xl bg-white shadow-2xl">
             <div className="flex items-center justify-between border-b border-gray-100 px-5 py-4">
               <div>
-                <h2 className="text-lg font-semibold text-gray-950">Complete Produksi</h2>
-                <p className="text-sm text-gray-500">{order.nomor_produksi}</p>
+                <h2 className="text-lg font-semibold text-gray-950">Selesaikan Produksi</h2>
+                <p className="text-sm text-gray-500">Finalisasi output, konsumsi bahan, dan HPP aktual untuk {order.nomor_produksi}</p>
               </div>
               <button type="button" onClick={() => setCompleteForm(null)} className="rounded-lg p-2 text-gray-500 hover:bg-gray-100">
                 <XMarkIcon className="h-5 w-5" />
               </button>
             </div>
-            <div className="max-h-[calc(90vh-140px)] space-y-5 overflow-y-auto p-5">
-              <div className="grid gap-3 md:grid-cols-5">
-                {[
-                  ["Actual Output", "actualQty"],
-                  ["Overhead", "overheadCost"],
-                  ["Labor", "laborCost"],
-                  ["Packaging", "packagingCost"],
-                  ["Waste Cost", "wasteCost"],
-                ].map(([label, key]) => (
-                  <label key={key} className="space-y-1.5">
-                    <span className="text-xs font-medium text-gray-500">{label}</span>
-                    <input
-                      value={completeForm[key as keyof Omit<CompleteForm, "materials">]}
-                      onChange={(event) => setCompleteForm({ ...completeForm, [key]: event.target.value })}
-                      type="number"
-                      min="0"
-                      className="h-10 w-full rounded-lg border border-gray-200 px-3 text-sm outline-none focus:border-pink-400 focus:ring-2 focus:ring-pink-100"
-                    />
-                  </label>
-                ))}
-              </div>
-
-              <div className="rounded-lg border border-gray-200">
-                <div className="grid grid-cols-[1fr_120px_120px_120px] gap-3 border-b border-gray-100 bg-gray-50 px-4 py-3 text-xs font-semibold uppercase tracking-wide text-gray-500">
-                  <span>Bahan</span>
-                  <span className="text-right">Plan</span>
-                  <span className="text-right">Actual</span>
-                  <span className="text-right">Waste</span>
-                </div>
-                <div className="divide-y divide-gray-100">
-                  {completeForm.materials.map((material, index) => (
-                    <div key={material.id} className="grid grid-cols-[1fr_120px_120px_120px] items-center gap-3 px-4 py-3 text-sm">
-                      <div>
-                        <p className="font-medium text-gray-900">{material.name}</p>
-                        <p className="text-xs text-gray-500">{formatCurrency(material.unitCost)} / unit</p>
-                      </div>
-                      <div className="text-right text-gray-700">{formatNumber(material.plannedQty)} {material.unitName}</div>
-                      <input
-                        value={material.qtyActual}
-                        onChange={(event) => {
-                          const materials = [...completeForm.materials];
-                          materials[index] = { ...material, qtyActual: event.target.value };
-                          setCompleteForm({ ...completeForm, materials });
-                        }}
-                        type="number"
-                        min="0"
-                        className="h-9 rounded-lg border border-gray-200 px-2 text-right text-sm outline-none focus:border-pink-400 focus:ring-2 focus:ring-pink-100"
-                      />
-                      <input
-                        value={material.wasteQty}
-                        onChange={(event) => {
-                          const materials = [...completeForm.materials];
-                          materials[index] = { ...material, wasteQty: event.target.value };
-                          setCompleteForm({ ...completeForm, materials });
-                        }}
-                        type="number"
-                        min="0"
-                        className="h-9 rounded-lg border border-gray-200 px-2 text-right text-sm outline-none focus:border-pink-400 focus:ring-2 focus:ring-pink-100"
-                      />
+            <div className="max-h-[calc(92vh-142px)] overflow-y-auto p-5">
+              <div className="grid gap-5 lg:grid-cols-[1fr_320px]">
+                <div className="space-y-5">
+                  <section className="rounded-xl border border-gray-200 bg-white p-4">
+                    <div className="mb-4">
+                      <h3 className="text-sm font-semibold text-gray-950">Output & Biaya Aktual</h3>
+                      <p className="text-xs text-gray-500">Isi hasil produksi dan biaya tambahan yang benar-benar terjadi.</p>
                     </div>
-                  ))}
+                    <div className="grid gap-3 md:grid-cols-5">
+                      {[
+                        ["Output Aktual", "actualQty", ""],
+                        ["Overhead", "overheadCost", "Rp"],
+                        ["Labor", "laborCost", "Rp"],
+                        ["Packaging", "packagingCost", "Rp"],
+                        ["Biaya Waste", "wasteCost", "Rp"],
+                      ].map(([label, key, prefix]) => (
+                        <label key={key} className="space-y-1.5">
+                          <span className="text-xs font-medium text-gray-500">{label}</span>
+                          <div className="relative">
+                            {prefix && <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-gray-400">{prefix}</span>}
+                            <input
+                              value={completeForm[key as keyof Omit<CompleteForm, "materials">]}
+                              onChange={(event) => setCompleteForm({ ...completeForm, [key]: event.target.value })}
+                              type="number"
+                              min="0"
+                              className={`h-10 w-full rounded-lg border border-gray-200 px-3 text-sm outline-none focus:border-pink-400 focus:ring-2 focus:ring-pink-100 ${prefix ? "pl-9" : ""}`}
+                            />
+                          </div>
+                        </label>
+                      ))}
+                    </div>
+                  </section>
+
+                  <section className="overflow-hidden rounded-xl border border-gray-200 bg-white">
+                    <div className="border-b border-gray-100 px-4 py-3">
+                      <h3 className="text-sm font-semibold text-gray-950">Konsumsi Bahan Aktual</h3>
+                      <p className="text-xs text-gray-500">Actual qty akan mengurangi stok bahan saat produksi diselesaikan.</p>
+                    </div>
+                    <div className="overflow-x-auto">
+                      <div className="min-w-[820px]">
+                        <div className="grid grid-cols-[1.4fr_110px_110px_110px_120px_120px] gap-3 border-b border-gray-100 bg-gray-50 px-4 py-3 text-xs font-semibold uppercase tracking-wide text-gray-500">
+                          <span>Bahan</span>
+                          <span className="text-right">Plan</span>
+                          <span className="text-right">Stok</span>
+                          <span className="text-right">Actual</span>
+                          <span className="text-right">Waste</span>
+                          <span className="text-right">Nilai</span>
+                        </div>
+                        <div className="divide-y divide-gray-100">
+                          {completeForm.materials.map((material, index) => {
+                            const qtyActual = toNumber(material.qtyActual);
+                            const isShort = qtyActual > material.stockQty;
+
+                            return (
+                              <div key={material.id} className="grid grid-cols-[1.4fr_110px_110px_110px_120px_120px] items-center gap-3 px-4 py-3 text-sm">
+                                <div>
+                                  <p className="font-medium text-gray-900">{material.name}</p>
+                                  <p className="text-xs text-gray-500">{material.code} · {formatCurrency(material.unitCost)} / unit</p>
+                                </div>
+                                <div className="text-right text-gray-700">{formatNumber(material.plannedQty)} {material.unitName}</div>
+                                <div className={`text-right font-semibold ${isShort ? "text-red-600" : "text-emerald-600"}`}>
+                                  {formatNumber(material.stockQty)}
+                                </div>
+                                <input
+                                  value={material.qtyActual}
+                                  onChange={(event) => {
+                                    const materials = [...completeForm.materials];
+                                    materials[index] = { ...material, qtyActual: event.target.value };
+                                    setCompleteForm({ ...completeForm, materials });
+                                  }}
+                                  type="number"
+                                  min="0"
+                                  className={`h-9 rounded-lg border px-2 text-right text-sm outline-none focus:border-pink-400 focus:ring-2 focus:ring-pink-100 ${isShort ? "border-red-300 bg-red-50 text-red-700" : "border-gray-200"}`}
+                                />
+                                <input
+                                  value={material.wasteQty}
+                                  onChange={(event) => {
+                                    const materials = [...completeForm.materials];
+                                    materials[index] = { ...material, wasteQty: event.target.value };
+                                    setCompleteForm({ ...completeForm, materials });
+                                  }}
+                                  type="number"
+                                  min="0"
+                                  className="h-9 rounded-lg border border-gray-200 px-2 text-right text-sm outline-none focus:border-pink-400 focus:ring-2 focus:ring-pink-100"
+                                />
+                                <div className="text-right font-semibold text-pink-700">
+                                  {formatCurrency(qtyActual * material.unitCost)}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    </div>
+                  </section>
                 </div>
+
+                <aside className="space-y-4">
+                  <div className="rounded-xl border border-pink-100 bg-pink-50/60 p-4">
+                    <h3 className="text-sm font-semibold text-pink-900">Preview HPP Aktual</h3>
+                    <div className="mt-4 space-y-3 text-sm">
+                      <div className="flex justify-between gap-3"><span className="text-pink-700">Output</span><span className="font-semibold text-pink-950">{formatNumber(completePreview.actualQty)}</span></div>
+                      <div className="flex justify-between gap-3"><span className="text-pink-700">Material</span><span className="font-semibold text-pink-950">{formatCurrency(completePreview.materialCost)}</span></div>
+                      <div className="flex justify-between gap-3"><span className="text-pink-700">Overhead</span><span className="font-semibold text-pink-950">{formatCurrency(completePreview.overheadCost)}</span></div>
+                      <div className="flex justify-between gap-3"><span className="text-pink-700">Labor</span><span className="font-semibold text-pink-950">{formatCurrency(completePreview.laborCost)}</span></div>
+                      <div className="flex justify-between gap-3"><span className="text-pink-700">Packaging</span><span className="font-semibold text-pink-950">{formatCurrency(completePreview.packagingCost)}</span></div>
+                      <div className="flex justify-between gap-3"><span className="text-pink-700">Biaya Waste</span><span className="font-semibold text-pink-950">{formatCurrency(completePreview.wasteCost)}</span></div>
+                      <div className="border-t border-pink-200 pt-3">
+                        <div className="flex justify-between gap-3"><span className="font-semibold text-pink-800">Total Cost</span><span className="font-bold text-pink-950">{formatCurrency(completePreview.totalCost)}</span></div>
+                        <div className="mt-3 rounded-lg bg-white px-3 py-3">
+                          <p className="text-xs font-medium text-pink-600">HPP / Unit</p>
+                          <p className="mt-1 text-2xl font-semibold text-pink-900">{formatCurrency(completePreview.hppPerUnit)}</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {completePreview.actualQty <= 0 && (
+                    <div className="rounded-xl border border-red-100 bg-red-50 p-4 text-sm font-medium leading-6 text-red-700">
+                      Output aktual harus lebih dari 0 sebelum produksi bisa diselesaikan.
+                    </div>
+                  )}
+
+                  {completePreview.shortageItems.length > 0 && (
+                    <div className="rounded-xl border border-red-100 bg-red-50 p-4">
+                      <h3 className="text-sm font-semibold text-red-800">Stok aktual kurang</h3>
+                      <p className="mt-1 text-sm leading-6 text-red-700">Kurangi actual consumption atau terima barang masuk terlebih dahulu.</p>
+                      <div className="mt-3 space-y-2">
+                        {completePreview.shortageItems.map((material) => (
+                          <div key={material.id} className="rounded-lg bg-white px-3 py-2 text-xs text-red-700">
+                            <span className="font-semibold">{material.name}</span>: butuh {formatNumber(material.qtyActual)}, stok {formatNumber(material.stockQty)}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </aside>
               </div>
             </div>
             <div className="flex justify-end gap-2 border-t border-gray-100 px-5 py-4">
               <button type="button" onClick={() => setCompleteForm(null)} className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
                 Batal
               </button>
-              <button type="button" onClick={submitComplete} disabled={loading} className="rounded-lg bg-pink-600 px-4 py-2 text-sm font-semibold text-white hover:bg-pink-700 disabled:opacity-50">
-                Simpan Complete
+              <button
+                type="button"
+                onClick={submitComplete}
+                disabled={loading || completePreview.actualQty <= 0 || completePreview.shortageItems.length > 0}
+                className="rounded-lg bg-pink-600 px-4 py-2 text-sm font-semibold text-white hover:bg-pink-700 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Selesaikan Produksi
               </button>
             </div>
           </div>

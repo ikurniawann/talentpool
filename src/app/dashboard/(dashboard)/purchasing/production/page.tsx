@@ -25,6 +25,8 @@ type CogsMaterial = {
   bahan_id: string;
   kode: string;
   nama: string;
+  material_type?: "PURCHASED" | "WIP" | string;
+  source_product_id?: string | null;
   jumlah: number;
   satuan: string;
   qty_available: number;
@@ -57,6 +59,39 @@ type ProductionOrder = {
   created_at: string;
 };
 
+type WipInventory = {
+  id: string;
+  kode: string;
+  nama: string;
+  kategori: string;
+  satuan: string;
+  qty_onhand: number | string;
+  avg_cost: number | string;
+  status_stok: string;
+  source_product_id?: string | null;
+  source_product?: {
+    id: string;
+    kode?: string | null;
+    nama?: string | null;
+    kategori?: string | null;
+  } | null;
+  latest_batch?: {
+    batch_number?: string | null;
+    qty_produced?: number | string | null;
+    hpp_per_unit?: number | string | null;
+    production_order_id?: string | null;
+    production_order_number?: string | null;
+    created_at?: string | null;
+  } | null;
+};
+
+type WipSummary = {
+  total_wip: number;
+  ready_wip: number;
+  total_qty: number;
+  total_value: number;
+};
+
 function toNumber(value: unknown) {
   const numeric = Number(value);
   return Number.isFinite(numeric) ? numeric : 0;
@@ -78,6 +113,15 @@ function formatNumber(value: unknown) {
 
 function displayName(value?: string | null) {
   return (value || "-").replace(/\s+\d{8,}$/g, "").trim();
+}
+
+function formatDate(value?: string | null) {
+  if (!value) return "-";
+  return new Intl.DateTimeFormat("id-ID", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  }).format(new Date(value));
 }
 
 function statusClass(status: string) {
@@ -102,6 +146,8 @@ function statusLabel(status: string) {
 export default function ProductionPage() {
   const [orders, setOrders] = useState<ProductionOrder[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
+  const [wipInventory, setWipInventory] = useState<WipInventory[]>([]);
+  const [wipSummary, setWipSummary] = useState<WipSummary | null>(null);
   const [search, setSearch] = useState("");
   const [productId, setProductId] = useState("");
   const [outputType, setOutputType] = useState<"FINISHED_GOOD" | "WIP">("FINISHED_GOOD");
@@ -143,13 +189,20 @@ export default function ProductionPage() {
   const loadData = async () => {
     setLoading(true);
     try {
-      const [ordersRes, productsRes] = await Promise.all([
+      const [ordersRes, productsRes, wipRes] = await Promise.all([
         fetch("/api/purchasing/production/orders", { cache: "no-store" }),
         fetch("/api/purchasing/products?limit=100&is_active=true", { cache: "no-store" }),
+        fetch("/api/purchasing/production/wip", { cache: "no-store" }),
       ]);
-      const [ordersJson, productsJson] = await Promise.all([ordersRes.json(), productsRes.json()]);
+      const [ordersJson, productsJson, wipJson] = await Promise.all([
+        ordersRes.json(),
+        productsRes.json(),
+        wipRes.json(),
+      ]);
       setOrders(ordersJson.data || []);
       setProducts(productsJson.data || []);
+      setWipInventory(wipJson.data || []);
+      setWipSummary(wipJson.summary || null);
     } finally {
       setLoading(false);
     }
@@ -241,7 +294,7 @@ export default function ProductionPage() {
         </div>
       </div>
 
-      <section className="grid gap-3 md:grid-cols-3">
+      <section className="grid gap-3 md:grid-cols-4">
         <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
           <p className="text-xs font-medium text-gray-500">Total Produk</p>
           <p className="mt-2 text-2xl font-semibold text-gray-950">{products.length}</p>
@@ -253,6 +306,93 @@ export default function ProductionPage() {
         <div className="rounded-xl border border-pink-100 bg-pink-50/70 p-4 shadow-sm">
           <p className="text-xs font-medium text-pink-700">Order Aktif</p>
           <p className="mt-2 text-2xl font-semibold text-pink-800">{draftOrders}</p>
+        </div>
+        <div className="rounded-xl border border-sky-100 bg-sky-50/70 p-4 shadow-sm">
+          <p className="text-xs font-medium text-sky-700">WIP Siap BOM</p>
+          <p className="mt-2 text-2xl font-semibold text-sky-800">{wipSummary?.ready_wip || 0}</p>
+        </div>
+      </section>
+
+      <section className="overflow-hidden rounded-xl border border-sky-100 bg-white shadow-sm">
+        <div className="flex flex-col gap-3 border-b border-sky-100 bg-sky-50/60 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h2 className="text-base font-semibold text-gray-950">WIP Inventory</h2>
+            <p className="text-xs text-gray-500">
+              Output WIP yang sudah completed akan masuk stok bahan dan bisa dipakai sebagai komponen BOM produk final.
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2 text-xs">
+            <span className="rounded-full border border-sky-200 bg-white px-3 py-1 font-semibold text-sky-700">
+              {wipSummary?.total_wip || 0} WIP
+            </span>
+            <span className="rounded-full border border-emerald-200 bg-white px-3 py-1 font-semibold text-emerald-700">
+              Nilai {formatCurrency(wipSummary?.total_value || 0)}
+            </span>
+          </div>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="min-w-full text-sm">
+            <thead className="border-b border-gray-100 bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
+              <tr>
+                <th className="px-4 py-3 text-left font-semibold">WIP</th>
+                <th className="px-4 py-3 text-left font-semibold">Source Product</th>
+                <th className="px-4 py-3 text-right font-semibold">Stok</th>
+                <th className="px-4 py-3 text-right font-semibold">HPP WIP</th>
+                <th className="px-4 py-3 text-left font-semibold">Batch Terakhir</th>
+                <th className="px-4 py-3 text-right font-semibold">Aksi</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {wipInventory.map((item) => (
+                <tr key={item.id} className="hover:bg-sky-50/40">
+                  <td className="px-4 py-3">
+                    <p className="font-medium text-gray-950">{displayName(item.nama)}</p>
+                    <p className="text-xs text-gray-500">{item.kode}</p>
+                  </td>
+                  <td className="px-4 py-3">
+                    <p className="font-medium text-gray-900">{displayName(item.source_product?.nama) || "-"}</p>
+                    <p className="text-xs text-gray-500">{item.source_product?.kode || "-"}</p>
+                  </td>
+                  <td className="px-4 py-3 text-right">
+                    <p className={toNumber(item.qty_onhand) > 0 ? "font-semibold text-emerald-700" : "font-semibold text-red-600"}>
+                      {formatNumber(item.qty_onhand)} {item.satuan}
+                    </p>
+                    <p className="text-xs text-gray-500">{item.status_stok}</p>
+                  </td>
+                  <td className="px-4 py-3 text-right font-semibold text-pink-700">{formatCurrency(item.avg_cost)}</td>
+                  <td className="px-4 py-3">
+                    <p className="font-medium text-gray-900">{item.latest_batch?.batch_number || "-"}</p>
+                    <p className="text-xs text-gray-500">
+                      {item.latest_batch ? `${formatNumber(item.latest_batch.qty_produced)} qty · ${formatDate(item.latest_batch.created_at)}` : "Belum ada batch"}
+                    </p>
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="flex justify-end gap-2">
+                      <Link
+                        href={`/dashboard/purchasing/reports/stock-card?material_id=${item.id}`}
+                        className="rounded-lg border border-sky-200 px-3 py-1.5 text-xs font-semibold text-sky-700 hover:bg-sky-50"
+                      >
+                        Stock Card
+                      </Link>
+                      <Link
+                        href="/dashboard/purchasing/production/recipes"
+                        className="rounded-lg border border-pink-200 px-3 py-1.5 text-xs font-semibold text-pink-700 hover:bg-pink-50"
+                      >
+                        Pakai di BOM
+                      </Link>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+              {wipInventory.length === 0 && (
+                <tr>
+                  <td colSpan={6} className="px-4 py-10 text-center text-sm text-gray-500">
+                    Belum ada WIP. Buat production order dengan output WIP, lalu release, start, dan complete.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
         </div>
       </section>
 
@@ -471,7 +611,14 @@ export default function ProductionPage() {
                         return (
                           <div key={material.bahan_id} className="grid gap-3 px-4 py-3 text-sm md:grid-cols-[1fr_120px_120px_120px] md:items-center">
                             <div>
-                              <p className="font-medium text-gray-900">{displayName(material.nama)}</p>
+                              <div className="flex flex-wrap items-center gap-2">
+                                <p className="font-medium text-gray-900">{displayName(material.nama)}</p>
+                                {material.material_type === "WIP" && (
+                                  <span className="rounded-full border border-sky-200 bg-sky-50 px-2 py-0.5 text-[10px] font-semibold text-sky-700">
+                                    WIP
+                                  </span>
+                                )}
+                              </div>
                               <p className="text-xs text-gray-500">Waste {formatNumber(material.waste_percentage)}%</p>
                             </div>
                             <div>

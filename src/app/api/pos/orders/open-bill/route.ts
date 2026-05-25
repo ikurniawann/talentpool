@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase/service-client';
 import { getPosSession } from '@/lib/api/auth';
+import { buildCostSnapshot, loadPosProductCostMap } from '@/lib/pos/purchasing-sync';
 
 const STATIONS = ['kitchen', 'bar', 'bakery', 'dessert', 'merchandise', 'photobooth'];
 
@@ -185,6 +186,11 @@ export async function POST(request: NextRequest) {
     // Note: pos_order_items stores variant/modifier details in JSON columns.
     // The DB schema does not have separate variant_price_adjustment / modifier_price_adjustment columns,
     // so adjustments are folded into unit_price/subtotal/total_amount here.
+    const productCostMap = await loadPosProductCostMap(
+      supabase,
+      items.map((item) => String(item.product_id || '')).filter(Boolean)
+    );
+
     const orderItems = items.map((item) => {
       const quantity = Number(item.quantity) || 1;
       const unitPrice =
@@ -195,6 +201,11 @@ export async function POST(request: NextRequest) {
       const totalValue = Number(item.total_amount) || subtotalValue;
       const productName = String(item.product_name || 'Unknown');
       const kitchenNotes = String(item.kitchen_notes || item.notes || '');
+      const costSnapshot = buildCostSnapshot(
+        item.product_id ? productCostMap.get(item.product_id) : undefined,
+        quantity,
+        totalValue
+      );
 
       return {
         order_id: orderData.id,
@@ -210,6 +221,7 @@ export async function POST(request: NextRequest) {
         station: normalizeStation(item.station, productName, kitchenNotes),
         kitchen_status: 'pending',
         kitchen_notes: kitchenNotes || null,
+        ...costSnapshot,
       };
     });
 
@@ -226,6 +238,10 @@ export async function POST(request: NextRequest) {
         delete legacyItem.station;
         delete legacyItem.kitchen_status;
         delete legacyItem.kitchen_notes;
+        delete legacyItem.cost_price;
+        delete legacyItem.cost_total;
+        delete legacyItem.gross_profit;
+        delete legacyItem.gross_margin_pct;
         return legacyItem;
       });
       const legacyResult = await supabase

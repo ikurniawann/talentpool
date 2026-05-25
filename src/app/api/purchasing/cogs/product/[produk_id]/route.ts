@@ -12,6 +12,8 @@ type StockRow = {
   qty_onhand?: number | string | null;
   qty_on_order?: number | string | null;
   avg_cost?: number | string | null;
+  material_type?: string | null;
+  source_product_id?: string | null;
 };
 
 function toNumber(value: unknown) {
@@ -52,7 +54,7 @@ export async function GET(
       .from("bom_items")
       .select(`
         *,
-        raw_material:raw_material_id(id, kode, nama),
+        raw_material:raw_material_id(id, kode, nama, material_type, source_product_id),
         satuan:satuan_id(id, kode, nama)
       `)
       .eq("product_id", produk_id)
@@ -84,7 +86,7 @@ export async function GET(
     const { data: stockRows, error: stockError } = materialIds.length > 0
       ? await supabase
           .from("v_raw_materials_stock")
-          .select("id, qty_onhand, qty_on_order, avg_cost")
+          .select("id, qty_onhand, qty_on_order, avg_cost, material_type, source_product_id")
           .in("id", materialIds)
       : { data: [], error: null };
 
@@ -116,6 +118,8 @@ export async function GET(
         bahan_id: bom.raw_material_id,
         kode: bom.raw_material?.kode || "",
         nama: bom.raw_material?.nama || "",
+        material_type: bom.raw_material?.material_type || stock?.material_type || "PURCHASED",
+        source_product_id: bom.raw_material?.source_product_id || stock?.source_product_id || null,
         jumlah: qtyRequired,
         satuan: bom.satuan?.nama || "-",
         qty_available: toNumber(stock?.qty_onhand),

@@ -1,20 +1,482 @@
 # Arkiv OS
 
-Sistem ERP terintegrasi untuk Aapex Technology yang mencakup modul **Rekrutmen (Talent Pool)**, **HRIS**, **Purchasing**, **Inventory**, **Staf & Penjadwalan**, dan **POS (Point of Sale)**.
+Arkiv OS adalah ERP terpadu berbasis Next.js dan Supabase untuk operasional Aapex Technology. Sistem ini mencakup HRIS, rekrutmen, POS, CRM loyalty, purchasing, inventory, produksi, reporting QA, Arkiv OS desktop, serta beberapa self-service flow untuk customer.
 
 ## Tech Stack
 
 | Layer | Teknologi |
-|-------|-----------|
-| Framework | Next.js (App Router, fullstack) |
-| Database | Supabase (PostgreSQL + Auth + Storage) |
-| Styling | Tailwind CSS v4 + shadcn/ui + Liquid Glass UI |
-| State | React Hook Form + Zod + TanStack Query |
+| --- | --- |
+| Framework | Next.js App Router, React |
+| Database | Supabase PostgreSQL, Auth, Storage |
+| Styling | Tailwind CSS v4, shadcn/ui, custom Arkiv OS design system |
+| Data & Form | React Hook Form, Zod, TanStack Query |
 | Charts | Recharts |
 | Drag & Drop | @hello-pangea/dnd |
-| WhatsApp | Fonnte API |
 | Email | Resend |
+| WhatsApp | Fonnte API |
 | Deployment | Vercel |
+| AI | Ollama cloud models untuk Arkiv OS AI Assistant |
+
+## Module Overview
+
+### Arkiv OS Desktop
+
+Route utama:
+- `/arkiv-os`
+- `/qa`
+
+Fitur:
+- Desktop-style launcher untuk membuka module bisnis dalam window.
+- AI Assistant dengan mode context project atau general knowledge.
+- Pengaturan AI Assistant di Arkiv OS Settings, termasuk pilihan LLM.
+- QA progress dashboard sementara di `/qa` untuk ringkasan progress dan test result.
+
+Dokumentasi terkait:
+- `Arkiv_progress.md`
+- `docs/qa/QA_REPORT_ARKIV_OS_PROGRESS_2026-05-24.md`
+
+### HRIS
+
+Route utama:
+- `/dashboard/hris`
+- `/dashboard/hris/employees`
+- `/dashboard/hris/attendance`
+- `/dashboard/hris/leaves`
+- `/dashboard/hris/payroll`
+- `/dashboard/hris/performance`
+- `/dashboard/hris/reports`
+
+Fitur:
+- Master karyawan, department, position, employment status.
+- Attendance, leave request, leave balance, salary, payroll, payslip.
+- Onboarding dan offboarding.
+- Performance management, KPI templates, employee KPI, review, behavioral score, development plan.
+- HRIS reporting.
+- Integrasi Talent Pool ke employee.
+
+Dokumentasi terkait:
+- `docs/hris/HRIS_FASE_0_COMPLETION.md`
+- `docs/hris/HRIS_FASE1_COMPLETE.md`
+- `docs/hris/HRIS_FASE2_PAYROLL_COMPLETE.md`
+- `docs/hris/HRIS_FASE3_KPI_PERFORMANCE.md`
+
+### Recruitment dan Career Portal
+
+Route utama:
+- `/career`
+- `/portal`
+- `/dashboard/hris/candidates`
+- `/dashboard/hris/pipeline`
+- `/dashboard/hris/talent-pool`
+- `/dashboard/hris/job-portal`
+
+Fitur:
+- Portal publik untuk kandidat.
+- Candidate management.
+- Pipeline rekrutmen.
+- Talent pool.
+- Job opening dan job portal management.
+- Candidate promotion ke HRIS employee.
+
+Dokumentasi terkait:
+- `docs/recruitment/TASK_COMPLETION_REPORT.md`
+- `docs/360-feedback-system.md`
+
+### POS F&B
+
+Route utama:
+- `/dashboard/pos`
+- `/dashboard/pos/cashier-new`
+- `/dashboard/pos/products`
+- `/dashboard/pos/open-bills`
+- `/dashboard/pos/kds`
+- `/dashboard/pos/orders`
+- `/dashboard/pos/print-queue`
+- `/dashboard/pos/printer-settings`
+- `/dashboard/pos/topup`
+- `/dashboard/pos/reservation`
+
+Fitur:
+- Cashier POS untuk F&B.
+- Product management, category, variant, modifier, station routing.
+- Dine-in, takeaway, customer search, add customer/member dari POS.
+- Table management dan open bill.
+- Save/open bill, bayar bill, dan status order.
+- KDS station routing untuk kitchen, bar, bakery, dessert, merchandise, photobooth.
+- Print queue untuk kitchen/bar/customer ticket.
+- Shift open/close flow.
+- ARK Coin top-up.
+- Reservation.
+- Sinkron produk purchasing ke POS.
+- Sinkron HPP aktual produksi ke `pos_products.cost_price`.
+- Snapshot profit item order: `cost_price`, `cost_total`, `gross_profit`, `gross_margin_pct`.
+
+Dokumentasi terkait:
+- `docs/pos/POS.md`
+- `docs/pos/POS_DEVELOPMENT_PLAN.md`
+- `docs/pos/POS-BACKEND-SETUP.md`
+- `docs/pos/POS_INTEGRATION_GUIDE.md`
+- `docs/pos-print-queue-worker.md`
+- `SPLIT_BILL_PLAN.md`
+
+### Table Self-Service Ordering
+
+Route utama:
+- `/table-order/[tableCode]`
+
+Fitur:
+- QR table ordering untuk customer dine-in.
+- Member lookup atau guest checkout.
+- Menu 2 kolom mobile dengan XP per produk.
+- Variant modal saat add to cart.
+- Floating order summary.
+- Payment method options: QRIS, ARK Coin, VA, bayar di kasir.
+- Order status dan repeat order setelah transaksi terkirim.
+- Auto routing order ke kitchen/bar melalui POS/KDS backend.
+
+Dokumentasi terkait:
+- `docs/pos/TABLE_SELF_SERVICE_ORDERING_PLAN.md`
+
+### Photobooth Self-Service POS
+
+Route utama:
+- `/photobooth/self-service`
+
+Fitur:
+- UI self-service POS khusus photobooth, terpisah dari POS F&B.
+- Tap Member Card.
+- Payment melalui POS payment layer.
+- Disiapkan untuk integrasi partner/vendor photobooth.
+- Partner callback akan dipakai untuk update XP setelah sesi photobooth sukses.
+
+Dokumentasi terkait:
+- `docs/crm/PHOTOBOOTH_SELF_SERVICE_POS_PLAN.md`
+- `docs/crm/PHOTOBOOTH_PARTNER_INTEGRATION_GUIDE.md`
+
+### CRM, Membership, Loyalty, dan Rewards
+
+Route utama:
+- `/dashboard/crm`
+- `/dashboard/crm/members`
+- `/dashboard/crm/members/[id]`
+- `/dashboard/crm/rewards`
+- `/dashboard/crm/avatars`
+
+Fitur:
+- Customer dan member database.
+- Membership tiering.
+- XP dan ARK Coin loyalty engine.
+- XP rules dari POS products.
+- Member loyal, top spender ARK Coin, top spender transaksi.
+- Reward redeem: discount, merchandise, avatar collectible.
+- Avatar catalog dan customer-owned avatar collection concept.
+- Integrasi XP dari POS, photobooth, dan future third-party game partner.
+
+Dokumentasi terkait:
+- `docs/crm/CRM_MEMBERSHIP_LOYALTY_PLAN.md`
+- `docs/crm/CRM_DEVELOPMENT_PROGRESS.md`
+- `docs/xp-system/XP_SYSTEM_SUMMARY.md`
+- `docs/xp-system/XP_SYSTEM_INTEGRATION.md`
+- `docs/xp-system/XP_INTEGRATION_EXAMPLES.md`
+
+### Purchasing dan Procurement
+
+Route utama:
+- `/dashboard/purchasing`
+- `/dashboard/purchasing/suppliers`
+- `/dashboard/purchasing/raw-materials`
+- `/dashboard/purchasing/units`
+- `/dashboard/purchasing/products`
+- `/dashboard/purchasing/products/[id]/bom`
+- `/dashboard/purchasing/price-list`
+- `/dashboard/purchasing/pr`
+- `/dashboard/purchasing/po`
+- `/dashboard/purchasing/grn`
+- `/dashboard/purchasing/delivery`
+- `/dashboard/purchasing/qc`
+- `/dashboard/purchasing/returns`
+- `/dashboard/purchasing/reports`
+
+Fitur:
+- Supplier master data.
+- Raw material master data, termasuk material type `PURCHASED` dan `WIP`.
+- Unit management.
+- Product master untuk produk yang diproduksi atau disinkronkan ke POS.
+- Recipe/BOM editor dengan support WIP sebagai bahan BOM.
+- Price list supplier.
+- Purchase Request.
+- Purchase Order.
+- Barang Masuk workspace: delivery dan receiving digabung berbasis status.
+- QC dan return.
+- Inventory adjustment dan movement.
+- Reports: inventory valuation, PO summary, PO detail, supplier performance, stock card.
+
+Dokumentasi terkait:
+- `docs/purchasing/README.md`
+- `docs/purchasing/PURCHASING_DEVELOPMENT_PLAN.md`
+- `docs/purchasing/PURCHASING_PRODUCTION_PROGRESS_2026-05-24.md`
+- `docs/purchasing/GRN-LOGIC-REVIEW.md`
+
+### Production, WIP, HPP, dan COGS
+
+Route utama:
+- `/dashboard/purchasing/production`
+- `/dashboard/purchasing/production/orders/[id]`
+- `/dashboard/purchasing/production/recipes`
+- `/dashboard/purchasing/reports/hpp-breakdown`
+- `/dashboard/purchasing/reports/stock-card`
+
+Fitur:
+- List produk yang bisa diproduksi.
+- Production order lifecycle: draft, release, start, complete, cancel.
+- Cek ulang stok bahan.
+- Complete production mengurangi stok bahan baku.
+- Output produk jadi masuk finished goods inventory.
+- Output WIP masuk stok bahan sebagai raw material type `WIP`.
+- WIP bisa dipakai sebagai komponen BOM produk final.
+- HPP WIP terbawa ke HPP produk final melalui average cost inventory.
+- HPP aktual produk jadi tersinkron ke POS `cost_price`.
+- Stock card untuk audit movement raw material dan WIP.
+
+### Inventory
+
+Route utama:
+- `/dashboard/inventory`
+- `/dashboard/inventory/low-stock`
+- `/dashboard/inventory/[id]`
+- `/dashboard/purchasing/reports/stock-card`
+
+Fitur:
+- Stok bahan baku.
+- Low stock.
+- Inventory movement.
+- Stock adjustment.
+- Stock card per material.
+- Valuation report.
+- Integrasi receiving, return, production consumption, dan WIP output.
+
+Dokumentasi terkait:
+- `docs/inventory/INVENTORY-ANALYSIS.md`
+- `docs/inventory/INVENTORY-TEST-PLAN.md`
+- `docs/inventory/QUICK-INVENTORY-TEST.md`
+
+### Reporting dan QA
+
+Route utama:
+- `/qa`
+- `/dashboard/purchasing/reports`
+- `/dashboard/hris/reports`
+- `/dashboard/pos`
+
+Fitur:
+- QA progress page.
+- Purchasing reports.
+- HRIS reports.
+- POS dashboard.
+- Profit-ready POS data via item-level cost snapshot.
+
+### Master Data dan Settings
+
+Route utama:
+- `/dashboard/master/departments`
+- `/dashboard/master/positions`
+- `/dashboard/master/employment-statuses`
+- `/dashboard/settings`
+
+Fitur:
+- Department.
+- Position.
+- Employment status.
+- Global settings.
+- Arkiv OS settings.
+
+## API Surface
+
+### HRIS
+
+| Method | Endpoint | Deskripsi |
+| --- | --- | --- |
+| GET/POST | `/api/hris/employees` | Employee list dan create |
+| GET/PUT/DELETE | `/api/hris/employees/[id]` | Detail, update, soft delete employee |
+| GET/POST | `/api/hris/attendance` | Attendance |
+| GET/POST | `/api/hris/leaves` | Leave request |
+| POST | `/api/hris/leaves/approve` | Approve/reject leave |
+| GET/POST | `/api/hris/payroll` | Payroll |
+| GET/POST | `/api/hris/performance/reviews` | Performance review |
+| GET/POST | `/api/hris/performance/employee-kpis` | Employee KPI |
+| GET | `/api/hris/reports` | HRIS report |
+| POST | `/api/hris/promote` | Promote kandidat ke employee |
+
+### Recruitment
+
+| Method | Endpoint | Deskripsi |
+| --- | --- | --- |
+| GET/POST | `/api/candidates` | Candidate list dan create |
+| GET/PUT/DELETE | `/api/candidates/[id]` | Candidate detail dan update |
+| POST | `/api/candidates/[id]/cv-upload` | Upload CV |
+| POST | `/api/portal/submit` | Submit lamaran publik |
+
+### POS
+
+| Method | Endpoint | Deskripsi |
+| --- | --- | --- |
+| GET/POST | `/api/pos/products` | POS product list dan create |
+| GET/PUT/DELETE | `/api/pos/products/[id]` | POS product detail dan update |
+| POST | `/api/pos/products/sync-purchasing` | Sync purchasing product ke POS |
+| GET/POST | `/api/pos/orders` | POS order list dan create paid order |
+| PATCH | `/api/pos/orders/[id]` | Update order/payment |
+| POST | `/api/pos/orders/open-bill` | Create open bill |
+| GET | `/api/pos/kds` | Kitchen display data |
+| GET/POST | `/api/pos/print-jobs` | Print queue |
+| GET/POST | `/api/pos/shifts` | POS shift |
+| POST | `/api/pos/shifts/[id]/close` | Close shift |
+| GET/POST | `/api/pos/topup` | ARK Coin top-up |
+
+### Table Order
+
+| Method | Endpoint | Deskripsi |
+| --- | --- | --- |
+| GET | `/api/table-order/session/[tableCode]` | Resolve table order session |
+| GET | `/api/table-order/products` | Product list untuk table order |
+| POST | `/api/table-order/orders` | Submit customer table order |
+| POST | `/api/table-order/customers/lookup` | Lookup member/customer |
+
+### CRM
+
+| Method | Endpoint | Deskripsi |
+| --- | --- | --- |
+| GET | `/api/crm/dashboard` | CRM dashboard summary |
+| GET/POST | `/api/crm/members` | Member list dan create |
+| GET/PUT/DELETE | `/api/crm/members/[id]` | Member detail dan update |
+| GET/POST | `/api/crm/tiers` | Membership tier |
+| GET/POST | `/api/crm/xp-rules` | XP rules |
+| GET/POST | `/api/crm/rewards` | Reward catalog |
+| GET/POST | `/api/crm/redemptions` | Reward redemption |
+| GET/POST | `/api/crm/avatars` | Avatar catalog |
+| GET | `/api/crm/avatar-inventory` | Avatar ownership inventory |
+| GET/POST | `/api/pos/topup` | ARK Coin integration |
+| GET/POST | `/api/pos/products` | XP per product integration |
+
+Catatan: sebagian logic CRM berada di `src/lib/crm/loyalty-engine.ts` dan dipanggil dari POS order flow.
+
+### Purchasing, Inventory, Production
+
+| Method | Endpoint | Deskripsi |
+| --- | --- | --- |
+| GET/POST | `/api/purchasing/suppliers` | Supplier |
+| GET/POST | `/api/purchasing/raw-materials` | Raw material |
+| GET/POST | `/api/purchasing/units` | Unit |
+| GET/POST | `/api/purchasing/products` | Purchasing product |
+| GET/POST | `/api/purchasing/products/[id]/bom` | Product BOM |
+| GET/POST | `/api/purchasing/price-list` | Supplier price list |
+| GET/POST | `/api/purchasing/pr` | Purchase Request |
+| GET/POST | `/api/purchasing/po` | Purchase Order |
+| GET/POST | `/api/purchasing/delivery` | Supplier delivery |
+| GET/POST | `/api/purchasing/grn` | Receiving / Barang Masuk |
+| GET/POST | `/api/purchasing/qc` | Quality Control |
+| GET/POST | `/api/purchasing/returns` | Return |
+| GET/POST | `/api/purchasing/inventory/adjustment` | Inventory adjustment |
+| GET | `/api/purchasing/inventory/movements` | Inventory movement |
+| GET | `/api/purchasing/cogs/product/[id]` | Product COGS |
+| GET/POST | `/api/purchasing/production/orders` | Production order |
+| PATCH | `/api/purchasing/production/orders/[id]` | Release, start, complete, cancel, recheck stock |
+| GET | `/api/purchasing/production/wip` | WIP inventory |
+| GET | `/api/purchasing/reports/stock-card` | Inventory stock card |
+| GET | `/api/purchasing/reports/inventory-valuation` | Inventory valuation |
+| GET | `/api/purchasing/reports/po-summary` | PO summary |
+| GET | `/api/purchasing/reports/supplier-performance` | Supplier performance |
+
+### AI Assistant
+
+| Method | Endpoint | Deskripsi |
+| --- | --- | --- |
+| POST | `/api/ai/assistant` | Arkiv OS AI Assistant |
+
+## Database Highlights
+
+### HRIS
+- `employees`
+- `departments`
+- `employment_statuses`
+- `employee_salaries`
+- `attendance`
+- `leaves`
+- `payroll`
+- `employee_kpis`
+- `performance_reviews`
+- `development_plans`
+
+### Recruitment
+- `candidates`
+- `job_openings`
+- `feedback_cycles`
+- `feedback_assignments`
+- `feedback_responses`
+
+### POS
+- `pos_products`
+- `pos_categories`
+- `pos_product_variants`
+- `pos_modifier_groups`
+- `pos_modifiers`
+- `pos_orders`
+- `pos_order_items`
+- `pos_tables`
+- `pos_print_jobs`
+- `pos_shifts`
+- `pos_customers`
+
+Profit-related POS order item fields:
+- `cost_price`
+- `cost_total`
+- `gross_profit`
+- `gross_margin_pct`
+
+### CRM
+- `crm_members`
+- `crm_xp_rules`
+- `crm_xp_transactions`
+- `crm_rewards`
+- `crm_reward_redemptions`
+- `crm_avatars`
+- `crm_member_avatars`
+
+### Purchasing, Inventory, Production
+- `suppliers`
+- `raw_materials`
+- `units`
+- `supplier_price_lists`
+- `products`
+- `bom_items`
+- `purchase_requests`
+- `purchase_orders`
+- `po_items`
+- `deliveries`
+- `grn`
+- `gr_items`
+- `qc_inspections`
+- `returns`
+- `inventory`
+- `inventory_movements`
+- `production_orders`
+- `production_order_materials`
+- `production_batches`
+- `finished_goods_inventory`
+
+## Environment Variables
+
+```env
+NEXT_PUBLIC_SUPABASE_URL=
+NEXT_PUBLIC_SUPABASE_ANON_KEY=
+SUPABASE_SERVICE_ROLE_KEY=
+FONNTE_API_KEY=
+RESEND_API_KEY=
+NEXT_PUBLIC_APP_URL=
+AI_ASSISTANT_OLLAMA_API_BASE=
+OLLAMA_API_BASE=
+OLLAMA_API_KEY=
+OLLAMA_MODEL=
+```
 
 ## Getting Started
 
@@ -28,24 +490,19 @@ npm install
 
 ```bash
 cp .env.local.example .env.local
-# Isi API keys sesuai kebutuhan
 ```
 
-Variabel yang dibutuhkan:
-
-```env
-NEXT_PUBLIC_SUPABASE_URL=
-NEXT_PUBLIC_SUPABASE_ANON_KEY=
-SUPABASE_SERVICE_ROLE_KEY=
-FONNTE_API_KEY=
-RESEND_API_KEY=
-```
+Isi credentials Supabase, email, WhatsApp, dan AI sesuai kebutuhan.
 
 ### 3. Supabase Setup
 
-1. Buat project di [supabase.com](https://supabase.com)
-2. Jalankan migration SQL di `supabase/migrations/`
-3. Copy credentials ke `.env.local`
+Jalankan semua migration di `supabase/migrations/`.
+
+```bash
+supabase db push
+```
+
+Jika migration dijalankan manual dari dashboard Supabase, gunakan urutan timestamp file di folder `supabase/migrations/`.
 
 ### 4. Run Development Server
 
@@ -53,205 +510,79 @@ RESEND_API_KEY=
 npm run dev
 ```
 
-Buka [http://localhost:3000](http://localhost:3000)
+Buka:
+
+```text
+http://localhost:3000
+http://localhost:3000/arkiv-os
+http://localhost:3000/dashboard/pos/products
+http://localhost:3000/dashboard/purchasing
+```
 
 ## Project Structure
 
-```
+```text
 src/
 ├── app/
-│   ├── (auth)/login/                   # Login page
-│   ├── (public)/portal/                # Portal lamaran kandidat publik
-│   ├── (dashboard)/dashboard/          # Protected dashboard (HRD/Admin)
-│   │   ├── page.tsx                    # Overview / ringkasan
-│   │   ├── candidates/                 # Manajemen kandidat
-│   │   ├── pipeline/                   # Kanban pipeline rekrutmen
-│   │   ├── talent-pool/               # Talent pool
-│   │   ├── analytics/                  # Analitik & laporan
-│   │   ├── staff/                      # Manajemen staf
-│   │   │   └── sections/               # Seksi staf per outlet
-│   │   ├── purchasing/                 # Modul pembelian
-│   │   │   ├── pr/                     # Purchase Request
-│   │   │   ├── po/                     # Purchase Order
-│   │   │   ├── grn/                    # Goods Receipt Note
-│   │   │   ├── suppliers/              # Manajemen supplier
-│   │   │   ├── products/               # Produk purchasing
-│   │   │   ├── price-list/             # Daftar harga
-│   │   │   ├── returns/                # Retur barang
-│   │   │   ├── delivery/               # Pengiriman
-│   │   │   ├── qc/                     # Quality Control
-│   │   │   └── reports/                # Laporan purchasing
-│   │   ├── inventory/                  # Modul inventory
-│   │   │   ├── raw-materials/          # Bahan baku
-│   │   │   ├── units/                  # Satuan
-│   │   │   └── low-stock/              # Peringatan stok rendah
-│   │   └── settings/                   # Pengaturan brand & posisi
-│   ├── pos/                            # POS (Point of Sale)
-│   │   ├── dashboard/                  # Dashboard kasir
-│   │   ├── orders/                     # Manajemen pesanan
-│   │   ├── products/                   # Produk POS
-│   │   ├── customers/                  # Data pelanggan
-│   │   ├── reservations/               # Reservasi
-│   │   └── topup/                      # Top-up saldo
-│   └── api/                            # REST API endpoints
-│       ├── candidates/                 # CRUD kandidat
-│       ├── positions/                  # CRUD posisi
-│       ├── brands/                     # CRUD outlet/brand
-│       ├── interviews/                 # CRUD interview
-│       ├── staff/                      # CRUD staf
-│       ├── staff-schedules/            # Jadwal staf
-│       ├── staff-sections/             # Seksi staf
-│       ├── purchasing/                 # API purchasing
-│       ├── inventory/                  # API inventory
-│       ├── pos/                        # API POS
-│       ├── portal/                     # API portal publik
-│       └── notifications/send/         # Kirim WA/Email
+│   ├── arkiv-os
+│   ├── dashboard
+│   ├── photobooth/self-service
+│   ├── table-order/[tableCode]
+│   ├── qa
+│   ├── dashboard/pos
+│   ├── dashboard/(dashboard)/hris
+│   ├── dashboard/(dashboard)/crm
+│   ├── dashboard/(dashboard)/purchasing
+│   ├── dashboard/(dashboard)/inventory
+│   ├── dashboard/(dashboard)/master
+│   ├── (public)/career
+│   ├── (public)/portal
+│   └── api/
 ├── components/
-│   ├── ui/                             # shadcn/ui components
-│   └── sidebar-client.tsx              # Sidebar navigasi utama
+│   ├── ui/
+│   ├── pos/
+│   └── layout/
+├── hooks/
 ├── lib/
-│   ├── supabase/                       # Supabase clients (browser/server/middleware)
-│   ├── fonnte/                         # Fonnte WhatsApp integration
-│   ├── resend/                         # Resend email integration
-│   └── utils/                          # Utility functions
+│   ├── api/
+│   ├── crm/
+│   ├── inventory/
+│   ├── pos/
+│   ├── purchasing/
+│   └── supabase/
+├── modules/
+│   └── purchasing/
 └── types/
-    └── index.ts                        # TypeScript types
 ```
 
-## User Roles
+## Roles
 
-| Role | Akses |
-|------|-------|
-| HRD | Full access: kandidat, pipeline, talent pool, staf, settings, notifikasi |
-| Purchasing | Akses modul pembelian: PR, PO, GRN, supplier, produk, laporan |
-| Hiring Manager | Lihat & update kandidat divisinya, input interview scorecard |
-| Kasir / POS | Akses POS: pesanan, produk, pelanggan, reservasi |
-| Direksi | Read-only: analytics dashboard |
+| Role | Akses Utama |
+| --- | --- |
+| `admin` / `super_admin` | Semua module |
+| `hrd` | HRIS, recruitment, employee, performance |
+| `purchasing_admin` | Purchasing, procurement, inventory, production |
+| `purchasing_manager` | Approval, purchasing report, production |
+| `warehouse_admin` / `warehouse_staff` | Receiving, inventory, QC, stock card |
+| `finance_staff` | COGS, report, finance-related approval |
+| `pos_admin` | POS configuration, product, station, report |
+| `cashier` | POS cashier, order, payment |
+| `direksi` | Dashboard dan report |
 
-## API Endpoints
+## Design Notes
 
-### Rekrutmen
+- Arkiv OS memakai aksen pink sebagai primary action.
+- Dashboard operasional dibuat padat, scannable, dan action-oriented.
+- POS dan self-service flow mengutamakan touch-friendly controls.
+- Purchasing memakai istilah operasional Indonesia seperti Barang Masuk, Produksi, dan Recipe/BOM.
+- Dropdown dan clickable UI harus memiliki cursor/action affordance yang jelas.
 
-| Method | Endpoint | Deskripsi |
-|--------|----------|-----------|
-| GET | `/api/candidates` | List kandidat (filter: status, brand_id, search) |
-| POST | `/api/candidates` | Tambah kandidat baru |
-| GET | `/api/candidates/[id]` | Detail kandidat |
-| PUT | `/api/candidates/[id]` | Update kandidat |
-| DELETE | `/api/candidates/[id]` | Hapus kandidat |
-| GET | `/api/positions` | List posisi |
-| POST | `/api/positions` | Tambah posisi |
-| GET | `/api/brands` | List outlet/brand |
-| POST | `/api/brands` | Tambah outlet |
-| GET | `/api/interviews` | List interview |
-| POST | `/api/interviews` | Buat interview (auto update status kandidat) |
-| POST | `/api/notifications/send` | Kirim WhatsApp / Email ke kandidat |
+## Important Docs
 
-### HRIS (Human Resource Information System)
-
-| Method | Endpoint | Deskripsi |
-|--------|----------|-----------|
-| GET | `/api/hris/employees` | List karyawan (filter: search, department, status, pagination) |
-| POST | `/api/hris/employees` | Tambah karyawan baru |
-| GET | `/api/hris/employees/[id]` | Detail karyawan |
-| PUT | `/api/hris/employees/[id]` | Update karyawan |
-| DELETE | `/api/hris/employees/[id]` | Non-aktifkan karyawan (soft delete) |
-| POST | `/api/hris/promote` | Promote kandidat → karyawan (Talent Pool integration) |
-
-### Staf
-
-| Method | Endpoint | Deskripsi |
-|--------|----------|-----------|
-| GET | `/api/staff` | List staf |
-| POST | `/api/staff` | Tambah staf |
-| PUT | `/api/staff/[id]` | Update staf |
-| GET | `/api/staff-schedules` | List jadwal staf |
-| POST | `/api/staff-schedules` | Buat jadwal |
-| GET | `/api/staff-sections` | List seksi staf |
-
-### Purchasing
-
-| Method | Endpoint | Deskripsi |
-|--------|----------|-----------|
-| GET/POST | `/api/purchasing/pr` | Purchase Request |
-| GET/POST | `/api/purchasing/po` | Purchase Order |
-| GET/POST | `/api/purchasing/grn` | Goods Receipt Note |
-| GET/POST | `/api/purchasing/suppliers` | Supplier |
-| GET/POST | `/api/purchasing/products` | Produk |
-
-### Inventory
-
-| Method | Endpoint | Deskripsi |
-|--------|----------|-----------|
-| GET/POST | `/api/inventory` | Manajemen inventory |
-
-## Database Schema
-
-### HRIS (Fase 0 - Completed Mei 2026)
-- `employees` — Master data karyawan (NIP, personal data, employment info, org structure)
-- `departments` — Struktur organisasi (department/divisi)
-- `candidates` — Data kandidat rekrutmen (extended dengan `promoted_to_employee_id`)
-
-### Existing Tables
-- `brands` — Outlet / subsidiary
-- `positions` — Job titles per brand
-- `users` — User profiles (extends auth.users)
-- `candidates` — Data kandidat rekrutmen
-- `interviews` — Rekaman interview dengan scorecard (JSONB)
-- `notifications_log` — Riwayat notifikasi WA/email
-- `staff` — Data staf/karyawan (existing, akan diganti dengan `employees`)
-- `staff_schedules` — Jadwal kerja staf
-- `sections` — Seksi/divisi per outlet
-- `staff_sections` — Relasi staf ↔ seksi
-- `purchase_requests` — Data Purchase Request
-- `purchase_orders` — Data Purchase Order
-- `goods_receipt_notes` — Data penerimaan barang
-- `suppliers` — Data supplier
-- `inventory_items` — Item inventory
-
-## UI / Design
-
-- **Liquid Glass Effect**: Semua card dan komponen menggunakan efek kaca transparan (Apple-style) dengan `backdrop-filter: blur` dan latar gradasi
-- **Sidebar**: Dark gray (`#1c1c1e`) dengan aksen pink untuk navigasi aktif
-- **Tabel**: Garis tipis abu-abu (`rgba(209,213,219,0.5)`) agar tidak terlalu kontras
-- **Dropdown**: Semua Select dropdown menampilkan nama (bukan ID) baik saat load awal maupun setelah dipilih
-
-## Integrasi
-
-- [x] Supabase Auth (email/password)
-- [x] Supabase Database (PostgreSQL)
-- [x] Fonnte WhatsApp API
-- [x] Resend Email API
-- [ ] API integration ke Talenta by Mekari (Absensi & Payroll)
-- [ ] CV upload via Supabase Storage
-
----
-
-## 🎉 Fase 0 - HRIS Foundation (Completed)
-
-**Status**: ✅ **COMPLETED** (3 Mei 2026)
-
-### Yang Sudah Diimplementasi:
-
-#### Database
-- ✅ Tabel `employees` - Master data karyawan dengan NIP auto-generate
-- ✅ Tabel `departments` - Struktur organisasi
-- ✅ Integrasi Talent Pool → Employee (`promoted_to_employee_id`)
-- ✅ Function `generate_nip()` (format: EMP-YYYY-XXXXX)
-- ✅ Function `promote_candidate_to_employee()`
-- ✅ RLS policies (HRD, Manager, Employee)
-
-#### API Routes
-- ✅ `GET/POST /api/hris/employees` - List & create employees
-- ✅ `GET/PUT/DELETE /api/hris/employees/[id]` - CRUD employee
-- ✅ `POST /api/hris/promote` - Promote candidate to employee
-
-#### Components
-- ✅ `EmployeeTable` - Table dengan filter, sorting, pagination
-- ✅ `PromoteCandidateButton` - Button untuk promote kandidat
-
-#### Types & Helpers
-- ✅ `types/hris.ts` - Complete TypeScript types
-- ✅ `lib/supabase/hris.ts` - Helper functions
-
-📖 **Dokumentasi Lengkap**: Lihat `docs/HRIS_FASE_0_COMPLETION.md`
+- `docs/purchasing/README.md`
+- `docs/purchasing/PURCHASING_PRODUCTION_PROGRESS_2026-05-24.md`
+- `docs/crm/CRM_DEVELOPMENT_PROGRESS.md`
+- `docs/pos/POS_DEVELOPMENT_PLAN.md`
+- `docs/qa/QA_REPORT_ARKIV_OS_PROGRESS_2026-05-24.md`
+- `docs/purchasing/PROJECT_STANDARDS.md`
+- `docs/AGENTS.md`

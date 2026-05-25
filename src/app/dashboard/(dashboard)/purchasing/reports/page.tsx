@@ -10,9 +10,18 @@ import {
   DocumentChartBarIcon,
   BuildingOfficeIcon,
   ArrowRightIcon,
+  ClipboardDocumentListIcon,
 } from "@heroicons/react/24/outline";
 
 const REPORT_CARDS = [
+  {
+    href: "/dashboard/purchasing/reports/stock-card",
+    icon: ClipboardDocumentListIcon,
+    title: "Inventory Stock Card",
+    description: "Kartu stok per bahan baku dengan saldo awal, mutasi masuk/keluar, adjustment, retur, dan saldo akhir.",
+    accent: "text-violet-600",
+    bg: "bg-violet-50",
+  },
   {
     href: "/dashboard/purchasing/reports/inventory-valuation",
     icon: ArchiveBoxIcon,
