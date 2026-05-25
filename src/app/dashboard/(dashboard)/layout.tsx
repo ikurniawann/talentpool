@@ -193,18 +193,7 @@ export default async function DashboardGroupLayout({
                   { href: "/dashboard/purchasing/main", label: "Master Data", icon: "database" },
                   { href: "/dashboard/purchasing/procurement", label: "Procurement", icon: "shopping" },
                   { href: "/dashboard/purchasing/approval", label: "Approval", icon: "check-circle" },
-                  {
-                    href: "/dashboard/purchasing/reports",
-                    label: "Laporan",
-                    icon: "chart",
-                    children: [
-                      { href: "/dashboard/purchasing/reports/stock-card", label: "Stock Card", icon: "clipboard" },
-                      { href: "/dashboard/purchasing/reports/inventory-valuation", label: "Valuasi Inventory", icon: "chart-bar" },
-                      { href: "/dashboard/purchasing/reports/po-summary", label: "Ringkasan PO", icon: "document-text" },
-                      { href: "/dashboard/purchasing/reports/po-detail", label: "Detail PO", icon: "document-magnifying-glass" },
-                      { href: "/dashboard/purchasing/reports/supplier-performance", label: "Performa Supplier", icon: "chart-pie" },
-                    ],
-                  },
+                  { href: "/dashboard/purchasing/reports", label: "Laporan", icon: "chart" },
                 ]
               : [
                   { href: "/dashboard", label: "Beranda", icon: "home" },
