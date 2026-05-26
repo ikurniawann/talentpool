@@ -16,6 +16,7 @@ import {
   Printer,
   SlidersHorizontal,
   Table2,
+  TrendingUp,
 } from "lucide-react";
 import { ActivityLogBell } from "@/components/layout/ActivityLogBell";
 import { ShiftModal } from "@/components/pos/ShiftModal";
@@ -31,6 +32,7 @@ const POS_ITEMS = [
   { href: "/dashboard/pos/cashier-new", label: "Kasir", icon: ShoppingCartIcon },
   { href: "/dashboard/pos/open-bills", label: "Open Bills", icon: Table2 },
   { href: "/dashboard/pos/orders", label: "Pesanan", icon: ClipboardListIcon },
+  { href: "/dashboard/pos/reports/profit", label: "Profit", icon: TrendingUp },
   { href: "/dashboard/pos/reservation", label: "Reservasi", icon: Calendar },
   { href: "/dashboard/pos/topup", label: "Topup", icon: Coins },
   { href: "/dashboard/pos/kds", label: "KDS", icon: ChefHat },
