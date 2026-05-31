@@ -34,48 +34,46 @@ export default async function DashboardGroupLayout({
               },
               {
                 href: "/dashboard/purchasing",
-                label: "Procurement",
+                label: "Purchasing",
                 icon: "shopping",
                 children: [
-                  { href: "/dashboard/purchasing", label: "Dashboard", icon: "home" },
+                  { href: "/dashboard/purchasing/pr", label: "PR", icon: "clipboard" },
+                  { href: "/dashboard/purchasing/po", label: "PO", icon: "clipboard-document-check" },
                   {
-                    href: "/dashboard/purchasing/main",
-                    label: "Master Data",
-                    icon: "database",
+                    href: "/dashboard/purchasing/grn",
+                    label: "Receiving / GRN",
+                    icon: "arrow-down-on-square",
                     children: [
-                      { href: "/dashboard/purchasing/units", label: "Satuan", icon: "cube" },
-                      { href: "/dashboard/purchasing/raw-materials", label: "Bahan Baku", icon: "circle-stack" },
-                      { href: "/dashboard/purchasing/products", label: "Produk", icon: "cube" },
-                      { href: "/dashboard/purchasing/suppliers", label: "Supplier", icon: "users" },
-                      { href: "/dashboard/purchasing/price-list", label: "Daftar Harga", icon: "document-text" },
+                      { href: "/dashboard/purchasing/grn", label: "GRN", icon: "arrow-down-on-square" },
+                      { href: "/dashboard/purchasing/qc", label: "QC Receiving", icon: "check-circle" },
+                      { href: "/dashboard/purchasing/returns", label: "Returns", icon: "truck" },
                     ],
                   },
                   {
-                    href: "/dashboard/purchasing/procurement",
-                    label: "Procurement",
-                    icon: "shopping",
+                    href: "/dashboard/purchasing/suppliers",
+                    label: "Vendor Dashboard & Evaluation",
+                    icon: "users",
                     children: [
-                      { href: "/dashboard/purchasing/procurement", label: "Menu Procurement", icon: "shopping" },
-                      { href: "/dashboard/purchasing/pr", label: "Purchase Request", icon: "clipboard" },
-                      { href: "/dashboard/purchasing/po", label: "Purchase Order", icon: "clipboard-document-check" },
-                      { href: "/dashboard/purchasing/grn", label: "Penerimaan", icon: "arrow-down-on-square" },
-                      { href: "/dashboard/purchasing/qc", label: "QC", icon: "check-circle" },
-                      { href: "/dashboard/purchasing/returns", label: "Retur", icon: "truck" },
+                      { href: "/dashboard/purchasing/suppliers", label: "Vendor Dashboard", icon: "users" },
+                      { href: "/dashboard/purchasing/reports/supplier-performance", label: "Vendor Evaluation", icon: "chart" },
                     ],
                   },
-                  {
-                    href: "/dashboard/purchasing/approval",
-                    label: "Approval",
-                    icon: "check-circle",
-                    children: [
-                      { href: "/dashboard/purchasing/approval", label: "Menu Approval", icon: "check-circle" },
-                      { href: "/dashboard/purchasing/approval/pr", label: "Approval PR", icon: "clipboard" },
-                      { href: "/dashboard/purchasing/approval/po", label: "Approval PO", icon: "clipboard-document-check" },
-                    ],
-                  },
-                  { href: "/dashboard/purchasing/reports", label: "Laporan", icon: "chart" },
                 ],
               },
+              {
+                href: "/dashboard/inventory",
+                label: "Inventory",
+                icon: "database",
+                children: [
+                  { href: "/dashboard/inventory", label: "Dashboard Inventory", icon: "home" },
+                  { href: "/dashboard/inventory/stock", label: "Inventory Stock", icon: "circle-stack" },
+                  { href: "/dashboard/inventory/transfers", label: "Transfer Out / In", icon: "paper-airplane" },
+                  { href: "/dashboard/purchasing/production", label: "Production / WIP", icon: "cube" },
+                  { href: "/dashboard/inventory/scrap", label: "Scrap Item", icon: "truck" },
+                  { href: "/dashboard/inventory/adjustment", label: "Inventory Adjustment", icon: "clipboard-document-check" },
+                ],
+              },
+              { href: "/dashboard/finance", label: "Finance & Accounting", icon: "money" },
               {
                 href: "/dashboard/pos",
                 label: "POS",
@@ -108,7 +106,15 @@ export default async function DashboardGroupLayout({
                   { href: "/dashboard/master/employment-statuses", label: "Status Kepegawaian", icon: "identification" },
                 ],
               },
-              { href: "/dashboard/settings", label: "Pengaturan", icon: "settings" },
+              {
+                href: "/dashboard/settings",
+                label: "Pengaturan",
+                icon: "settings",
+                children: [
+                  { href: "/dashboard/settings", label: "General Settings", icon: "settings" },
+                  { href: "/dashboard/settings/users", label: "User Management", icon: "users" },
+                ],
+              },
             ]
           : user.role === "hrd"
           ? [
@@ -183,18 +189,60 @@ export default async function DashboardGroupLayout({
                   ],
                 },
               ]
-            : user.role === "purchasing_manager" ||
+          : user.role === "purchasing_manager" ||
               user.role === "purchasing_staff" ||
               user.role === "purchasing_admin" ||
               user.role === "warehouse_staff" ||
               user.role === "qc_staff"
               ? [
-                  { href: "/dashboard/purchasing", label: "Dashboard", icon: "home" },
-                  { href: "/dashboard/purchasing/main", label: "Master Data", icon: "database" },
-                  { href: "/dashboard/purchasing/procurement", label: "Procurement", icon: "shopping" },
-                  { href: "/dashboard/purchasing/approval", label: "Approval", icon: "check-circle" },
-                  { href: "/dashboard/purchasing/reports", label: "Laporan", icon: "chart" },
+                  {
+                    href: "/dashboard/purchasing",
+                    label: "Purchasing",
+                    icon: "shopping",
+                    children: [
+                      { href: "/dashboard/purchasing/pr", label: "PR", icon: "clipboard" },
+                      { href: "/dashboard/purchasing/po", label: "PO", icon: "clipboard-document-check" },
+                      {
+                        href: "/dashboard/purchasing/grn",
+                        label: "Receiving / GRN",
+                        icon: "arrow-down-on-square",
+                        children: [
+                          { href: "/dashboard/purchasing/grn", label: "GRN", icon: "arrow-down-on-square" },
+                          { href: "/dashboard/purchasing/qc", label: "QC Receiving", icon: "check-circle" },
+                          { href: "/dashboard/purchasing/returns", label: "Returns", icon: "truck" },
+                        ],
+                      },
+                      {
+                        href: "/dashboard/purchasing/suppliers",
+                        label: "Vendor Dashboard & Evaluation",
+                        icon: "users",
+                        children: [
+                          { href: "/dashboard/purchasing/suppliers", label: "Vendor Dashboard", icon: "users" },
+                          { href: "/dashboard/purchasing/reports/supplier-performance", label: "Vendor Evaluation", icon: "chart" },
+                        ],
+                      },
+                    ],
+                  },
+                  {
+                    href: "/dashboard/inventory",
+                    label: "Inventory",
+                    icon: "database",
+                    children: [
+                      { href: "/dashboard/inventory", label: "Dashboard Inventory", icon: "home" },
+                      { href: "/dashboard/inventory/stock", label: "Inventory Stock", icon: "circle-stack" },
+                      { href: "/dashboard/inventory/transfers", label: "Transfer Out / In", icon: "paper-airplane" },
+                      { href: "/dashboard/purchasing/production", label: "Production / WIP", icon: "cube" },
+                      { href: "/dashboard/inventory/scrap", label: "Scrap Item", icon: "truck" },
+                      { href: "/dashboard/inventory/adjustment", label: "Inventory Adjustment", icon: "clipboard-document-check" },
+                    ],
+                  },
+                  { href: "/dashboard/finance", label: "Finance & Accounting", icon: "money" },
                 ]
+              : user.role === "finance_staff"
+                ? [
+                    { href: "/dashboard", label: "Beranda", icon: "home" },
+                    { href: "/dashboard/finance", label: "Finance & Accounting", icon: "money" },
+                  ]
               : [
                   { href: "/dashboard", label: "Beranda", icon: "home" },
                   { href: "/dashboard/analytics", label: "Analytics", icon: "chart" },

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   HomeIcon,
   UsersIcon,
@@ -33,6 +33,8 @@ import {
   ArrowDownOnSquareIcon,
   TruckIcon,
   DocumentMagnifyingGlassIcon,
+  MoonIcon,
+  SunIcon,
 } from "@heroicons/react/24/outline";
 import {
   HomeIcon as HomeIconSolid,
@@ -187,11 +189,25 @@ export default function SidebarClient({ user, navItems, children }: SidebarClien
   const desktopNavItem: NavItem = { href: "/arkiv-os", label: "Kembali ke Desktop", icon: "home" };
   const allNavItems = [desktopNavItem, ...navItems];
   const pathname = usePathname();
+  const [theme, setTheme] = useState<"light" | "dark">("light");
   const [mobileOpen, setMobileOpen] = useState(false);
   const [expandedMenus, setExpandedMenus] = useState<string[]>(["HRIS Modules"]);
   const [collapsed, setCollapsed] = useState(false);
   const [accountOpen, setAccountOpen] = useState(false);
   const useActivityNotification = pathname.startsWith("/dashboard/purchasing");
+
+  useEffect(() => {
+    const savedTheme = window.localStorage.getItem("arkiv-dashboard-theme");
+    if (savedTheme === "dark" || savedTheme === "light") {
+      setTheme(savedTheme);
+    }
+  }, []);
+
+  useEffect(() => {
+    window.localStorage.setItem("arkiv-dashboard-theme", theme);
+  }, [theme]);
+
+  const toggleTheme = () => setTheme((current) => (current === "dark" ? "light" : "dark"));
 
   // --------------------------------------------------------------------------
   // Active State Logic
@@ -329,9 +345,13 @@ export default function SidebarClient({ user, navItems, children }: SidebarClien
 
   return (
     <div
-      className="flex min-h-screen"
+      className="arkiv-dashboard-theme flex min-h-screen"
+      data-theme={theme}
       style={{
-        background: "linear-gradient(135deg, #eef2ff 0%, #faf5ff 40%, #f0f9ff 75%, #fef3ff 100%)",
+        background:
+          theme === "dark"
+            ? "linear-gradient(135deg, #020617 0%, #111827 42%, #1e1b4b 74%, #3b1235 100%)"
+            : "linear-gradient(135deg, #eef2ff 0%, #faf5ff 40%, #f0f9ff 75%, #fef3ff 100%)",
       }}
     >
       {/* Mobile Overlay */}
@@ -377,6 +397,8 @@ export default function SidebarClient({ user, navItems, children }: SidebarClien
           userName={user.full_name}
           onLogout={handleLogout}
           onAccountClick={() => setAccountOpen(true)}
+          theme={theme}
+          onThemeToggle={toggleTheme}
         />
 
         {/* Top Bar - Desktop Notification + Logout */}
@@ -388,6 +410,7 @@ export default function SidebarClient({ user, navItems, children }: SidebarClien
             <NavIcon name="home" className="w-4 h-4" isActive={true} />
             Desktop
           </Link>
+          <ThemeToggle theme={theme} onToggle={toggleTheme} />
           {useActivityNotification ? <ActivityLogBell /> : <NotificationBell />}
           <div className="h-6 w-px bg-gray-200" />
           <button
@@ -578,9 +601,11 @@ interface MobileHeaderProps {
   userName: string;
   onLogout: () => void;
   onAccountClick: () => void;
+  theme: "light" | "dark";
+  onThemeToggle: () => void;
 }
 
-function MobileHeader({ onMenuClick, userName, onLogout, onAccountClick }: MobileHeaderProps) {
+function MobileHeader({ onMenuClick, userName, onLogout, onAccountClick, theme, onThemeToggle }: MobileHeaderProps) {
   return (
     <header className="lg:hidden bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between">
       <button onClick={onMenuClick} className="p-2 hover:bg-gray-100 rounded-lg">
@@ -589,11 +614,39 @@ function MobileHeader({ onMenuClick, userName, onLogout, onAccountClick }: Mobil
       <button onClick={onAccountClick} className="rounded-lg px-3 py-2 text-sm font-semibold text-gray-900 hover:bg-pink-50">
         {userName}
       </button>
+      <ThemeToggle theme={theme} onToggle={onThemeToggle} compact />
       <Link href="/arkiv-os" className="font-semibold text-pink-600">Desktop</Link>
       <button onClick={onLogout} className="p-2 hover:bg-gray-100 rounded-lg">
         <ArrowRightStartOnRectangleIcon className="w-6 h-6 text-gray-700" />
       </button>
     </header>
+  );
+}
+
+function ThemeToggle({
+  theme,
+  onToggle,
+  compact = false,
+}: {
+  theme: "light" | "dark";
+  onToggle: () => void;
+  compact?: boolean;
+}) {
+  const isDark = theme === "dark";
+
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      className={`arkiv-theme-toggle inline-flex items-center gap-2 rounded-lg border border-pink-100 bg-white px-3 py-2 text-sm font-semibold text-gray-700 shadow-sm transition-colors hover:border-pink-200 hover:bg-pink-50 ${
+        compact ? "px-2" : ""
+      }`}
+      aria-label={isDark ? "Aktifkan light mode" : "Aktifkan dark mode"}
+      title={isDark ? "Light mode" : "Dark mode"}
+    >
+      {isDark ? <SunIcon className="h-4 w-4" /> : <MoonIcon className="h-4 w-4" />}
+      {!compact && <span>{isDark ? "Light" : "Dark"}</span>}
+    </button>
   );
 }
 

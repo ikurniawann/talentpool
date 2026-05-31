@@ -139,12 +139,13 @@ const wallpapers = [
   { id: "glass", name: "Glass Blue", src: "linear-gradient(135deg,#082f49,#0f172a 48%,#312e81)" },
 ];
 
-const desktopLayoutVersion = "compact-v3";
+const desktopLayoutVersion = "compact-v4";
 
 const defaultIconPositions: Record<string, DesktopIconPosition> = {
   assistant: { left: 24, top: 58 },
   drive: { left: 116, top: 58 },
   Application: { left: 208, top: 58 },
+  userManagement: { left: 300, top: 58 },
 };
 
 const defaultWidgetVisibility: WidgetVisibility = {
@@ -217,6 +218,15 @@ export default function ArkivOsDesktop() {
       { id: "assistant", name: "AI Assistant", subtitle: "Super User", icon: Bot, action: "assistant" as const },
       { id: "drive", name: "Arkiv Drive", subtitle: "Files", icon: Folder, action: "files" as const },
       { id: "Application", name: "Application", subtitle: "All Modules", icon: Grid3X3, action: "folder" as const },
+      {
+        id: "userManagement",
+        name: "User Management",
+        subtitle: "Super Admin",
+        icon: ShieldCheck,
+        action: "route" as const,
+        href: "/dashboard/settings/users",
+        loginHref: "/login?redirect=/dashboard/settings/users",
+      },
     ],
     [],
   );
@@ -533,6 +543,7 @@ export default function ArkivOsDesktop() {
                   if (desktopModule) openModule(desktopModule);
                   else if (item.action === "folder") setShowApplicationFolder(true);
                   else if (item.action === "files") setShowFiles(true);
+                  else if (item.action === "route") router.push(isLoggedIn ? item.href : item.loginHref);
                   else setShowAssistant(true);
                 }}
                 onContextMenu={(event) => {

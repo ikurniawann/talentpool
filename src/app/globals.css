@@ -236,6 +236,131 @@ hr {
   color: #ffffff !important;
 }
 
+/* Dashboard light/dark mode. Scoped so Arkiv OS desktop keeps its own visual language. */
+.arkiv-dashboard-theme {
+  color-scheme: light;
+}
+
+.arkiv-dashboard-theme[data-theme="dark"] {
+  color-scheme: dark;
+}
+
+.arkiv-dashboard-theme[data-theme="dark"] aside,
+.arkiv-dashboard-theme[data-theme="dark"] header,
+.arkiv-dashboard-theme[data-theme="dark"] main,
+.arkiv-dashboard-theme[data-theme="dark"] .bg-white,
+.arkiv-dashboard-theme[data-theme="dark"] .bg-white\/50,
+.arkiv-dashboard-theme[data-theme="dark"] .bg-white\/60,
+.arkiv-dashboard-theme[data-theme="dark"] .bg-white\/70,
+.arkiv-dashboard-theme[data-theme="dark"] .bg-gray-50,
+.arkiv-dashboard-theme[data-theme="dark"] .bg-slate-50,
+.arkiv-dashboard-theme[data-theme="dark"] [data-slot="card"],
+.arkiv-dashboard-theme[data-theme="dark"] [data-slot="dialog-content"] {
+  background: rgba(15, 23, 42, 0.82) !important;
+  background-color: rgba(15, 23, 42, 0.82) !important;
+  color: #e5e7eb !important;
+  border-color: rgba(148, 163, 184, 0.28) !important;
+}
+
+.arkiv-dashboard-theme[data-theme="dark"] aside {
+  background: linear-gradient(180deg, rgba(15, 23, 42, 0.96), rgba(31, 41, 55, 0.96)) !important;
+}
+
+.arkiv-dashboard-theme[data-theme="dark"] .bg-pink-50,
+.arkiv-dashboard-theme[data-theme="dark"] .bg-pink-100,
+.arkiv-dashboard-theme[data-theme="dark"] .bg-blue-50,
+.arkiv-dashboard-theme[data-theme="dark"] .bg-emerald-50,
+.arkiv-dashboard-theme[data-theme="dark"] .bg-green-50,
+.arkiv-dashboard-theme[data-theme="dark"] .bg-yellow-50,
+.arkiv-dashboard-theme[data-theme="dark"] .bg-red-50 {
+  background-color: rgba(30, 41, 59, 0.86) !important;
+}
+
+.arkiv-dashboard-theme[data-theme="dark"] .text-gray-950,
+.arkiv-dashboard-theme[data-theme="dark"] .text-gray-900,
+.arkiv-dashboard-theme[data-theme="dark"] .text-gray-800,
+.arkiv-dashboard-theme[data-theme="dark"] .text-slate-950,
+.arkiv-dashboard-theme[data-theme="dark"] .text-slate-900,
+.arkiv-dashboard-theme[data-theme="dark"] .text-black {
+  color: #f8fafc !important;
+}
+
+.arkiv-dashboard-theme[data-theme="dark"] .text-gray-700,
+.arkiv-dashboard-theme[data-theme="dark"] .text-gray-600,
+.arkiv-dashboard-theme[data-theme="dark"] .text-slate-700,
+.arkiv-dashboard-theme[data-theme="dark"] .text-slate-600 {
+  color: #cbd5e1 !important;
+}
+
+.arkiv-dashboard-theme[data-theme="dark"] .text-gray-500,
+.arkiv-dashboard-theme[data-theme="dark"] .text-gray-400,
+.arkiv-dashboard-theme[data-theme="dark"] .text-slate-500,
+.arkiv-dashboard-theme[data-theme="dark"] .text-slate-400 {
+  color: #94a3b8 !important;
+}
+
+.arkiv-dashboard-theme[data-theme="dark"] .border-gray-50,
+.arkiv-dashboard-theme[data-theme="dark"] .border-gray-100,
+.arkiv-dashboard-theme[data-theme="dark"] .border-gray-200,
+.arkiv-dashboard-theme[data-theme="dark"] .border-gray-200\/70,
+.arkiv-dashboard-theme[data-theme="dark"] .border-gray-300,
+.arkiv-dashboard-theme[data-theme="dark"] .border-pink-100,
+.arkiv-dashboard-theme[data-theme="dark"] .border-pink-200,
+.arkiv-dashboard-theme[data-theme="dark"] .border-black\/5,
+.arkiv-dashboard-theme[data-theme="dark"] .ring-black\/5 {
+  border-color: rgba(148, 163, 184, 0.28) !important;
+  --tw-ring-color: rgba(148, 163, 184, 0.28) !important;
+}
+
+.arkiv-dashboard-theme[data-theme="dark"] table thead,
+.arkiv-dashboard-theme[data-theme="dark"] tr,
+.arkiv-dashboard-theme[data-theme="dark"] th,
+.arkiv-dashboard-theme[data-theme="dark"] td {
+  border-color: rgba(148, 163, 184, 0.22) !important;
+}
+
+.arkiv-dashboard-theme[data-theme="dark"] tr:hover,
+.arkiv-dashboard-theme[data-theme="dark"] .hover\:bg-gray-50:hover,
+.arkiv-dashboard-theme[data-theme="dark"] .hover\:bg-gray-100:hover,
+.arkiv-dashboard-theme[data-theme="dark"] .hover\:bg-pink-50:hover,
+.arkiv-dashboard-theme[data-theme="dark"] .hover\:bg-pink-100:hover {
+  background-color: rgba(30, 41, 59, 0.92) !important;
+}
+
+.arkiv-dashboard-theme[data-theme="dark"] input:not([type="checkbox"]):not([type="radio"]),
+.arkiv-dashboard-theme[data-theme="dark"] textarea,
+.arkiv-dashboard-theme[data-theme="dark"] select,
+.arkiv-dashboard-theme[data-theme="dark"] [data-slot="input"],
+.arkiv-dashboard-theme[data-theme="dark"] [data-slot="select-trigger"],
+.arkiv-dashboard-theme[data-theme="dark"] [data-slot="textarea"] {
+  background: rgba(15, 23, 42, 0.94) !important;
+  border-color: rgba(148, 163, 184, 0.36) !important;
+  color: #e5e7eb !important;
+}
+
+.arkiv-dashboard-theme[data-theme="dark"] input::placeholder,
+.arkiv-dashboard-theme[data-theme="dark"] textarea::placeholder {
+  color: #94a3b8 !important;
+}
+
+.arkiv-dashboard-theme[data-theme="dark"] [data-slot="popover"],
+.arkiv-dashboard-theme[data-theme="dark"] [data-slot="dropdown-menu"],
+.arkiv-dashboard-theme[data-theme="dark"] [data-slot="combobox"],
+.arkiv-dashboard-theme[data-theme="dark"] .popover,
+.arkiv-dashboard-theme[data-theme="dark"] .dropdown-menu,
+.arkiv-dashboard-theme[data-theme="dark"] [role="listbox"] {
+  background: rgba(15, 23, 42, 0.98) !important;
+  background-color: rgba(15, 23, 42, 0.98) !important;
+  border-color: rgba(148, 163, 184, 0.28) !important;
+  color: #e5e7eb !important;
+}
+
+.arkiv-dashboard-theme[data-theme="dark"] .arkiv-theme-toggle {
+  background: rgba(15, 23, 42, 0.9) !important;
+  border-color: rgba(244, 114, 182, 0.35) !important;
+  color: #f9a8d4 !important;
+}
+
 /* Custom react-datepicker styles */
 .react-datepicker {
   font-family: inherit;
