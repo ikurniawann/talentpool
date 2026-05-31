@@ -11,6 +11,77 @@
   }
 }
 
+@keyframes arkiv-assistant-shortcut-in {
+  0% {
+    opacity: 0;
+    transform: translateY(22px) scale(0.96);
+  }
+  70% {
+    opacity: 1;
+    transform: translateY(-2px) scale(1.01);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes arkiv-assistant-glow-pulse {
+  0%,
+  100% {
+    opacity: 0.7;
+    transform: scaleX(0.96);
+  }
+  50% {
+    opacity: 1;
+    transform: scaleX(1.04);
+  }
+}
+
+.arkiv-assistant-shortcut-shell {
+  animation: arkiv-assistant-shortcut-in 420ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+.arkiv-assistant-shortcut-glow {
+  animation: arkiv-assistant-glow-pulse 2.2s ease-in-out infinite;
+}
+
+.arkiv-assistant-shortcut-input,
+.arkiv-assistant-shortcut-input:hover,
+.arkiv-assistant-shortcut-input:focus,
+.arkiv-assistant-shortcut-input:active {
+  background: transparent !important;
+  background-color: transparent !important;
+  border: 0 !important;
+  outline: 0 !important;
+  box-shadow: none !important;
+  -webkit-appearance: none !important;
+  appearance: none !important;
+  -webkit-text-fill-color: #b9b5c4 !important;
+}
+
+.arkiv-assistant-shortcut-input::selection {
+  background: rgba(255, 255, 255, 0.06) !important;
+  color: #b9b5c4 !important;
+  -webkit-text-fill-color: #b9b5c4 !important;
+}
+
+.arkiv-assistant-shortcut-input::-moz-selection {
+  background: rgba(255, 255, 255, 0.06) !important;
+  color: #b9b5c4 !important;
+}
+
+.arkiv-assistant-shortcut-input:-webkit-autofill,
+.arkiv-assistant-shortcut-input:-webkit-autofill:hover,
+.arkiv-assistant-shortcut-input:-webkit-autofill:focus {
+  -webkit-text-fill-color: #b9b5c4;
+  box-shadow: 0 0 0 1000px transparent inset !important;
+  -webkit-box-shadow: 0 0 0 1000px transparent inset !important;
+  background: transparent !important;
+  background-color: transparent !important;
+  transition: background-color 9999s ease-in-out 0s;
+}
+
 .career-roundo {
   font-family: "Roundo", var(--font-inter, Inter), system-ui, sans-serif;
 }

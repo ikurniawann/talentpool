@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import type { ComponentType, CSSProperties, MouseEvent as ReactMouseEvent } from "react";
+import type { ComponentType, CSSProperties, FormEvent as ReactFormEvent, MouseEvent as ReactMouseEvent } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Activity,
@@ -183,6 +183,10 @@ export default function ArkivOsDesktop() {
   const [showAbout, setShowAbout] = useState(false);
   const [openAppModule, setOpenAppModule] = useState<DesktopModule | null>(null);
   const [moduleOpenChoice, setModuleOpenChoice] = useState<DesktopModule | null>(null);
+  const [showAssistantShortcut, setShowAssistantShortcut] = useState(false);
+  const [assistantShortcutInput, setAssistantShortcutInput] = useState("");
+  const [queuedAssistantPrompt, setQueuedAssistantPrompt] = useState<string | null>(null);
+  const [assistantShortcutFocused, setAssistantShortcutFocused] = useState(false);
   const [wallpaper, setWallpaper] = useState(wallpapers[0]);
   const [iconPositions, setIconPositions] = useState(defaultIconPositions);
   const [widgetVisibility, setWidgetVisibility] = useState<WidgetVisibility>(defaultWidgetVisibility);
@@ -191,6 +195,8 @@ export default function ArkivOsDesktop() {
   const [toast, setToast] = useState<string | null>(null);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; module?: DesktopModule; desktop?: boolean } | null>(null);
   const iconDragRef = useRef<{ id: string; offsetX: number; offsetY: number; moved: boolean } | null>(null);
+  const assistantShortcutRef = useRef<HTMLFormElement>(null);
+  const assistantShortcutInputRef = useRef<HTMLInputElement>(null);
 
   const motionStyle = {
     "--mouse-x": "50%",
@@ -253,6 +259,19 @@ export default function ArkivOsDesktop() {
     window.open(moduleHref(module), "_blank", "noopener,noreferrer");
     setModuleOpenChoice(null);
   };
+
+  const openAssistantFromShortcut = useCallback((event: ReactFormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const message = assistantShortcutInput.trim();
+    if (!message) return;
+
+    setQueuedAssistantPrompt(message);
+    setShowAssistant(true);
+  }, [assistantShortcutInput]);
+
+  const consumeQueuedAssistantPrompt = useCallback(() => {
+    setQueuedAssistantPrompt(null);
+  }, []);
 
   const handleMouseMove = (event: ReactMouseEvent<HTMLElement>) => {
     const element = desktopRef.current;
@@ -439,21 +458,53 @@ export default function ArkivOsDesktop() {
   }, []);
 
   useEffect(() => {
+    if (!showAssistantShortcut) return;
+
+    const onPointerDown = (event: PointerEvent) => {
+      const target = event.target;
+      if (!(target instanceof Node)) return;
+      if (assistantShortcutRef.current?.contains(target)) return;
+
+      setShowAssistantShortcut(false);
+      setAssistantShortcutFocused(false);
+    };
+
+    document.addEventListener("pointerdown", onPointerDown, { capture: true });
+    return () => document.removeEventListener("pointerdown", onPointerDown, { capture: true });
+  }, [showAssistantShortcut]);
+
+  useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
         event.preventDefault();
         setShowCommand(true);
       }
+      const isAssistantShortcut =
+        event.metaKey &&
+        event.shiftKey &&
+        (event.key.toLowerCase() === "a" || event.code === "KeyA");
+      if (isAssistantShortcut) {
+        event.preventDefault();
+        event.stopPropagation();
+        setShowAssistantShortcut(true);
+        window.requestAnimationFrame(() => assistantShortcutInputRef.current?.focus());
+      }
       if (event.key === "Escape") {
         setShowCommand(false);
         setShowLibrary(false);
         setShowNotifications(false);
+        setShowAssistantShortcut(false);
+        setAssistantShortcutFocused(false);
         setContextMenu(null);
       }
     };
 
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
+    window.addEventListener("keydown", onKeyDown, { capture: true });
+    document.addEventListener("keydown", onKeyDown, { capture: true });
+    return () => {
+      window.removeEventListener("keydown", onKeyDown, { capture: true });
+      document.removeEventListener("keydown", onKeyDown, { capture: true });
+    };
   }, []);
 
   return (
@@ -559,7 +610,6 @@ export default function ArkivOsDesktop() {
                 <div className="relative grid size-12 place-items-center rounded-2xl border border-white/30 bg-white/15 shadow-[0_12px_32px_rgba(0,0,0,.24)] backdrop-blur-xl">
                   <div className={`absolute inset-1 rounded-xl bg-gradient-to-br ${pinkAccent} opacity-95`} />
                   <Icon className="relative size-6 text-white drop-shadow" />
-                  <span className={`absolute -right-0.5 -top-0.5 size-2.5 rounded-full border border-white/70 ${desktopModule?.disabled ? "bg-amber-300" : item.id === "assistant" ? "bg-pink-200" : "bg-emerald-400"}`} />
                 </div>
                 <div className="max-w-full truncate rounded-md px-1 text-[12px] font-medium leading-tight text-white drop-shadow-[0_1px_3px_rgba(0,0,0,.8)]">{item.name}</div>
               </button>
@@ -581,6 +631,57 @@ export default function ArkivOsDesktop() {
         <DockButton label="Files" icon={Folder} active={showFiles} onClick={() => setShowFiles((value) => !value)} />
         <DockButton label="Settings" icon={Settings} active={showSettings} onClick={() => setShowSettings((value) => !value)} />
       </nav>
+
+      {showAssistantShortcut && (
+        <div className="pointer-events-none fixed inset-x-0 bottom-0 z-30 flex justify-center pb-[92px]">
+          <div className="arkiv-assistant-shortcut-glow absolute bottom-[46px] h-36 w-[min(920px,calc(100vw-24px))] rounded-[48px] bg-gradient-to-r from-pink-400/26 via-orange-300/32 to-rose-400/26 blur-3xl" />
+          <form
+            ref={assistantShortcutRef}
+            onSubmit={openAssistantFromShortcut}
+            className="arkiv-assistant-shortcut-shell pointer-events-auto relative flex w-[min(720px,calc(100vw-32px))] items-center gap-3 rounded-[24px] border border-white/22 bg-white/12 px-4 py-3 shadow-[0_26px_90px_rgba(0,0,0,.48)] backdrop-blur-2xl focus-within:border-pink-200/55"
+          >
+            <div className={`grid size-9 shrink-0 place-items-center rounded-2xl bg-gradient-to-br ${pinkAccent}`}>
+              <Bot className="size-5 text-white" />
+            </div>
+            <label className="relative flex min-w-0 flex-1 cursor-text items-center">
+              <span className="pointer-events-none min-w-0 truncate text-[15px] font-medium text-white">
+                {assistantShortcutInput || "What can I help you with today?"}
+              </span>
+              {assistantShortcutFocused && (
+                <span className="ml-0.5 h-6 w-0.5 shrink-0 animate-pulse rounded-full bg-pink-300" />
+              )}
+              <input
+                ref={assistantShortcutInputRef}
+                value={assistantShortcutInput}
+                onChange={(event) => setAssistantShortcutInput(event.target.value)}
+                onFocus={() => setAssistantShortcutFocused(true)}
+                onBlur={() => setAssistantShortcutFocused(false)}
+                aria-label="Ask Arkiv AI Assistant"
+                className="arkiv-assistant-shortcut-input absolute inset-0 h-full w-full cursor-text appearance-none border-0 bg-transparent p-0 text-transparent caret-transparent opacity-0 outline-none"
+              />
+            </label>
+            <button
+              type="button"
+              className="hidden shrink-0 items-center gap-1 rounded-xl px-3 py-2 text-xs font-semibold text-white/55 transition hover:bg-white/8 sm:flex"
+              onClick={() => {
+                setQueuedAssistantPrompt(null);
+                setShowAssistant(true);
+              }}
+            >
+              New Chat
+              <ChevronDown className="size-3.5" />
+            </button>
+            <button
+              type="submit"
+              disabled={!assistantShortcutInput.trim()}
+              className="grid size-10 shrink-0 place-items-center rounded-2xl bg-gradient-to-br from-pink-400 to-rose-600 text-white shadow-lg transition hover:from-pink-300 hover:to-rose-500 disabled:cursor-not-allowed disabled:opacity-45"
+              title="Open AI Assistant"
+            >
+              <Send className="size-4" />
+            </button>
+          </form>
+        </div>
+      )}
 
       {previewModule && <ModuleWindow module={previewModule} isLoggedIn={isLoggedIn} onClose={() => setPreviewModule(null)} onOpen={() => openModule(previewModule)} />}
       {showApplicationFolder && <ApplicationFolderModal onClose={() => setShowApplicationFolder(false)} onOpen={openModule} onComingSoon={setComingSoonApp} />} 
@@ -617,7 +718,15 @@ export default function ArkivOsDesktop() {
         />
       )}
       {showAbout && <AboutArkiv onClose={() => setShowAbout(false)} />}
-      {showAssistant && <AiAssistantWindow account={userAccount} settings={assistantSettings} onClose={() => setShowAssistant(false)} />}
+      {showAssistant && (
+        <AiAssistantWindow
+          account={userAccount}
+          settings={assistantSettings}
+          initialPrompt={queuedAssistantPrompt}
+          onInitialPromptConsumed={consumeQueuedAssistantPrompt}
+          onClose={() => setShowAssistant(false)}
+        />
+      )}
       {openAppModule && <ApplicationWindow module={openAppModule} url={moduleHref(openAppModule)} onClose={() => setOpenAppModule(null)} />}
       {moduleOpenChoice && (
         <ModuleOpenChoiceModal
@@ -1426,7 +1535,19 @@ function NotificationCenter({ onClose }: { onClose: () => void }) {
   );
 }
 
-function AiAssistantWindow({ account, settings, onClose }: { account: OsUserAccount | null; settings: AiAssistantSettings; onClose: () => void }) {
+function AiAssistantWindow({
+  account,
+  settings,
+  initialPrompt,
+  onInitialPromptConsumed,
+  onClose,
+}: {
+  account: OsUserAccount | null;
+  settings: AiAssistantSettings;
+  initialPrompt?: string | null;
+  onInitialPromptConsumed?: () => void;
+  onClose: () => void;
+}) {
   type AssistantMessage = { role: "user" | "assistant"; content: string; meta?: { status?: string; model?: string; scope?: string; fallbackReason?: string } };
 
   const [messages, setMessages] = useState<AssistantMessage[]>([]);
@@ -1438,6 +1559,8 @@ function AiAssistantWindow({ account, settings, onClose }: { account: OsUserAcco
   const [sessions, setSessions] = useState<Array<{ id: string; title: string; updated_at: string }>>([]);
   const [showHistory, setShowHistory] = useState(false);
   const [view, setView] = useState<"landing" | "chat">("landing");
+  const skipSessionRestoreRef = useRef(Boolean(initialPrompt?.trim()));
+  const initialPromptSentRef = useRef(false);
   const isAllowed = account?.role === "super_admin";
   const activeScope = AI_ASSISTANT_SCOPES.find((item) => item.id === settings.scope) ?? AI_ASSISTANT_SCOPES[0];
   const activeModel = AI_ASSISTANT_MODELS.find((item) => item.id === settings.model) ?? AI_ASSISTANT_MODELS[0];
@@ -1464,6 +1587,10 @@ function AiAssistantWindow({ account, settings, onClose }: { account: OsUserAcco
   useEffect(() => {
     if (!isAllowed) return;
     refreshSessions();
+
+    if (skipSessionRestoreRef.current) {
+      return;
+    }
 
     const saved = typeof window !== "undefined" ? localStorage.getItem("arkiv-ai-session") : null;
     if (saved) {
@@ -1551,7 +1678,7 @@ function AiAssistantWindow({ account, settings, onClose }: { account: OsUserAcco
     }
   };
 
-  const sendMessage = async (text = input) => {
+  const sendMessage = useCallback(async (text = input) => {
     const message = text.trim();
     if (!message || loading) return;
 
@@ -1592,7 +1719,23 @@ function AiAssistantWindow({ account, settings, onClose }: { account: OsUserAcco
     } finally {
       setLoading(false);
     }
-  };
+  }, [input, loading, messages, refreshSessions, sessionId, settings.model, settings.scope]);
+
+  useEffect(() => {
+    const message = initialPrompt?.trim();
+    if (!message) return;
+    if (initialPromptSentRef.current) return;
+    initialPromptSentRef.current = true;
+    skipSessionRestoreRef.current = true;
+    onInitialPromptConsumed?.();
+
+    if (!isAllowed) {
+      return;
+    }
+
+    setView("chat");
+    void sendMessage(message);
+  }, [initialPrompt, isAllowed, onInitialPromptConsumed, sendMessage]);
 
   return (
     <WindowShell title="AI Assistant" onClose={onClose} className="right-5 top-14 flex h-[min(760px,calc(100vh-86px))] w-[min(780px,calc(100vw-32px))] flex-col">
@@ -1756,7 +1899,7 @@ function AiAssistantWindow({ account, settings, onClose }: { account: OsUserAcco
                 {loading && (
                   <div className="flex justify-start">
                     <div className="flex items-center gap-2 rounded-2xl bg-white/10 px-4 py-3 text-sm text-white/70">
-                      <Loader2 className="size-4 animate-spin" /> Memproses dengan {activeModel.id}...
+                      <Loader2 className="size-4 animate-spin" /> Memproses...
                     </div>
                   </div>
                 )}

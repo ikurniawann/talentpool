@@ -1,6 +1,56 @@
 import { requireUser } from "@/lib/supabase/auth";
 import SidebarClient from "@/components/sidebar-client";
 
+const financeNavItems = [
+  { href: "/dashboard/finance/cash-received", label: "Cash Received", icon: "money" },
+  { href: "/dashboard/finance/receipt", label: "Receipt", icon: "document-text" },
+  { href: "/dashboard/finance/cash-payment", label: "Cash Payment", icon: "money" },
+  { href: "/dashboard/finance/intercash", label: "Intercash", icon: "paper-airplane" },
+  { href: "/dashboard/finance/petty-cash-request", label: "Petty Cash Request", icon: "clipboard" },
+  { href: "/dashboard/finance/petty-cash-fulfillment", label: "Petty Cash Fulfillment", icon: "check-circle" },
+  { href: "/dashboard/finance/member-balance", label: "Member Balance", icon: "users" },
+  { href: "/dashboard/finance/member-deposit", label: "Member Deposit", icon: "money" },
+  { href: "/dashboard/finance/member-withdrawal", label: "Member Withdrawal", icon: "money" },
+  { href: "/dashboard/finance/supplier-payable", label: "Supplier Payable", icon: "clipboard-document-check" },
+  { href: "/dashboard/finance/supplier-settlement", label: "Supplier Settlement", icon: "check-circle" },
+  { href: "/dashboard/finance/supplier-advance", label: "Supplier Advance", icon: "paper-airplane" },
+  { href: "/dashboard/finance/customer-settlement", label: "Customer Settlement", icon: "check-circle" },
+  { href: "/dashboard/finance/account-mapping", label: "Account Mapping", icon: "database" },
+  { href: "/dashboard/finance/customer-receivable", label: "Customer Receivable", icon: "clipboard" },
+  { href: "/dashboard/finance/customer-advance", label: "Customer Advance", icon: "paper-airplane" },
+  { href: "/dashboard/finance/pos-settlement", label: "POS Settlement", icon: "shopping" },
+  { href: "/dashboard/finance/tenant-reconciliation", label: "Tenant Reconciliation", icon: "building" },
+  { href: "/dashboard/finance/employee-advance-payment", label: "Employee Advance Payment", icon: "users" },
+  { href: "/dashboard/finance/employee-reimbursement", label: "Employee Reimbursement", icon: "document-text" },
+  { href: "/dashboard/finance/disbursement", label: "Disbursement", icon: "paper-airplane" },
+];
+
+const accountingNavItems = [
+  { href: "/dashboard/accounting/release-payment", label: "Release Payment", icon: "check-circle" },
+  { href: "/dashboard/accounting/bank-reconcile", label: "Bank Reconcile", icon: "database" },
+  { href: "/dashboard/accounting/cash-count", label: "Cash Count", icon: "money" },
+  { href: "/dashboard/accounting/gl-reconciliation", label: "GL Reconciliation", icon: "chart" },
+  { href: "/dashboard/accounting/general-journal", label: "General Journal", icon: "document-text" },
+  { href: "/dashboard/accounting/general-ledger", label: "General Ledger", icon: "reports" },
+  { href: "/dashboard/accounting/memorial-journal", label: "Memorial Journal", icon: "clipboard" },
+  { href: "/dashboard/accounting/close-period-stock", label: "Close Period Stock", icon: "circle-stack" },
+  { href: "/dashboard/accounting/close-period", label: "Close Period", icon: "calendar" },
+];
+
+const financeMenu = {
+  href: "/dashboard/finance",
+  label: "Finance",
+  icon: "money",
+  children: financeNavItems,
+};
+
+const accountingMenu = {
+  href: "/dashboard/accounting",
+  label: "Accounting",
+  icon: "reports",
+  children: accountingNavItems,
+};
+
 export default async function DashboardGroupLayout({
   children,
 }: {
@@ -73,7 +123,8 @@ export default async function DashboardGroupLayout({
                   { href: "/dashboard/inventory/adjustment", label: "Inventory Adjustment", icon: "clipboard-document-check" },
                 ],
               },
-              { href: "/dashboard/finance", label: "Finance & Accounting", icon: "money" },
+              financeMenu,
+              accountingMenu,
               {
                 href: "/dashboard/pos",
                 label: "POS",
@@ -236,12 +287,14 @@ export default async function DashboardGroupLayout({
                       { href: "/dashboard/inventory/adjustment", label: "Inventory Adjustment", icon: "clipboard-document-check" },
                     ],
                   },
-                  { href: "/dashboard/finance", label: "Finance & Accounting", icon: "money" },
+                  financeMenu,
+                  accountingMenu,
                 ]
               : user.role === "finance_staff"
                 ? [
                     { href: "/dashboard", label: "Beranda", icon: "home" },
-                    { href: "/dashboard/finance", label: "Finance & Accounting", icon: "money" },
+                    financeMenu,
+                    accountingMenu,
                   ]
               : [
                   { href: "/dashboard", label: "Beranda", icon: "home" },
