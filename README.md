@@ -49,16 +49,19 @@ Next task yang disarankan:
 Route utama:
 - `/arkiv-os`
 - `/qa`
+- `/loop`
 
 Fitur:
 - Desktop-style launcher untuk membuka module bisnis dalam window.
 - AI Assistant dengan mode context project atau general knowledge.
 - Pengaturan AI Assistant di Arkiv OS Settings, termasuk pilihan LLM.
 - QA progress dashboard sementara di `/qa` untuk ringkasan progress dan test result.
+- Engineering loop dashboard di `/loop` untuk ringkasan build/lint/typecheck/test/deploy readiness.
 
 Dokumentasi terkait:
 - `Arkiv_progress.md`
 - `docs/qa/QA_REPORT_ARKIV_OS_PROGRESS_2026-05-24.md`
+- `docs/qa/ENGINEERING_LOOP_REPORT_2026-06-10.md`
 
 ### HRIS
 
@@ -291,6 +294,7 @@ Dokumentasi terkait:
 
 Route utama:
 - `/qa`
+- `/loop`
 - `/dashboard/purchasing/reports`
 - `/dashboard/hris/reports`
 - `/dashboard/pos`
@@ -298,6 +302,7 @@ Route utama:
 
 Fitur:
 - QA progress page.
+- Engineering loop report page untuk kolaborasi developer.
 - Purchasing reports.
 - HRIS reports.
 - POS dashboard.
@@ -544,6 +549,7 @@ Buka:
 ```text
 http://localhost:3000
 http://localhost:3000/arkiv-os
+http://localhost:3000/loop
 http://localhost:3000/dashboard/pos/products
 http://localhost:3000/dashboard/purchasing
 ```
