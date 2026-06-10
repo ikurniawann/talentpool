@@ -67,27 +67,23 @@ export async function POST(
         return NextResponse.json({ success: false, error: 'ARK Coin butuh customer member' }, { status: 400 });
       }
 
-      const { data: customer, error: customerError } = await supabase
-        .from('pos_customers')
-        .select('ark_coin_balance')
-        .eq('id', split.customer_id)
-        .single();
-
-      if (customerError || !customer) {
-        return NextResponse.json({ success: false, error: 'Customer not found' }, { status: 404 });
-      }
-
-      if (Number(customer.ark_coin_balance || 0) < arkUsed) {
-        return NextResponse.json({ success: false, error: 'Saldo ARK Coin tidak cukup' }, { status: 400 });
-      }
-
-      const { error: arkError } = await supabase
-        .from('pos_customers')
-        .update({ ark_coin_balance: Number(customer.ark_coin_balance || 0) - arkUsed })
-        .eq('id', split.customer_id);
+      // Atomic deduct via RPC: locks the customer row (FOR UPDATE), rejects an
+      // insufficient balance inside the same transaction, and logs the wallet
+      // transaction — eliminates the read-then-write race / double-spend.
+      const { error: arkError } = await supabase.rpc('update_ark_coin_balance', {
+        p_customer_id: split.customer_id,
+        p_amount: -arkUsed,
+        p_type: 'payment',
+        p_order_id: orderId,
+        p_notes: `Split payment ${splitId}`,
+      });
 
       if (arkError) {
-        return NextResponse.json({ success: false, error: arkError.message }, { status: 500 });
+        const insufficient = arkError.message?.includes('Insufficient');
+        return NextResponse.json(
+          { success: false, error: insufficient ? 'Saldo ARK Coin tidak cukup' : 'Gagal memproses ARK Coin' },
+          { status: 400 }
+        );
       }
     }
 
