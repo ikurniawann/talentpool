@@ -37,6 +37,7 @@ export async function updateSession(request: NextRequest) {
   const publicRoutes = [
     "/arkiv-os",
     "/qa",
+    "/loop",
     "/login",
     "/portal",
     "/career",
