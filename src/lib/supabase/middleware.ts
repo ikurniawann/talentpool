@@ -33,21 +33,34 @@ export async function updateSession(request: NextRequest) {
 
   const { pathname } = request.nextUrl;
 
-  // Public routes
+  // Public routes — customer/kiosk-facing surfaces that intentionally have no login.
+  // (table-order is a QR self-order flow; its hardening is rate-limiting + table-session
+  // validation at the route level, not authentication.)
   const publicRoutes = [
     "/arkiv-os",
     "/qa",
     "/login",
     "/portal",
     "/career",
+    "/table-order",
+    "/photobooth",
     "/api/job-openings/public",
     "/api/portal",
+    "/api/table-order",
   ];
   const isPublicRoute = pathname === "/" || publicRoutes.some((route) =>
     pathname.startsWith(route)
   );
 
   if (!user && !isPublicRoute) {
+    // API routes get a clean 401 (a redirect to an HTML login page would break fetch);
+    // page routes are redirected to /login.
+    if (pathname.startsWith("/api/")) {
+      return NextResponse.json(
+        { success: false, error: "Authentication required" },
+        { status: 401 }
+      );
+    }
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     return NextResponse.redirect(url);

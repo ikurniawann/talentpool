@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { ApiError, requireApiRole } from "@/lib/api/auth";
 
 // PATCH /api/purchasing/returns/[id]/approve
 // Approve a purchase return
@@ -8,10 +9,16 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    // The approver is the authenticated user, never a client-supplied id.
+    const approver = await requireApiRole([
+      "super_admin",
+      "purchasing_admin",
+      "purchasing_manager",
+    ]);
+    const approved_by = approver.id;
+
     const supabase = await createClient();
     const returnId = (await params).id;
-    const body = await request.json();
-    const { approved_by } = body; // Staff ID who approves
 
     // Get current return data
     const { data: currentReturn, error: fetchError } = await supabase
@@ -56,10 +63,11 @@ export async function PATCH(
       data: updatedReturn,
       message: "Return berhasil disetujui. Stock inventory telah disesuaikan.",
     });
-  } catch (error: any) {
+  } catch (error) {
+    if (error instanceof ApiError) return error.toResponse();
     console.error("Error approving return:", error);
     return NextResponse.json(
-      { success: false, message: error.message || "Gagal menyetujui return" },
+      { success: false, message: "Gagal menyetujui return" },
       { status: 500 }
     );
   }

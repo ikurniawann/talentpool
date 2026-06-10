@@ -1,5 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { ApiError, requireApiRole } from '@/lib/api/auth';
+
+// Bulk attendance export is HR-only.
+const HR_EXPORT_ROLES = ['super_admin', 'hrd'] as const;
 
 /**
  * GET /api/hris/attendance/export
@@ -7,6 +11,7 @@ import { createClient } from '@/lib/supabase/server';
  */
 export async function GET(request: NextRequest) {
   try {
+    await requireApiRole([...HR_EXPORT_ROLES]);
     const supabase = await createClient();
     
     // Get query params
@@ -89,6 +94,7 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (error) {
+    if (error instanceof ApiError) return error.toResponse();
     console.error('Error in attendance export:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
