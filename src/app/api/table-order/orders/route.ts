@@ -75,25 +75,27 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ success: false, error: "ARK Coin membutuhkan member/customer" }, { status: 400 });
       }
 
-      const { data: customer, error: customerError } = await supabase
-        .from("pos_customers")
-        .select("ark_coin_balance")
-        .eq("id", payload.customer_id)
-        .single();
+      // Atomic deduct via RPC: locks the customer row (FOR UPDATE), rejects an
+      // insufficient balance inside the same transaction, and logs the wallet
+      // transaction — eliminates the read-then-write race / double-spend.
+      // NOTE: deduction still precedes order creation, so a later order-insert
+      // failure leaves the balance debited; the full fix is a single
+      // create-order-with-payment RPC (tracked as a follow-up).
+      const { error: balanceError } = await supabase.rpc("update_ark_coin_balance", {
+        p_customer_id: payload.customer_id,
+        p_amount: -total,
+        p_type: "payment",
+        p_order_id: null,
+        p_notes: `Self-service order table ${payload.table_code}`,
+      });
 
-      if (customerError) throw customerError;
-
-      const balance = Number((customer as { ark_coin_balance?: number | string }).ark_coin_balance || 0);
-      if (balance < total) {
-        return NextResponse.json({ success: false, error: "Saldo ARK Coin tidak cukup" }, { status: 400 });
+      if (balanceError) {
+        const insufficient = balanceError.message?.includes("Insufficient");
+        return NextResponse.json(
+          { success: false, error: insufficient ? "Saldo ARK Coin tidak cukup" : "Gagal memproses ARK Coin" },
+          { status: 400 }
+        );
       }
-
-      const { error: balanceError } = await supabase
-        .from("pos_customers")
-        .update({ ark_coin_balance: balance - total })
-        .eq("id", payload.customer_id);
-
-      if (balanceError) throw balanceError;
     }
 
     const { data: orderNumData, error: orderNumError } = await supabase.rpc("generate_order_number");
