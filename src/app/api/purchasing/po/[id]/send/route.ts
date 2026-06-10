@@ -5,11 +5,19 @@
 import { NextRequest } from "next/server";
 import { createServiceClient } from "@/lib/supabase/service-client";
 import { adjustInventoryOnOrder } from "@/lib/inventory";
+import { ApiError, requireApiRole } from "@/lib/api/auth";
 import { z } from "zod";
 
 const sendSchema = z.object({
   sent_via: z.enum(["EMAIL", "WHATSAPP", "PRINT", "OTHER"]),
 });
+
+const SEND_ROLES = [
+  "super_admin",
+  "purchasing_admin",
+  "purchasing_manager",
+  "purchasing_staff",
+] as const;
 
 function getErrorMessage(error: unknown, fallback: string) {
   return error instanceof Error ? error.message : fallback;
@@ -21,6 +29,7 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    await requireApiRole([...SEND_ROLES]);
     const { id } = await params;
     const supabase = createServiceClient();
     const body = await request.json();
@@ -92,6 +101,7 @@ export async function POST(
       message: `PO berhasil dikirim ke supplier via ${sent_via}`,
     });
   } catch (error: unknown) {
+    if (error instanceof ApiError) return error.toResponse();
     console.error("Error sending PO:", error);
 
     if (error instanceof z.ZodError) {

@@ -43,6 +43,39 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       updateData.payment_status = 'paid';
     }
 
+    // Deduct ARK coins atomically BEFORE marking the order paid. The RPC locks
+    // the customer row and rejects an insufficient balance in-transaction, so a
+    // failed/insufficient deduction never leaves a paid order without the
+    // matching coin debit (previously the failure was swallowed).
+    if (numericArkUsed > 0) {
+      const { data: existing, error: fetchErr } = await supabase
+        .from('pos_orders')
+        .select('customer_id')
+        .eq('id', orderId)
+        .single();
+
+      if (fetchErr || !existing) {
+        return NextResponse.json({ success: false, error: 'Order tidak ditemukan' }, { status: 404 });
+      }
+
+      if (existing.customer_id) {
+        const { error: coinError } = await supabase.rpc('update_ark_coin_balance', {
+          p_customer_id: existing.customer_id,
+          p_amount: -numericArkUsed,
+          p_type: 'payment',
+          p_order_id: orderId,
+        });
+
+        if (coinError) {
+          const insufficient = coinError.message?.includes('Insufficient');
+          return NextResponse.json(
+            { success: false, error: insufficient ? 'Saldo ARK Coin tidak cukup' : 'Gagal memproses ARK Coin' },
+            { status: 400 }
+          );
+        }
+      }
+    }
+
     const { data, error } = await supabase
       .from('pos_orders')
       .update(updateData)
@@ -51,17 +84,6 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       .single();
 
     if (error) throw error;
-
-    // If ARK coins used, deduct from customer balance
-    if (data.customer_id && numericArkUsed > 0) {
-      const { error: coinError } = await supabase.rpc('update_ark_coin_balance', {
-        p_customer_id: data.customer_id,
-        p_amount: -numericArkUsed,
-        p_type: 'payment'
-      });
-
-      if (coinError) console.error('Warning: Failed to update ARK coin balance:', coinError);
-    }
 
     // Log status change
     if (status) {

@@ -82,6 +82,18 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ sessions: sessions ?? [] });
     }
 
+    // Verify the session belongs to the requesting user before returning its
+    // messages — admin client bypasses RLS, so ownership must be checked here.
+    const { data: ownedSession } = await admin
+      .from("ai_assistant_sessions")
+      .select("id")
+      .eq("id", sessionId)
+      .eq("user_id", user.id)
+      .single();
+    if (!ownedSession) {
+      return NextResponse.json({ error: "Session tidak ditemukan" }, { status: 404 });
+    }
+
     const { data: messages, error } = await admin
       .from("ai_assistant_messages")
       .select("id, role, content, meta, created_at")
@@ -184,8 +196,13 @@ export async function POST(request: NextRequest) {
         .single();
       if (!se && typeof newSession?.id === "string") sessionId = newSession.id;
     } else {
-      // Update session timestamp on activity
-      await admin.from("ai_assistant_sessions").update({ updated_at: new Date().toISOString() }).eq("id", sessionId);
+      // Update session timestamp on activity — scope to the owner so one user
+      // cannot touch another user's session by passing a stolen session_id.
+      await admin
+        .from("ai_assistant_sessions")
+        .update({ updated_at: new Date().toISOString() })
+        .eq("id", sessionId)
+        .eq("user_id", user.id);
     }
 
     const persistedHistory = sessionId ? await loadSessionHistory(admin as unknown as SupabaseAdmin, sessionId) : [];

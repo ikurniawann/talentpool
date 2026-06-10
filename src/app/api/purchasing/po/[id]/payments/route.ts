@@ -1,6 +1,9 @@
 import { NextRequest } from "next/server";
 import { createServiceClient } from "@/lib/supabase/service-client";
+import { ApiError, requireApiRole } from "@/lib/api/auth";
 import { z } from "zod";
+
+const PAYMENT_ROLES = ["super_admin", "purchasing_admin", "finance_staff"] as const;
 
 const paymentSchema = z.object({
   payment_term_id: z.string().uuid().optional().nullable(),
@@ -81,6 +84,7 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    await requireApiRole([...PAYMENT_ROLES]);
     const { id } = await params;
     const supabase = createServiceClient();
     const body = await request.json();
@@ -144,6 +148,7 @@ export async function POST(
 
     return Response.json({ success: true, data, message: "Pembayaran vendor berhasil dicatat" }, { status: 201 });
   } catch (error: unknown) {
+    if (error instanceof ApiError) return error.toResponse();
     console.error("Error creating vendor payment:", error);
     if (error instanceof z.ZodError) {
       return Response.json({ success: false, message: "Validasi gagal", errors: error.flatten().fieldErrors }, { status: 400 });

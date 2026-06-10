@@ -7,6 +7,10 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { ApiError, requireApiRole } from '@/lib/api/auth';
+
+// Salary is sensitive financial PII — restrict to HR/finance roles only.
+const SALARY_ROLES = ['super_admin', 'hrd', 'finance_staff'] as const;
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -18,6 +22,7 @@ interface RouteParams {
 
 export async function GET(request: NextRequest, { params }: RouteParams) {
   try {
+    await requireApiRole([...SALARY_ROLES]);
     const supabase = await createClient();
     const { id } = await params;
 
@@ -60,6 +65,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     return NextResponse.json({ data });
 
   } catch (error) {
+    if (error instanceof ApiError) return error.toResponse();
     console.error('Error in employee-salary API:', error);
     return NextResponse.json(
       { error: 'Terjadi kesalahan pada server' },
@@ -75,6 +81,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 
 export async function PUT(request: NextRequest, { params }: RouteParams) {
   try {
+    await requireApiRole([...SALARY_ROLES]);
     const supabase = await createClient();
     const { id } = await params;
     const body = await request.json();
@@ -137,6 +144,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     });
 
   } catch (error) {
+    if (error instanceof ApiError) return error.toResponse();
     console.error('Error in employee-salary PUT API:', error);
     return NextResponse.json(
       { error: 'Terjadi kesalahan pada server' },
@@ -152,6 +160,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
 
 export async function DELETE(request: NextRequest, { params }: RouteParams) {
   try {
+    await requireApiRole([...SALARY_ROLES]);
     const supabase = await createClient();
     const { id } = await params;
 
@@ -178,6 +187,7 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     });
 
   } catch (error) {
+    if (error instanceof ApiError) return error.toResponse();
     console.error('Error in employee-salary DELETE API:', error);
     return NextResponse.json(
       { error: 'Terjadi kesalahan pada server' },

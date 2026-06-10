@@ -4,11 +4,14 @@
 
 import { NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { ApiError, requireApiRole } from "@/lib/api/auth";
 import { z } from "zod";
 
 const cancelSchema = z.object({
   reason: z.string().min(1, "Alasan pembatalan wajib diisi"),
 });
+
+const CANCEL_ROLES = ["super_admin", "purchasing_admin", "purchasing_manager"] as const;
 
 function getErrorMessage(error: unknown, fallback: string) {
   return error instanceof Error ? error.message : fallback;
@@ -20,6 +23,7 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    await requireApiRole([...CANCEL_ROLES]);
     const { id } = await params;
     const supabase = await createClient();
     const body = await request.json();
@@ -81,6 +85,7 @@ export async function POST(
       message: "PO berhasil dibatalkan",
     });
   } catch (error: unknown) {
+    if (error instanceof ApiError) return error.toResponse();
     console.error("Error cancelling PO:", error);
 
     if (error instanceof z.ZodError) {
