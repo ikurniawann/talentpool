@@ -180,7 +180,9 @@ export async function GET(request: Request) {
         if (!months[monthKey]) {
           months[monthKey] = { month: monthKey };
         }
-        months[monthKey][category] = (months[monthKey][category] || 0) + (po.grand_total || po.total || 0);
+        const currentValue = Number(months[monthKey][category] || 0);
+        const orderTotal = Number(po.grand_total || po.total || 0);
+        months[monthKey][category] = currentValue + orderTotal;
       });
       
       Object.values(months).forEach((data) => {

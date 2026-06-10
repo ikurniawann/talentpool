@@ -7,14 +7,14 @@ import { getPosSession } from '@/lib/api/auth';
  */
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const session = await getPosSession();
   if (!session) {
     return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
   }
 
-  const shiftId = params.id;
+  const { id: shiftId } = await params;
   if (!shiftId) {
     return NextResponse.json({ success: false, error: 'Shift ID required' }, { status: 400 });
   }
@@ -62,7 +62,7 @@ export async function PATCH(
   let totalCredit = 0;
   let totalArk = 0;
 
-  rows.forEach((r: any) => {
+  rows.forEach((r: { total_amount?: number | string | null; payment_method?: string | null; ark_coins_used?: number | string | null }) => {
     const amt = Number(r.total_amount) || 0;
     const method = (r.payment_method || 'cash').toLowerCase();
     const ark = Number(r.ark_coins_used) || 0;
