@@ -1,7 +1,11 @@
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
+import { getApiUser } from "@/lib/api/auth";
 import { sendWhatsApp } from "@/lib/fonnte";
 import { sendEmail, candidateStatusEmail } from "@/lib/resend";
+
+// Sending candidate notifications is an HR action — restrict to HR roles.
+const NOTIFY_ROLES = ["super_admin", "admin", "hrd", "hiring_manager"] as const;
 
 interface SendNotificationBody {
   candidate_id: string;
@@ -47,6 +51,14 @@ function buildInterviewScheduledMessage(
 }
 
 export async function POST(request: Request) {
+  const authedUser = await getApiUser();
+  if (!authedUser) {
+    return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+  }
+  if (!NOTIFY_ROLES.includes(authedUser.role as (typeof NOTIFY_ROLES)[number])) {
+    return NextResponse.json({ error: "Insufficient permissions" }, { status: 403 });
+  }
+
   const supabase = await createClient();
   const body: SendNotificationBody = await request.json();
 

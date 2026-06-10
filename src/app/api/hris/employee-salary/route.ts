@@ -6,6 +6,10 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { ApiError, requireApiRole } from '@/lib/api/auth';
+
+// Salary is sensitive financial PII — restrict to HR/finance roles only.
+const SALARY_ROLES = ['super_admin', 'hrd', 'finance_staff'] as const;
 
 // ============================================================
 // GET /api/hris/employee-salary
@@ -13,6 +17,7 @@ import { createClient } from '@/lib/supabase/server';
 
 export async function GET(request: NextRequest) {
   try {
+    await requireApiRole([...SALARY_ROLES]);
     const supabase = await createClient();
     const { searchParams } = new URL(request.url);
     const employeeId = searchParams.get('employee_id');
@@ -47,6 +52,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ data });
 
   } catch (error) {
+    if (error instanceof ApiError) return error.toResponse();
     console.error('Error in employee-salary API:', error);
     return NextResponse.json(
       { error: 'Terjadi kesalahan pada server' },
@@ -62,6 +68,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    await requireApiRole([...SALARY_ROLES]);
     const supabase = await createClient();
     const body = await request.json();
     const {
@@ -161,6 +168,7 @@ export async function POST(request: NextRequest) {
     });
 
   } catch (error) {
+    if (error instanceof ApiError) return error.toResponse();
     console.error('Error in employee-salary API:', error);
     return NextResponse.json(
       { error: 'Terjadi kesalahan pada server' },

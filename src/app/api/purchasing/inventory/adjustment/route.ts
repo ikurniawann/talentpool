@@ -4,6 +4,7 @@
 
 import { NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { ApiError, requireApiRole } from "@/lib/api/auth";
 import { z } from "zod";
 
 const adjustmentSchema = z.object({
@@ -12,13 +13,12 @@ const adjustmentSchema = z.object({
   notes: z.string().optional(),
 });
 
-function getErrorMessage(error: unknown, fallback: string) {
-  return error instanceof Error ? error.message : fallback;
-}
+const ADJUST_ROLES = ["super_admin", "warehouse_admin", "purchasing_admin"] as const;
 
 // POST /api/purchasing/inventory/adjustment
 export async function POST(request: NextRequest) {
   try {
+    await requireApiRole([...ADJUST_ROLES]);
     const supabase = await createClient();
     const body = await request.json();
 
@@ -88,6 +88,7 @@ export async function POST(request: NextRequest) {
       },
     });
   } catch (error: unknown) {
+    if (error instanceof ApiError) return error.toResponse();
     console.error("Error adjusting inventory:", error);
 
     if (error instanceof z.ZodError) {
@@ -102,7 +103,7 @@ export async function POST(request: NextRequest) {
     }
 
     return Response.json(
-      { success: false, message: getErrorMessage(error, "Gagal menyesuaikan stok") },
+      { success: false, message: "Gagal menyesuaikan stok" },
       { status: 500 }
     );
   }

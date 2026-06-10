@@ -4,10 +4,9 @@
 
 import { NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { ApiError, requireApiRole } from "@/lib/api/auth";
 
-function getErrorMessage(error: unknown, fallback: string) {
-  return error instanceof Error ? error.message : fallback;
-}
+const APPROVE_ROLES = ["super_admin", "purchasing_admin", "purchasing_manager"] as const;
 
 // POST /api/purchasing/po/:id/approve
 export async function POST(
@@ -15,6 +14,7 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    await requireApiRole([...APPROVE_ROLES]);
     const { id } = await params;
     const supabase = await createClient();
 
@@ -74,9 +74,10 @@ export async function POST(
       message: "PO berhasil diapprove",
     });
   } catch (error: unknown) {
+    if (error instanceof ApiError) return error.toResponse();
     console.error("Error approving PO:", error);
     return Response.json(
-      { success: false, message: getErrorMessage(error, "Gagal mengapprove PO") },
+      { success: false, message: "Gagal mengapprove PO" },
       { status: 500 }
     );
   }
