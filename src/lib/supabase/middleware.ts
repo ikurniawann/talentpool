@@ -38,6 +38,7 @@ export async function updateSession(request: NextRequest) {
   // validation at the route level, not authentication.)
   const publicRoutes = [
     "/arkiv-os",
+    "/invest",
     "/qa",
     "/loop",
     "/login",

@@ -1,5 +1,13 @@
-<!-- BEGIN:nextjs-agent-rules -->
-# This is NOT the Next.js you know
+# Docs Agent Rules
 
-This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` before writing any code. Heed deprecation notices.
-<!-- END:nextjs-agent-rules -->
+The canonical project agent rules live in `../AGENTS.md`.
+
+For documentation-only hygiene work:
+
+- Do not change application implementation code.
+- Do not run deployments or push changes without explicit approval.
+- Keep status terms consistent with the vocabulary in
+  `docs/AGENTIC-WORKFLOW.md`.
+- If `docs/epics/` exists, update the relevant epic Automation Log before
+  marking work complete.
+- Remove tracked runtime state only when it is already covered by `.gitignore`.
