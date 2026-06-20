@@ -151,36 +151,42 @@ const competitors: Competitor[] = [
 const pricingRows = [
   {
     package: "Starter Subscription",
-    target: "1-3 outlet / early team",
-    price: "Rp1,5jt-3jt/bulan",
-    includes: "POS, CRM basic, inventory basic, table order, reporting",
+    target: "1 outlet / early operator",
+    price: "Rp250rb/bulan",
+    includes: "POS basic, CRM basic, product catalog, daily sales report",
+  },
+  {
+    package: "Growth Subscription",
+    target: "2-5 outlet / growing operator",
+    price: "Rp750rb-1,5jt/bulan",
+    includes: "POS multi outlet, table order, inventory basic, CRM loyalty, reporting",
   },
   {
     package: "Business Subscription",
-    target: "4-15 outlet / growing operator",
-    price: "Rp5jt-15jt/bulan",
-    includes: "POS multi outlet, purchasing, inventory, HRIS, approval, analytics",
+    target: "6-20 outlet / operational team",
+    price: "Rp2jt-3,5jt/bulan",
+    includes: "Purchasing, inventory, HRIS, approval, analytics, support priority",
   },
   {
     package: "Enterprise Subscription",
-    target: "16+ outlet / multi brand",
-    price: "Rp20jt-60jt/bulan",
+    target: "20+ outlet / multi brand",
+    price: "Rp5jt/bulan",
     includes: "Full suite, custom workflow, SLA, onboarding, private support",
   },
   {
     package: "Jual Putus License",
     target: "Company requiring ownership",
-    price: "Rp450jt-1,2M sekali bayar",
-    includes: "Source license, deployment, 3-month warranty, paid maintenance optional",
+    price: "Rp150jt-500jt sekali bayar",
+    includes: "Deployment, configuration, 3-month warranty, paid maintenance optional",
   },
 ];
 
 const forecast = [
-  { year: "Y1", clients: 12, arr: 720000000, services: 600000000, opex: 720000000, ebitda: -300000000 },
-  { year: "Y2", clients: 40, arr: 2880000000, services: 1000000000, opex: 1500000000, ebitda: 2380000000 },
-  { year: "Y3", clients: 95, arr: 8550000000, services: 1600000000, opex: 3000000000, ebitda: 7150000000 },
-  { year: "Y4", clients: 180, arr: 19440000000, services: 2400000000, opex: 5600000000, ebitda: 16240000000 },
-  { year: "Y5", clients: 320, arr: 46080000000, services: 3500000000, opex: 9800000000, ebitda: 39780000000 },
+  { year: "Y1", clients: 30, arr: 144000000, services: 300000000, opex: 720000000, ebitda: -276000000 },
+  { year: "Y2", clients: 120, arr: 1008000000, services: 600000000, opex: 1500000000, ebitda: 108000000 },
+  { year: "Y3", clients: 320, arr: 4608000000, services: 1200000000, opex: 3000000000, ebitda: 2808000000 },
+  { year: "Y4", clients: 700, arr: 15120000000, services: 2000000000, opex: 5600000000, ebitda: 11520000000 },
+  { year: "Y5", clients: 1300, arr: 39000000000, services: 3000000000, opex: 9800000000, ebitda: 32200000000 },
 ];
 
 const formatIdr = (value: number) =>
@@ -191,8 +197,8 @@ const formatIdr = (value: number) =>
   }).format(value);
 
 const compactIdr = (value: number) => {
-  if (value >= 1000000000) return `Rp${(value / 1000000000).toLocaleString("id-ID", { maximumFractionDigits: 1 })}M`;
-  return `Rp${(value / 1000000).toLocaleString("id-ID", { maximumFractionDigits: 0 })}jt`;
+  if (value >= 1000000000) return `Rp${(value / 1000000000).toLocaleString("id-ID", { maximumFractionDigits: 1 })}Miliar`;
+  return `Rp${(value / 1000000).toLocaleString("id-ID", { maximumFractionDigits: 0 })}Jt`;
 };
 
 function Badge({ children }: { children: React.ReactNode }) {
@@ -514,7 +520,7 @@ export default function InvestPage() {
         <SectionTitle
           icon={Building2}
           title="5. Pricing Strategy"
-          description="Pricing dibuat kompetitif terhadap POS subscription, HRIS per-employee pricing, dan ERP/accounting tools. Arkiv harus menang lewat bundling operasional, bukan perang harga per modul."
+          description="Pricing dibuat mass-market dan kompetitif: entry rendah untuk penetrasi outlet kecil, lalu naik bertahap berdasarkan jumlah outlet, kedalaman modul, support, dan SLA."
         />
         <div className="grid gap-5 lg:grid-cols-[1fr_340px]">
           <div className="grid gap-3 md:grid-cols-2">
@@ -532,8 +538,8 @@ export default function InvestPage() {
             <h3 className="font-semibold">Benchmark Note</h3>
             <p className="mt-3 text-sm leading-6 text-slate-600">
               Benchmark publik yang bisa terlihat saat riset: Moka menampilkan paket POS sekitar Rp299k, Rp499k, sampai
-              Rp799k per outlet/bulan. Talenta menampilkan pricing via sales inquiry untuk paket HRIS. Arkiv sebaiknya
-              tidak diposisikan sebagai POS murah, melainkan suite operasional terintegrasi.
+              Rp799k per outlet/bulan. Dengan entry Rp250rb/bulan, Arkiv bisa masuk di bawah POS mainstream, lalu
+              monetisasi naik melalui add-on operasional, HRIS, purchasing, inventory, dan analytics.
             </p>
             <div className="mt-4 flex flex-wrap gap-2 text-xs font-semibold">
               <a className="rounded-md border border-slate-300 bg-white px-2.5 py-1 text-slate-700" href="https://www.mokapos.com/harga" target="_blank" rel="noreferrer">
@@ -552,7 +558,7 @@ export default function InvestPage() {
           <SectionTitle
             icon={LineChart}
             title="6. Forecasting & Projection"
-            description="Skenario base-case: fokus 5 tahun, kombinasi subscription ARR dan implementation service. Gross margin SaaS naik setelah reusable modules stabil."
+            description="Skenario base-case disesuaikan dengan pricing baru Rp250rb-Rp5jt/bulan: revenue per klien lebih rendah, sehingga strategi growth harus mengejar volume pelanggan dan upsell bertahap."
             inverse
           />
           <div className="grid gap-6 lg:grid-cols-[1fr_420px]">
@@ -602,8 +608,8 @@ export default function InvestPage() {
               <div className="mt-6 rounded-lg border border-white/10 bg-black/20 p-4">
                 <h4 className="font-semibold">Key Assumptions</h4>
                 <ul className="mt-3 space-y-2 text-sm leading-6 text-slate-300">
-                  <li>Average subscription grows from Rp5jt to Rp12jt/client/month.</li>
-                  <li>Implementation fee ranges Rp25jt-150jt depending module depth.</li>
+                  <li>Average subscription grows from Rp400rb to Rp2,5jt/client/month.</li>
+                  <li>Implementation fee ranges Rp5jt-50jt depending module depth.</li>
                   <li>Churn target below 10% annually after onboarding stabilizes.</li>
                   <li>Sales conversion depends heavily on founder-led demos and case studies.</li>
                 </ul>
