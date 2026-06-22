@@ -3,19 +3,33 @@
 This runbook keeps Claude Code and Codex handoffs consistent after development
 task groups.
 
+## Entry Points
+
+| Scenario | Command |
+| --- | --- |
+| Raw task or enhancement | `/agentic-start "<task>"` |
+| Work one epic task | `/task-work EPIC-XXX <n>` |
+| Loop all on-progress tasks | `/epic-loop` |
+| Docs hygiene pass | `/claude-codex-docs-workflow` |
+
 ## Status Vocabulary
 
 Use these status labels in workflow docs and epic Automation Logs:
 
-- `planned`: scoped but not started.
-- `in_progress`: active implementation or verification is underway.
-- `blocked`: cannot continue without user input or external state.
-- `needs_review`: implementation is complete and awaiting review or QA.
-- `verified`: checks passed for the stated scope.
-- `shipped`: merged or deployed to the intended target.
+| Status | Meaning |
+| --- | --- |
+| `backlog` | Planned, not yet started |
+| `on-progress` | Ready for automation/execution |
+| `coding` | Implementation actively underway |
+| `review` | Review gate running |
+| `testing` | Test gate running |
+| `deploying-dev` | DEV-only deploy running |
+| `ready-for-qa` | Automation passed, human QA next |
+| `blocked` | Needs human decision or external state |
+| `done` | Completed |
 
-Avoid mixing these with informal variants such as `done`, `complete`,
-`finished`, `wip`, or `todo` in epic status tables.
+Avoid informal variants: `planned`, `in_progress`, `needs_review`, `verified`,
+`shipped`, `done`, `complete`, `wip`, `todo`.
 
 ## Claude Code Handoff Checklist
 
@@ -38,8 +52,6 @@ For `claude-codex-docs-workflow` runs:
 4. Remove tracked runtime state already covered by `.gitignore`.
 5. Show the diff before asking for commit or push approval.
 
-## Current Repo Notes
+## Epics
 
-- `docs/epics/` is not present yet in this repository.
-- If epics are introduced later, each epic should include an `Automation Log`
-  section with timestamped entries.
+- [`docs/epics/EPIC-000-project-bootstrap.md`](epics/EPIC-000-project-bootstrap.md) — baseline workflow setup (`done`)
