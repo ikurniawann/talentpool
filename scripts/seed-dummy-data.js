@@ -189,8 +189,8 @@ async function seedHRIS() {
       id: uuid(),
       employee_id: emp_id,
       leave_type: leaveTypes[i % leaveTypes.length],
-      start_date: end,    // end < start intentionally reversed for variety
-      end_date: start,
+      start_date: start,
+      end_date: end,
       total_days: 2,
       reason: 'Keperluan pribadi',
       status: ['pending', 'approved', 'rejected'][i % 3],
