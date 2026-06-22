@@ -60,6 +60,7 @@ type Product = {
   margin: number;
   status: 'active' | 'inactive';
   station: string;
+  image_url: string | null;
   hasVariants: boolean;
   hasModifiers: boolean;
   variants: Variant[];
@@ -70,6 +71,7 @@ type APIProduct = {
   id: string;
   sku?: string | null;
   name?: string | null;
+  image_url?: string | null;
   category?: { name?: string | null } | { name?: string | null }[] | string | null;
   base_price?: number | string | null;
   cost_price?: number | string | null;
@@ -180,6 +182,7 @@ function normalizeProduct(product: APIProduct): Product {
     margin,
     status: product.is_active === false ? 'inactive' : 'active',
     station: product.station || 'kitchen',
+    image_url: product.image_url ?? null,
     hasVariants: variants.length > 0,
     hasModifiers: modifierGroups.length > 0,
     variants,
@@ -517,8 +520,12 @@ export default function ProductsPage() {
                   <tr key={product.id} className="border-b border-gray-50 last:border-0 hover:bg-gray-50">
                     <td className="p-4">
                       <div className="flex items-center gap-3">
-                        <div className="w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center">
-                          <Package className="w-6 h-6 text-gray-400" />
+                        <div className="w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center overflow-hidden">
+                          {product.image_url ? (
+                            <img src={product.image_url} alt={product.name} className="w-full h-full object-cover" />
+                          ) : (
+                            <Package className="w-6 h-6 text-gray-400" />
+                          )}
                         </div>
                         <div>
                           <div className="font-medium text-gray-900">{product.name}</div>
