@@ -17,6 +17,31 @@ Arkiv OS adalah ERP terpadu berbasis Next.js dan Supabase untuk operasional Aape
 | Deployment | Vercel |
 | AI | Ollama cloud models untuk Arkiv OS AI Assistant |
 
+## Current Development Status
+
+Progress terbaru ada di `docs/purchasing/HANDOFF_2026-05-25_POS_PURCHASING_PRODUCTION.md`.
+Fokus terakhir adalah integrasi POS, Purchasing, Production, WIP inventory, HPP/COGS, stock card, dan laporan profit POS.
+
+Sudah berjalan:
+- Production complete untuk finished good dan WIP.
+- WIP bisa menjadi raw material type `WIP` dan dipakai ulang dalam BOM produk final.
+- HPP aktual produk jadi tersinkron ke `pos_products.cost_price`.
+- POS order item menyimpan snapshot profit: `cost_price`, `cost_total`, `gross_profit`, `gross_margin_pct`.
+- POS Profit Report tersedia di `/dashboard/pos/reports/profit`.
+- API profit report tersedia di `/api/pos/reports/profit` dengan breakdown produk, kategori, station, kasir, dan tanggal.
+
+Catatan QA terakhir:
+- Scoped ESLint untuk POS profit report sudah lolos.
+- `npm run build` pernah menggantung di tahap optimized production build pada worktree ini.
+- `npx tsc --noEmit` masih gagal karena error existing di area lain seperti route params Next 16, purchasing pages, POS backup, dan shared UI components.
+- Worktree lokal ini belum memiliki `.env.local`, jadi QA browser/API live butuh env Supabase terlebih dahulu.
+
+Next task yang disarankan:
+1. QA end-to-end production finished good sampai HPP aktual masuk ke POS.
+2. QA order POS paid/open bill dan pastikan snapshot profit masuk ke `pos_order_items`.
+3. QA `/dashboard/pos/reports/profit` dengan data real.
+4. Bereskan error TypeScript existing agar `npx tsc --noEmit` dan `npm run build` bisa menjadi gate kolaborasi.
+
 ## Module Overview
 
 ### Arkiv OS Desktop
@@ -24,16 +49,19 @@ Arkiv OS adalah ERP terpadu berbasis Next.js dan Supabase untuk operasional Aape
 Route utama:
 - `/arkiv-os`
 - `/qa`
+- `/loop`
 
 Fitur:
 - Desktop-style launcher untuk membuka module bisnis dalam window.
 - AI Assistant dengan mode context project atau general knowledge.
 - Pengaturan AI Assistant di Arkiv OS Settings, termasuk pilihan LLM.
 - QA progress dashboard sementara di `/qa` untuk ringkasan progress dan test result.
+- Engineering loop dashboard di `/loop` untuk ringkasan build/lint/typecheck/test/deploy readiness.
 
 Dokumentasi terkait:
 - `Arkiv_progress.md`
 - `docs/qa/QA_REPORT_ARKIV_OS_PROGRESS_2026-05-24.md`
+- `docs/qa/ENGINEERING_LOOP_REPORT_2026-06-10.md`
 
 ### HRIS
 
@@ -91,6 +119,7 @@ Route utama:
 - `/dashboard/pos/open-bills`
 - `/dashboard/pos/kds`
 - `/dashboard/pos/orders`
+- `/dashboard/pos/reports/profit`
 - `/dashboard/pos/print-queue`
 - `/dashboard/pos/printer-settings`
 - `/dashboard/pos/topup`
@@ -110,6 +139,7 @@ Fitur:
 - Sinkron produk purchasing ke POS.
 - Sinkron HPP aktual produksi ke `pos_products.cost_price`.
 - Snapshot profit item order: `cost_price`, `cost_total`, `gross_profit`, `gross_margin_pct`.
+- Profit report: revenue, COGS, gross profit, gross margin, zero-cost item warning, breakdown produk/kategori/station/kasir/tanggal, dan export CSV.
 
 Dokumentasi terkait:
 - `docs/pos/POS.md`
@@ -264,16 +294,19 @@ Dokumentasi terkait:
 
 Route utama:
 - `/qa`
+- `/loop`
 - `/dashboard/purchasing/reports`
 - `/dashboard/hris/reports`
 - `/dashboard/pos`
+- `/dashboard/pos/reports/profit`
 
 Fitur:
 - QA progress page.
+- Engineering loop report page untuk kolaborasi developer.
 - Purchasing reports.
 - HRIS reports.
 - POS dashboard.
-- Profit-ready POS data via item-level cost snapshot.
+- POS profit report berbasis item-level cost snapshot.
 
 ### Master Data dan Settings
 
@@ -326,6 +359,7 @@ Fitur:
 | GET/POST | `/api/pos/orders` | POS order list dan create paid order |
 | PATCH | `/api/pos/orders/[id]` | Update order/payment |
 | POST | `/api/pos/orders/open-bill` | Create open bill |
+| GET | `/api/pos/reports/profit` | Profit report: revenue, COGS, gross profit, margin, breakdown |
 | GET | `/api/pos/kds` | Kitchen display data |
 | GET/POST | `/api/pos/print-jobs` | Print queue |
 | GET/POST | `/api/pos/shifts` | POS shift |
@@ -515,9 +549,26 @@ Buka:
 ```text
 http://localhost:3000
 http://localhost:3000/arkiv-os
+http://localhost:3000/loop
 http://localhost:3000/dashboard/pos/products
 http://localhost:3000/dashboard/purchasing
 ```
+
+## Collaboration Guide
+
+Untuk programmer yang lanjut mengerjakan project ini:
+
+1. Baca dulu `docs/purchasing/HANDOFF_2026-05-25_POS_PURCHASING_PRODUCTION.md`, `Arkiv_progress.md`, dan `PROGRESS.md`.
+2. Jangan reset/revert perubahan lokal tanpa koordinasi karena beberapa module saling terkait.
+3. Jalankan `npm install` atau `npm ci`, lalu siapkan `.env.local` berisi Supabase dan service key.
+4. Mulai dari QA flow POS dan Production:
+   - complete production finished good,
+   - cek `pos_products.cost_price`,
+   - buat POS order paid/open bill,
+   - cek snapshot profit di `pos_order_items`,
+   - buka `/dashboard/pos/reports/profit`.
+5. Kalau membuat perubahan database, tambahkan migration di `supabase/migrations/` dan dokumentasikan efeknya di README atau docs module terkait.
+6. Sebelum merge, minimal jalankan scoped lint untuk file yang diubah. Full typecheck/build saat ini masih punya error existing yang perlu dibereskan terpisah.
 
 ## Project Structure
 
@@ -580,6 +631,7 @@ src/
 ## Important Docs
 
 - `docs/purchasing/README.md`
+- `docs/purchasing/HANDOFF_2026-05-25_POS_PURCHASING_PRODUCTION.md`
 - `docs/purchasing/PURCHASING_PRODUCTION_PROGRESS_2026-05-24.md`
 - `docs/crm/CRM_DEVELOPMENT_PROGRESS.md`
 - `docs/pos/POS_DEVELOPMENT_PLAN.md`

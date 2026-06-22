@@ -160,7 +160,7 @@ export async function POST(request: NextRequest) {
     // Validate PO can have delivery
     const { valid, errors, po } = await validatePOCanDelivery(supabase, validated.po_id);
     console.log("PO validation result:", { valid, errors, po });
-    if (!valid) {
+    if (!valid || !po) {
       throw ApiError.badRequest(errors.join("; "));
     }
 

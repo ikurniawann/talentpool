@@ -5,14 +5,17 @@ import {
   AlertCircle,
   BarChart3,
   CalendarDays,
+  Download,
   Loader2,
   ReceiptText,
+  RefreshCw,
   TrendingUp,
   WalletCards,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { convertToCSV, downloadCSV } from "@/lib/utils/csv-export";
 
 type ProfitBucket = {
   id: string;
@@ -148,6 +151,7 @@ export default function POSProfitReportPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [report, setReport] = useState<ProfitReport | null>(null);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   const query = useMemo(() => {
     const params = new URLSearchParams({ date_from: dateFrom, date_to: dateTo });
@@ -177,9 +181,32 @@ export default function POSProfitReportPage() {
     return () => {
       cancelled = true;
     };
-  }, [query]);
+  }, [query, refreshKey]);
 
   const summary = report?.summary;
+
+  const handleExport = () => {
+    if (!report) return;
+
+    const rows = [
+      ...report.breakdowns.products.map((row) => ({ section: "Produk", ...row })),
+      ...report.breakdowns.categories.map((row) => ({ section: "Kategori", ...row })),
+      ...report.breakdowns.stations.map((row) => ({ section: "Station", ...row })),
+      ...report.breakdowns.cashiers.map((row) => ({ section: "Kasir", ...row })),
+      ...report.breakdowns.dates.map((row) => ({ section: "Tanggal", ...row })),
+    ];
+    const csv = convertToCSV(rows, [
+      { key: "section", label: "Section" },
+      { key: "label", label: "Nama" },
+      { key: "quantity", label: "Qty" },
+      { key: "revenue", label: "Revenue" },
+      { key: "cogs", label: "COGS" },
+      { key: "gross_profit", label: "Gross Profit" },
+      { key: "gross_margin_pct", label: "Gross Margin %" },
+    ]);
+
+    downloadCSV(csv, `pos-profit-${report.filters.date_from}-${report.filters.date_to}.csv`);
+  };
 
   return (
     <div className="space-y-6">
@@ -199,6 +226,14 @@ export default function POSProfitReportPage() {
           </label>
           <Button type="button" size="sm" variant="outline" onClick={() => { setDateFrom(today()); setDateTo(today()); }}>
             Hari Ini
+          </Button>
+          <Button type="button" size="sm" variant="outline" onClick={() => setRefreshKey((key) => key + 1)} disabled={loading}>
+            {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
+            Refresh
+          </Button>
+          <Button type="button" size="sm" onClick={handleExport} disabled={!report || loading}>
+            <Download className="mr-2 h-4 w-4" />
+            Export CSV
           </Button>
         </div>
       </div>

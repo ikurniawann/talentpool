@@ -34,6 +34,11 @@ type PosCategoryRow = {
   name?: string | null;
 };
 
+type UserRow = {
+  id: string;
+  full_name?: string | null;
+};
+
 type ProfitBucket = {
   id: string;
   label: string;
@@ -59,7 +64,22 @@ function marginPct(revenue: number, profit: number) {
 
 function dateKey(value?: string | null) {
   if (!value) return "Tanpa tanggal";
-  return new Date(value).toISOString().slice(0, 10);
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "Tanpa tanggal";
+
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Jakarta",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(date);
+  const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+  return `${values.year}-${values.month}-${values.day}`;
+}
+
+function jakartaDayToUtc(date: string, endOfDay = false) {
+  const time = endOfDay ? "T23:59:59.999+07:00" : "T00:00:00.000+07:00";
+  return new Date(`${date}${time}`);
 }
 
 function addToBucket(
@@ -114,8 +134,12 @@ export async function GET(request: NextRequest) {
     const defaultStart = new Date(now.getFullYear(), now.getMonth(), 1);
     const from = searchParams.get("date_from") || defaultStart.toISOString().slice(0, 10);
     const to = searchParams.get("date_to") || now.toISOString().slice(0, 10);
-    const startDate = new Date(`${from}T00:00:00.000Z`);
-    const endDate = new Date(`${to}T23:59:59.999Z`);
+    const startDate = jakartaDayToUtc(from);
+    const endDate = jakartaDayToUtc(to, true);
+
+    if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime())) {
+      return NextResponse.json({ success: false, error: "Tanggal laporan tidak valid" }, { status: 400 });
+    }
 
     const { data: orders, error: orderError } = await supabase
       .from("pos_orders")
@@ -184,6 +208,18 @@ export async function GET(request: NextRequest) {
       ((categories || []) as PosCategoryRow[]).map((category) => [category.id, category.name || "Tanpa kategori"])
     );
 
+    const cashierIds = Array.from(
+      new Set(orderRows.map((order) => order.cashier_id).filter((id): id is string => Boolean(id)))
+    );
+    const { data: users, error: userError } = cashierIds.length
+      ? await supabase.from("users").select("id, full_name").in("id", cashierIds)
+      : { data: [], error: null };
+    if (userError) throw userError;
+
+    const cashierById = new Map(
+      ((users || []) as UserRow[]).map((user) => [user.id, user.full_name || user.id.slice(0, 8)])
+    );
+
     const productBuckets = new Map<string, ProfitBucket>();
     const categoryBuckets = new Map<string, ProfitBucket>();
     const stationBuckets = new Map<string, ProfitBucket>();
@@ -208,6 +244,7 @@ export async function GET(request: NextRequest) {
       const categoryLabel = product?.category_id ? categoryById.get(product.category_id) || "Tanpa kategori" : "Tanpa kategori";
       const station = item.station || "kitchen";
       const cashierId = order?.cashier_id || "unknown-cashier";
+      const cashierLabel = cashierById.get(cashierId) || (cashierId === "unknown-cashier" ? "Tanpa kasir" : cashierId.slice(0, 8));
       const date = dateKey(order?.ordered_at);
 
       quantity += itemQuantity;
@@ -219,7 +256,7 @@ export async function GET(request: NextRequest) {
       addToBucket(productBuckets, productId, productLabel, itemQuantity, itemRevenue, itemCogs, itemProfit);
       addToBucket(categoryBuckets, categoryId, categoryLabel, itemQuantity, itemRevenue, itemCogs, itemProfit);
       addToBucket(stationBuckets, station, station, itemQuantity, itemRevenue, itemCogs, itemProfit);
-      addToBucket(cashierBuckets, cashierId, cashierId === "unknown-cashier" ? "Tanpa kasir" : cashierId.slice(0, 8), itemQuantity, itemRevenue, itemCogs, itemProfit);
+      addToBucket(cashierBuckets, cashierId, cashierLabel, itemQuantity, itemRevenue, itemCogs, itemProfit);
       addToBucket(dateBuckets, date, date, itemQuantity, itemRevenue, itemCogs, itemProfit);
     }
 

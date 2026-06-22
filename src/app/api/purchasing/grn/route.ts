@@ -66,6 +66,8 @@ type POQtyValidationItem = {
   raw_material_id: string;
   qty_ordered?: number | null;
   qty_received?: number | null;
+  harga_satuan?: number | string | null;
+  unit_price?: number | string | null;
   raw_material?: {
     nama?: string | null;
     nama_bahan?: string | null;
@@ -415,8 +417,8 @@ export async function POST(request: NextRequest) {
     console.log(`\n[GRN/${grn.id}] Updating inventory for ${validated.items.length} items...`);
     for (const item of validated.items) {
       if (item.qty_diterima > 0) {
-        const poItem = effectivePoItems.find((p: any) => p.id === item.purchase_order_item_id);
-        const unitCost = poItem?.harga_satuan || poItem?.unit_price || 0;
+        const poItem = effectivePoItems.find((p: POQtyValidationItem) => p.id === item.purchase_order_item_id);
+        const unitCost = Number(poItem?.harga_satuan || poItem?.unit_price || 0);
         try {
           console.log(`  ${item.raw_material_id}: +${item.qty_diterima} @ Rp ${unitCost}`);
           await addInventoryFromGrn(

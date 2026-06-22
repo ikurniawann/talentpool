@@ -4,6 +4,10 @@ import { updateSession } from "@/lib/supabase/middleware";
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
+  if (pathname === "/invest" || pathname.startsWith("/invest/")) {
+    return NextResponse.next();
+  }
+
   // Redirect old HRIS paths to new /dashboard/hris/* structure.
   // Must run before the session check so the redirect target is also authenticated.
   const hrisModules = ["candidates", "pipeline", "talent-pool", "staff", "analytics"];

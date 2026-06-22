@@ -4,7 +4,7 @@ import { getPosSession } from '@/lib/api/auth';
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const sessionUserId = await getPosSession();
   if (!sessionUserId) {
@@ -14,7 +14,7 @@ export async function POST(
   try {
     const body = await request.json();
     const { reason, supervisor_pin } = body;
-    const orderId = params.id;
+    const { id: orderId } = await params;
 
     if (!reason || !supervisor_pin) {
       return Response.json({ success: false, error: 'Reason and supervisor PIN required' }, { status: 400 });
@@ -80,8 +80,9 @@ export async function POST(
       success: true,
       data: { order_id: orderId, message: 'Order voided successfully' },
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Void error:', error);
-    return Response.json({ success: false, error: error.message }, { status: 500 });
+    const message = error instanceof Error ? error.message : 'Failed to void order';
+    return Response.json({ success: false, error: message }, { status: 500 });
   }
 }
