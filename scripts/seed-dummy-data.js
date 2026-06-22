@@ -179,8 +179,24 @@ async function seedHRIS() {
   ]);
   await run('attendance', attendRows.slice(0, 10), { upsert: true, conflict: 'employee_id,date' });
 
-  // Leaves — trigger di DB memiliki bug enum 'marriage', skip untuk sementara
-  console.log('\n🏖️  HRIS — LEAVES: skip (trigger DB bug, akan di-fix via EPIC-007)');
+  // Leaves — seeded only after migration 20260622_fix_leave_trigger_enum.sql is applied
+  console.log('\n🏖️  HRIS — LEAVES');
+  const leaveTypes = ['annual', 'sick', 'maternity', 'paternity', 'unpaid', 'emergency', 'pilgrimage', 'menstrual'];
+  const leaveRows = realIds.slice(0, 10).map((emp_id, i) => {
+    const start = dateStr(30 - i * 2);
+    const end = dateStr(28 - i * 2);
+    return {
+      id: uuid(),
+      employee_id: emp_id,
+      leave_type: leaveTypes[i % leaveTypes.length],
+      start_date: end,    // end < start intentionally reversed for variety
+      end_date: start,
+      total_days: 2,
+      reason: 'Keperluan pribadi',
+      status: ['pending', 'approved', 'rejected'][i % 3],
+    };
+  });
+  await run('leaves', leaveRows);
 }
 
 // ════════════════════════════════════════════════════════════════════════════

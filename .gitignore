@@ -46,3 +46,4 @@ Panduan/
 server.log
 assistant-memory/
 supabase/.temp/
+outputs/
