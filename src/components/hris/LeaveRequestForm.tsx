@@ -180,7 +180,7 @@ export function LeaveRequestForm({
         setPreviewUrl(null);
       }
 
-      // TODO: Upload to storage service (Supabase Storage, S3, etc.)
+      // TODO: Upload to storage service (S3, local filesystem, etc.)
       // For now, we'll just store the file name
       toast({
         title: "✅ File Berhasil Diupload",

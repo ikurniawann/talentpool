@@ -2,7 +2,7 @@
 // API ROUTE: /api/purchasing/reports/inventory-valuation
 // ============================================
 
-import { createClient } from "@/lib/supabase/server";
+import { createServerPgClient } from "@/lib/pg/create-client";
 
 function toNumber(value: unknown) {
   const numeric = Number(value);
@@ -12,10 +12,10 @@ function toNumber(value: unknown) {
 // GET /api/purchasing/reports/inventory-valuation
 export async function GET() {
   try {
-    const supabase = await createClient();
+    const db = await createServerPgClient();
 
     // Get semua inventory aktif dengan stok > 0
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from("v_raw_materials_stock")
       .select("*")
       .eq("is_active", true)

@@ -44,7 +44,7 @@ const TALENTPOOL_XP_RULES = {
 
 ## 🗄️ Database Migration
 
-### File: `supabase/migrations/006_add_xp_system.sql`
+### File: `database/migrations/006_add_xp_system.sql`
 
 ```sql
 -- ============================================================
@@ -325,7 +325,7 @@ CREATE POLICY "Users can view own redemptions" ON xp_redemptions
 
 ```typescript
 // After user is created in users table
-await supabase.from('user_xp_stats').insert({
+await db.from('user_xp_stats').insert({
   user_id: newUser.id,
   current_xp: 0,
   level: 1,
@@ -333,7 +333,7 @@ await supabase.from('user_xp_stats').insert({
 });
 
 // Award "First Blood" badge if first user
-await supabase.rpc('add_xp_to_user', {
+await db.rpc('add_xp_to_user', {
   p_user_id: newUser.id,
   p_xp_amount: 25,
   p_activity_type: 'account_created',
@@ -346,7 +346,7 @@ await supabase.rpc('add_xp_to_user', {
 
 ```typescript
 // After candidate is successfully created
-const xpResult = await supabase.rpc('add_xp_to_user', {
+const xpResult = await db.rpc('add_xp_to_user', {
   p_user_id: userId,
   p_xp_amount: 25,
   p_activity_type: 'candidate_added',
@@ -357,7 +357,7 @@ const xpResult = await supabase.rpc('add_xp_to_user', {
 });
 
 // Check for badge unlocks
-const unlockedBadges = await supabase.rpc('check_badge_unlock', { p_user_id: userId });
+const unlockedBadges = await db.rpc('check_badge_unlock', { p_user_id: userId });
 ```
 
 ### 3. Interview Completed
@@ -365,7 +365,7 @@ const unlockedBadges = await supabase.rpc('check_badge_unlock', { p_user_id: use
 
 ```typescript
 // After interview is marked as completed
-await supabase.rpc('add_xp_to_user', {
+await db.rpc('add_xp_to_user', {
   p_user_id: interviewerId,
   p_xp_amount: 40,
   p_activity_type: 'interview_completed',
@@ -376,7 +376,7 @@ await supabase.rpc('add_xp_to_user', {
 
 // Bonus for scorecard filled
 if (scorecard) {
-  await supabase.rpc('add_xp_to_user', {
+  await db.rpc('add_xp_to_user', {
     p_user_id: interviewerId,
     p_xp_amount: 15,
     p_activity_type: 'interview_scorecard_filled',
@@ -393,7 +393,7 @@ if (scorecard) {
 ```typescript
 // When status changes to 'hired'
 if (newStatus === 'hired' && oldStatus !== 'hired') {
-  await supabase.rpc('add_xp_to_user', {
+  await db.rpc('add_xp_to_user', {
     p_user_id: userId,
     p_xp_amount: 100,
     p_activity_type: 'candidate_hired',
@@ -409,7 +409,7 @@ if (newStatus === 'hired' && oldStatus !== 'hired') {
 
 ```typescript
 // Check if user logged in today
-const { data: stats } = await supabase
+const { data: stats } = await db
   .from('user_xp_stats')
   .select('last_login')
   .eq('user_id', userId)
@@ -419,7 +419,7 @@ const today = new Date().toDateString();
 const lastLogin = stats?.last_login ? new Date(stats.last_login).toDateString() : null;
 
 if (lastLogin !== today) {
-  await supabase.rpc('add_xp_to_user', {
+  await db.rpc('add_xp_to_user', {
     p_user_id: userId,
     p_xp_amount: 5,
     p_activity_type: 'daily_login',
@@ -427,7 +427,7 @@ if (lastLogin !== today) {
   });
   
   // Update last_login
-  await supabase
+  await db
     .from('user_xp_stats')
     .update({ last_login: today })
     .eq('user_id', userId);
@@ -548,7 +548,7 @@ const [xpStats, setXpStats] = useState({
 
 useEffect(() => {
   const fetchXPStats = async () => {
-    const { data } = await supabase
+    const { data } = await db
       .from('user_xp_stats')
       .select('*')
       .eq('user_id', user.id)
@@ -589,7 +589,7 @@ useEffect(() => {
 
 ### Phase 1: Database & Core (Week 1)
 - [ ] Run migration `006_add_xp_system.sql`
-- [ ] Create Supabase types for XP tables
+- [ ] Create TypeScript types for XP tables
 - [ ] Implement `add_xp_to_user` RPC calls in API routes
 - [ ] Test XP earning on candidate create/update
 

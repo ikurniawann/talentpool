@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createServiceClient } from '@/lib/supabase/service-client';
+import { createPgClient } from "@/lib/pg/create-client";
 import { getPosSession } from '@/lib/api/auth';
 
 type PrintJobPatchBody = {
@@ -76,8 +76,8 @@ export async function PATCH(
       updatePayload.requested_at = now;
     }
 
-    const supabase = createServiceClient();
-    const { data: currentJob } = await supabase
+    const db = createPgClient();
+    const { data: currentJob } = await db
       .from('pos_print_jobs')
       .select('attempts')
       .eq('id', id)
@@ -87,7 +87,7 @@ export async function PATCH(
       updatePayload.attempts = Number(currentJob?.attempts || 0) + 1;
     }
 
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from('pos_print_jobs')
       .update(updatePayload)
       .eq('id', id)

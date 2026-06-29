@@ -3,7 +3,7 @@
 // ============================================
 
 import { NextRequest } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { createServerPgClient } from "@/lib/pg/create-client";
 import { z } from "zod";
 
 const updatePriceListSchema = z.object({
@@ -31,23 +31,23 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
-    const supabase = await createClient();
+    const db = await createServerPgClient();
 
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from("supplier_price_lists")
       .select(`
         *,
-        supplier:supplier_id (
+        supplier:suppliers!supplier_id (
           id,
           kode,
           nama_supplier
         ),
-        bahan_baku:bahan_baku_id (
+        bahan_baku:raw_materials!bahan_baku_id (
           id,
           kode,
           nama
         ),
-        satuan:satuan_id (
+        satuan:units!satuan_id (
           id,
           kode,
           nama
@@ -83,12 +83,12 @@ export async function PUT(
 ) {
   try {
     const { id } = await params;
-    const supabase = await createClient();
+    const db = await createServerPgClient();
     const body = await request.json();
 
     const validated = updatePriceListSchema.parse(body);
 
-    const { data: existingPriceList, error: existingError } = await supabase
+    const { data: existingPriceList, error: existingError } = await db
       .from("supplier_price_lists")
       .select("bahan_baku_id,satuan_id")
       .eq("id", id)
@@ -100,7 +100,7 @@ export async function PUT(
     const nextUnitId = validated.satuan_id || existingPriceList.satuan_id;
 
     if (nextMaterialId && nextUnitId) {
-      const { data: conversion, error: conversionError } = await supabase
+      const { data: conversion, error: conversionError } = await db
         .from("raw_material_unit_conversions")
         .select("id")
         .eq("raw_material_id", nextMaterialId)
@@ -117,7 +117,7 @@ export async function PUT(
       }
     }
 
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from("supplier_price_lists")
       .update({
         ...validated,
@@ -162,10 +162,10 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params;
-    const supabase = await createClient();
+    const db = await createServerPgClient();
 
     // Soft delete - set is_active = false
-    const { error } = await supabase
+    const { error } = await db
       .from("supplier_price_lists")
       .update({
         is_active: false,

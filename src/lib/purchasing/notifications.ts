@@ -1,4 +1,4 @@
-import { SupabaseClient } from "@supabase/supabase-js";
+import type { DbClient } from "@/lib/pg/types";
 
 interface NotificationPayload {
   user_id: string;
@@ -13,10 +13,10 @@ interface NotificationPayload {
  * Create in-app notification
  */
 export async function createNotification(
-  supabase: SupabaseClient,
+  db: DbClient,
   payload: NotificationPayload
 ): Promise<void> {
-  const { error } = await supabase.from("notifications").insert({
+  const { error } = await db.from("notifications").insert({
     user_id: payload.user_id,
     title: payload.title,
     message: payload.message,
@@ -36,7 +36,7 @@ export async function createNotification(
  * Notify user that their PR needs approval
  */
 export async function notifyApprovalRequired(
-  supabase: SupabaseClient,
+  db: DbClient,
   prId: string,
   prNumber: string,
   approverId: string,
@@ -48,7 +48,7 @@ export async function notifyApprovalRequired(
     direksi: "Direksi",
   }[level] || level;
 
-  await createNotification(supabase, {
+  await createNotification(db, {
     user_id: approverId,
     title: `PR Menunggu Approval - ${levelLabel}`,
     message: `Purchase Request ${prNumber} membutuhkan persetujuan Anda sebagai ${levelLabel}`,
@@ -62,7 +62,7 @@ export async function notifyApprovalRequired(
  * Notify requester of PR status change
  */
 export async function notifyPRStatusChange(
-  supabase: SupabaseClient,
+  db: DbClient,
   prId: string,
   prNumber: string,
   requesterId: string,
@@ -78,7 +78,7 @@ export async function notifyPRStatusChange(
   const action = statusLabels[newStatus] || newStatus;
   const byText = approverName ? ` oleh ${approverName}` : "";
 
-  await createNotification(supabase, {
+  await createNotification(db, {
     user_id: requesterId,
     title: `PR ${action}`,
     message: `Purchase Request ${prNumber} telah ${action}${byText}`,
@@ -92,7 +92,7 @@ export async function notifyPRStatusChange(
  * Notify PO status change
  */
 export async function notifyPOStatusChange(
-  supabase: SupabaseClient,
+  db: DbClient,
   poId: string,
   poNumber: string,
   recipientId: string,
@@ -109,7 +109,7 @@ export async function notifyPOStatusChange(
   const action = statusLabels[newStatus] || newStatus;
   const byText = actorName ? ` oleh ${actorName}` : "";
 
-  await createNotification(supabase, {
+  await createNotification(db, {
     user_id: recipientId,
     title: `PO ${action}`,
     message: `Purchase Order ${poNumber} telah ${action}${byText}`,
@@ -123,14 +123,14 @@ export async function notifyPOStatusChange(
  * Notify about goods receipt
  */
 export async function notifyGoodsReceived(
-  supabase: SupabaseClient,
+  db: DbClient,
   poId: string,
   poNumber: string,
   recipientId: string,
   grNumber: string,
   receivedBy: string
 ): Promise<void> {
-  await createNotification(supabase, {
+  await createNotification(db, {
     user_id: recipientId,
     title: "Barang Diterima",
     message: `PO ${poNumber} telah diterima oleh ${receivedBy} (GR: ${grNumber})`,
@@ -144,13 +144,13 @@ export async function notifyGoodsReceived(
  * Send reminder for pending approvals (for cron job)
  */
 export async function sendApprovalReminders(
-  supabase: SupabaseClient
+  db: DbClient
 ): Promise<void> {
   // Find PRs pending for more than 3 days
   const threeDaysAgo = new Date();
   threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
 
-  const { data: pendingPRs } = await supabase
+  const { data: pendingPRs } = await db
     .from("purchase_requests")
     .select("id, pr_number, created_at, current_approver_id")
     .in("status", ["pending_head", "pending_finance", "pending_direksi"])
@@ -164,7 +164,7 @@ export async function sendApprovalReminders(
         (1000 * 60 * 60 * 24)
     );
 
-    await createNotification(supabase, {
+    await createNotification(db, {
       user_id: pr.current_approver_id,
       title: "Reminder: PR Menunggu Approval",
       message: `PR ${pr.pr_number} telah menunggu ${daysPending} hari. Mohon segera diproses.`,

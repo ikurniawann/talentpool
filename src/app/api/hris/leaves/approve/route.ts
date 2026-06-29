@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { createServerPgClient } from "@/lib/pg/create-client";
 import { z } from 'zod';
 
 // Validation schema for approval
@@ -15,11 +15,11 @@ const approvalSchema = z.object({
  */
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createClient();
+    const db = await createServerPgClient();
     const body = await request.json();
 
     // Check authentication
-    const { data: { user } } = await supabase.auth.getUser();
+    const { data: { user } } = await db.auth.getUser();
     if (!user) {
       return NextResponse.json(
         { error: 'Unauthorized' },
@@ -31,7 +31,7 @@ export async function POST(request: NextRequest) {
     const validated = approvalSchema.parse(body);
 
     // Check if user is manager or HRD
-    const isManager = await checkIsManager(supabase, user.id);
+    const isManager = await checkIsManager(db, user.id);
     if (!isManager) {
       return NextResponse.json(
         { error: 'Forbidden: Only managers can approve leave requests' },
@@ -40,7 +40,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Get leave request
-    const { data: leave, error: fetchError } = await supabase
+    const { data: leave, error: fetchError } = await db
       .from('leaves')
       .select(`
         *,
@@ -89,7 +89,7 @@ export async function POST(request: NextRequest) {
       updateData.rejection_reason = validated.rejection_reason;
     }
 
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from('leaves')
       .update(updateData)
       .eq('id', validated.leave_id)
@@ -119,7 +119,7 @@ export async function POST(request: NextRequest) {
 
     // If approved and it's annual leave, update leave balance
     if (validated.action === 'approve' && leave.leave_type === 'annual') {
-      await updateLeaveBalance(supabase, leave.employee_id, leave.total_days, new Date(leave.start_date).getFullYear());
+      await updateLeaveBalance(db, leave.employee_id, leave.total_days, new Date(leave.start_date).getFullYear());
     }
 
     // TODO: Send notification to employee (WhatsApp/Email)
@@ -150,13 +150,13 @@ export async function POST(request: NextRequest) {
 
 // Helper function to update leave balance
 async function updateLeaveBalance(
-  supabase: any,
+  db: any,
   employeeId: string,
   daysUsed: number,
   year: number
 ) {
   // Try to get existing balance
-  const { data: balance } = await supabase
+  const { data: balance } = await db
     .from('leave_balances')
     .select('id, annual_leave_used')
     .eq('employee_id', employeeId)
@@ -165,7 +165,7 @@ async function updateLeaveBalance(
 
   if (balance) {
     // Update existing balance
-    await supabase
+    await db
       .from('leave_balances')
       .update({
         annual_leave_used: (balance.annual_leave_used || 0) + daysUsed,
@@ -173,7 +173,7 @@ async function updateLeaveBalance(
       .eq('id', balance.id);
   } else {
     // Create new balance record (shouldn't happen normally, but just in case)
-    await supabase
+    await db
       .from('leave_balances')
       .insert({
         employee_id: employeeId,
@@ -185,8 +185,8 @@ async function updateLeaveBalance(
 }
 
 // Helper functions
-async function checkIsManager(supabase: any, userId: string): Promise<boolean> {
-  const { data } = await supabase
+async function checkIsManager(db: any, userId: string): Promise<boolean> {
+  const { data } = await db
     .from('users')
     .select('role')
     .eq('id', userId)

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { ApiError, requireApiRole } from "@/lib/api/auth";
-import { createServiceClient } from "@/lib/supabase/service-client";
+import { createPgClient } from "@/lib/pg/create-client";
 
 function toNumber(value: unknown) {
   const numeric = Number(value);
@@ -49,9 +49,9 @@ type BatchRow = {
 export async function GET() {
   try {
     await requireApiRole(["admin", "purchasing_admin", "purchasing_manager", "warehouse_admin", "warehouse_staff"]);
-    const supabase = createServiceClient();
+    const db = createPgClient();
 
-    const { data: wipRows, error: wipError } = await supabase
+    const { data: wipRows, error: wipError } = await db
       .from("v_raw_materials_stock")
       .select("*")
       .eq("material_type", "WIP")
@@ -66,13 +66,13 @@ export async function GET() {
     const [{ data: sourceProducts, error: sourceProductError }, { data: batches, error: batchError }] =
       await Promise.all([
         sourceProductIds.length > 0
-          ? supabase
+          ? db
               .from("products")
               .select("id,kode,nama,kategori,harga_jual")
               .in("id", sourceProductIds)
           : Promise.resolve({ data: [], error: null }),
         materialIds.length > 0
-          ? supabase
+          ? db
               .from("production_batches")
               .select(`
                 id,

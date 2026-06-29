@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createServiceClient } from '@/lib/supabase/service-client';
+import { createPgClient } from "@/lib/pg/create-client";
 import { getPosSession } from '@/lib/api/auth';
 
 type PrintJobPayload = {
@@ -45,13 +45,13 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const supabase = createServiceClient();
+    const db = createPgClient();
     const searchParams = request.nextUrl.searchParams;
     const status = normalizeStatus(searchParams.get('status'));
     const station = searchParams.get('station');
     const limit = Math.min(Number(searchParams.get('limit') || 100) || 100, 250);
 
-    let query = supabase
+    let query = db
       .from('pos_print_jobs')
       .select(`
         *,
@@ -92,11 +92,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'order_id is required' }, { status: 400 });
     }
 
-    const supabase = createServiceClient();
+    const db = createPgClient();
     const station = normalizeStation(body.station);
     const jobType = body.job_type || (station === 'bar' ? 'bar_ticket' : 'kitchen_ticket');
 
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from('pos_print_jobs')
       .insert({
         order_id: body.order_id,

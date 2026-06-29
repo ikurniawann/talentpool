@@ -1,7 +1,7 @@
 -- =====================================================
 -- CREATE TEST SUBMISSION FOR APPROVAL TESTING
 -- =====================================================
--- Jalankan di Supabase Dashboard > SQL Editor
+-- Jalankan di admin database > SQL Editor
 -- Untuk membuat test submission yang bisa di-approve
 -- =====================================================
 

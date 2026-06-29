@@ -1,4 +1,10 @@
-import { SupabaseClient } from "@supabase/supabase-js";
+import type { DbClient } from "@/lib/pg/types";
+
+/** Coerce Postgres numeric (often returned as string) to a finite number. */
+export function toQty(value: unknown): number {
+  const n = Number(value);
+  return Number.isFinite(n) ? n : 0;
+}
 
 /**
  * Build a compact daily document prefix: PREFIX-YYYYMMDD.
@@ -25,12 +31,12 @@ function getNextSequenceFromDocumentNumber(
  * Contoh: PR-20260522-0001
  */
 export async function generatePRNumber(
-  supabase: SupabaseClient
+  db: DbClient
 ): Promise<string> {
   const prefix = getDailyPrefix("PR");
   
   // Cari PR terakhir di tanggal ini. Nomor lama tetap valid karena tidak dimigrasi.
-  const { data: lastPR } = await supabase
+  const { data: lastPR } = await db
     .from("purchase_requests")
     .select("pr_number")
     .ilike("pr_number", `${prefix}-%`)
@@ -46,11 +52,11 @@ export async function generatePRNumber(
  * Generate nomor PO dengan format: PO-YYYYMMDD-NNNN
  */
 export async function generatePONumber(
-  supabase: SupabaseClient
+  db: DbClient
 ): Promise<string> {
   const prefix = getDailyPrefix("PO");
   
-  const { data: lastPO } = await supabase
+  const { data: lastPO } = await db
     .from("purchase_orders")
     .select("nomor_po")
     .ilike("nomor_po", `${prefix}-%`)
@@ -66,11 +72,11 @@ export async function generatePONumber(
  * Generate nomor Vendor dengan format: V-YYYY-NNNN
  */
 export async function generateVendorCode(
-  supabase: SupabaseClient
+  db: DbClient
 ): Promise<string> {
   const year = new Date().getFullYear();
   
-  const { data: lastVendor } = await supabase
+  const { data: lastVendor } = await db
     .from("vendors")
     .select("code")
     .ilike("code", `V-${year}-%`)

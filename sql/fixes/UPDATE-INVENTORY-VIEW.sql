@@ -1,6 +1,6 @@
 -- ============================================
 -- Update v_inventory view to include satuan
--- Run in Supabase SQL Editor
+-- Run in psql atau SQL client
 -- ============================================
 
 -- Step 1: Check current v_inventory view definition

@@ -1,21 +1,24 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { createClient } from "@/lib/supabase/client";
-import type { Brand, Position } from "@/types";
+import { useState } from "react";
+import { useSettingsBrands, useSettingsPositions } from "../queries";
+import {
+  useCreateSettingsBrand,
+  useCreateSettingsPosition,
+  useUpdateSettingsBrand,
+  useUpdateSettingsPosition,
+} from "../mutations";
 
-export default function SettingsPage() {
-  const supabase = createClient();
+export function SettingsPage() {
+  const { data: brands = [], isLoading: loadingBrands } = useSettingsBrands();
+  const { data: positions = [], isLoading: loadingPositions } = useSettingsPositions();
+  const createBrandMutation = useCreateSettingsBrand();
+  const updateBrandMutation = useUpdateSettingsBrand();
+  const createPositionMutation = useCreateSettingsPosition();
+  const updatePositionMutation = useUpdateSettingsPosition();
 
-  const [brands, setBrands] = useState<Brand[]>([]);
-  const [positions, setPositions] = useState<Position[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState({ type: "", text: "" });
-
-  // Brand form
   const [brandForm, setBrandForm] = useState({ name: "", industry: "F&B" });
-  // Position form
   const [posForm, setPosForm] = useState({
     brand_id: "",
     title: "",
@@ -23,63 +26,65 @@ export default function SettingsPage() {
     level: "Staff",
   });
 
-  useEffect(() => {
-    fetchData();
-  }, []);
-
-  const fetchData = async () => {
-    setLoading(true);
-    const [{ data: b }, { data: p }] = await Promise.all([
-      supabase.from("brands").select("*").order("name"),
-      supabase.from("positions").select("*, brands(name)").order("title"),
-    ]);
-    setBrands((b as Brand[]) ?? []);
-    setPositions((p as Position[]) ?? []);
-    setLoading(false);
-  };
+  const loading = loadingBrands || loadingPositions;
+  const saving =
+    createBrandMutation.isPending ||
+    updateBrandMutation.isPending ||
+    createPositionMutation.isPending ||
+    updatePositionMutation.isPending;
 
   const showMsg = (type: string, text: string) => {
     setMsg({ type, text });
     setTimeout(() => setMsg({ type: "", text: "" }), 3000);
   };
 
-  // Create brand
   const createBrand = async (e: React.FormEvent) => {
     e.preventDefault();
-    setSaving(true);
-    const { error } = await supabase.from("brands").insert(brandForm);
-    setSaving(false);
-    if (error) showMsg("error", error.message);
-    else {
+    try {
+      await createBrandMutation.mutateAsync(brandForm);
       showMsg("success", "Outlet berhasil ditambahkan");
       setBrandForm({ name: "", industry: "F&B" });
-      fetchData();
+    } catch (error) {
+      showMsg("error", error instanceof Error ? error.message : "Gagal menambahkan outlet");
     }
   };
 
-  // Create position
   const createPosition = async (e: React.FormEvent) => {
     e.preventDefault();
-    setSaving(true);
-    const { error } = await supabase.from("positions").insert(posForm);
-    setSaving(false);
-    if (error) showMsg("error", error.message);
-    else {
+    try {
+      await createPositionMutation.mutateAsync(posForm);
       showMsg("success", "Posisi berhasil ditambahkan");
       setPosForm({ brand_id: "", title: "", department: "Operations", level: "Staff" });
-      fetchData();
+    } catch (error) {
+      showMsg("error", error instanceof Error ? error.message : "Gagal menambahkan posisi");
     }
   };
 
-  // Toggle active
   const toggleBrand = async (id: string, is_active: boolean) => {
-    await supabase.from("brands").update({ is_active: !is_active }).eq("id", id);
-    fetchData();
+    try {
+      await updateBrandMutation.mutateAsync({ id, payload: { is_active: !is_active } });
+    } catch (error) {
+      showMsg("error", error instanceof Error ? error.message : "Gagal memperbarui outlet");
+    }
   };
 
-  const togglePosition = async (id: string, is_active: boolean) => {
-    await supabase.from("positions").update({ is_active: !is_active }).eq("id", id);
-    fetchData();
+  const togglePosition = async (
+    position: { id: string; title: string; department: string; level: string; is_active: boolean; brand_id?: string | null }
+  ) => {
+    try {
+      await updatePositionMutation.mutateAsync({
+        id: position.id,
+        payload: {
+          title: position.title,
+          department: position.department,
+          level: position.level,
+          is_active: !position.is_active,
+          brand_id: position.brand_id ?? undefined,
+        },
+      });
+    } catch (error) {
+      showMsg("error", error instanceof Error ? error.message : "Gagal memperbarui posisi");
+    }
   };
 
   return (
@@ -102,7 +107,6 @@ export default function SettingsPage() {
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Brands Management */}
         <div className="bg-white rounded-xl border border-gray-200">
           <div className="px-6 py-4 border-b border-gray-100">
             <h2 className="font-semibold text-gray-900">Outlet / Brand</h2>
@@ -145,6 +149,7 @@ export default function SettingsPage() {
                   </div>
                   <button
                     onClick={() => toggleBrand(b.id, b.is_active)}
+                    disabled={updateBrandMutation.isPending}
                     className={`px-3 py-1 rounded-full text-xs font-medium ${
                       b.is_active
                         ? "bg-emerald-100 text-emerald-700"
@@ -162,7 +167,6 @@ export default function SettingsPage() {
           </div>
         </div>
 
-        {/* Positions Management */}
         <div className="bg-white rounded-xl border border-gray-200">
           <div className="px-6 py-4 border-b border-gray-100">
             <h2 className="font-semibold text-gray-900">Posisi</h2>
@@ -226,11 +230,12 @@ export default function SettingsPage() {
                   <div>
                     <p className="font-medium text-gray-900 text-sm">{p.title}</p>
                     <p className="text-xs text-gray-500">
-                      {(p as any).brands?.name ?? "Semua"} · {p.department} · {p.level}
+                      {p.brands?.name ?? "Semua"} · {p.department} · {p.level}
                     </p>
                   </div>
                   <button
-                    onClick={() => togglePosition(p.id, p.is_active)}
+                    onClick={() => togglePosition(p)}
+                    disabled={updatePositionMutation.isPending}
                     className={`px-3 py-1 rounded-full text-xs font-medium ${
                       p.is_active
                         ? "bg-emerald-100 text-emerald-700"

@@ -22,7 +22,7 @@ Modul KPI Performance Management yang baru dibuat dari nol untuk menggantikan mo
 ## ✅ Sudah Selesai (85%)
 
 ### 1. Database Migration
-- **File**: `supabase/migrations/20260514_000002_kpi_performance_v2.sql`
+- **File**: `database/migrations/20260514_000002_kpi_performance_v2.sql`
 - **Status**: ✅ Siap dijalankan
 - **Tabel Baru**:
   - `behavioral_assessments` — Penilaian Values 5C
@@ -95,9 +95,9 @@ Modul KPI Performance Management yang baru dibuat dari nol untuk menggantikan mo
   - Pastikan API `reviews/[id]/route.ts` return data lengkap (kpis, behavioral, developments)
 
 ### 4. Migration Execution
-- **File**: `supabase/migrations/20260514_000002_kpi_performance_v2.sql`
-- **Status**: ❌ Belum dijalankan ke Supabase
-- **Action**: User akan jalankan manual via Supabase SQL Editor
+- **File**: `database/migrations/20260514_000002_kpi_performance_v2.sql`
+- **Status**: ❌ Belum dijalankan ke PostgreSQL
+- **Action**: User akan jalankan manual via psql atau SQL client
 
 ---
 
@@ -106,7 +106,7 @@ Modul KPI Performance Management yang baru dibuat dari nol untuk menggantikan mo
 1. **Build Verification** — Pastikan build bersih
 2. **Buat Halaman Edit** — File `[id]/edit/page.tsx`
 3. **Lengkapi Detail Page** — Tambah tab RKK/5C/DevPlan
-4. **Jalankan Migration** — Execute SQL ke Supabase
+4. **Jalankan Migration** — Execute SQL ke PostgreSQL
 5. **Test End-to-End** — Create review baru, edit, lihat detail
 
 ---
@@ -115,7 +115,7 @@ Modul KPI Performance Management yang baru dibuat dari nol untuk menggantikan mo
 
 ### Migration
 ```
-supabase/migrations/20260514_000002_kpi_performance_v2.sql
+database/migrations/20260514_000002_kpi_performance_v2.sql
 ```
 
 ### API Routes

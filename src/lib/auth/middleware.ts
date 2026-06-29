@@ -1,0 +1,50 @@
+import { NextResponse, type NextRequest } from "next/server";
+import { SESSION_COOKIE } from "@/lib/auth/constants";
+
+/**
+ * Middleware Edge-compatible — cek keberadaan cookie session saja.
+ * Validasi session penuh (DB) dilakukan di API route / server component.
+ */
+export async function updateSession(request: NextRequest) {
+  const { pathname } = request.nextUrl;
+  const hasSession = Boolean(request.cookies.get(SESSION_COOKIE)?.value);
+
+  const publicRoutes = [
+    "/arkiv-os",
+    "/qa",
+    "/login",
+    "/portal",
+    "/career",
+    "/table-order",
+    "/photobooth",
+    "/api/job-openings/public",
+    "/api/portal",
+    "/api/table-order",
+    "/api/auth/login",
+    "/api/auth/logout",
+    "/api/files",
+  ];
+  const isPublicRoute =
+    pathname === "/" ||
+    publicRoutes.some((route) => pathname.startsWith(route));
+
+  if (!hasSession && !isPublicRoute) {
+    if (pathname.startsWith("/api/")) {
+      return NextResponse.json(
+        { success: false, error: "Authentication required" },
+        { status: 401 }
+      );
+    }
+    const url = request.nextUrl.clone();
+    url.pathname = "/login";
+    return NextResponse.redirect(url);
+  }
+
+  if (hasSession && pathname === "/login") {
+    const url = request.nextUrl.clone();
+    url.pathname = "/dashboard";
+    return NextResponse.redirect(url);
+  }
+
+  return NextResponse.next({ request });
+}

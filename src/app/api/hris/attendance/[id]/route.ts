@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { createServerPgClient } from "@/lib/pg/create-client";
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -11,10 +11,10 @@ interface RouteParams {
  */
 export async function GET(request: NextRequest, { params }: RouteParams) {
   try {
-    const supabase = await createClient();
+    const db = await createServerPgClient();
     const { id } = await params;
 
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from('attendance')
       .select(`
         *,
@@ -54,12 +54,12 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
  */
 export async function PUT(request: NextRequest, { params }: RouteParams) {
   try {
-    const supabase = await createClient();
+    const db = await createServerPgClient();
     const { id } = await params;
     const body = await request.json();
 
     // Check authentication
-    const { data: { user } } = await supabase.auth.getUser();
+    const { data: { user } } = await db.auth.getUser();
     if (!user) {
       return NextResponse.json(
         { error: 'Unauthorized' },
@@ -68,7 +68,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     }
 
     // Check if user is HRD or manager
-    const { data: userData } = await supabase
+    const { data: userData } = await db
       .from('users')
       .select('role')
       .eq('id', user.id)
@@ -105,7 +105,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     }
 
     // Update attendance
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from('attendance')
       .update(updateData)
       .eq('id', id)
@@ -139,11 +139,11 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
  */
 export async function DELETE(request: NextRequest, { params }: RouteParams) {
   try {
-    const supabase = await createClient();
+    const db = await createServerPgClient();
     const { id } = await params;
 
     // Check authentication
-    const { data: { user } } = await supabase.auth.getUser();
+    const { data: { user } } = await db.auth.getUser();
     if (!user) {
       return NextResponse.json(
         { error: 'Unauthorized' },
@@ -152,7 +152,7 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     }
 
     // Check if user is HRD
-    const { data: userData } = await supabase
+    const { data: userData } = await db
       .from('users')
       .select('role')
       .eq('id', user.id)
@@ -166,7 +166,7 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     }
 
     // Delete attendance
-    const { error } = await supabase
+    const { error } = await db
       .from('attendance')
       .delete()
       .eq('id', id);

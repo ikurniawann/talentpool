@@ -3,7 +3,7 @@
 // ============================================
 
 import { NextRequest } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { createServerPgClient } from "@/lib/pg/create-client";
 import { z } from "zod";
 
 const productSchema = z.object({
@@ -56,10 +56,10 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
-    const supabase = await createClient();
+    const db = await createServerPgClient();
 
     // Get product dengan HPP
-    const { data: product, error: productError } = await supabase
+    const { data: product, error: productError } = await db
       .from("v_products_cogs")
       .select("*")
       .eq("id", id)
@@ -76,12 +76,12 @@ export async function GET(
     }
 
     // Get BOM items
-    const { data: bomItems, error: bomError } = await supabase
+    const { data: bomItems, error: bomError } = await db
       .from("bom_items")
       .select(`
         *,
-        raw_material:raw_material_id (*),
-        satuan:satuan_id (*)
+        raw_material:raw_materials!raw_material_id (*),
+        satuan:units!satuan_id (*)
       `)
       .eq("product_id", id)
       .eq("is_active", true)
@@ -93,7 +93,7 @@ export async function GET(
       new Set((bomItems || []).map((item) => item.raw_material_id).filter(Boolean))
     );
     const { data: stockCosts } = materialIds.length > 0
-      ? await supabase
+      ? await db
           .from("v_raw_materials_stock")
           .select("id, avg_cost")
           .in("id", materialIds)
@@ -140,14 +140,14 @@ export async function PUT(
 ) {
   try {
     const { id } = await params;
-    const supabase = await createClient();
+    const db = await createServerPgClient();
     const body = await request.json();
 
     // Validasi input
     const validated = productSchema.parse(body);
 
     // Cek apakah produk ada
-    const { data: existingProduct, error: findError } = await supabase
+    const { data: existingProduct, error: findError } = await db
       .from("products")
       .select("*")
       .eq("id", id)
@@ -162,7 +162,7 @@ export async function PUT(
     }
 
     // Update data
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from("products")
       .update({
         ...validated,
@@ -208,11 +208,11 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params;
-    const supabase = await createClient();
-    const { data: authData } = await supabase.auth.getUser();
+    const db = await createServerPgClient();
+    const { data: authData } = await db.auth.getUser();
 
     // Cek apakah produk ada
-    const { data: product, error: findError } = await supabase
+    const { data: product, error: findError } = await db
       .from("products")
       .select("*")
       .eq("id", id)
@@ -227,7 +227,7 @@ export async function DELETE(
     }
 
     // Soft delete
-    const { error } = await supabase
+    const { error } = await db
       .from("products")
       .update({
         is_active: false,

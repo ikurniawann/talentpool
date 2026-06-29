@@ -1,9 +1,9 @@
-import { createClient } from "@/lib/supabase/server";
+import { createServerPgClient } from "@/lib/pg/create-client";
 import { NextResponse } from "next/server";
 
 // GET /api/analytics/overview - Get KPI data for analytics page
 export async function GET(request: Request) {
-  const supabase = await createClient();
+  const db = await createServerPgClient();
   const { searchParams } = new URL(request.url);
   const brand_id = searchParams.get("brand_id");
   const period = searchParams.get("period") || "3month";
@@ -30,7 +30,7 @@ export async function GET(request: Request) {
   }
 
   // Build base query with optional brand_id filter
-  let candidatesQuery = supabase
+  let candidatesQuery = db
     .from("candidates")
     .select("id, status, created_at, updated_at, position_id")
     .gte("created_at", startDate.toISOString());
@@ -140,7 +140,7 @@ export async function GET(request: Request) {
   if (Object.keys(positionCounts).length > 0) {
     const positionIds = Object.keys(positionCounts);
     
-    const { data: positionsData } = await supabase
+    const { data: positionsData } = await db
       .from("positions")
       .select("id, title")
       .in("id", positionIds);

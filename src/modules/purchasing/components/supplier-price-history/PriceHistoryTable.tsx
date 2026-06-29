@@ -93,32 +93,26 @@ export function PriceHistoryTable({
                   </div>
                 )}
               </TableCell>
-              
               {showMaterialName && (
                 <TableCell className="font-medium">{item.bahan_baku_nama}</TableCell>
               )}
-              
               <TableCell className="font-semibold text-blue-600">
                 {formatRupiah(item.harga)}
                 <div className="text-xs text-gray-400 font-normal">
                   per {item.satuan_nama}
                 </div>
               </TableCell>
-              
               <TableCell className="text-right">
                 {item.minimum_qty} {item.satuan_nama}
               </TableCell>
-              
               <TableCell className="text-right">
                 <Badge variant="outline">
                   {item.lead_time_days} hari
                 </Badge>
               </TableCell>
-              
               <TableCell className="text-center">
                 <ChangeBadge change={item.price_change_percent} />
               </TableCell>
-              
               <TableCell>
                 <div className="flex flex-col gap-1">
                   {item.is_preferred && (
@@ -131,7 +125,6 @@ export function PriceHistoryTable({
                   </Badge>
                 </div>
               </TableCell>
-              
               <TableCell className="max-w-xs truncate text-sm text-gray-500">
                 {item.catatan || "-"}
               </TableCell>

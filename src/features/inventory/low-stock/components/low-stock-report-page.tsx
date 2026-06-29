@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -15,52 +15,20 @@ import {
   ArrowPathIcon,
 } from "@heroicons/react/24/outline";
 import { CheckCircleIcon } from "@heroicons/react/24/solid";
+import { useLowStock } from "../queries";
 
-interface LowStockItem {
-  id: string;
-  material_kode: string;
-  material_nama: string;
-  kategori: string;
-  qty_available: number;
-  qty_minimum: number;
-  qty_maximum: number;
-  unit_cost: number;
-  satuan: string;
-  stock_status: string;
-  shortage_qty: number;
-  suggested_order_qty: number;
-  estimated_cost: number;
-  supplier_name?: string;
-  last_purchase_date?: string;
-}
-
-export default function LowStockReportPage() {
-  const [items, setItems] = useState<LowStockItem[]>([]);
-  const [loading, setLoading] = useState(true);
+export function LowStockReportPage() {
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
 
-  useEffect(() => {
-    fetchLowStock();
-  }, []);
+  const lowStockQuery = useLowStock({
+    category: categoryFilter,
+    status: statusFilter,
+  });
+  const items = lowStockQuery.data ?? [];
+  const loading = lowStockQuery.isLoading;
 
-  async function fetchLowStock() {
-    setLoading(true);
-    try {
-      const params = new URLSearchParams({
-        ...(categoryFilter !== "all" && { category: categoryFilter }),
-        ...(statusFilter !== "all" && { status: statusFilter }),
-      });
-      
-      const res = await fetch(`/api/inventory/low-stock?${params}`);
-      const data = await res.json();
-      setItems(data.data || []);
-    } catch (error) {
-      console.error("Error fetching low stock:", error);
-    } finally {
-      setLoading(false);
-    }
-  }
+  const fetchLowStock = () => lowStockQuery.refetch();
 
   // Hitung summary
   const summary = {
@@ -256,7 +224,7 @@ export default function LowStockReportPage() {
                           {item.supplier_name || "—"}
                         </td>
                         <td className="py-3 px-4">
-                          <Link href={`/dashboard/purchasing/purchase-orders/new?material=${item.material_kode}&qty=${item.suggested_order_qty}&supplier=${encodeURIComponent(item.supplier_name || '')}`}>
+                          <Link href={`/dashboard/purchasing/purchase-orders/insert?material=${item.material_kode}&qty=${item.suggested_order_qty}&supplier=${encodeURIComponent(item.supplier_name || '')}`}>
                             <Button variant="outline" size="sm" className="text-xs">
                               Buat PO
                             </Button>

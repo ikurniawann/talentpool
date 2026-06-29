@@ -12,7 +12,7 @@ export async function POST(
     {
       success: false,
       message: "Penerimaan PO langsung sudah dinonaktifkan. Gunakan flow Delivery/GRN untuk menerima barang.",
-      next_step: `/dashboard/purchasing/grn/new?po_id=${id}`,
+      next_step: `/dashboard/purchasing/grn/insert?po_id=${id}`,
     },
     { status: 410 }
   );

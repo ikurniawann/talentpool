@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createAdminClient } from '@/lib/supabase/admin';
-import { createClient } from '@/lib/supabase/server';
+import { createPgClient } from "@/lib/pg/create-client";
+import { createServerPgClient } from "@/lib/pg/create-client";
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const supabase = createAdminClient();
+    const db = createPgClient();
     const { id } = await params;
-    const { data: kpi, error } = await supabase
+    const { data: kpi, error } = await db
       .from('employee_kpis')
       .select(`
         *,
@@ -26,7 +26,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
     if (error || !kpi) return NextResponse.json({ error: 'KPI not found' }, { status: 404 });
 
-    const { data: progressUpdates } = await supabase
+    const { data: progressUpdates } = await db
       .from('kpi_progress_updates')
       .select(`*, updater:employees!updated_by(id, full_name)`)
       .eq('employee_kpi_id', id)
@@ -41,18 +41,18 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
-    const authClient = await createClient();
+    const authClient = await createServerPgClient();
     const { data: { user } } = await authClient.auth.getUser();
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const supabase = createAdminClient();
+    const db = createPgClient();
     const body = await request.json();
 
     if (body.actual_value !== undefined && body.target !== undefined && body.target > 0) {
       body.achievement_percentage = Math.min(((body.actual_value / body.target) * 100), 999.99);
     }
 
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from('employee_kpis')
       .update({ ...body, updated_at: new Date().toISOString() })
       .eq('id', id)

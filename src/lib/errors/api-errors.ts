@@ -25,7 +25,7 @@ export interface ErrorResponse {
   field?: string;
 }
 
-export function mapSupabaseError(error: any): ErrorResponse {
+export function mapPgError(error: any): ErrorResponse {
   // Unique constraint violation
   if (error.code === "23505") {
     return { message: "Data sudah ada di sistem", code: "DUPLICATE_ENTRY" };
@@ -76,10 +76,10 @@ export function createApiErrorResponse(error: any): { error: ErrorResponse; stat
     };
   }
   
-  // Supabase errors
+  // PostgreSQL errors (SQLSTATE)
   if (error?.code) {
     return {
-      error: mapSupabaseError(error),
+      error: mapPgError(error),
       status: 400,
     };
   }

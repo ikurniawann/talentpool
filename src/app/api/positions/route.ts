@@ -1,12 +1,12 @@
-import { createClient } from "@/lib/supabase/server";
+import { createServerPgClient } from "@/lib/pg/create-client";
 import { NextResponse } from "next/server";
 
 // GET /api/positions
 export async function GET(request: Request) {
-  const supabase = await createClient();
+  const db = await createServerPgClient();
   const { searchParams } = new URL(request.url);
 
-  let query = supabase
+  let query = db
     .from("positions")
     .select("*, brands(name)", { count: "exact" })
     .order("title");
@@ -25,10 +25,10 @@ export async function GET(request: Request) {
 
 // POST /api/positions
 export async function POST(request: Request) {
-  const supabase = await createClient();
+  const db = await createServerPgClient();
   const body = await request.json();
 
-  const { data, error } = await supabase
+  const { data, error } = await db
     .from("positions")
     .insert({
       brand_id: body.brand_id,

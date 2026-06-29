@@ -197,7 +197,7 @@ Net change: +50
 ### **Issue #1: receive_count Not Incrementing**
 - **Status:** FIX PENDING (SQL script ready)
 - **Impact:** Display shows wrong receive sequence
-- **Workaround:** Run SQL fix script in Supabase dashboard
+- **Workaround:** Run SQL fix script in database admin
 
 ### **Issue #2: QC Route Error**
 ```

@@ -65,7 +65,7 @@ const rows = [
   { label: 'Sandbox Server', desc: 'Mode uji coba sebelum aktivasi production.', icon: Server, value: 'Enabled' },
 ];
 
-export default function IntegrationSettingsPage() {
+export function IntegrationSettingsPage() {
   return (
     <main className="min-h-screen bg-[#ececf1] text-[#1d1d1f]">
       <div className="mx-auto flex min-h-screen max-w-7xl p-4 sm:p-6">

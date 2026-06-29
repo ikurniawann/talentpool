@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import {
   ArrowLeft,
   Coins,
@@ -12,51 +12,9 @@ import {
   UserPlus,
   UserRound,
 } from "lucide-react";
-
-type CrmCustomer = {
-  id: string;
-  name: string;
-  phone: string;
-  email: string;
-  membership_tier: string;
-  ark_coin_balance: number;
-  total_xp: number;
-  current_xp: number;
-  total_spent: number;
-  visit_count: number;
-  is_active: boolean;
-};
-
-type CrmMember = {
-  id: string;
-  customer_id: string;
-  member_code: string;
-  tier: {
-    code: string;
-    name: string;
-    rank?: number;
-    xp_multiplier?: number;
-    discount_percent?: number;
-    min_lifetime_xp?: number;
-    min_total_spend?: number;
-  } | null;
-  current_xp: number;
-  lifetime_xp: number;
-  spent_xp: number;
-  loyalty_score: number;
-  joined_at?: string;
-  last_activity_at?: string | null;
-  status: string;
-  source?: string;
-  customer: CrmCustomer | null;
-};
-
-type ApiState = {
-  loading: boolean;
-  error: string | null;
-  schemaReady: boolean;
-  members: CrmMember[];
-};
+import type { CrmMember } from "../types";
+import { useMemberList } from "../queries";
+import { useEnrollMember } from "../mutations";
 
 const numberFormat = new Intl.NumberFormat("id-ID");
 const currencyFormat = new Intl.NumberFormat("id-ID", {
@@ -77,92 +35,51 @@ function tierName(member: CrmMember) {
   return member.tier?.name || member.customer?.membership_tier || "Bronze";
 }
 
-export default function CrmMembersPage() {
+export function CrmMembersPage() {
   const [search, setSearch] = useState("");
   const [tier, setTier] = useState("all");
-  const [state, setState] = useState<ApiState>({
-    loading: true,
-    error: null,
-    schemaReady: false,
-    members: [],
+
+  const { data, isLoading, isFetching, error, refetch } = useMemberList({
+    search: search.trim() || undefined,
+    tier,
+    limit: 100,
   });
-  const [enrollingId, setEnrollingId] = useState<string | null>(null);
 
-  const loadMembers = useCallback(async () => {
-    setState((current) => ({ ...current, loading: true, error: null }));
+  const enrollMutation = useEnrollMember();
 
-    try {
-      const params = new URLSearchParams({ limit: "100" });
-      if (search.trim()) params.set("search", search.trim());
-      if (tier !== "all") params.set("tier", tier);
+  const members = data?.members ?? [];
+  const schemaReady = data?.schemaReady ?? false;
+  const errorMessage = error instanceof Error ? error.message : null;
+  const loading = isLoading || isFetching;
 
-      const response = await fetch(`/api/crm/members?${params.toString()}`, { cache: "no-store" });
-      const json = await response.json();
-
-      if (!response.ok || !json.success) {
-        throw new Error(json.error || "Gagal memuat member CRM");
-      }
-
-      const members = (json.data ?? []) as CrmMember[];
-      setState({
-        loading: false,
-        error: null,
-        schemaReady: Boolean(json.meta?.schemaReady),
-        members,
-      });
-
-    } catch (error) {
-      setState((current) => ({
-        ...current,
-        loading: false,
-        error: error instanceof Error ? error.message : "Gagal memuat member CRM",
-      }));
-    }
-  }, [search, tier]);
-
-  useEffect(() => {
-    void loadMembers();
-  }, [loadMembers]);
-
-  const filteredMembers = useMemo(() => state.members, [state.members]);
+  const filteredMembers = useMemo(() => members, [members]);
   const summary = useMemo(() => {
-    const totalCurrentXp = state.members.reduce((sum, member) => sum + member.current_xp, 0);
-    const totalLifetimeXp = state.members.reduce((sum, member) => sum + member.lifetime_xp, 0);
-    const totalSpend = state.members.reduce((sum, member) => sum + (member.customer?.total_spent ?? 0), 0);
+    const totalCurrentXp = members.reduce((sum, member) => sum + member.current_xp, 0);
+    const totalLifetimeXp = members.reduce((sum, member) => sum + member.lifetime_xp, 0);
+    const totalSpend = members.reduce((sum, member) => sum + (member.customer?.total_spent ?? 0), 0);
 
     return { totalCurrentXp, totalLifetimeXp, totalSpend };
-  }, [state.members]);
+  }, [members]);
+
+  function applyFilters() {
+    void refetch();
+  }
 
   async function handleEnroll(member: CrmMember) {
     if (!member.customer_id) return;
-    setEnrollingId(member.id);
-    setState((current) => ({ ...current, error: null }));
 
     try {
-      const response = await fetch("/api/crm/members", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          customer_id: member.customer_id,
-          metadata: { enrolled_by: "crm_members_list" },
-        }),
+      await enrollMutation.mutateAsync({
+        customerId: member.customer_id,
+        metadata: { enrolled_by: "crm_members_list" },
       });
-      const json = await response.json();
-
-      if (!response.ok || !json.success) {
-        throw new Error(json.error || "Gagal aktivasi member CRM");
-      }
-
-      await loadMembers();
-    } catch (error) {
-      setState((current) => ({
-        ...current,
-        error: error instanceof Error ? error.message : "Gagal aktivasi member CRM",
-      }));
-    } finally {
-      setEnrollingId(null);
+    } catch {
+      // error surfaced via enrollMutation.error
     }
   }
+
+  const enrollError =
+    enrollMutation.error instanceof Error ? enrollMutation.error.message : null;
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -177,29 +94,29 @@ export default function CrmMembersPage() {
           </div>
           <button
             type="button"
-            onClick={() => void loadMembers()}
-            disabled={state.loading}
+            onClick={() => void refetch()}
+            disabled={loading}
             className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-slate-300 bg-white px-3 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-100 disabled:opacity-60"
           >
-            <RefreshCw className={`size-4 ${state.loading ? "animate-spin" : ""}`} />
+            <RefreshCw className={`size-4 ${loading ? "animate-spin" : ""}`} />
             Refresh
           </button>
         </div>
 
-        {state.error && (
+        {(errorMessage || enrollError) && (
           <div className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-            {state.error}
+            {errorMessage || enrollError}
           </div>
         )}
 
-        {!state.schemaReady && (
+        {!schemaReady && (
           <div className="rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
             CRM member profile belum aktif. Data sementara membaca POS customer.
           </div>
         )}
 
         <section className="grid gap-3 md:grid-cols-4">
-          <MetricCard icon={UserRound} label="Members" value={formatNumber(state.members.length)} />
+          <MetricCard icon={UserRound} label="Members" value={formatNumber(members.length)} />
           <MetricCard icon={Sparkles} label="Current XP" value={formatNumber(summary.totalCurrentXp)} />
           <MetricCard icon={Crown} label="Lifetime XP" value={formatNumber(summary.totalLifetimeXp)} />
           <MetricCard icon={Coins} label="Total Spend" value={formatCurrency(summary.totalSpend)} />
@@ -213,7 +130,7 @@ export default function CrmMembersPage() {
                   value={search}
                   onChange={(event) => setSearch(event.target.value)}
                   onKeyDown={(event) => {
-                    if (event.key === "Enter") void loadMembers();
+                    if (event.key === "Enter") applyFilters();
                   }}
                   placeholder="Cari nama, phone, email, kode member"
                   className="h-10 w-full rounded-md border border-slate-300 bg-white pl-9 pr-3 text-sm text-slate-900 outline-none transition focus:border-slate-500 focus:ring-2 focus:ring-slate-100"
@@ -231,7 +148,7 @@ export default function CrmMembersPage() {
               </select>
               <button
                 type="button"
-                onClick={() => void loadMembers()}
+                onClick={applyFilters}
                 className="inline-flex h-10 items-center justify-center rounded-md bg-slate-950 px-4 text-sm font-medium text-white transition hover:bg-slate-800"
               >
                 Apply
@@ -252,7 +169,7 @@ export default function CrmMembersPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {state.loading ? (
+                  {loading ? (
                     <tr>
                       <td colSpan={7} className="px-4 py-10 text-center text-sm text-slate-500">Memuat members...</td>
                     </tr>
@@ -289,11 +206,11 @@ export default function CrmMembersPage() {
                               <button
                                 type="button"
                                 onClick={() => void handleEnroll(member)}
-                                disabled={enrollingId === member.id}
+                                disabled={enrollMutation.isPending && enrollMutation.variables?.customerId === member.customer_id}
                                 className="inline-flex h-8 items-center justify-center gap-1.5 rounded-md bg-slate-950 px-3 text-xs font-medium text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300"
                               >
                                 <UserPlus className="size-3.5" />
-                                {enrollingId === member.id ? "Aktif..." : "Aktifkan"}
+                                {enrollMutation.isPending && enrollMutation.variables?.customerId === member.customer_id ? "Aktif..." : "Aktifkan"}
                               </button>
                             )}
                             <Link

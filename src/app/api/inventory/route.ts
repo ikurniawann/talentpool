@@ -1,11 +1,11 @@
 import { NextRequest } from "next/server";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { createPgClient } from "@/lib/pg/create-client";
 import { requireApiRole, paginatedResponse } from "@/lib/api/auth";
 
 export async function GET(request: NextRequest) {
   try {
     await requireApiRole(["warehouse_staff", "warehouse_admin", "purchasing_admin", "purchasing_staff", "admin"]);
-    const supabase = createAdminClient();
+    const db = createPgClient();
     const { searchParams } = new URL(request.url);
     const search = searchParams.get("search") || "";
     const status = searchParams.get("status") || "";
@@ -13,7 +13,7 @@ export async function GET(request: NextRequest) {
     const limit = Number(searchParams.get("limit") || 20);
     const offset = (page - 1) * limit;
 
-    let query = supabase
+    let query = db
       .from("v_inventory")
       .select("*", { count: "exact" })
       .order("material_nama", { ascending: true })

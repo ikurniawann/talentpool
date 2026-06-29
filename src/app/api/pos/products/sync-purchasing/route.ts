@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createServiceClient } from '@/lib/supabase/service-client';
+import { createPgClient } from "@/lib/pg/create-client";
 import { syncPurchasingProductToPos } from '@/lib/pos/purchasing-sync';
 
 function getErrorMessage(error: unknown) {
@@ -8,7 +8,7 @@ function getErrorMessage(error: unknown) {
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = createServiceClient();
+    const db = createPgClient();
     const body = await request.json();
     const productIds = Array.isArray(body.purchasing_product_ids)
       ? body.purchasing_product_ids
@@ -25,7 +25,7 @@ export async function POST(request: NextRequest) {
 
     const results = [];
     for (const productId of productIds) {
-      results.push(await syncPurchasingProductToPos(supabase, String(productId), { station: body.station }));
+      results.push(await syncPurchasingProductToPos(db, String(productId), { station: body.station }));
     }
 
     return NextResponse.json({

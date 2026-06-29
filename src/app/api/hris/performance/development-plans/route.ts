@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { createPgClient } from "@/lib/pg/create-client";
 import { z } from "zod";
 
 const developmentPlanSchema = z.object({
@@ -15,12 +15,12 @@ const developmentPlanSchema = z.object({
 
 export async function GET(request: NextRequest) {
   try {
-    const supabase = await createAdminClient();
+    const db = await createPgClient();
     const { searchParams } = new URL(request.url);
     const employee_id = searchParams.get("employee_id");
     const review_period = searchParams.get("review_period");
 
-    let query = supabase
+    let query = db
       .from("development_plans")
       .select("*, employee:employees(id, full_name)")
       .order("created_at", { ascending: false });
@@ -56,9 +56,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const supabase = await createAdminClient();
+    const db = await createPgClient();
 
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from("development_plans")
       .insert(result.data)
       .select()

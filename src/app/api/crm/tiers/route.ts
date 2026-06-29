@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getPosSession } from "@/lib/api/auth";
-import { createServiceClient } from "@/lib/supabase/service-client";
+import { createPgClient } from "@/lib/pg/create-client";
 import {
   CRM_DEFAULT_TIERS,
   apiErrorResponse,
@@ -29,8 +29,8 @@ export async function GET() {
   }
 
   try {
-    const supabase = createServiceClient();
-    const { data, error } = await supabase
+    const db = createPgClient();
+    const { data, error } = await db
       .from("crm_membership_tiers")
       .select("*")
       .order("rank", { ascending: true });
@@ -57,8 +57,8 @@ export async function POST(request: NextRequest) {
 
   try {
     const payload = tierSchema.parse(await request.json());
-    const supabase = createServiceClient();
-    const { data, error } = await supabase
+    const db = createPgClient();
+    const { data, error } = await db
       .from("crm_membership_tiers")
       .upsert(payload, { onConflict: "code" })
       .select()

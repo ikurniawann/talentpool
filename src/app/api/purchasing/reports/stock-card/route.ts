@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { ApiError, requireApiRole } from "@/lib/api/auth";
-import { createServiceClient } from "@/lib/supabase/service-client";
+import { createPgClient } from "@/lib/pg/create-client";
 
 const querySchema = z.object({
   material_id: z.string().uuid().optional(),
@@ -111,13 +111,13 @@ function normalizeMovement(row: MovementRow, fallbackCostByMaterial: Map<string,
 export async function GET(request: NextRequest) {
   try {
     await requireApiRole(["admin", "purchasing_admin", "purchasing_manager", "warehouse_admin", "warehouse_staff", "qc_staff"]);
-    const supabase = createServiceClient();
+    const db = createPgClient();
     const { searchParams } = new URL(request.url);
     const params = querySchema.parse(Object.fromEntries(searchParams));
     const dateFrom = params.date_from ? startOfDay(params.date_from) : undefined;
     const dateTo = params.date_to ? endOfDay(params.date_to) : undefined;
 
-    let materialsQuery = supabase
+    let materialsQuery = db
       .from("v_raw_materials_stock")
       .select("*")
       .eq("is_active", true)
@@ -135,7 +135,7 @@ export async function GET(request: NextRequest) {
       ? materials.find((material) => material.id === params.material_id) || null
       : null;
 
-    let movementsQuery = supabase
+    let movementsQuery = db
       .from("inventory_movements")
       .select(`
         id,
@@ -171,7 +171,7 @@ export async function GET(request: NextRequest) {
     let fallbackCostByMaterial = new Map<string, number>();
 
     if (movementMaterialIds.length > 0) {
-      const { data: inventoryCosts, error: inventoryCostError } = await supabase
+      const { data: inventoryCosts, error: inventoryCostError } = await db
         .from("inventory")
         .select("raw_material_id, unit_cost")
         .in("raw_material_id", movementMaterialIds)
@@ -187,7 +187,7 @@ export async function GET(request: NextRequest) {
 
     let openingBalance = movements[0]?.qty_before || 0;
     if (params.material_id && dateFrom) {
-      const { data: previousMovement, error: previousError } = await supabase
+      const { data: previousMovement, error: previousError } = await db
         .from("inventory_movements")
         .select("qty_after")
         .eq("raw_material_id", params.material_id)

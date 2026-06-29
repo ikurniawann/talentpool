@@ -79,29 +79,29 @@ export const ROLE_HIERARCHY: Role[] = [
 const ROUTE_ROLE_MAP: Record<string, Role[]> = {
   // Suppliers
   "suppliers": ["purchasing_staff", "purchasing_manager", "purchasing_admin", "super_admin"],
-  "suppliers/new": ["purchasing_staff", "purchasing_manager", "purchasing_admin", "super_admin"],
+  "suppliers/insert": ["purchasing_staff", "purchasing_manager", "purchasing_admin", "super_admin"],
   "suppliers/[id]": ["purchasing_staff", "purchasing_manager", "purchasing_admin", "super_admin"],
-  "suppliers/[id]/edit": ["purchasing_staff", "purchasing_manager", "purchasing_admin", "super_admin"],
+  "suppliers/edit/[id]": ["purchasing_staff", "purchasing_manager", "purchasing_admin", "super_admin"],
   // Raw materials
   "raw-materials": ["purchasing_staff", "purchasing_manager", "purchasing_admin", "super_admin"],
-  "raw-materials/new": ["purchasing_staff", "purchasing_manager", "purchasing_admin", "super_admin"],
+  "raw-materials/insert": ["purchasing_staff", "purchasing_manager", "purchasing_admin", "super_admin"],
   "raw-materials/[id]": ["purchasing_staff", "purchasing_manager", "purchasing_admin", "super_admin"],
-  "raw-materials/[id]/edit": ["purchasing_manager", "purchasing_admin", "super_admin"],
+  "raw-materials/edit/[id]": ["purchasing_manager", "purchasing_admin", "super_admin"],
   // Products
   "products": ["purchasing_staff", "purchasing_manager", "purchasing_admin", "super_admin"],
-  "products/new": ["purchasing_staff", "purchasing_manager", "purchasing_admin", "super_admin"],
+  "products/insert": ["purchasing_staff", "purchasing_manager", "purchasing_admin", "super_admin"],
   "products/[id]": ["purchasing_staff", "purchasing_manager", "purchasing_admin", "super_admin"],
-  "products/[id]/edit": ["purchasing_manager", "purchasing_admin", "super_admin"],
-  "products/[id]/bom": ["purchasing_staff", "purchasing_manager", "purchasing_admin", "super_admin"],
+  "products/edit/[id]": ["purchasing_manager", "purchasing_admin", "super_admin"],
+  "products/bom/[id]": ["purchasing_staff", "purchasing_manager", "purchasing_admin", "super_admin"],
   // Purchase orders
   "purchase-orders": ["purchasing_staff", "purchasing_manager", "purchasing_admin", "super_admin"],
-  "purchase-orders/new": ["purchasing_staff", "purchasing_manager", "purchasing_admin", "super_admin"],
+  "purchase-orders/insert": ["purchasing_staff", "purchasing_manager", "purchasing_admin", "super_admin"],
   "purchase-orders/[id]": ["purchasing_staff", "purchasing_manager", "purchasing_admin", "super_admin"],
-  "purchase-orders/[id]/edit": ["purchasing_staff", "purchasing_manager", "purchasing_admin", "super_admin"],
+  "purchase-orders/edit/[id]": ["purchasing_staff", "purchasing_manager", "purchasing_admin", "super_admin"],
   "purchase-orders/approval": ["purchasing_manager", "purchasing_admin", "super_admin"],
   // Receiving
   "receiving": ["warehouse_staff", "purchasing_staff", "purchasing_manager", "purchasing_admin", "super_admin"],
-  "receiving/new": ["warehouse_staff", "purchasing_staff", "purchasing_manager", "purchasing_admin", "super_admin"],
+  "receiving/insert": ["warehouse_staff", "purchasing_staff", "purchasing_manager", "purchasing_admin", "super_admin"],
   "receiving/[id]": ["warehouse_staff", "purchasing_staff", "purchasing_manager", "purchasing_admin", "super_admin"],
   // QC
   "qc": ["qc_staff", "purchasing_manager", "purchasing_admin", "super_admin"],
@@ -111,7 +111,7 @@ const ROUTE_ROLE_MAP: Record<string, Role[]> = {
   "delivery/[id]": ["warehouse_staff", "purchasing_staff", "purchasing_manager", "purchasing_admin", "super_admin"],
   // Returns
   "returns": ["purchasing_staff", "purchasing_manager", "purchasing_admin", "super_admin"],
-  "returns/new": ["purchasing_staff", "purchasing_manager", "purchasing_admin", "super_admin"],
+  "returns/insert": ["purchasing_staff", "purchasing_manager", "purchasing_admin", "super_admin"],
   "returns/[id]": ["purchasing_staff", "purchasing_manager", "purchasing_admin", "super_admin"],
   // Inventory
   "inventory": ["purchasing_staff", "purchasing_manager", "purchasing_admin", "super_admin"],

@@ -2,7 +2,7 @@
 -- MIGRATION 009: Add Manager Approval Fields
 -- =====================================================
 -- Menambahkan fields untuk manager approval workflow
--- Jalankan di Supabase Dashboard > SQL Editor
+-- Jalankan di admin database > SQL Editor
 -- =====================================================
 
 -- 1. Add new columns to feedback_assignments

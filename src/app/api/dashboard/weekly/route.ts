@@ -1,9 +1,9 @@
-import { createClient } from "@/lib/supabase/server";
+import { createServerPgClient } from "@/lib/pg/create-client";
 import { NextResponse } from "next/server";
 
 // GET /api/dashboard/weekly - Get weekly candidate applications for chart
 export async function GET(request: Request) {
-  const supabase = await createClient();
+  const db = await createServerPgClient();
   const { searchParams } = new URL(request.url);
   const brand_id = searchParams.get("brand_id");
 
@@ -31,7 +31,7 @@ export async function GET(request: Request) {
   }
 
   // Build query with optional brand_id filter
-  let query = supabase
+  let query = db
     .from("candidates")
     .select("created_at")
     .gte("created_at", weeks[0].start.toISOString())

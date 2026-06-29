@@ -1,6 +1,13 @@
-import { createClient } from "@/lib/supabase/server";
+import { createServerPgClient } from "@/lib/pg/create-client";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
+import {
+  getApiUserScope,
+  companyScopeOr,
+  branchScopeOr,
+  effectiveCompanyId,
+  effectiveBranchId,
+} from "@/lib/api/scope";
 
 const vendorSchema = z.object({
   name: z.string().min(1, "Nama vendor wajib diisi"),
@@ -18,18 +25,24 @@ const vendorSchema = z.object({
 
 export async function GET(request: NextRequest) {
   try {
-    const supabase = await createClient();
+    const db = await createServerPgClient();
     
     const { searchParams } = new URL(request.url);
     const category = searchParams.get("category");
     const search = searchParams.get("search");
     
-    let query = supabase
+    let query = db
       .from("vendors")
       .select("*")
       .eq("is_active", true)
       .order("name");
-    
+
+    const scope = await getApiUserScope();
+    const companyOr = companyScopeOr(scope);
+    if (companyOr) query = query.or(companyOr);
+    const branchOr = branchScopeOr(scope);
+    if (branchOr) query = query.or(branchOr);
+
     if (category) {
       query = query.eq("category", category);
     }
@@ -54,10 +67,10 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createClient();
+    const db = await createServerPgClient();
     
     // Check auth
-    const { data: { user } } = await supabase.auth.getUser();
+    const { data: { user } } = await db.auth.getUser();
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -66,10 +79,13 @@ export async function POST(request: NextRequest) {
     
     // Validate input
     const validated = vendorSchema.parse(body);
+    const scope = await getApiUserScope();
+    const companyId = effectiveCompanyId(scope);
+    const branchId = effectiveBranchId(scope);
     
     // Generate vendor code: V-YYYY-NNNN
     const year = new Date().getFullYear();
-    const { data: lastVendor } = await supabase
+    const { data: lastVendor } = await db
       .from("vendors")
       .select("code")
       .ilike("code", `V-${year}-%`)
@@ -83,11 +99,13 @@ export async function POST(request: NextRequest) {
     }
     const code = `V-${year}-${String(sequence).padStart(4, "0")}`;
     
-    const { data: vendor, error } = await supabase
+    const { data: vendor, error } = await db
       .from("vendors")
       .insert({
         code,
         ...validated,
+        company_id: companyId,
+        branch_id: branchId,
         is_active: true,
       })
       .select()

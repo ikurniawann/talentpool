@@ -1,7 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
-import { createClient } from "@/lib/supabase/client";
+import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -35,139 +34,24 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import { useToast, ToastContainer } from "@/components/ui/toast";
+import { useCandidateAnalytics, useAnalyticsBrands } from "../queries";
 
 const SOURCE_COLORS = ["#6366f1", "#22c55e", "#f59e0b", "#ef4444", "#8b5cf6", "#06b6d4", "#ec4899"];
 
-export default function DashboardPage() {
-  const supabase = createClient();
+const EMPTY_SUMMARY = { thisMonth: 0, activePipeline: 0, talentPool: 0, openPositions: 0 };
+
+export function CandidateAnalyticsPage() {
   const { toasts, showToast, removeToast } = useToast();
-
-  const [loading, setLoading] = useState(true);
   const [brandFilter, setBrandFilter] = useState("all");
-  const [brands, setBrands] = useState<any[]>([]);
 
-  // Summary cards
-  const [summary, setSummary] = useState({ thisMonth: 0, activePipeline: 0, talentPool: 0, openPositions: 0 });
+  const analyticsQuery = useCandidateAnalytics(brandFilter);
+  const brandsQuery = useAnalyticsBrands();
 
-  // Charts data
-  const [weeklyData, setWeeklyData] = useState<any[]>([]);
-  const [sourceData, setSourceData] = useState<any[]>([]);
-  const [funnelData, setFunnelData] = useState<any[]>([]);
-  const [brandData, setBrandData] = useState<any[]>([]);
-  const [positionData, setPositionData] = useState<any[]>([]);
-
-  const fetchData = useCallback(async () => {
-    setLoading(true);
-    try {
-      // Get brands
-      const { data: brandsData } = await supabase.from("brands").select("id, name").eq("is_active", true);
-      setBrands(brandsData || []);
-
-      // Get candidates with filters
-      let query = supabase.from("candidates").select("*, positions(title, brands(name))");
-      if (brandFilter !== "all") {
-        query = query.eq("brand_id", brandFilter);
-      }
-      const { data: candidates } = await query;
-
-      if (candidates) {
-        // Calculate summary
-        const thisMonth = candidates.filter((c) => {
-          const created = new Date(c.created_at);
-          const now = new Date();
-          return created.getMonth() === now.getMonth() && created.getFullYear() === now.getFullYear();
-        }).length;
-
-        const activePipeline = candidates.filter((c) =>
-          ["new", "screening", "interview_hrd", "interview_manager"].includes(c.status)
-        ).length;
-
-        const talentPool = candidates.filter((c) => c.status === "talent_pool").length;
-
-        // Calculate weekly data (last 8 weeks)
-        const weeks: any[] = [];
-        for (let i = 7; i >= 0; i--) {
-          const end = new Date();
-          end.setDate(end.getDate() - i * 7);
-          const start = new Date(end);
-          start.setDate(start.getDate() - 6);
-
-          const count = candidates.filter((c) => {
-            const d = new Date(c.created_at);
-            return d >= start && d <= end;
-          }).length;
-
-          weeks.push({
-            name: start.toLocaleDateString("id-ID", { month: "short", day: "numeric" }),
-            candidates: count,
-          });
-        }
-        setWeeklyData(weeks);
-
-        // Calculate source distribution
-        const sources: Record<string, number> = {};
-        candidates.forEach((c) => {
-          sources[c.source] = (sources[c.source] || 0) + 1;
-        });
-        const sourceChartData = Object.entries(sources)
-          .map(([name, value]) => ({ name, value }))
-          .sort((a, b) => b.value - a.value)
-          .slice(0, 6);
-        setSourceData(sourceChartData);
-
-        // Calculate funnel
-        const funnel = [
-          { stage: "New", count: candidates.filter((c) => c.status === "new").length },
-          { stage: "Screening", count: candidates.filter((c) => c.status === "screening").length },
-          { stage: "Interview HRD", count: candidates.filter((c) => c.status === "interview_hrd").length },
-          { stage: "Interview Manager", count: candidates.filter((c) => c.status === "interview_manager").length },
-          { stage: "Talent Pool", count: candidates.filter((c) => c.status === "talent_pool").length },
-          { stage: "Hired", count: candidates.filter((c) => c.status === "hired").length },
-        ];
-        setFunnelData(funnel);
-
-        // Calculate by brand
-        const brandCounts: Record<string, number> = {};
-        candidates.forEach((c) => {
-          const brandName = c.positions?.brands?.name || "Unknown";
-          brandCounts[brandName] = (brandCounts[brandName] || 0) + 1;
-        });
-        const brandChartData = Object.entries(brandCounts)
-          .map(([name, value]) => ({ name, value }))
-          .sort((a, b) => b.value - a.value)
-          .slice(0, 5);
-        setBrandData(brandChartData);
-
-        // Calculate by position
-        const positionCounts: Record<string, number> = {};
-        candidates.forEach((c) => {
-          const posTitle = c.positions?.title || "Unknown";
-          positionCounts[posTitle] = (positionCounts[posTitle] || 0) + 1;
-        });
-        const positionChartData = Object.entries(positionCounts)
-          .map(([name, value]) => ({ name, value }))
-          .sort((a, b) => b.value - a.value)
-          .slice(0, 5);
-        setPositionData(positionChartData);
-
-        setSummary({
-          thisMonth,
-          activePipeline,
-          talentPool,
-          openPositions: 0,
-        });
-      }
-    } catch (error) {
-      console.error("Error fetching dashboard data:", error);
-      showToast("Gagal memuat data dashboard", "error");
-    } finally {
-      setLoading(false);
-    }
-  }, [supabase, brandFilter, showToast]);
-
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+  const brands = brandsQuery.data ?? [];
+  const summary = analyticsQuery.data?.summary ?? EMPTY_SUMMARY;
+  const weeklyData = analyticsQuery.data?.weeklyData ?? [];
+  const sourceData = analyticsQuery.data?.sourceData ?? [];
+  const funnelData = analyticsQuery.data?.funnelData ?? [];
 
   const exportCSV = () => {
     showToast("Data berhasil diekspor ke CSV", "success");

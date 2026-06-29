@@ -1,12 +1,12 @@
-import { createClient } from "@/lib/supabase/server";
+import { createServerPgClient } from "@/lib/pg/create-client";
 import { NextResponse } from "next/server";
 
 export async function GET(request: Request) {
-  const supabase = await createClient();
+  const db = await createServerPgClient();
   const { searchParams } = new URL(request.url);
   const brand_id = searchParams.get("brand_id");
 
-  let query = supabase
+  let query = db
     .from("candidates")
     .select("id, full_name, status, updated_at, positions(title), brands(name)")
     .not("status", "in", "('hired','rejected','archived')")

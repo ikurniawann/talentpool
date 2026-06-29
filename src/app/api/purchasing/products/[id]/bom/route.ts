@@ -3,7 +3,7 @@
 // ============================================
 
 import { NextRequest } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { createServerPgClient } from "@/lib/pg/create-client";
 import { z } from "zod";
 
 const bomSchema = z.object({
@@ -31,11 +31,25 @@ type BomItemRow = {
     avg_cost?: number | null;
     harga_avg?: number | null;
     harga_terakhir?: number | null;
+    konversi_factor?: number | null;
+    satuan_kecil_id?: string | null;
   } | null;
 };
 
 function getErrorMessage(error: unknown, fallback: string) {
   return error instanceof Error ? error.message : fallback;
+}
+
+// Harga acuan disimpan per satuan BESAR; BOM memakai qty satuan KECIL,
+// jadi cost dinormalisasi ke satuan kecil (÷ konversi_factor) bila bahan punya satuan kecil.
+function normalizeToSmallUnit(
+  baseCost: number,
+  konversiFactor?: number | null,
+  satuanKecilId?: string | null
+) {
+  const factor = Number(konversiFactor ?? 0);
+  if (satuanKecilId && factor > 0) return baseCost / factor;
+  return baseCost;
 }
 
 function getMaterialCost(
@@ -47,11 +61,16 @@ function getMaterialCost(
     return stockCostMap.get(materialId) ?? 0;
   }
 
-  return Number(
+  const baseCost = Number(
     item.raw_material?.avg_cost ??
       item.raw_material?.harga_avg ??
       item.raw_material?.harga_terakhir ??
       0
+  );
+  return normalizeToSmallUnit(
+    baseCost,
+    item.raw_material?.konversi_factor,
+    item.raw_material?.satuan_kecil_id
   );
 }
 
@@ -62,19 +81,17 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
-    const supabase = await createClient();
+    const db = await createServerPgClient();
 
-    // Get BOM items dengan detail bahan
-    const { data, error } = await supabase
+    // Get BOM items dengan detail bahan.
+    // Catatan: query builder hanya mendukung embed satu level (alias:table!fk_col),
+    // jadi satuan_besar/satuan_kecil di-resolve manual lewat lookup units di bawah.
+    const { data, error } = await db
       .from("bom_items")
       .select(`
         *,
-        raw_material:raw_material_id (
-          *,
-          satuan_besar:satuan_besar_id (*),
-          satuan_kecil:satuan_kecil_id (*)
-        ),
-        satuan:satuan_id (*)
+        raw_material:raw_materials!raw_material_id (*),
+        satuan:units!satuan_id (*)
       `)
       .eq("product_id", id)
       .eq("is_active", true)
@@ -82,17 +99,46 @@ export async function GET(
 
     if (error) throw error;
 
+    // Enrich raw_material dengan nama satuan besar/kecil (units) untuk tampilan label.
+    const unitIds = Array.from(
+      new Set(
+        (data || []).flatMap((item) => {
+          const rm = (item as { raw_material?: { satuan_besar_id?: string | null; satuan_kecil_id?: string | null } | null }).raw_material;
+          return [rm?.satuan_besar_id, rm?.satuan_kecil_id].filter(Boolean) as string[];
+        })
+      )
+    );
+    const { data: unitRows } = unitIds.length > 0
+      ? await db.from("units").select("*").in("id", unitIds)
+      : { data: [] };
+    const unitMap = new Map(
+      (unitRows || []).map((unit) => [unit.id as string, unit])
+    );
+    for (const item of data || []) {
+      const rm = (item as { raw_material?: { satuan_besar_id?: string | null; satuan_kecil_id?: string | null; satuan_besar?: unknown; satuan_kecil?: unknown } | null }).raw_material;
+      if (!rm) continue;
+      rm.satuan_besar = rm.satuan_besar_id ? unitMap.get(rm.satuan_besar_id) ?? null : null;
+      rm.satuan_kecil = rm.satuan_kecil_id ? unitMap.get(rm.satuan_kecil_id) ?? null : null;
+    }
+
     const materialIds = Array.from(
       new Set((data || []).map((item) => item.raw_material_id).filter(Boolean))
     );
     const { data: stockCosts } = materialIds.length > 0
-      ? await supabase
+      ? await db
           .from("v_raw_materials_stock")
-          .select("id, avg_cost")
+          .select("id, avg_cost, konversi_factor, satuan_kecil_id")
           .in("id", materialIds)
       : { data: [] };
     const stockCostMap = new Map(
-      (stockCosts || []).map((material) => [material.id, Number(material.avg_cost ?? 0)])
+      (stockCosts || []).map((material) => [
+        material.id,
+        normalizeToSmallUnit(
+          Number(material.avg_cost ?? 0),
+          material.konversi_factor,
+          material.satuan_kecil_id
+        ),
+      ])
     );
 
     const bomWithCost = (data || []).map((item) => {
@@ -123,14 +169,14 @@ export async function POST(
 ) {
   try {
     const { id } = await params;
-    const supabase = await createClient();
+    const db = await createServerPgClient();
     const body = await request.json();
 
     // Validasi input
     const validated = bomSchema.parse(body);
 
     // Cek apakah produk ada
-    const { data: product, error: productError } = await supabase
+    const { data: product, error: productError } = await db
       .from("products")
       .select("id")
       .eq("id", id)
@@ -143,7 +189,7 @@ export async function POST(
       );
     }
 
-    const { data: material, error: materialError } = await supabase
+    const { data: material, error: materialError } = await db
       .from("raw_materials")
       .select("id, source_product_id")
       .eq("id", validated.raw_material_id)
@@ -165,7 +211,7 @@ export async function POST(
     }
 
     // Cek apakah bahan sudah ada di BOM
-    const { data: existingItem } = await supabase
+    const { data: existingItem } = await db
       .from("bom_items")
       .select("id")
       .eq("product_id", id)
@@ -181,7 +227,7 @@ export async function POST(
     }
 
     // Insert BOM item
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from("bom_items")
       .insert({
         ...validated,

@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server";
+import { createServerPgClient } from "@/lib/pg/create-client";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import {
@@ -10,6 +10,13 @@ import {
   paginatedResponse,
   noContentResponse,
 } from "@/lib/api/auth";
+import {
+  getApiUserScope,
+  companyScopeOr,
+  branchScopeOr,
+  effectiveCompanyId,
+  effectiveBranchId,
+} from "@/lib/api/scope";
 
 // Zod schemas
 const createPriceSchema = z.object({
@@ -39,7 +46,7 @@ const queryParamsSchema = z.object({
 export async function GET(request: NextRequest) {
   try {
     await requireApiUser();
-    const supabase = await createClient();
+    const db = await createServerPgClient();
 
     const url = new URL(request.url);
     const rawParams = Object.fromEntries(url.searchParams);
@@ -47,15 +54,21 @@ export async function GET(request: NextRequest) {
     const { page, limit, supplier_id, bahan_baku_id, is_preferred } = params;
     const offset = (page - 1) * limit;
 
-    let query = supabase
+    let query = db
       .from("supplier_price_lists")
       .select(`
         *,
-        supplier:supplier_id (id, kode, nama),
-        bahan_baku:bahan_baku_id (id, kode, nama),
-        satuan:satuan_id (id, kode, nama)
+        supplier:suppliers!supplier_id (id, kode, nama_supplier),
+        bahan_baku:raw_materials!bahan_baku_id (id, kode, nama),
+        satuan:units!satuan_id (id, kode, nama)
       `, { count: "exact" })
       .eq("is_active", true);
+
+    const scope = await getApiUserScope();
+    const companyOr = companyScopeOr(scope);
+    if (companyOr) query = query.or(companyOr);
+    const branchOr = branchScopeOr(scope);
+    if (branchOr) query = query.or(branchOr);
 
     if (supplier_id) query = query.eq("supplier_id", supplier_id);
     if (bahan_baku_id) query = query.eq("bahan_baku_id", bahan_baku_id);
@@ -91,14 +104,17 @@ export async function GET(request: NextRequest) {
 // POST /api/purchasing/supplier-prices - Create
 export async function POST(request: NextRequest) {
   try {
-    const user = await requireApiRole(["purchasing_admin", "purchasing_staff"]);
-    const supabase = await createClient();
+    const user = await requireApiRole(["purchasing_admin", "purchasing_staff", "purchasing_manager", "super_admin"]);
+    const db = await createServerPgClient();
 
     const body = await request.json();
     const validated = createPriceSchema.parse(body);
+    const scope = await getApiUserScope();
+    const companyId = effectiveCompanyId(scope);
+    const branchId = effectiveBranchId(scope);
 
     // Verify supplier exists
-    const { data: supplier } = await supabase
+    const { data: supplier } = await db
       .from("suppliers")
       .select("id")
       .eq("id", validated.supplier_id)
@@ -110,7 +126,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Verify bahan_baku exists
-    const { data: bahanBaku } = await supabase
+    const { data: bahanBaku } = await db
       .from("bahan_baku")
       .select("id")
       .eq("id", validated.bahan_baku_id)
@@ -122,7 +138,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Verify satuan exists
-    const { data: satuan } = await supabase
+    const { data: satuan } = await db
       .from("satuan")
       .select("id")
       .eq("id", validated.satuan_id)
@@ -134,7 +150,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Check for existing price for this supplier+bahan_baku combo
-    const { data: existing } = await supabase
+    const { data: existing } = await db
       .from("supplier_price_lists")
       .select("id")
       .eq("supplier_id", validated.supplier_id)
@@ -148,7 +164,7 @@ export async function POST(request: NextRequest) {
 
     // If is_preferred, unset other preferred for this bahan_baku
     if (validated.is_preferred) {
-      await supabase
+      await db
         .from("supplier_price_lists")
         .update({ is_preferred: false })
         .eq("bahan_baku_id", validated.bahan_baku_id)
@@ -156,17 +172,19 @@ export async function POST(request: NextRequest) {
         .eq("is_active", true);
     }
 
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from("supplier_price_lists")
       .insert({
         ...validated,
+        company_id: companyId,
+        branch_id: branchId,
         created_by: user.id,
       })
       .select(`
         *,
-        supplier:supplier_id (id, kode, nama),
-        bahan_baku:bahan_baku_id (id, kode, nama),
-        satuan:satuan_id (id, kode, nama)
+        supplier:suppliers!supplier_id (id, kode, nama_supplier),
+        bahan_baku:raw_materials!bahan_baku_id (id, kode, nama),
+        satuan:units!satuan_id (id, kode, nama)
       `)
       .single();
 

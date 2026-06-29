@@ -14,7 +14,7 @@ export default function RawMaterialsDetailPage({ params }: { params: { id: strin
           items={[
             { label: "Dashboard", href: "/dashboard" },
             { label: "Purchasing", href: "/dashboard/purchasing" },
-            { label: "Bahan Baku", href: "/dashboard/purchasing/raw-materials" },
+            { label: "Bahan Baku", href: "/dashboard/items/raw-materials" },
             { label: params.id },
           ]}
         />
@@ -25,10 +25,10 @@ export default function RawMaterialsDetailPage({ params }: { params: { id: strin
             <p className="text-sm text-gray-500">ID: {params.id}</p>
           </div>
           <div className="flex gap-2">
-            <Link href={`/dashboard/purchasing/raw-materials/${params.id}/edit`}>
+            <Link href={`/dashboard/items/raw-materials/edit/${params.id}`}>
               <Button variant="outline">Edit</Button>
             </Link>
-            <Link href="/dashboard/purchasing/raw-materials">
+            <Link href="/dashboard/items/raw-materials">
               <Button variant="ghost">Kembali</Button>
             </Link>
           </div>

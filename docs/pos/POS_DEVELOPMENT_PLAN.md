@@ -58,7 +58,7 @@
 #### Tasks
 - [ ] **Database Migration**
   - [ ] Run `001_pos_core_schema.sql` migration
-  - [ ] Create Supabase RLS policies
+  - [ ] Create PostgreSQL RLS policies
   - [ ] **Verify HRD integration**: Check `hrd.employees` table exists
   - [ ] **Verify Purchasing integration**: Check `purchasing.raw_materials` table exists
   - [ ] Seed initial data (categories, sample products)
@@ -84,7 +84,7 @@
 
 #### Deliverables
 - Working product catalog management
-- Database schema deployed to Supabase
+- Database schema deployed to PostgreSQL
 - Type-safe API layer
 
 ---
@@ -116,7 +116,7 @@
 
 - [ ] **Inventory Deduction**
   - [ ] Recipe-based stock deduction (POS → Purchasing raw_materials)
-  - [ ] Real-time inventory update via Supabase Realtime
+  - [ ] Real-time inventory update via PostgreSQL Realtime
   - [ ] Allow negative stock setting (per product)
   - [ ] Low stock alerts → notify purchasing manager
   - [ ] **Integration test**: Create order → verify raw_materials.current_stock deducted
@@ -184,7 +184,7 @@
   - [ ] Status updates (pending → cooking → ready → served)
   - [ ] Priority orders (VIP, urgent)
   - [ ] Cooking time tracking
-  - [ ] Real-time updates via Supabase Realtime
+  - [ ] Real-time updates via PostgreSQL Realtime
 
 - [ ] **Table Management**
   - [ ] Table grid with status
@@ -326,7 +326,7 @@ src/
 
 ## 🔐 Security & RLS Policies
 
-### Row Level Security (Supabase)
+### Row Level Security (PostgreSQL)
 
 ```sql
 -- POS Products (read: all authenticated, write: admin only)

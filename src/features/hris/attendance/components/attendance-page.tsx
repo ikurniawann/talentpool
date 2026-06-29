@@ -14,8 +14,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { exportAttendanceCsv } from "../api";
 
-export default function AttendancePage() {
+export function AttendancePage() {
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [filterEmployee, setFilterEmployee] = useState<string>("all");
   const [filterStatus, setFilterStatus] = useState<string>("all");
@@ -38,24 +39,10 @@ export default function AttendancePage() {
 
   const handleExport = async () => {
     try {
-      // Build query params from filters
-      const params = new URLSearchParams();
-      if (filterEmployee !== 'all') {
-        params.set('employee_id', filterEmployee);
-      }
-      if (filterStatus !== 'all') {
-        params.set('status', filterStatus);
-      }
-      
-      const response = await fetch(`/api/hris/attendance/export?${params.toString()}`);
-      
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Export failed');
-      }
-      
-      // Download CSV file
-      const blob = await response.blob();
+      const blob = await exportAttendanceCsv({
+        employee_id: filterEmployee,
+        status: filterStatus,
+      });
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;

@@ -15,9 +15,9 @@ vi.mock('next/headers', () => ({
   })),
 }));
 
-// Mock @supabase/server
-vi.mock('@/lib/supabase/server', () => ({
-  createClient: vi.fn(() => ({
+// Mock Postgres server client
+vi.mock('@/lib/pg/create-client', () => ({
+  createServerPgClient: vi.fn(async () => ({
     auth: {
       getUser: vi.fn(() => ({
         data: {

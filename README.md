@@ -1,13 +1,16 @@
 # Arkiv OS
 
-Arkiv OS adalah ERP terpadu berbasis Next.js dan Supabase untuk operasional Aapex Technology. Sistem ini mencakup HRIS, rekrutmen, POS, CRM loyalty, purchasing, inventory, produksi, reporting QA, Arkiv OS desktop, serta beberapa self-service flow untuk customer.
+Arkiv OS adalah ERP terpadu berbasis Next.js dan PostgreSQL native untuk operasional Aapex Technology. Sistem ini mencakup HRIS, rekrutmen, POS, CRM loyalty, purchasing, inventory, produksi, reporting QA, Arkiv OS desktop, serta beberapa self-service flow untuk customer.
+
+Database memakai PostgreSQL biasa (driver `pg`), auth/session di-handle di application layer (bcrypt + cookie session), dan data layer memakai shim ringan di `src/lib/db-client` yang meniru subset API PostgREST.
 
 ## Tech Stack
 
 | Layer | Teknologi |
 | --- | --- |
 | Framework | Next.js App Router, React |
-| Database | Supabase PostgreSQL, Auth, Storage |
+| Database | PostgreSQL (driver `pg`), schema-per-domain |
+| Auth | Custom (bcrypt + cookie session), schema `auth` |
 | Styling | Tailwind CSS v4, shadcn/ui, custom Arkiv OS design system |
 | Data & Form | React Hook Form, Zod, TanStack Query |
 | Charts | Recharts |
@@ -39,7 +42,7 @@ Dokumentasi terkait:
 
 Route utama:
 - `/dashboard/hris`
-- `/dashboard/hris/employees`
+- `/dashboard/employees`
 - `/dashboard/hris/attendance`
 - `/dashboard/hris/leaves`
 - `/dashboard/hris/payroll`
@@ -184,8 +187,8 @@ Dokumentasi terkait:
 Route utama:
 - `/dashboard/purchasing`
 - `/dashboard/purchasing/suppliers`
-- `/dashboard/purchasing/raw-materials`
-- `/dashboard/purchasing/units`
+- `/dashboard/items/raw-materials`
+- `/dashboard/items/units`
 - `/dashboard/purchasing/products`
 - `/dashboard/purchasing/products/[id]/bom`
 - `/dashboard/purchasing/price-list`
@@ -394,6 +397,26 @@ Catatan: sebagian logic CRM berada di `src/lib/crm/loyalty-engine.ts` dan dipang
 
 ## Database Highlights
 
+Tabel diorganisir per **schema PostgreSQL** sesuai domain. Referensi tabel di app layer diakses "bare" dan diresolve lewat `search_path` global (`public, iam, configuration, hris, performance, recruitment, item, purchasing, inventory, manufacturing, pos, crm, auth`).
+
+| Schema | Domain |
+| --- | --- |
+| `auth` | Identitas login & session (`auth.users`, `auth.sessions`) |
+| `configuration` | Profil user app, audit, activity log |
+| `iam` | Role, menu, permission, user-role |
+| `hris` | Karyawan, attendance, leave, payroll, dll. |
+| `performance` | KPI, review, 360 feedback |
+| `recruitment` | Kandidat, interview, job opening |
+| `item` | Master material/produk/satuan |
+| `purchasing` | Supplier, PR/PO, GRN, QC, return |
+| `inventory` | Stok, movement, finished goods |
+| `manufacturing` | Production order, BOM, batch |
+| `pos` | POS order, produk, shift, KDS |
+| `crm` | Member, tier, reward, XP |
+| `public` | Lintas domain (notifications, AI assistant) |
+
+> File migrasi & pipeline ada di `database/` — lihat `database/README.md` untuk detail.
+
 ### HRIS
 - `employees`
 - `departments`
@@ -466,17 +489,25 @@ Profit-related POS order item fields:
 ## Environment Variables
 
 ```env
-NEXT_PUBLIC_SUPABASE_URL=
-NEXT_PUBLIC_SUPABASE_ANON_KEY=
-SUPABASE_SERVICE_ROLE_KEY=
+# Database (PostgreSQL native)
+DATABASE_URL=postgresql://postgres:postgres@localhost:5432/arkiv
+MIGRATE_DATABASE_URL=postgresql://postgres:postgres@localhost:5432/arkiv
+
+# AI Assistant (Ollama)
+OLLAMA_API_BASE=http://localhost:11434
+OLLAMA_API_KEY=
+OLLAMA_MODEL=
+
+# Integrasi opsional
 FONNTE_API_KEY=
 RESEND_API_KEY=
 NEXT_PUBLIC_APP_URL=
-AI_ASSISTANT_OLLAMA_API_BASE=
-OLLAMA_API_BASE=
-OLLAMA_API_KEY=
-OLLAMA_MODEL=
 ```
+
+| Variabel | Dipakai oleh | Keterangan |
+| --- | --- | --- |
+| `DATABASE_URL` | App Next.js (`pg`) | Koneksi utama aplikasi |
+| `MIGRATE_DATABASE_URL` | `db:migrate*`, seeder | Target migrasi (Postgres lokal) |
 
 ## Getting Started
 
@@ -488,21 +519,26 @@ npm install
 
 ### 2. Setup Environment
 
-```bash
-cp .env.local.example .env.local
-```
+Buat `.env` (atau `.env.local`) dan set minimal `DATABASE_URL` + `MIGRATE_DATABASE_URL` ke Postgres lokal, plus konfigurasi AI/email/WhatsApp sesuai kebutuhan. Lihat tabel [Environment Variables](#environment-variables).
 
-Isi credentials Supabase, email, WhatsApp, dan AI sesuai kebutuhan.
+### 3. Database Setup
 
-### 3. Supabase Setup
-
-Jalankan semua migration di `supabase/migrations/`.
+Pastikan database target sudah ada di Postgres lokal (mis. `CREATE DATABASE arkiv;`).
 
 ```bash
-supabase db push
+# Lihat migrasi pending (dry-run, read-only)
+npm run db:migrate
+
+# Terapkan migrasi ke database
+npm run db:migrate:apply
+
+# Seed akun Super Admin (idempoten)
+npm run db:seed:super-admin
 ```
 
-Jika migration dijalankan manual dari dashboard Supabase, gunakan urutan timestamp file di folder `supabase/migrations/`.
+Kredensial default Super Admin: `super@arkivworld.com` / `Arkiv2026*#` (override via `SUPER_USER_EMAIL`, `SUPER_USER_PASSWORD`).
+
+Panduan lengkap pipeline migrasi: [database/README.md](database/README.md)
 
 ### 4. Run Development Server
 
@@ -521,53 +557,65 @@ http://localhost:3000/dashboard/purchasing
 
 ## Project Structure
 
+App Router hanya berisi routing + layout shell (thin wrapper); logic UI ada di `src/features/` per domain.
+
 ```text
+database/
+├── migrations/                 # baseline + incremental (schema-per-domain)
+│   ├── 00000000000000_app_auth.sql
+│   ├── schemas/<domain>/        # satu file per tabel
+│   └── ...
+├── seeders/                    # super-admin.js, dll.
+└── scripts/                    # generate-from-db, apply-migrations, ...
+
 src/
 ├── app/
 │   ├── arkiv-os
-│   ├── dashboard
+│   ├── dashboard/              # routing + layout (thin-wrap ke @/features)
+│   │   ├── (dashboard)/        # shell AppSidebar (hris, crm, purchasing, ...)
+│   │   ├── employees           # pindah dari hris/employees
+│   │   └── pos
 │   ├── photobooth/self-service
 │   ├── table-order/[tableCode]
-│   ├── qa
-│   ├── dashboard/pos
-│   ├── dashboard/(dashboard)/hris
-│   ├── dashboard/(dashboard)/crm
-│   ├── dashboard/(dashboard)/purchasing
-│   ├── dashboard/(dashboard)/inventory
-│   ├── dashboard/(dashboard)/master
 │   ├── (public)/career
 │   ├── (public)/portal
 │   └── api/
+├── features/                   # UI domain (pola: index.ts + components/*-page.tsx)
+│   ├── users/                  # employee/user (data layer + pages)
+│   ├── hris/  performance/  recruitment-related/
+│   ├── purchasing/  inventory/  master-data/
+│   ├── crm/  pos/  configuration/  design-system/
+│   └── finance/  accounting/  integration/
 ├── components/
-│   ├── ui/
-│   ├── pos/
-│   └── layout/
+│   ├── ui/  pos/  layout/
 ├── hooks/
 ├── lib/
-│   ├── api/
-│   ├── crm/
-│   ├── inventory/
-│   ├── pos/
-│   ├── purchasing/
-│   └── supabase/
+│   ├── db.ts                   # pool pg + search_path global
+│   ├── db-client/              # shim data layer (PostgREST-like)
+│   ├── pg/                     # query-builder PostgREST-like
+│   ├── auth/                   # session + password (bcrypt)
+│   ├── api/  crm/  inventory/  pos/  purchasing/
 ├── modules/
-│   └── purchasing/
+│   └── purchasing/             # shared UI legacy purchasing
 └── types/
 ```
 
 ## Roles
 
+Role valid mengikuti constraint `configuration.users.role`:
+
 | Role | Akses Utama |
 | --- | --- |
-| `admin` / `super_admin` | Semua module |
-| `hrd` | HRIS, recruitment, employee, performance |
+| `super_admin` / `admin` | Semua module |
+| `hrd` / `hiring_manager` | HRIS, recruitment, employee, performance |
+| `direksi` | Dashboard dan report |
 | `purchasing_admin` | Purchasing, procurement, inventory, production |
 | `purchasing_manager` | Approval, purchasing report, production |
+| `purchasing_staff` | PR/PO, purchasing operasional |
 | `warehouse_admin` / `warehouse_staff` | Receiving, inventory, QC, stock card |
+| `qc_staff` | Quality control |
 | `finance_staff` | COGS, report, finance-related approval |
-| `pos_admin` | POS configuration, product, station, report |
-| `cashier` | POS cashier, order, payment |
-| `direksi` | Dashboard dan report |
+| `pos` / `pos_supervisor` | POS cashier, order, payment, shift |
 
 ## Design Notes
 

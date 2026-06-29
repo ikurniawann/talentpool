@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { createPgClient } from "@/lib/pg/create-client";
 import { requireApiRole, paginatedResponse } from "@/lib/api/auth";
 
 export async function GET(
@@ -8,14 +8,14 @@ export async function GET(
 ) {
   try {
     await requireApiRole(["warehouse_staff", "warehouse_admin", "purchasing_admin", "purchasing_staff", "admin"]);
-    const supabase = createAdminClient();
+    const db = createPgClient();
     const { id } = await params;
     const { searchParams } = new URL(request.url);
     const page = Number(searchParams.get("page") || 1);
     const limit = Number(searchParams.get("limit") || 25);
     const offset = (page - 1) * limit;
 
-    const { data, error, count } = await supabase
+    const { data, error, count } = await db
       .from("inventory_movements")
       .select("*", { count: "exact" })
       .eq("inventory_id", id)

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getPosSession } from "@/lib/api/auth";
-import { createServiceClient } from "@/lib/supabase/service-client";
+import { createPgClient } from "@/lib/pg/create-client";
 import {
   apiErrorResponse,
   isMissingCrmSchema,
@@ -121,7 +121,7 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const supabase = createServiceClient();
+    const db = createPgClient();
     const searchParams = request.nextUrl.searchParams;
     const search = searchParams.get("search");
     const tier = searchParams.get("tier");
@@ -129,7 +129,7 @@ export async function GET(request: NextRequest) {
 
     let tierId: string | null = null;
     if (tier) {
-      const { data: tierRow, error: tierError } = await supabase
+      const { data: tierRow, error: tierError } = await db
         .from("crm_membership_tiers")
         .select("id")
         .eq("code", tier)
@@ -139,7 +139,7 @@ export async function GET(request: NextRequest) {
       tierId = (tierRow as { id?: string } | null)?.id ?? null;
     }
 
-    let profileQuery = supabase
+    let profileQuery = db
       .from("crm_member_profiles")
       .select("*, tier:crm_membership_tiers(id, code, name, rank, xp_multiplier, discount_percent)")
       .order("lifetime_xp", { ascending: false })
@@ -153,7 +153,7 @@ export async function GET(request: NextRequest) {
     if (profileError) {
       if (!isMissingCrmSchema(profileError)) throw profileError;
 
-      let customerQuery = supabase
+      let customerQuery = db
         .from("pos_customers")
         .select(POS_CUSTOMER_COLUMNS)
         .eq("is_active", true)
@@ -179,7 +179,7 @@ export async function GET(request: NextRequest) {
     const customersById = new Map<string, CustomerRow>();
 
     if (customerIds.length === 0) {
-      let customerQuery = supabase
+      let customerQuery = db
         .from("pos_customers")
         .select(POS_CUSTOMER_COLUMNS)
         .eq("is_active", true)
@@ -202,7 +202,7 @@ export async function GET(request: NextRequest) {
     }
 
     if (customerIds.length > 0) {
-      const { data: customers } = await supabase
+      const { data: customers } = await db
         .from("pos_customers")
         .select(POS_CUSTOMER_COLUMNS)
         .in("id", customerIds);
@@ -229,9 +229,9 @@ export async function POST(request: NextRequest) {
 
   try {
     const payload = enrollSchema.parse(await request.json());
-    const supabase = createServiceClient();
+    const db = createPgClient();
 
-    const { data: customer, error: customerError } = await supabase
+    const { data: customer, error: customerError } = await db
       .from("pos_customers")
       .select(POS_CUSTOMER_COLUMNS)
       .eq("id", payload.customer_id)
@@ -244,7 +244,7 @@ export async function POST(request: NextRequest) {
 
     const customerRow = customer as CustomerRow;
     const requestedTierCode = String(payload.tier_code ?? customerRow.membership_tier ?? "bronze").toLowerCase();
-    const { data: requestedTier, error: tierError } = await supabase
+    const { data: requestedTier, error: tierError } = await db
       .from("crm_membership_tiers")
       .select("id, code, name, rank")
       .eq("code", requestedTierCode)
@@ -262,7 +262,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (!tier && requestedTierCode !== "bronze") {
-      const fallback = await supabase
+      const fallback = await db
         .from("crm_membership_tiers")
         .select("id, code, name, rank")
         .eq("code", "bronze")
@@ -277,7 +277,7 @@ export async function POST(request: NextRequest) {
     }
 
     const normalizedCustomer = normalizeCustomer(customerRow);
-    const { data: profile, error: profileError } = await supabase
+    const { data: profile, error: profileError } = await db
       .from("crm_member_profiles")
       .upsert(
         {

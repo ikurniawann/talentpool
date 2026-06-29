@@ -5,7 +5,7 @@
 // ============================================================
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { createServerPgClient } from "@/lib/pg/create-client";
 import { ApiError, requireApiRole } from '@/lib/api/auth';
 
 // Salary is sensitive financial PII — restrict to HR/finance roles only.
@@ -18,11 +18,11 @@ const SALARY_ROLES = ['super_admin', 'hrd', 'finance_staff'] as const;
 export async function GET(request: NextRequest) {
   try {
     await requireApiRole([...SALARY_ROLES]);
-    const supabase = await createClient();
+    const db = await createServerPgClient();
     const { searchParams } = new URL(request.url);
     const employeeId = searchParams.get('employee_id');
 
-    let query = supabase
+    let query = db
       .from('employee_salary')
       .select(`
         *,
@@ -69,7 +69,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     await requireApiRole([...SALARY_ROLES]);
-    const supabase = await createClient();
+    const db = await createServerPgClient();
     const body = await request.json();
     const {
       employee_id,
@@ -99,7 +99,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if employee exists
-    const { data: employee } = await supabase
+    const { data: employee } = await db
       .from('employees')
       .select('id')
       .eq('id', employee_id)
@@ -113,7 +113,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Deactivate previous salary record for this employee
-    await supabase
+    await db
       .from('employee_salary')
       .update({ 
         is_active: false,
@@ -124,7 +124,7 @@ export async function POST(request: NextRequest) {
       .eq('is_active', true);
 
     // Create new salary record
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from('employee_salary')
       .insert({
         employee_id,

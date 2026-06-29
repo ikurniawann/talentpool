@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createAdminClient } from '@/lib/supabase/admin';
+import { createPgClient } from "@/lib/pg/create-client";
 
 interface RouteParams { params: Promise<{ id: string }> }
 
 export async function PUT(request: NextRequest, { params }: RouteParams) {
-  const supabase = createAdminClient();
+  const db = createPgClient();
   const { id } = await params;
   const body = await request.json();
   const { code, name, color, description, is_active } = body;
@@ -13,7 +13,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     return NextResponse.json({ error: 'Kode dan nama wajib diisi' }, { status: 400 });
   }
 
-  const { data, error } = await supabase
+  const { data, error } = await db
     .from('employment_statuses')
     .update({ code: code.toLowerCase(), name, color: color || 'gray', description: description || null, is_active, updated_at: new Date().toISOString() })
     .eq('id', id)
@@ -28,17 +28,17 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
 }
 
 export async function DELETE(_: NextRequest, { params }: RouteParams) {
-  const supabase = createAdminClient();
+  const db = createPgClient();
   const { id } = await params;
 
-  const { data: status } = await supabase
+  const { data: status } = await db
     .from('employment_statuses')
     .select('code')
     .eq('id', id)
     .single();
 
   if (status) {
-    const { count } = await supabase
+    const { count } = await db
       .from('employees')
       .select('id', { count: 'exact', head: true })
       .eq('employment_status', status.code);
@@ -48,7 +48,7 @@ export async function DELETE(_: NextRequest, { params }: RouteParams) {
     }
   }
 
-  const { error } = await supabase.from('employment_statuses').delete().eq('id', id);
+  const { error } = await db.from('employment_statuses').delete().eq('id', id);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ message: 'Status kepegawaian berhasil dihapus' });
 }

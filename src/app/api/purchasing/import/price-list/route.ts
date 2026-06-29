@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { createServerPgClient } from "@/lib/pg/create-client";
 
 export async function POST(request: NextRequest) {
   try {
@@ -28,7 +28,7 @@ export async function POST(request: NextRequest) {
     if (rows.length < 2) return NextResponse.json({ message: "File CSV harus memiliki header dan minimal 1 data" }, { status: 400 });
 
     const headers = rows[0].map((h) => h.toLowerCase().replace(/\s+/g, "_"));
-    const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
+    const db = await createServerPgClient();
     const imported: any[] = [], skipped: any[] = [], errors: Array<{ row: number; message: string }> = [];
 
     for (let i = 1; i < rows.length; i++) {
@@ -45,7 +45,7 @@ export async function POST(request: NextRequest) {
       }
 
       // Get supplier ID from kode
-      const { data: supplier } = await supabase.from("suppliers").select("id").eq("kode", rowData.supplier_kode).single();
+      const { data: supplier } = await db.from("suppliers").select("id").eq("kode", rowData.supplier_kode).single();
       if (!supplier) {
         errors.push({ row: rowNumber, message: `Supplier dengan kode ${rowData.supplier_kode} tidak ditemukan` });
         skipped.push({ row: rowNumber, data: rowData });
@@ -53,7 +53,7 @@ export async function POST(request: NextRequest) {
       }
 
       // Get raw material ID from kode
-      const { data: rawMaterial } = await supabase.from("raw_materials").select("id").eq("kode", rowData.bahan_baku_kode).single();
+      const { data: rawMaterial } = await db.from("raw_materials").select("id").eq("kode", rowData.bahan_baku_kode).single();
       if (!rawMaterial) {
         errors.push({ row: rowNumber, message: `Bahan baku dengan kode ${rowData.bahan_baku_kode} tidak ditemukan` });
         skipped.push({ row: rowNumber, data: rowData });
@@ -72,7 +72,7 @@ export async function POST(request: NextRequest) {
         is_active: rowData.status?.toLowerCase() === "active",
       };
 
-      const { error } = await supabase.from("supplier_prices").insert(priceData);
+      const { error } = await db.from("supplier_prices").insert(priceData);
       if (error) { errors.push({ row: rowNumber, message: error.message }); skipped.push({ row: rowNumber, data: rowData }); }
       else imported.push({ row: rowNumber, data: rowData });
     }

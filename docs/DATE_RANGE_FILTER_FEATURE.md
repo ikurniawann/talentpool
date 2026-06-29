@@ -231,7 +231,7 @@ prevMonthEnd.setMonth(prevMonthEnd.getMonth() - 1);
 ### Edge Cases Handled
 
 - ✅ Invalid date formats → ignored, defaults to current month
-- ✅ End date before start date → Supabase handles gracefully
+- ✅ End date before start date → PostgreSQL handles gracefully
 - ✅ Future dates → works correctly (no data yet)
 - ✅ Very old dates → works correctly (historical data)
 

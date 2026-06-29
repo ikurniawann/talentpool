@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   ArrowLeft,
   CalendarClock,
@@ -21,109 +21,16 @@ import {
   UserPlus,
   UserRound,
 } from "lucide-react";
-
-type CrmCustomer = {
-  id: string;
-  name: string;
-  phone: string;
-  email: string;
-  membership_tier: string;
-  ark_coin_balance: number;
-  total_xp: number;
-  current_xp: number;
-  total_spent: number;
-  visit_count: number;
-  is_active: boolean;
-};
-
-type CrmMember = {
-  id: string;
-  customer_id: string;
-  member_code: string;
-  tier: {
-    code: string;
-    name: string;
-    rank?: number;
-    xp_multiplier?: number;
-    discount_percent?: number;
-    min_lifetime_xp?: number;
-    min_total_spend?: number;
-  } | null;
-  current_xp: number;
-  lifetime_xp: number;
-  spent_xp: number;
-  loyalty_score: number;
-  active_avatar_id: string | null;
-  joined_at?: string | null;
-  last_activity_at?: string | null;
-  status: string;
-  customer: CrmCustomer | null;
-};
-
-type CrmLedger = {
-  id: string;
-  direction: string;
-  source_channel: string;
-  source_type: string;
-  xp_delta: number;
-  balance_after: number;
-  description: string | null;
-  reference_table: string | null;
-  reference_id: string | null;
-  created_at: string;
-};
-
-type CrmReward = {
-  id: string;
-  code: string;
-  name: string;
-  reward_type: string;
-  xp_cost: number;
-  stock_total: number | null;
-  stock_redeemed: number;
-  max_redemptions_per_member: number | null;
-  is_active: boolean;
-  required_tier: {
-    code: string;
-    name: string;
-    rank?: number;
-  } | null;
-};
-
-type CrmAvatar = {
-  id: string;
-  code: string;
-  name: string;
-  rarity: string;
-  image_url: string;
-  thumbnail_url: string | null;
-  required_tier_id: string | null;
-  xp_cost: number;
-  stock_total: number | null;
-  stock_redeemed: number;
-  is_active: boolean;
-  required_tier: {
-    code: string;
-    name: string;
-    rank?: number;
-  } | null;
-};
-
-type CrmAvatarInventory = {
-  id: string;
-  member_id: string;
-  avatar_id: string;
-  redemption_id: string | null;
-  acquisition_source: string;
-  is_equipped: boolean;
-  acquired_at: string;
-  metadata?: {
-    xp_cost?: number;
-    granted_by?: string;
-    note?: string | null;
-  } | null;
-  avatar: CrmAvatar | null;
-};
+import type { CrmAvatarInventory, CrmMember } from "../types";
+import { useMemberDetail } from "../queries";
+import {
+  useCreateRedemption,
+  useEnrollMember,
+  useEquipAvatar,
+  useGrantAvatar,
+  useRedeemAvatar,
+  useUpdateMember,
+} from "../mutations";
 
 type AvatarActivity = {
   id: string;
@@ -131,54 +38,6 @@ type AvatarActivity = {
   detail: string;
   date: string;
   tone: "emerald" | "amber" | "sky" | "slate";
-};
-
-type CrmTier = {
-  id: string;
-  code: string;
-  name: string;
-  rank: number;
-  is_active: boolean;
-};
-
-type CrmRedemption = {
-  id: string;
-  redemption_number: string;
-  reward_id: string;
-  xp_cost: number;
-  status: string;
-  voucher_code: string | null;
-  requested_at: string;
-  approved_at: string | null;
-  reward: {
-    id: string;
-    code: string;
-    name: string;
-    reward_type: string;
-    xp_cost: number;
-  } | null;
-};
-
-type PosOrder = {
-  id: string;
-  order_number: string;
-  total_amount: number;
-  payment_status: string;
-  status: string;
-  ordered_at: string;
-};
-
-type DetailState = {
-  loading: boolean;
-  error: string | null;
-  member: CrmMember | null;
-  xpLedger: CrmLedger[];
-  recentOrders: PosOrder[];
-  rewards: CrmReward[];
-  redemptions: CrmRedemption[];
-  tiers: CrmTier[];
-  avatars: CrmAvatar[];
-  avatarInventory: CrmAvatarInventory[];
 };
 
 type EditForm = {
@@ -241,22 +100,31 @@ function avatarSourceLabel(source: string) {
   return labels[source] ?? source;
 }
 
-export default function CrmMemberDetailPage() {
+export function CrmMemberDetailPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
   const memberId = params.id;
-  const [state, setState] = useState<DetailState>({
-    loading: true,
-    error: null,
-    member: null,
-    xpLedger: [],
-    recentOrders: [],
-    rewards: [],
-    redemptions: [],
-    tiers: [],
-    avatars: [],
-    avatarInventory: [],
-  });
+
+  const { data, isLoading, isFetching, error, refetch } = useMemberDetail(memberId);
+  const redeemMutation = useCreateRedemption();
+  const redeemAvatarMutation = useRedeemAvatar();
+  const equipAvatarMutation = useEquipAvatar();
+  const grantAvatarMutation = useGrantAvatar();
+  const enrollMutation = useEnrollMember();
+  const updateMemberMutation = useUpdateMember();
+
+  const loading = isLoading || isFetching;
+  const errorMessage = error instanceof Error ? error.message : null;
+
+  const member = data?.member ?? null;
+  const xpLedger = data?.xpLedger ?? [];
+  const recentOrders = data?.recentOrders ?? [];
+  const rewards = data?.rewards ?? [];
+  const redemptions = data?.redemptions ?? [];
+  const tiers = data?.tiers ?? [];
+  const avatars = data?.avatars ?? [];
+  const avatarInventory = data?.avatarInventory ?? [];
+
   const [selectedRewardId, setSelectedRewardId] = useState("");
   const [selectedAvatarId, setSelectedAvatarId] = useState("");
   const [selectedGrantAvatarId, setSelectedGrantAvatarId] = useState("");
@@ -295,88 +163,10 @@ export default function CrmMemberDetailPage() {
     success: null,
   });
 
-  const loadMember = useCallback(async () => {
-    setState((current) => ({ ...current, loading: true, error: null }));
-
-    try {
-      const [response, rewardsResponse, tiersResponse, avatarsResponse] = await Promise.all([
-        fetch(`/api/crm/members/${memberId}`, { cache: "no-store" }),
-        fetch("/api/crm/rewards", { cache: "no-store" }),
-        fetch("/api/crm/tiers", { cache: "no-store" }),
-        fetch("/api/crm/avatars", { cache: "no-store" }),
-      ]);
-      const json = await response.json();
-      const rewardsJson = await rewardsResponse.json();
-      const tiersJson = await tiersResponse.json();
-      const avatarsJson = await avatarsResponse.json();
-
-      if (!response.ok || !json.success) {
-        throw new Error(json.error || "Gagal memuat detail member");
-      }
-      if (!rewardsResponse.ok || !rewardsJson.success) {
-        throw new Error(rewardsJson.error || "Gagal memuat reward");
-      }
-      if (!tiersResponse.ok || !tiersJson.success) {
-        throw new Error(tiersJson.error || "Gagal memuat tier");
-      }
-      if (!avatarsResponse.ok || !avatarsJson.success) {
-        throw new Error(avatarsJson.error || "Gagal memuat avatar");
-      }
-
-      const loadedMember = json.data.member as CrmMember;
-      const isCrmProfile = !loadedMember.id.startsWith("pos-");
-      let redemptions: CrmRedemption[] = [];
-      let avatarInventory: CrmAvatarInventory[] = [];
-
-      if (isCrmProfile) {
-        const [redemptionsResponse, inventoryResponse] = await Promise.all([
-          fetch(`/api/crm/redemptions?member_id=${loadedMember.id}`, { cache: "no-store" }),
-          fetch(`/api/crm/avatar-inventory?member_id=${loadedMember.id}`, { cache: "no-store" }),
-        ]);
-        const [redemptionsJson, inventoryJson] = await Promise.all([
-          redemptionsResponse.json(),
-          inventoryResponse.json(),
-        ]);
-        if (!redemptionsResponse.ok || !redemptionsJson.success) {
-          throw new Error(redemptionsJson.error || "Gagal memuat redemption");
-        }
-        if (!inventoryResponse.ok || !inventoryJson.success) {
-          throw new Error(inventoryJson.error || "Gagal memuat avatar inventory");
-        }
-        redemptions = redemptionsJson.data ?? [];
-        avatarInventory = inventoryJson.data ?? [];
-      }
-
-      setState({
-        loading: false,
-        error: null,
-        member: loadedMember,
-        xpLedger: json.data.xpLedger ?? [],
-        recentOrders: json.data.recentOrders ?? [],
-        rewards: rewardsJson.data ?? [],
-        redemptions,
-        tiers: tiersJson.data ?? [],
-        avatars: avatarsJson.data ?? [],
-        avatarInventory,
-      });
-    } catch (error) {
-      setState((current) => ({
-        ...current,
-        loading: false,
-        error: error instanceof Error ? error.message : "Gagal memuat detail member",
-      }));
-    }
-  }, [memberId]);
-
-  useEffect(() => {
-    if (memberId) void loadMember();
-  }, [loadMember, memberId]);
-
-  const member = state.member;
   const crmProfileReady = Boolean(member && !member.id.startsWith("pos-"));
   const activeRewards = useMemo(
-    () => state.rewards.filter((reward) => reward.is_active && reward.reward_type !== "avatar"),
-    [state.rewards]
+    () => rewards.filter((reward) => reward.is_active && reward.reward_type !== "avatar"),
+    [rewards]
   );
   const selectedReward = activeRewards.find((reward) => reward.id === selectedRewardId) ?? activeRewards[0] ?? null;
   const rewardStockLeft = selectedReward?.stock_total === null || selectedReward?.stock_total === undefined
@@ -388,25 +178,25 @@ export default function CrmMemberDetailPage() {
       && selectedReward
       && member.current_xp >= selectedReward.xp_cost
       && (rewardStockLeft === null || rewardStockLeft > 0)
-      && !redeemStatus.loading
+      && !redeemMutation.isPending
   );
   const activeTiers = useMemo(
-    () => state.tiers.filter((tier) => tier.is_active !== false),
-    [state.tiers]
+    () => tiers.filter((tier) => tier.is_active !== false),
+    [tiers]
   );
   const tierRank = member?.tier?.rank ?? activeTiers.find((tier) => tier.code === member?.tier?.code)?.rank ?? 0;
   const ownedAvatarIds = useMemo(
-    () => new Set(state.avatarInventory.map((item) => item.avatar_id)),
-    [state.avatarInventory]
+    () => new Set(avatarInventory.map((item) => item.avatar_id)),
+    [avatarInventory]
   );
   const activeAvatar = useMemo(() => {
     if (!member) return null;
-    return state.avatarInventory.find((item) => item.is_equipped)
-      ?? state.avatarInventory.find((item) => item.avatar_id === member.active_avatar_id)
+    return avatarInventory.find((item) => item.is_equipped)
+      ?? avatarInventory.find((item) => item.avatar_id === member.active_avatar_id)
       ?? null;
-  }, [member, state.avatarInventory]);
+  }, [member, avatarInventory]);
   const redeemableAvatars = useMemo(() => {
-    return state.avatars
+    return avatars
       .filter((avatar) => avatar.is_active && !ownedAvatarIds.has(avatar.id))
       .sort((first, second) => {
         const firstAffordable = first.xp_cost <= (member?.current_xp ?? 0) ? 0 : 1;
@@ -421,23 +211,23 @@ export default function CrmMemberDetailPage() {
           || first.xp_cost - second.xp_cost
           || first.name.localeCompare(second.name);
       });
-  }, [member?.current_xp, ownedAvatarIds, state.avatars, tierRank]);
+  }, [member?.current_xp, ownedAvatarIds, avatars, tierRank]);
   const selectedAvatar = redeemableAvatars.find((avatar) => avatar.id === selectedAvatarId) ?? redeemableAvatars[0] ?? null;
   const avatarStockLeft = selectedAvatar?.stock_total === null || selectedAvatar?.stock_total === undefined
     ? null
     : Math.max(0, selectedAvatar.stock_total - selectedAvatar.stock_redeemed);
   const selectedAvatarTierRank = selectedAvatar?.required_tier?.rank ?? 0;
   const grantableAvatars = useMemo(() => {
-    return state.avatars
+    return avatars
       .filter((avatar) => avatar.is_active && !ownedAvatarIds.has(avatar.id))
       .sort((first, second) => first.name.localeCompare(second.name));
-  }, [ownedAvatarIds, state.avatars]);
+  }, [ownedAvatarIds, avatars]);
   const selectedGrantAvatar = grantableAvatars.find((avatar) => avatar.id === selectedGrantAvatarId) ?? grantableAvatars[0] ?? null;
   const selectedGrantStockLeft = selectedGrantAvatar?.stock_total === null || selectedGrantAvatar?.stock_total === undefined
     ? null
     : Math.max(0, selectedGrantAvatar.stock_total - selectedGrantAvatar.stock_redeemed);
   const avatarActivity = useMemo<AvatarActivity[]>(() => {
-    const acquired = state.avatarInventory.map((inventory) => {
+    const acquired = avatarInventory.map((inventory) => {
       const source = avatarSourceLabel(inventory.acquisition_source);
       const xpCost = inventory.metadata?.xp_cost ? ` · ${formatNumber(inventory.metadata.xp_cost)} XP` : "";
       const note = inventory.metadata?.note ? ` · ${inventory.metadata.note}` : "";
@@ -458,7 +248,7 @@ export default function CrmMemberDetailPage() {
       } satisfies AvatarActivity;
     });
 
-    const active = state.avatarInventory
+    const active = avatarInventory
       .filter((inventory) => inventory.is_equipped)
       .map((inventory) => ({
         id: `active-${inventory.id}`,
@@ -471,7 +261,7 @@ export default function CrmMemberDetailPage() {
     return [...active, ...acquired]
       .sort((first, second) => new Date(second.date).getTime() - new Date(first.date).getTime())
       .slice(0, 12);
-  }, [state.avatarInventory]);
+  }, [avatarInventory]);
   const canRedeemAvatar = Boolean(
     member
       && crmProfileReady
@@ -479,14 +269,14 @@ export default function CrmMemberDetailPage() {
       && selectedAvatarTierRank <= tierRank
       && member.current_xp >= selectedAvatar.xp_cost
       && (avatarStockLeft === null || avatarStockLeft > 0)
-      && !avatarStatus.loading
+      && !redeemAvatarMutation.isPending
   );
   const canGrantAvatar = Boolean(
     member
       && crmProfileReady
       && selectedGrantAvatar
       && (selectedGrantStockLeft === null || selectedGrantStockLeft > 0)
-      && !grantStatus.loading
+      && !grantAvatarMutation.isPending
   );
 
   const summary = useMemo(() => {
@@ -495,10 +285,10 @@ export default function CrmMemberDetailPage() {
     const nextXp = member.tier?.min_lifetime_xp ? Math.max(0, member.tier.min_lifetime_xp - member.lifetime_xp) : 0;
     return {
       nextXp,
-      xpEarned: state.xpLedger.filter((row) => row.xp_delta > 0).reduce((sum, row) => sum + row.xp_delta, 0),
-      xpSpent: state.xpLedger.filter((row) => row.xp_delta < 0).reduce((sum, row) => sum + Math.abs(row.xp_delta), 0),
+      xpEarned: xpLedger.filter((row) => row.xp_delta > 0).reduce((sum, row) => sum + row.xp_delta, 0),
+      xpSpent: xpLedger.filter((row) => row.xp_delta < 0).reduce((sum, row) => sum + Math.abs(row.xp_delta), 0),
     };
-  }, [member, state.xpLedger]);
+  }, [member, xpLedger]);
 
   useEffect(() => {
     if (!selectedRewardId && activeRewards.length > 0) {
@@ -535,30 +325,16 @@ export default function CrmMemberDetailPage() {
     setRedeemStatus({ loading: true, error: null, success: null });
 
     try {
-      const response = await fetch("/api/crm/redemptions", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          member_id: member.id,
-          reward_id: selectedReward.id,
-        }),
-      });
-      const json = await response.json();
-
-      if (!response.ok || !json.success) {
-        throw new Error(json.error || "Gagal redeem reward");
-      }
-
+      await redeemMutation.mutateAsync({ memberId: member.id, rewardId: selectedReward.id });
       setRedeemStatus({
         loading: false,
         error: null,
         success: `Reward ${selectedReward.name} berhasil diredeem`,
       });
-      await loadMember();
-    } catch (error) {
+    } catch (err) {
       setRedeemStatus({
         loading: false,
-        error: error instanceof Error ? error.message : "Gagal redeem reward",
+        error: err instanceof Error ? err.message : "Gagal redeem reward",
         success: null,
       });
     }
@@ -569,30 +345,16 @@ export default function CrmMemberDetailPage() {
     setAvatarStatus({ loading: true, error: null, success: null });
 
     try {
-      const response = await fetch("/api/crm/avatar-inventory", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          member_id: member.id,
-          avatar_id: selectedAvatar.id,
-        }),
-      });
-      const json = await response.json();
-
-      if (!response.ok || !json.success) {
-        throw new Error(json.error || "Gagal redeem avatar");
-      }
-
+      await redeemAvatarMutation.mutateAsync({ memberId: member.id, avatarId: selectedAvatar.id });
       setAvatarStatus({
         loading: false,
         error: null,
         success: `Avatar ${selectedAvatar.name} berhasil masuk collection`,
       });
-      await loadMember();
-    } catch (error) {
+    } catch (err) {
       setAvatarStatus({
         loading: false,
-        error: error instanceof Error ? error.message : "Gagal redeem avatar",
+        error: err instanceof Error ? err.message : "Gagal redeem avatar",
         success: null,
       });
     }
@@ -603,30 +365,16 @@ export default function CrmMemberDetailPage() {
     setAvatarStatus({ loading: true, error: null, success: null });
 
     try {
-      const response = await fetch("/api/crm/avatar-inventory", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          member_id: member.id,
-          inventory_id: inventory.id,
-        }),
-      });
-      const json = await response.json();
-
-      if (!response.ok || !json.success) {
-        throw new Error(json.error || "Gagal memakai avatar");
-      }
-
+      await equipAvatarMutation.mutateAsync({ memberId: member.id, inventoryId: inventory.id });
       setAvatarStatus({
         loading: false,
         error: null,
         success: `Avatar ${inventory.avatar?.name || "pilihan"} sekarang aktif`,
       });
-      await loadMember();
-    } catch (error) {
+    } catch (err) {
       setAvatarStatus({
         loading: false,
-        error: error instanceof Error ? error.message : "Gagal memakai avatar",
+        error: err instanceof Error ? err.message : "Gagal memakai avatar",
         success: null,
       });
     }
@@ -637,33 +385,21 @@ export default function CrmMemberDetailPage() {
     setGrantStatus({ loading: true, error: null, success: null });
 
     try {
-      const response = await fetch("/api/crm/avatar-inventory", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action: "grant",
-          member_id: member.id,
-          avatar_id: selectedGrantAvatar.id,
-          acquisition_source: grantSource,
-          equip: grantEquip,
-        }),
+      await grantAvatarMutation.mutateAsync({
+        member_id: member.id,
+        avatar_id: selectedGrantAvatar.id,
+        acquisition_source: grantSource,
+        equip: grantEquip,
       });
-      const json = await response.json();
-
-      if (!response.ok || !json.success) {
-        throw new Error(json.error || "Gagal grant avatar");
-      }
-
       setGrantStatus({
         loading: false,
         error: null,
         success: `Avatar ${selectedGrantAvatar.name} berhasil diberikan`,
       });
-      await loadMember();
-    } catch (error) {
+    } catch (err) {
       setGrantStatus({
         loading: false,
-        error: error instanceof Error ? error.message : "Gagal grant avatar",
+        error: err instanceof Error ? err.message : "Gagal grant avatar",
         success: null,
       });
     }
@@ -674,32 +410,21 @@ export default function CrmMemberDetailPage() {
     setEnrollStatus({ loading: true, error: null });
 
     try {
-      const response = await fetch("/api/crm/members", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          customer_id: member.customer_id,
-          metadata: { enrolled_by: "crm_member_detail" },
-        }),
+      const enrolledMember = await enrollMutation.mutateAsync({
+        customerId: member.customer_id,
+        metadata: { enrolled_by: "crm_member_detail" },
       });
-      const json = await response.json();
 
-      if (!response.ok || !json.success) {
-        throw new Error(json.error || "Gagal aktivasi member CRM");
-      }
-
-      const enrolledMemberId = json.data?.id;
-      if (enrolledMemberId) {
-        router.replace(`/dashboard/crm/members/${enrolledMemberId}`);
+      if (enrolledMember?.id) {
+        router.replace(`/dashboard/crm/members/${enrolledMember.id}`);
         return;
       }
 
       setEnrollStatus({ loading: false, error: null });
-      await loadMember();
-    } catch (error) {
+    } catch (err) {
       setEnrollStatus({
         loading: false,
-        error: error instanceof Error ? error.message : "Gagal aktivasi member CRM",
+        error: err instanceof Error ? err.message : "Gagal aktivasi member CRM",
       });
     }
   }
@@ -709,10 +434,9 @@ export default function CrmMemberDetailPage() {
     setSaveStatus({ loading: true, error: null, success: null });
 
     try {
-      const response = await fetch(`/api/crm/members/${member.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
+      await updateMemberMutation.mutateAsync({
+        id: member.id,
+        payload: {
           customer: {
             name: editForm.name,
             phone: editForm.phone || null,
@@ -725,20 +449,14 @@ export default function CrmMemberDetailPage() {
                 status: editForm.status,
               }
             : undefined,
-        }),
+        },
       });
-      const json = await response.json();
-
-      if (!response.ok || !json.success) {
-        throw new Error(json.error || "Gagal menyimpan member");
-      }
 
       setSaveStatus({ loading: false, error: null, success: "Data member berhasil disimpan" });
-      await loadMember();
-    } catch (error) {
+    } catch (err) {
       setSaveStatus({
         loading: false,
-        error: error instanceof Error ? error.message : "Gagal menyimpan member",
+        error: err instanceof Error ? err.message : "Gagal menyimpan member",
         success: null,
       });
     }
@@ -759,11 +477,11 @@ export default function CrmMemberDetailPage() {
           </div>
           <button
             type="button"
-            onClick={() => void loadMember()}
-            disabled={state.loading}
+            onClick={() => void refetch()}
+            disabled={loading}
             className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-slate-300 bg-white px-3 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-100 disabled:opacity-60"
           >
-            <RefreshCw className={`size-4 ${state.loading ? "animate-spin" : ""}`} />
+            <RefreshCw className={`size-4 ${loading ? "animate-spin" : ""}`} />
             Refresh
           </button>
         </div>
@@ -781,23 +499,23 @@ export default function CrmMemberDetailPage() {
               <button
                 type="button"
                 onClick={() => void handleEnroll()}
-                disabled={enrollStatus.loading}
+                disabled={enrollMutation.isPending}
                 className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-slate-950 px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300"
               >
                 <UserPlus className="size-4" />
-                {enrollStatus.loading ? "Mengaktifkan..." : "Aktifkan Member CRM"}
+                {enrollMutation.isPending ? "Mengaktifkan..." : "Aktifkan Member CRM"}
               </button>
             </div>
           </div>
         )}
 
-        {state.error && (
+        {errorMessage && (
           <div className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-            {state.error}
+            {errorMessage}
           </div>
         )}
 
-        {state.loading && !member ? (
+        {loading && !member ? (
           <div className="rounded-lg border border-slate-200 bg-white px-4 py-12 text-center text-sm text-slate-500 shadow-sm">
             Memuat detail member...
           </div>
@@ -855,11 +573,11 @@ export default function CrmMemberDetailPage() {
                 <button
                   type="button"
                   onClick={() => void handleSaveProfile()}
-                  disabled={saveStatus.loading || !editForm.name.trim()}
+                  disabled={updateMemberMutation.isPending || !editForm.name.trim()}
                   className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-slate-950 px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300"
                 >
                   <Save className="size-4" />
-                  {saveStatus.loading ? "Menyimpan..." : "Simpan"}
+                  {updateMemberMutation.isPending ? "Menyimpan..." : "Simpan"}
                 </button>
               </div>
 
@@ -949,7 +667,7 @@ export default function CrmMemberDetailPage() {
                     Active Avatar
                   </h3>
                   <span className="rounded-md bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-600">
-                    {formatNumber(state.avatarInventory.length)} owned
+                    {formatNumber(avatarInventory.length)} owned
                   </span>
                 </div>
 
@@ -995,7 +713,7 @@ export default function CrmMemberDetailPage() {
                       <select
                         value={selectedAvatar?.id ?? ""}
                         onChange={(event) => setSelectedAvatarId(event.target.value)}
-                        disabled={redeemableAvatars.length === 0 || avatarStatus.loading}
+                        disabled={redeemableAvatars.length === 0 || redeemAvatarMutation.isPending || equipAvatarMutation.isPending}
                         className="mt-1 h-10 w-full rounded-md border border-slate-300 bg-white px-3 text-sm text-slate-900 shadow-sm outline-none transition focus:border-slate-500 focus:ring-2 focus:ring-slate-200 disabled:bg-slate-100 disabled:text-slate-400"
                       >
                         {redeemableAvatars.length === 0 ? (
@@ -1057,7 +775,7 @@ export default function CrmMemberDetailPage() {
                       className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-md bg-slate-950 px-3 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300"
                     >
                       <TicketCheck className="size-4" />
-                      {avatarStatus.loading ? "Processing..." : "Redeem Avatar"}
+                      {redeemAvatarMutation.isPending ? "Processing..." : "Redeem Avatar"}
                     </button>
 
                     <div className="rounded-md border border-slate-200 bg-white p-3 shadow-sm">
@@ -1073,7 +791,7 @@ export default function CrmMemberDetailPage() {
                           <select
                             value={selectedGrantAvatar?.id ?? ""}
                             onChange={(event) => setSelectedGrantAvatarId(event.target.value)}
-                            disabled={grantableAvatars.length === 0 || grantStatus.loading}
+                            disabled={grantableAvatars.length === 0 || grantAvatarMutation.isPending}
                             className="mt-1 h-10 w-full rounded-md border border-slate-300 bg-white px-3 text-sm text-slate-900 shadow-sm outline-none transition focus:border-slate-500 focus:ring-2 focus:ring-slate-200 disabled:bg-slate-100 disabled:text-slate-400"
                           >
                             {grantableAvatars.length === 0 ? (
@@ -1094,7 +812,7 @@ export default function CrmMemberDetailPage() {
                             <select
                               value={grantSource}
                               onChange={(event) => setGrantSource(event.target.value as "manual" | "campaign" | "partner")}
-                              disabled={grantStatus.loading}
+                              disabled={grantAvatarMutation.isPending}
                               className="mt-1 h-10 w-full rounded-md border border-slate-300 bg-white px-3 text-sm text-slate-900 shadow-sm outline-none transition focus:border-slate-500 focus:ring-2 focus:ring-slate-200 disabled:bg-slate-100 disabled:text-slate-400"
                             >
                               <option value="manual">Manual</option>
@@ -1136,20 +854,20 @@ export default function CrmMemberDetailPage() {
                           className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-md border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-800 shadow-sm transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
                         >
                           <PlusCircle className="size-4" />
-                          {grantStatus.loading ? "Granting..." : "Grant Avatar"}
+                          {grantAvatarMutation.isPending ? "Granting..." : "Grant Avatar"}
                         </button>
                       </div>
                     </div>
                   </div>
 
                   <div>
-                    {state.avatarInventory.length === 0 ? (
+                    {avatarInventory.length === 0 ? (
                       <div className="rounded-md border border-slate-200 bg-slate-50 px-4 py-8 text-center text-sm text-slate-500">
                         Collection masih kosong.
                       </div>
                     ) : (
                       <div className="grid gap-3 sm:grid-cols-2">
-                        {state.avatarInventory.map((inventory) => (
+                        {avatarInventory.map((inventory) => (
                           <div key={inventory.id} className="rounded-md border border-slate-200 bg-slate-50 p-3">
                             <div className="flex gap-3">
                               {inventory.avatar ? (
@@ -1176,7 +894,7 @@ export default function CrmMemberDetailPage() {
                             <button
                               type="button"
                               onClick={() => void handleEquipAvatar(inventory)}
-                              disabled={inventory.is_equipped || avatarStatus.loading}
+                              disabled={inventory.is_equipped || equipAvatarMutation.isPending || redeemAvatarMutation.isPending}
                               className="mt-3 inline-flex h-9 w-full items-center justify-center rounded-md border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-100 disabled:cursor-default disabled:border-emerald-200 disabled:bg-emerald-50 disabled:text-emerald-700"
                             >
                               {inventory.is_equipped ? "Active" : "Use Avatar"}
@@ -1238,7 +956,7 @@ export default function CrmMemberDetailPage() {
                     <select
                       value={selectedReward?.id ?? ""}
                       onChange={(event) => setSelectedRewardId(event.target.value)}
-                      disabled={activeRewards.length === 0 || redeemStatus.loading}
+                      disabled={activeRewards.length === 0 || redeemMutation.isPending}
                       className="mt-1 h-10 w-full rounded-md border border-slate-300 bg-white px-3 text-sm text-slate-900 shadow-sm outline-none transition focus:border-slate-500 focus:ring-2 focus:ring-slate-200 disabled:bg-slate-100 disabled:text-slate-400"
                     >
                       {activeRewards.length === 0 ? (
@@ -1295,7 +1013,7 @@ export default function CrmMemberDetailPage() {
                     className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-md bg-slate-950 px-3 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300"
                   >
                     <TicketCheck className="size-4" />
-                    {redeemStatus.loading ? "Processing..." : "Redeem"}
+                    {redeemMutation.isPending ? "Processing..." : "Redeem"}
                   </button>
                 </div>
               </div>
@@ -1306,16 +1024,16 @@ export default function CrmMemberDetailPage() {
                     <TicketCheck className="size-4" />
                     Redemption History
                   </h3>
-                  <span className="text-xs text-slate-500">{formatNumber(state.redemptions.length)} records</span>
+                  <span className="text-xs text-slate-500">{formatNumber(redemptions.length)} records</span>
                 </div>
                 <div className="p-4">
-                  {state.redemptions.length === 0 ? (
+                  {redemptions.length === 0 ? (
                     <div className="rounded-md border border-slate-200 bg-slate-50 px-4 py-8 text-center text-sm text-slate-500">
                       Belum ada redemption.
                     </div>
                   ) : (
                     <div className="divide-y divide-slate-100 overflow-hidden rounded-md border border-slate-200">
-                      {state.redemptions.map((redemption) => (
+                      {redemptions.map((redemption) => (
                         <div key={redemption.id} className="grid grid-cols-[1fr_auto] gap-3 px-4 py-3">
                           <div className="min-w-0">
                             <div className="truncate text-sm font-medium text-slate-900">
@@ -1342,16 +1060,16 @@ export default function CrmMemberDetailPage() {
                     <History className="size-4" />
                     XP History
                   </h3>
-                  <span className="text-xs text-slate-500">{formatNumber(state.xpLedger.length)} records</span>
+                  <span className="text-xs text-slate-500">{formatNumber(xpLedger.length)} records</span>
                 </div>
                 <div className="p-4">
-                  {state.xpLedger.length === 0 ? (
+                  {xpLedger.length === 0 ? (
                     <div className="rounded-md border border-slate-200 bg-slate-50 px-4 py-8 text-center text-sm text-slate-500">
                       Belum ada XP history.
                     </div>
                   ) : (
                     <div className="divide-y divide-slate-100 overflow-hidden rounded-md border border-slate-200">
-                      {state.xpLedger.map((ledger) => (
+                      {xpLedger.map((ledger) => (
                         <div key={ledger.id} className="grid grid-cols-[1fr_auto] gap-3 px-4 py-3">
                           <div className="min-w-0">
                             <div className="truncate text-sm font-medium text-slate-900">
@@ -1378,16 +1096,16 @@ export default function CrmMemberDetailPage() {
                     <ReceiptText className="size-4" />
                     Recent Orders
                   </h3>
-                  <span className="text-xs text-slate-500">{formatNumber(state.recentOrders.length)} orders</span>
+                  <span className="text-xs text-slate-500">{formatNumber(recentOrders.length)} orders</span>
                 </div>
                 <div className="p-4">
-                  {state.recentOrders.length === 0 ? (
+                  {recentOrders.length === 0 ? (
                     <div className="rounded-md border border-slate-200 bg-slate-50 px-4 py-8 text-center text-sm text-slate-500">
                       Belum ada transaksi.
                     </div>
                   ) : (
                     <div className="divide-y divide-slate-100 overflow-hidden rounded-md border border-slate-200">
-                      {state.recentOrders.map((order) => (
+                      {recentOrders.map((order) => (
                         <div key={order.id} className="grid grid-cols-[1fr_auto] gap-3 px-4 py-3">
                           <div className="min-w-0">
                             <div className="truncate text-sm font-medium text-slate-900">{order.order_number}</div>

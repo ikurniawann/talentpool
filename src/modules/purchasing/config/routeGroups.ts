@@ -21,9 +21,9 @@ export const PURCHASING_ROUTES: RouteGroup = {
       path: "suppliers",
       label: "Supplier",
       children: [
-        { path: "suppliers/new", label: "Tambah Supplier" },
+        { path: "suppliers/insert", label: "Tambah Supplier" },
         { path: "suppliers/[id]", label: "Detail Supplier" },
-        { path: "suppliers/[id]/edit", label: "Edit Supplier" },
+        { path: "suppliers/edit/[id]", label: "Edit Supplier" },
       ],
     },
 
@@ -32,9 +32,9 @@ export const PURCHASING_ROUTES: RouteGroup = {
       path: "raw-materials",
       label: "Bahan Baku",
       children: [
-        { path: "raw-materials/new", label: "Tambah Bahan" },
+        { path: "raw-materials/insert", label: "Tambah Bahan" },
         { path: "raw-materials/[id]", label: "Detail Bahan" },
-        { path: "raw-materials/[id]/edit", label: "Edit Bahan" },
+        { path: "raw-materials/edit/[id]", label: "Edit Bahan" },
       ],
     },
 
@@ -43,10 +43,10 @@ export const PURCHASING_ROUTES: RouteGroup = {
       path: "products",
       label: "Produk",
       children: [
-        { path: "products/new", label: "Tambah Produk" },
+        { path: "products/insert", label: "Tambah Produk" },
         { path: "products/[id]", label: "Detail Produk" },
-        { path: "products/[id]/edit", label: "Edit Produk" },
-        { path: "products/[id]/bom", label: "BOM Editor" },
+        { path: "products/edit/[id]", label: "Edit Produk" },
+        { path: "products/bom/[id]", label: "BOM Editor" },
       ],
     },
 
@@ -56,21 +56,21 @@ export const PURCHASING_ROUTES: RouteGroup = {
       label: "Purchase Order",
       badge: "open",
       children: [
-        { path: "purchase-orders/new", label: "Buat PO" },
+        { path: "purchase-orders/insert", label: "Buat PO" },
         { path: "purchase-orders/[id]", label: "Detail PO" },
-        { path: "purchase-orders/[id]/edit", label: "Edit PO" },
+        { path: "purchase-orders/edit/[id]", label: "Edit PO" },
         { path: "purchase-orders/approval", label: "Approval PO" },
       ],
     },
 
     // ── Receiving ───────────────────────────────────────────
     {
-      path: "receiving",
-      label: "Barang Masuk",
+      path: "grn",
+      label: "Receive",
       badge: "pending_grn",
       children: [
-        { path: "receiving/new", label: "Terima Barang" },
-        { path: "receiving/[id]", label: "Detail GRN" },
+        { path: "grn/insert", label: "Terima Barang" },
+        { path: "grn/[id]", label: "Detail GRN" },
         { path: "delivery/[id]", label: "Detail Pengiriman" },
       ],
     },
@@ -91,7 +91,7 @@ export const PURCHASING_ROUTES: RouteGroup = {
       label: "Retur",
       badge: null,
       children: [
-        { path: "returns/new", label: "Buat Retur" },
+        { path: "returns/insert", label: "Buat Retur" },
         { path: "returns/[id]", label: "Detail Retur" },
       ],
     },

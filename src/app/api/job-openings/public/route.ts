@@ -1,21 +1,11 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { createPgClient } from "@/lib/pg/create-client";
 
 export async function GET() {
   try {
-    // Use service role key for server-side access (bypasses RLS)
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!,
-      {
-        auth: {
-          autoRefreshToken: false,
-          persistSession: false,
-        },
-      }
-    );
+    const db = createPgClient();
 
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from("job_openings")
       .select(`
         id,

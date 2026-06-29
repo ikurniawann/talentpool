@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { createServiceClient } from "@/lib/supabase/service-client";
+import { createPgClient } from "@/lib/pg/create-client";
 import { awardCrmXpForPosOrder } from "@/lib/crm/loyalty-engine";
 
 const orderItemSchema = z.object({
@@ -30,14 +30,14 @@ function isUuid(value: string) {
 }
 
 async function resolveTableId(
-  supabase: ReturnType<typeof createServiceClient>,
+  db: import("@/lib/pg/types").DbClient,
   tableCode: string,
   tableId?: string | null
 ) {
   if (tableId) return tableId;
   if (isUuid(tableCode)) return tableCode;
 
-  const { data, error } = await supabase
+  const { data, error } = await db
     .from("pos_tables")
     .select("id")
     .or(`table_number.eq.${tableCode},qr_code.eq.${tableCode}`)
@@ -62,8 +62,8 @@ function normalizeStation(station: string) {
 export async function POST(request: NextRequest) {
   try {
     const payload = createOrderSchema.parse(await request.json());
-    const supabase = createServiceClient();
-    const tableId = await resolveTableId(supabase, payload.table_code, payload.table_id);
+    const db = createPgClient();
+    const tableId = await resolveTableId(db, payload.table_code, payload.table_id);
     const cashierId = await resolveCashierId();
     const subtotal = payload.items.reduce((sum, item) => sum + item.unit_price * item.quantity, 0);
     const tax = Math.round(subtotal * 0.1);
@@ -81,7 +81,7 @@ export async function POST(request: NextRequest) {
       // NOTE: deduction still precedes order creation, so a later order-insert
       // failure leaves the balance debited; the full fix is a single
       // create-order-with-payment RPC (tracked as a follow-up).
-      const { error: balanceError } = await supabase.rpc("update_ark_coin_balance", {
+      const { error: balanceError } = await db.rpc("update_ark_coin_balance", {
         p_customer_id: payload.customer_id,
         p_amount: -total,
         p_type: "payment",
@@ -98,7 +98,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const { data: orderNumData, error: orderNumError } = await supabase.rpc("generate_order_number");
+    const { data: orderNumData, error: orderNumError } = await db.rpc("generate_order_number");
     if (orderNumError) throw orderNumError;
 
     const orderNumber = typeof orderNumData === "string" ? orderNumData : String(orderNumData);
@@ -106,7 +106,7 @@ export async function POST(request: NextRequest) {
     const orderStatus = selfPaid ? "confirmed" : "pending";
     const paymentMethod = selfPaid ? "ark_coin" : null;
 
-    const { data: order, error: orderError } = await supabase
+    const { data: order, error: orderError } = await db
       .from("pos_orders")
       .insert({
         order_number: orderNumber,
@@ -154,7 +154,7 @@ export async function POST(request: NextRequest) {
       inventory_deducted: false,
     }));
 
-    let { error: itemsError } = await supabase.from("pos_order_items").insert(orderItems);
+    let { error: itemsError } = await db.from("pos_order_items").insert(orderItems);
     if (itemsError?.code === "42703" || itemsError?.code === "PGRST204") {
       const legacyItems = orderItems.map((item) => {
         const legacyItem = { ...item } as Partial<typeof item>;
@@ -162,12 +162,12 @@ export async function POST(request: NextRequest) {
         delete legacyItem.kitchen_status;
         return legacyItem;
       });
-      const legacyResult = await supabase.from("pos_order_items").insert(legacyItems);
+      const legacyResult = await db.from("pos_order_items").insert(legacyItems);
       itemsError = legacyResult.error;
     }
     if (itemsError) throw itemsError;
 
-    await supabase.from("pos_order_status_history").insert({
+    await db.from("pos_order_status_history").insert({
       order_id: orderId,
       from_status: null,
       to_status: orderStatus,
@@ -176,7 +176,7 @@ export async function POST(request: NextRequest) {
     });
 
     const crmXp = selfPaid
-      ? await awardCrmXpForPosOrder(supabase, {
+      ? await awardCrmXpForPosOrder(db, {
           orderId,
           customerId: payload.customer_id || null,
           totalAmount: total,

@@ -1,7 +1,7 @@
 -- =====================================================
 -- STEP 3: Submit Test Feedback Responses
 -- =====================================================
--- Jalankan di Supabase Dashboard > SQL Editor
+-- Jalankan di admin database > SQL Editor
 -- Untuk mensimulasikan submit feedback dari reviewer
 -- =====================================================
 

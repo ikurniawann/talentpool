@@ -4,7 +4,7 @@
 // ============================================================
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { createServerPgClient } from "@/lib/pg/create-client";
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -16,13 +16,13 @@ interface RouteParams {
 
 export async function POST(request: NextRequest, { params }: RouteParams) {
   try {
-    const supabase = await createClient();
+    const db = await createServerPgClient();
     const { id } = await params;
     const body = await request.json();
     const { approved, rejection_reason } = body;
 
     // Get current user
-    const { data: { user } } = await supabase.auth.getUser();
+    const { data: { user } } = await db.auth.getUser();
     if (!user) {
       return NextResponse.json(
         { error: 'Unauthorized' },
@@ -31,14 +31,14 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     }
 
     // Get employee record for current user
-    const { data: currentUser } = await supabase
+    const { data: currentUser } = await db
       .from('employees')
       .select('id')
       .eq('auth_id', user.id)
       .single();
 
     // Get loan
-    const { data: loan } = await supabase
+    const { data: loan } = await db
       .from('loans')
       .select('*')
       .eq('id', id)
@@ -79,7 +79,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       updateData.rejection_reason = rejection_reason || 'Tidak disetujui';
     }
 
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from('loans')
       .update(updateData)
       .eq('id', id)

@@ -1,6 +1,6 @@
 -- ============================================
 -- Check Inventory Table Schema
--- Run this in Supabase SQL Editor
+-- Run this in psql atau SQL client
 -- ============================================
 
 -- 1. Check table structure

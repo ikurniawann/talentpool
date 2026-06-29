@@ -1,4 +1,43 @@
-import { SupabaseClient } from "@supabase/supabase-js";
+import type { DbClient } from "@/lib/pg/types";
+
+export interface InventoryLocation {
+  branch_id: string | null;
+  warehouse_id: string | null;
+}
+
+/**
+ * Lokasi stok untuk sebuah bahan baku: branch milik bahan baku + warehouse
+ * default branch tersebut. Bila bahan baku global (tanpa branch) → null/null
+ * (kompatibel dengan stok single-pool lama).
+ */
+export async function resolveInventoryLocation(
+  db: DbClient,
+  rawMaterialId: string
+): Promise<InventoryLocation> {
+  const { data: material } = await db
+    .from("raw_materials")
+    .select("branch_id")
+    .eq("id", rawMaterialId)
+    .maybeSingle();
+
+  const branchId = (material as { branch_id: string | null } | null)?.branch_id ?? null;
+  if (!branchId) return { branch_id: null, warehouse_id: null };
+
+  const { data: warehouse } = await db
+    .from("warehouses", "configuration")
+    .select("id")
+    .eq("branch_id", branchId)
+    .eq("is_active", true)
+    .order("is_default", { ascending: false })
+    .order("created_at", { ascending: true })
+    .limit(1)
+    .maybeSingle();
+
+  return {
+    branch_id: branchId,
+    warehouse_id: (warehouse as { id: string } | null)?.id ?? null,
+  };
+}
 
 export type StockStatus = "normal" | "low_stock" | "out_of_stock" | "overstock";
 export type MovementType = "in" | "out" | "adjustment" | "transfer" | "return";
@@ -33,16 +72,21 @@ export const MOVEMENT_TYPE_COLORS: Record<MovementType, string> = {
   return: "bg-purple-100 text-purple-700",
 };
 
+function toQty(value: unknown): number {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
 // Update qty_on_order saat PO dikirim, dibatalkan, atau barang diterima.
 export async function adjustInventoryOnOrder(
-  supabase: SupabaseClient,
+  db: DbClient,
   rawMaterialId: string,
   qtyDelta: number,
   userId?: string
 ): Promise<void> {
   if (qtyDelta === 0) return;
 
-  const { data: existing, error: existingError } = await supabase
+  const { data: existing, error: existingError } = await db
     .from("inventory")
     .select("id, qty_on_order")
     .eq("raw_material_id", rawMaterialId)
@@ -53,7 +97,7 @@ export async function adjustInventoryOnOrder(
 
   if (existing) {
     const nextQtyOnOrder = Math.max(0, Number(existing.qty_on_order || 0) + qtyDelta);
-    const { error } = await supabase
+    const { error } = await db
       .from("inventory")
       .update({
         qty_on_order: nextQtyOnOrder,
@@ -67,11 +111,14 @@ export async function adjustInventoryOnOrder(
 
   if (qtyDelta < 0) return;
 
-  const { error } = await supabase.from("inventory").insert({
+  const location = await resolveInventoryLocation(db, rawMaterialId);
+  const { error } = await db.from("inventory").insert({
     raw_material_id: rawMaterialId,
     qty_available: 0,
     qty_on_order: qtyDelta,
     unit_cost: 0,
+    branch_id: location.branch_id,
+    warehouse_id: location.warehouse_id,
     created_by: userId,
   });
 
@@ -80,66 +127,106 @@ export async function adjustInventoryOnOrder(
 
 // Tambah inventory dari GRN
 export async function addInventoryFromGrn(
-  supabase: SupabaseClient,
+  db: DbClient,
   rawMaterialId: string,
   qtyAdded: number,
   unitCost: number,
   grnId: string,
   grnNumber: string,
-  userId: string
+  userId: string,
+  warehouseId?: string | null
 ): Promise<void> {
-  if (qtyAdded <= 0) return;
+  const qty = toQty(qtyAdded);
+  const cost = toQty(unitCost);
+  if (qty <= 0) return;
 
-  const { data: existing } = await supabase
+  let location: InventoryLocation;
+  if (warehouseId) {
+    const { data: warehouse } = await db
+      .from("warehouses", "configuration")
+      .select("branch_id")
+      .eq("id", warehouseId)
+      .maybeSingle();
+    location = {
+      branch_id: (warehouse as { branch_id: string } | null)?.branch_id ?? null,
+      warehouse_id: warehouseId,
+    };
+  } else {
+    location = await resolveInventoryLocation(db, rawMaterialId);
+  }
+
+  const { data: existing } = await db
     .from("inventory")
     .select("id, qty_available, qty_on_order, unit_cost")
     .eq("raw_material_id", rawMaterialId)
+    .eq("warehouse_id", location.warehouse_id)
     .eq("is_active", true)
     .maybeSingle();
 
-  let inventoryId: string;
-  let qtyBefore: number;
-  let newUnitCost: number;
-
   if (existing) {
-    // Weighted average cost
-    const totalQty = existing.qty_available + qtyAdded;
-    newUnitCost = totalQty > 0
-      ? ((existing.qty_available * (existing.unit_cost || 0)) + (qtyAdded * unitCost)) / totalQty
-      : unitCost;
+    const qtyBefore = toQty(existing.qty_available);
+    const onOrder = toQty(existing.qty_on_order);
+    const prevCost = toQty(existing.unit_cost);
+    const totalQty = qtyBefore + qty;
+    const newUnitCost =
+      totalQty > 0
+        ? (qtyBefore * prevCost + qty * cost) / totalQty
+        : cost;
 
-    qtyBefore = existing.qty_available;
-    await supabase.from("inventory").update({
-      qty_available: qtyBefore + qtyAdded,
-      qty_on_order: Math.max(0, Number(existing.qty_on_order || 0) - qtyAdded),
+    const { error: updateError } = await db.from("inventory").update({
+      qty_available: totalQty,
+      qty_on_order: Math.max(0, onOrder - qty),
       unit_cost: newUnitCost,
+      branch_id: location.branch_id,
+      warehouse_id: location.warehouse_id,
       last_movement_at: new Date().toISOString(),
       updated_by: userId,
     }).eq("id", existing.id);
-    inventoryId = existing.id;
-  } else {
-    qtyBefore = 0;
-    newUnitCost = unitCost;
-    const { data: newInv, error } = await supabase.from("inventory").insert({
+
+    if (updateError) throw updateError;
+
+    await db.from("inventory_movements").insert({
+      inventory_id: existing.id,
       raw_material_id: rawMaterialId,
-      qty_available: qtyAdded,
-      unit_cost: unitCost,
-      last_movement_at: new Date().toISOString(),
+      tipe: "in",
+      jumlah: qty,
+      qty_before: qtyBefore,
+      qty_after: totalQty,
+      unit_cost: newUnitCost,
+      total_cost: qty * newUnitCost,
+      branch_id: location.branch_id,
+      warehouse_id: location.warehouse_id,
+      reference_type: "grn",
+      reference_id: grnId,
+      reference_number: grnNumber,
+      alasan: `Penerimaan barang dari GRN ${grnNumber}`,
       created_by: userId,
-    }).select("id").single();
-    if (error) throw error;
-    inventoryId = newInv.id;
+    });
+    return;
   }
 
-  await supabase.from("inventory_movements").insert({
-    inventory_id: inventoryId,
+  const { data: newInv, error } = await db.from("inventory").insert({
+    raw_material_id: rawMaterialId,
+    qty_available: qty,
+    unit_cost: cost,
+    branch_id: location.branch_id,
+    warehouse_id: location.warehouse_id,
+    last_movement_at: new Date().toISOString(),
+    created_by: userId,
+  }).select("id").single();
+  if (error) throw error;
+
+  await db.from("inventory_movements").insert({
+    inventory_id: newInv.id,
     raw_material_id: rawMaterialId,
     tipe: "in",
-    jumlah: qtyAdded,
-    qty_before: qtyBefore,
-    qty_after: qtyBefore + qtyAdded,
-    unit_cost: newUnitCost,
-    total_cost: qtyAdded * newUnitCost,
+    jumlah: qty,
+    qty_before: 0,
+    qty_after: qty,
+    unit_cost: cost,
+    total_cost: qty * cost,
+    branch_id: location.branch_id,
+    warehouse_id: location.warehouse_id,
     reference_type: "grn",
     reference_id: grnId,
     reference_number: grnNumber,
@@ -149,7 +236,7 @@ export async function addInventoryFromGrn(
 }
 
 export async function addInventoryFromProduction(
-  supabase: SupabaseClient,
+  db: DbClient,
   rawMaterialId: string,
   qtyAdded: number,
   unitCost: number,
@@ -159,7 +246,7 @@ export async function addInventoryFromProduction(
 ): Promise<void> {
   if (qtyAdded <= 0) return;
 
-  const { data: existingMovement, error: movementLookupError } = await supabase
+  const { data: existingMovement, error: movementLookupError } = await db
     .from("inventory_movements")
     .select("id")
     .eq("raw_material_id", rawMaterialId)
@@ -171,7 +258,9 @@ export async function addInventoryFromProduction(
   if (movementLookupError) throw movementLookupError;
   if (existingMovement) return;
 
-  const { data: existing, error: existingError } = await supabase
+  const location = await resolveInventoryLocation(db, rawMaterialId);
+
+  const { data: existing, error: existingError } = await db
     .from("inventory")
     .select("id, qty_available, unit_cost")
     .eq("raw_material_id", rawMaterialId)
@@ -191,11 +280,13 @@ export async function addInventoryFromProduction(
       ? ((qtyBefore * Number(existing.unit_cost || 0)) + (qtyAdded * unitCost)) / totalQty
       : unitCost;
 
-    const { error } = await supabase
+    const { error } = await db
       .from("inventory")
       .update({
         qty_available: totalQty,
         unit_cost: newUnitCost,
+        branch_id: location.branch_id,
+        warehouse_id: location.warehouse_id,
         last_movement_at: new Date().toISOString(),
         updated_by: userId,
       })
@@ -204,12 +295,14 @@ export async function addInventoryFromProduction(
     if (error) throw error;
     inventoryId = existing.id;
   } else {
-    const { data: newInventory, error } = await supabase
+    const { data: newInventory, error } = await db
       .from("inventory")
       .insert({
         raw_material_id: rawMaterialId,
         qty_available: qtyAdded,
         unit_cost: unitCost,
+        branch_id: location.branch_id,
+        warehouse_id: location.warehouse_id,
         last_movement_at: new Date().toISOString(),
         created_by: userId,
       })
@@ -220,7 +313,7 @@ export async function addInventoryFromProduction(
     inventoryId = newInventory.id;
   }
 
-  const { error: movementError } = await supabase.from("inventory_movements").insert({
+  const { error: movementError } = await db.from("inventory_movements").insert({
     inventory_id: inventoryId,
     raw_material_id: rawMaterialId,
     tipe: "in",
@@ -229,6 +322,8 @@ export async function addInventoryFromProduction(
     qty_after: qtyBefore + qtyAdded,
     unit_cost: newUnitCost,
     total_cost: qtyAdded * newUnitCost,
+    branch_id: location.branch_id,
+    warehouse_id: location.warehouse_id,
     reference_type: "production_wip",
     reference_id: productionOrderId,
     reference_number: productionNumber,
@@ -241,7 +336,7 @@ export async function addInventoryFromProduction(
 
 // Kurangi inventory saat GRN dihapus
 export async function removeInventoryFromGrn(
-  supabase: SupabaseClient,
+  db: DbClient,
   rawMaterialId: string,
   qtyRemoved: number,
   grnId: string,
@@ -250,7 +345,12 @@ export async function removeInventoryFromGrn(
 ): Promise<void> {
   if (qtyRemoved <= 0) return;
 
-  const { data: existing } = await supabase
+  const qty = toQty(qtyRemoved);
+  if (qty <= 0) return;
+
+  const location = await resolveInventoryLocation(db, rawMaterialId);
+
+  const { data: existing } = await db
     .from("inventory")
     .select("id, qty_available, qty_on_order")
     .eq("raw_material_id", rawMaterialId)
@@ -259,23 +359,27 @@ export async function removeInventoryFromGrn(
 
   if (!existing) return;
 
-  const qtyBefore = existing.qty_available;
-  const qtyAfter = Math.max(0, qtyBefore - qtyRemoved);
+  const qtyBefore = toQty(existing.qty_available);
+  const qtyAfter = Math.max(0, qtyBefore - qty);
 
-  await supabase.from("inventory").update({
+  await db.from("inventory").update({
     qty_available: qtyAfter,
-    qty_on_order: Number(existing.qty_on_order || 0) + qtyRemoved,
+    qty_on_order: toQty(existing.qty_on_order) + qty,
+    branch_id: location.branch_id,
+    warehouse_id: location.warehouse_id,
     last_movement_at: new Date().toISOString(),
     updated_by: userId,
   }).eq("id", existing.id);
 
-  await supabase.from("inventory_movements").insert({
+  await db.from("inventory_movements").insert({
     inventory_id: existing.id,
     raw_material_id: rawMaterialId,
     tipe: "out",
-    jumlah: qtyRemoved,
+    jumlah: qty,
     qty_before: qtyBefore,
     qty_after: qtyAfter,
+    branch_id: location.branch_id,
+    warehouse_id: location.warehouse_id,
     reference_type: "grn_delete",
     reference_id: grnId,
     reference_number: grnNumber,

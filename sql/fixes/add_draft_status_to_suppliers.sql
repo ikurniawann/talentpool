@@ -1,5 +1,5 @@
 -- Add 'draft' status to supplier_status_check constraint
--- Run this in Supabase SQL Editor
+-- Run this in psql atau SQL client
 
 -- Drop existing constraint
 ALTER TABLE suppliers DROP CONSTRAINT IF EXISTS supplier_status_check;

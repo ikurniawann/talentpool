@@ -5,7 +5,7 @@
 // ============================================================
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { createServerPgClient } from "@/lib/pg/create-client";
 
 // ============================================================
 // GET /api/hris/payroll
@@ -13,12 +13,12 @@ import { createClient } from '@/lib/supabase/server';
 
 export async function GET(request: NextRequest) {
   try {
-    const supabase = await createClient();
+    const db = await createServerPgClient();
     const { searchParams } = new URL(request.url);
     const year = searchParams.get('year');
     const status = searchParams.get('status');
 
-    let query = supabase
+    let query = db
       .from('payroll_runs')
       .select(`
         *,
@@ -76,7 +76,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createClient();
+    const db = await createServerPgClient();
     const body = await request.json();
     const { period_month, period_year, run_name } = body;
 
@@ -89,7 +89,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if period already exists
-    const { data: existing } = await supabase
+    const { data: existing } = await db
       .from('payroll_runs')
       .select('id')
       .eq('period_month', period_month)
@@ -104,7 +104,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Get current user
-    const { data: { user } } = await supabase.auth.getUser();
+    const { data: { user } } = await db.auth.getUser();
     if (!user) {
       return NextResponse.json(
         { error: 'Unauthorized' },
@@ -113,14 +113,14 @@ export async function POST(request: NextRequest) {
     }
 
     // Get employee record for current user
-    const { data: currentUser } = await supabase
+    const { data: currentUser } = await db
       .from('employees')
       .select('id')
       .eq('auth_id', user.id)
       .single();
 
     // Create payroll run
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from('payroll_runs')
       .insert({
         run_name: run_name || `Payroll ${getMonthName(period_month)} ${period_year}`,

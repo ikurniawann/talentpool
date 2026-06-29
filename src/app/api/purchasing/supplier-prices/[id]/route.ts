@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server";
+import { createServerPgClient } from "@/lib/pg/create-client";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import {
@@ -25,17 +25,17 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    await requireApiRole(["purchasing_admin", "purchasing_staff", "purchasing_manager"]);
+    await requireApiRole(["purchasing_admin", "purchasing_staff", "purchasing_manager", "super_admin"]);
     const { id } = await params;
-    const supabase = await createClient();
+    const db = await createServerPgClient();
 
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from("supplier_price_lists")
       .select(`
         *,
-        supplier:supplier_id (id, kode, nama),
-        bahan_baku:bahan_baku_id (id, kode, nama),
-        satuan:satuan_id (id, kode, nama)
+        supplier:suppliers!supplier_id (id, kode, nama_supplier),
+        bahan_baku:raw_materials!bahan_baku_id (id, kode, nama),
+        satuan:units!satuan_id (id, kode, nama)
       `)
       .eq("id", id)
       .eq("is_active", true)
@@ -59,16 +59,16 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const user = await requireApiRole(["purchasing_admin", "purchasing_staff"]);
+    const user = await requireApiRole(["purchasing_admin", "purchasing_staff", "purchasing_manager", "super_admin"]);
     const { id } = await params;
-    const supabase = await createClient();
+    const db = await createServerPgClient();
 
     const body = await request.json();
     const validated = updatePriceSchema.parse(body);
 
     // Verify satuan if being updated
     if (validated.satuan_id) {
-      const { data: satuan } = await supabase
+      const { data: satuan } = await db
         .from("satuan")
         .select("id")
         .eq("id", validated.satuan_id)
@@ -82,14 +82,14 @@ export async function PUT(
 
     // If setting is_preferred, unset other preferred for this bahan_baku
     if (validated.is_preferred) {
-      const { data: current } = await supabase
+      const { data: current } = await db
         .from("supplier_price_lists")
         .select("bahan_baku_id")
         .eq("id", id)
         .single();
 
       if (current) {
-        await supabase
+        await db
           .from("supplier_price_lists")
           .update({ is_preferred: false })
           .eq("bahan_baku_id", current.bahan_baku_id)
@@ -99,16 +99,16 @@ export async function PUT(
       }
     }
 
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from("supplier_price_lists")
       .update({ ...validated, updated_by: user.id })
       .eq("id", id)
       .eq("is_active", true)
       .select(`
         *,
-        supplier:supplier_id (id, kode, nama),
-        bahan_baku:bahan_baku_id (id, kode, nama),
-        satuan:satuan_id (id, kode, nama)
+        supplier:suppliers!supplier_id (id, kode, nama_supplier),
+        bahan_baku:raw_materials!bahan_baku_id (id, kode, nama),
+        satuan:units!satuan_id (id, kode, nama)
       `)
       .single();
 
@@ -133,11 +133,11 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const user = await requireApiRole(["purchasing_admin"]);
+    const user = await requireApiRole(["purchasing_admin", "purchasing_manager", "purchasing_staff", "super_admin"]);
     const { id } = await params;
-    const supabase = await createClient();
+    const db = await createServerPgClient();
 
-    const { error } = await supabase
+    const { error } = await db
       .from("supplier_price_lists")
       .update({ is_active: false, updated_by: user.id })
       .eq("id", id);

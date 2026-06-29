@@ -1,6 +1,6 @@
 -- ============================================
 -- FIX: Check & Update Inventory for Mie Instant
--- Run in Supabase SQL Editor
+-- Run in psql atau SQL client
 -- ============================================
 
 -- Step 1: Check GRN untuk Mie Instant

@@ -17,14 +17,28 @@ import { listPriceLists } from "@/lib/purchasing";
 import { SupplierPriceList } from "@/types/purchasing";
 import { toast } from "sonner";
 
+function toNumber(value: unknown): number | undefined {
+  if (typeof value === "number") return value;
+  if (typeof value === "string") {
+    const cleaned = value
+      .replace(/\./g, "")
+      .replace(/,/g, ".")
+      .replace(/[^\d.-]/g, "");
+    if (cleaned === "") return undefined;
+    const parsed = Number(cleaned);
+    return Number.isFinite(parsed) ? parsed : undefined;
+  }
+  return undefined;
+}
+
 const prItemSchema = z.object({
   raw_material_id: z.string().min(1, "Bahan baku wajib dipilih"),
   satuan_id: z.string().optional(),
   description: z.string().min(1, "Deskripsi wajib diisi"),
-  qty: z.number().min(1, "Minimal 1"),
+  qty: z.preprocess(toNumber, z.number().min(1, "Minimal 1")),
   unit: z.string().min(1, "Satuan wajib diisi"),
   estimated_price: z.preprocess(
-    (value) => (value === "" || Number.isNaN(value) ? 0 : value),
+    (value) => toNumber(value) ?? 0,
     z.number().min(0)
   ),
 });
@@ -38,6 +52,26 @@ const prSchema = z.object({
 });
 
 type PRFormData = z.infer<typeof prSchema>;
+
+function firstErrorMessage(errors: unknown): string | null {
+  if (!errors || typeof errors !== "object") return null;
+  const node = errors as Record<string, unknown> & { message?: unknown };
+  if (typeof node.message === "string" && node.message.length > 0) {
+    return node.message;
+  }
+  for (const value of Object.values(node)) {
+    if (Array.isArray(value)) {
+      for (const item of value) {
+        const found = firstErrorMessage(item);
+        if (found) return found;
+      }
+    } else if (value && typeof value === "object") {
+      const found = firstErrorMessage(value);
+      if (found) return found;
+    }
+  }
+  return null;
+}
 
 interface PRFormProps {
   departments: { id: string; name: string }[];
@@ -185,9 +219,10 @@ export function PRForm({
   async function handleSelectMaterial(index: number, materialId: string) {
     const material = materials.find((item) => item.id === materialId);
     const unitId = material?.satuan_besar_id || "";
-    setValue(`items.${index}.raw_material_id`, materialId);
-    setValue(`items.${index}.description`, material?.nama || "");
-    setValue(`items.${index}.unit`, material?.satuan_besar_nama || "");
+    const unitName = material?.satuan_besar_nama || getUnitName(unitId);
+    setValue(`items.${index}.raw_material_id`, materialId, { shouldValidate: true });
+    setValue(`items.${index}.description`, material?.nama || "", { shouldValidate: true });
+    setValue(`items.${index}.unit`, unitName, { shouldValidate: true });
     setValue(`items.${index}.satuan_id`, unitId);
     await applyEstimatedPrice(index, materialId, unitId, material?.avg_cost || 0);
   }
@@ -203,20 +238,30 @@ export function PRForm({
   const isSubmitting = isLoading || submitAction !== null;
 
   function submitWithAction(action: "draft" | "submit") {
-    return handleSubmit(async (data) => {
-      setSubmitAction(action);
-      try {
-        await onSubmit(data, action);
-      } catch (error) {
-        const message = error instanceof Error ? error.message : "Gagal membuat PR";
-        if (!message.includes("NEXT_REDIRECT")) {
-          toast.error(message);
+    return handleSubmit(
+      async (data) => {
+        setSubmitAction(action);
+        try {
+          await onSubmit(data, action);
+        } catch (error) {
+          const message = error instanceof Error ? error.message : "Gagal membuat PR";
+          if (!message.includes("NEXT_REDIRECT")) {
+            toast.error(message);
+          }
+          throw error;
+        } finally {
+          setSubmitAction(null);
         }
-        throw error;
-      } finally {
-        setSubmitAction(null);
+      },
+      (formErrors) => {
+        const message = firstErrorMessage(formErrors);
+        toast.error(
+          message
+            ? `Lengkapi isian form: ${message}`
+            : "Periksa kembali isian form — masih ada field wajib yang belum lengkap"
+        );
       }
-    })();
+    )();
   }
   
   return (
@@ -472,12 +517,8 @@ export function PRForm({
           onClick={() => submitWithAction("draft")}
           className="purchasing-secondary-button"
         >
-          {submitAction === "draft" && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-          {submitAction === "draft"
-            ? "Menyimpan..."
-            : mode === "edit"
-              ? "Simpan Perubahan"
-              : "Simpan Draft"}
+                    {submitAction === "draft" && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+          {submitAction === "draft" ? "Menyimpan..." : mode === "edit" ? "Simpan Perubahan" : "Save as Draft"}
         </Button>
         <Button
           type="button"
@@ -486,7 +527,7 @@ export function PRForm({
           className="purchasing-main-button"
         >
           {submitAction === "submit" && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-          {submitAction === "submit" ? "Mengirim..." : "Submit PR"}
+          {submitAction === "submit" ? "Mengirim..." : "Submit"}
         </Button>
       </div>
     </form>

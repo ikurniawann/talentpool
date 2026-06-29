@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getPosSession } from '@/lib/api/auth';
-import { createServiceClient } from '@/lib/supabase/service-client';
+import { createPgClient } from "@/lib/pg/create-client";
 
 type ProductUpdatePayload = {
   xp?: number | string;
@@ -47,7 +47,7 @@ export async function PATCH(
     const hasActiveUpdate = body.is_active !== undefined;
     const hasAvailableUpdate = body.is_available !== undefined;
     const xpPoints = Math.max(0, Number(body.xp_points ?? body.xp ?? 0) || 0);
-    const supabase = createServiceClient();
+    const db = createPgClient();
     const updatePayload: Record<string, number | string | boolean> = {
       updated_at: new Date().toISOString(),
     };
@@ -61,7 +61,7 @@ export async function PATCH(
       return NextResponse.json({ success: false, error: 'No product fields to update' }, { status: 400 });
     }
 
-    let { data, error } = await supabase
+    let { data, error } = await db
       .from('pos_products')
       .update(updatePayload)
       .eq('id', id)
@@ -76,7 +76,7 @@ export async function PATCH(
       }
       delete legacyPayload.station;
 
-      const legacyRetry = await supabase
+      const legacyRetry = await db
         .from('pos_products')
         .update(legacyPayload)
         .eq('id', id)

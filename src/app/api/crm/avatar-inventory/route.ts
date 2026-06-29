@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getPosSession } from "@/lib/api/auth";
-import { createServiceClient } from "@/lib/supabase/service-client";
+import { createPgClient } from "@/lib/pg/create-client";
 import { apiErrorResponse, isMissingCrmSchema, toNumber, validationErrorResponse } from "@/lib/crm/server";
 
 const redeemAvatarSchema = z.object({
@@ -69,10 +69,10 @@ function normalizeTier(tier: TierRow | TierRow[] | null | undefined) {
 }
 
 async function loadMember(
-  supabase: ReturnType<typeof createServiceClient>,
+  db: import("@/lib/pg/types").DbClient,
   input: { memberId?: string; customerId?: string }
 ) {
-  let query = supabase
+  let query = db
     .from("crm_member_profiles")
     .select("id, customer_id, current_xp, lifetime_xp, spent_xp, active_avatar_id, tier:crm_membership_tiers(id, code, name, rank)")
     .eq("status", "active");
@@ -91,7 +91,7 @@ async function loadMember(
 }
 
 async function ensureAvatarReward(
-  supabase: ReturnType<typeof createServiceClient>,
+  db: import("@/lib/pg/types").DbClient,
   avatar: AvatarRow
 ) {
   const rewardPayload = {
@@ -111,7 +111,7 @@ async function ensureAvatarReward(
     is_active: avatar.is_active,
   };
 
-  const { data, error } = await supabase
+  const { data, error } = await db
     .from("crm_rewards")
     .upsert(rewardPayload, { onConflict: "code" })
     .select("id")
@@ -128,7 +128,7 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const supabase = createServiceClient();
+    const db = createPgClient();
     const memberId = request.nextUrl.searchParams.get("member_id");
     const customerId = request.nextUrl.searchParams.get("customer_id");
 
@@ -136,7 +136,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ success: false, error: "member_id atau customer_id wajib diisi" }, { status: 400 });
     }
 
-    let query = supabase
+    let query = db
       .from("crm_member_avatar_inventory")
       .select("*, avatar:crm_collectible_avatars(*, required_tier:crm_membership_tiers(code, name, rank))")
       .order("acquired_at", { ascending: false });
@@ -144,7 +144,7 @@ export async function GET(request: NextRequest) {
     if (memberId) {
       query = query.eq("member_id", memberId);
     } else if (customerId) {
-      const member = await loadMember(supabase, { customerId });
+      const member = await loadMember(db, { customerId });
       if (!member) return NextResponse.json({ success: true, data: [], meta: { schemaReady: true } });
       query = query.eq("member_id", member.id);
     }
@@ -177,8 +177,8 @@ export async function POST(request: NextRequest) {
     }
 
     const payload = redeemAvatarSchema.parse(body);
-    const supabase = createServiceClient();
-    const member = await loadMember(supabase, { memberId: payload.member_id, customerId: payload.customer_id });
+    const db = createPgClient();
+    const member = await loadMember(db, { memberId: payload.member_id, customerId: payload.customer_id });
 
     if (!member) {
       return NextResponse.json(
@@ -187,7 +187,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const existing = await supabase
+    const existing = await db
       .from("crm_member_avatar_inventory")
       .select("id")
       .eq("member_id", member.id)
@@ -199,7 +199,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: "Member sudah memiliki avatar ini" }, { status: 409 });
     }
 
-    const { data: avatarData, error: avatarError } = await supabase
+    const { data: avatarData, error: avatarError } = await db
       .from("crm_collectible_avatars")
       .select("*, required_tier:crm_membership_tiers(id, code, name, rank)")
       .eq("id", payload.avatar_id)
@@ -233,8 +233,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: "Current XP member belum cukup" }, { status: 400 });
     }
 
-    const reward = await ensureAvatarReward(supabase, avatar);
-    const { data: redemption, error: redemptionError } = await supabase
+    const reward = await ensureAvatarReward(db, avatar);
+    const { data: redemption, error: redemptionError } = await db
       .from("crm_redemptions")
       .insert({
         member_id: member.id,
@@ -254,7 +254,7 @@ export async function POST(request: NextRequest) {
     if (redemptionError) throw redemptionError;
 
     const balanceAfter = currentXp - xpCost;
-    const { data: ledger, error: ledgerError } = await supabase
+    const { data: ledger, error: ledgerError } = await db
       .from("crm_xp_ledger")
       .insert({
         member_id: member.id,
@@ -283,7 +283,7 @@ export async function POST(request: NextRequest) {
     if (ledgerError) throw ledgerError;
 
     const shouldEquip = !member.active_avatar_id;
-    const { data: inventory, error: inventoryError } = await supabase
+    const { data: inventory, error: inventoryError } = await db
       .from("crm_member_avatar_inventory")
       .insert({
         member_id: member.id,
@@ -298,7 +298,7 @@ export async function POST(request: NextRequest) {
 
     if (inventoryError) throw inventoryError;
 
-    const { error: memberUpdateError } = await supabase
+    const { error: memberUpdateError } = await db
       .from("crm_member_profiles")
       .update({
         current_xp: balanceAfter,
@@ -311,7 +311,7 @@ export async function POST(request: NextRequest) {
     if (memberUpdateError) throw memberUpdateError;
 
     if (member.customer_id) {
-      const { error: customerUpdateError } = await supabase
+      const { error: customerUpdateError } = await db
         .from("pos_customers")
         .update({ current_xp: balanceAfter })
         .eq("id", member.customer_id);
@@ -320,7 +320,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (stockTotal !== null) {
-      const { error: avatarStockError } = await supabase
+      const { error: avatarStockError } = await db
         .from("crm_collectible_avatars")
         .update({ stock_redeemed: stockRedeemed + 1 })
         .eq("id", avatar.id);
@@ -328,7 +328,7 @@ export async function POST(request: NextRequest) {
       if (avatarStockError) throw avatarStockError;
     }
 
-    const { error: approveError } = await supabase
+    const { error: approveError } = await db
       .from("crm_redemptions")
       .update({
         status: "approved",
@@ -351,8 +351,8 @@ export async function POST(request: NextRequest) {
 
 async function grantAvatar(body: unknown) {
   const payload = grantAvatarSchema.parse(body);
-  const supabase = createServiceClient();
-  const member = await loadMember(supabase, { memberId: payload.member_id });
+  const db = createPgClient();
+  const member = await loadMember(db, { memberId: payload.member_id });
 
   if (!member) {
     return NextResponse.json(
@@ -361,7 +361,7 @@ async function grantAvatar(body: unknown) {
     );
   }
 
-  const existing = await supabase
+  const existing = await db
     .from("crm_member_avatar_inventory")
     .select("id")
     .eq("member_id", member.id)
@@ -373,7 +373,7 @@ async function grantAvatar(body: unknown) {
     return NextResponse.json({ success: false, error: "Member sudah memiliki avatar ini" }, { status: 409 });
   }
 
-  const { data: avatarData, error: avatarError } = await supabase
+  const { data: avatarData, error: avatarError } = await db
     .from("crm_collectible_avatars")
     .select("*, required_tier:crm_membership_tiers(id, code, name, rank)")
     .eq("id", payload.avatar_id)
@@ -397,7 +397,7 @@ async function grantAvatar(body: unknown) {
 
   const shouldEquip = payload.equip || !member.active_avatar_id;
   if (shouldEquip) {
-    const { error: unequipError } = await supabase
+    const { error: unequipError } = await db
       .from("crm_member_avatar_inventory")
       .update({ is_equipped: false })
       .eq("member_id", member.id);
@@ -405,7 +405,7 @@ async function grantAvatar(body: unknown) {
     if (unequipError) throw unequipError;
   }
 
-  const { data: inventory, error: inventoryError } = await supabase
+  const { data: inventory, error: inventoryError } = await db
     .from("crm_member_avatar_inventory")
     .insert({
       member_id: member.id,
@@ -423,7 +423,7 @@ async function grantAvatar(body: unknown) {
 
   if (inventoryError) throw inventoryError;
 
-  const { error: memberUpdateError } = await supabase
+  const { error: memberUpdateError } = await db
     .from("crm_member_profiles")
     .update({
       active_avatar_id: shouldEquip ? avatar.id : member.active_avatar_id,
@@ -434,7 +434,7 @@ async function grantAvatar(body: unknown) {
   if (memberUpdateError) throw memberUpdateError;
 
   if (stockTotal !== null) {
-    const { error: avatarStockError } = await supabase
+    const { error: avatarStockError } = await db
       .from("crm_collectible_avatars")
       .update({ stock_redeemed: stockRedeemed + 1 })
       .eq("id", avatar.id);
@@ -453,9 +453,9 @@ export async function PATCH(request: NextRequest) {
 
   try {
     const payload = equipAvatarSchema.parse(await request.json());
-    const supabase = createServiceClient();
+    const db = createPgClient();
 
-    let inventoryQuery = supabase
+    let inventoryQuery = db
       .from("crm_member_avatar_inventory")
       .select("id, member_id, avatar_id")
       .eq("member_id", payload.member_id);
@@ -471,21 +471,21 @@ export async function PATCH(request: NextRequest) {
     }
 
     const owned = inventory as { id: string; member_id: string; avatar_id: string };
-    const { error: unequipError } = await supabase
+    const { error: unequipError } = await db
       .from("crm_member_avatar_inventory")
       .update({ is_equipped: false })
       .eq("member_id", payload.member_id);
 
     if (unequipError) throw unequipError;
 
-    const { error: equipError } = await supabase
+    const { error: equipError } = await db
       .from("crm_member_avatar_inventory")
       .update({ is_equipped: true })
       .eq("id", owned.id);
 
     if (equipError) throw equipError;
 
-    const { error: memberUpdateError } = await supabase
+    const { error: memberUpdateError } = await db
       .from("crm_member_profiles")
       .update({
         active_avatar_id: owned.avatar_id,

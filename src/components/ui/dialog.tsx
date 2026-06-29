@@ -2,10 +2,30 @@
 
 import * as React from "react"
 import { Dialog as DialogPrimitive } from "@base-ui/react/dialog"
+import { cva, type VariantProps } from "class-variance-authority"
 
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { XIcon } from "lucide-react"
+
+/** Structured modal shell — use with DialogPanelHeader, DialogPanelBody, DialogFooter */
+const dialogPanelVariants = cva(
+  "flex w-full max-h-[min(var(--dialog-panel-max-height,88vh),900px)] flex-col gap-0 overflow-hidden rounded-xl border border-gray-200/70 bg-white p-0 text-sm text-foreground shadow-xl ring-1 ring-gray-200/60 outline-none",
+  {
+    variants: {
+      size: {
+        xs: "sm:max-w-[420px]",
+        sm: "sm:max-w-lg",
+        md: "sm:max-w-2xl",
+        lg: "sm:max-w-3xl",
+        xl: "sm:max-w-4xl",
+      },
+    },
+    defaultVariants: {
+      size: "md",
+    },
+  }
+)
 
 function Dialog({ ...props }: DialogPrimitive.Root.Props) {
   return <DialogPrimitive.Root data-slot="dialog" {...props} />
@@ -102,7 +122,7 @@ function DialogFooter({
     <div
       data-slot="dialog-footer"
       className={cn(
-        "-mx-4 -mb-4 flex flex-col-reverse gap-2 rounded-b-xl border-t bg-muted/50 p-4 sm:flex-row sm:justify-end",
+        "flex w-full shrink-0 flex-col-reverse gap-3 border-t border-gray-200/70 bg-gray-50/60 px-6 py-4 sm:flex-row sm:justify-end sm:gap-3",
         className
       )}
       {...props}
@@ -114,6 +134,102 @@ function DialogFooter({
         </DialogPrimitive.Close>
       )}
     </div>
+  )
+}
+
+function DialogPanel({
+  className,
+  size,
+  showCloseButton = true,
+  style,
+  children,
+  ...props
+}: DialogPrimitive.Popup.Props &
+  VariantProps<typeof dialogPanelVariants> & {
+    showCloseButton?: boolean
+  }) {
+  return (
+    <DialogContent
+      showCloseButton={showCloseButton}
+      className={cn(dialogPanelVariants({ size }), className)}
+      style={style}
+      {...props}
+    >
+      {children}
+    </DialogContent>
+  )
+}
+
+function DialogPanelHeader({ className, ...props }: React.ComponentProps<"div">) {
+  return (
+    <DialogHeader
+      data-slot="dialog-panel-header"
+      className={cn(
+        "shrink-0 gap-1 border-b border-gray-200/70 px-6 py-4 pr-12",
+        className
+      )}
+      {...props}
+    />
+  )
+}
+
+function DialogPanelTitle({ className, ...props }: DialogPrimitive.Title.Props) {
+  return (
+    <DialogTitle
+      className={cn("text-base font-semibold leading-snug text-gray-900", className)}
+      {...props}
+    />
+  )
+}
+
+function DialogPanelDescription({
+  className,
+  ...props
+}: DialogPrimitive.Description.Props) {
+  return (
+    <DialogDescription
+      className={cn("mt-1 text-sm leading-5 text-gray-500", className)}
+      {...props}
+    />
+  )
+}
+
+function DialogPanelToolbar({ className, ...props }: React.ComponentProps<"div">) {
+  return (
+    <div
+      data-slot="dialog-panel-toolbar"
+      className={cn("shrink-0 border-b border-gray-200/70 px-6 py-3", className)}
+      {...props}
+    />
+  )
+}
+
+function DialogPanelBody({
+  className,
+  scroll = true,
+  ...props
+}: React.ComponentProps<"div"> & { scroll?: boolean }) {
+  return (
+    <div
+      data-slot="dialog-panel-body"
+      className={cn(
+        "min-h-0 flex-1 px-6 py-4",
+        scroll && "overflow-y-auto",
+        className
+      )}
+      {...props}
+    />
+  )
+}
+
+/** Wrap form content so header/body/footer stack correctly inside DialogPanel */
+function DialogPanelForm({ className, ...props }: React.ComponentProps<"form">) {
+  return (
+    <form
+      data-slot="dialog-panel-form"
+      className={cn("flex min-h-0 flex-1 flex-col", className)}
+      {...props}
+    />
   )
 }
 
@@ -154,7 +270,15 @@ export {
   DialogFooter,
   DialogHeader,
   DialogOverlay,
+  DialogPanel,
+  DialogPanelBody,
+  DialogPanelDescription,
+  DialogPanelForm,
+  DialogPanelHeader,
+  DialogPanelTitle,
+  DialogPanelToolbar,
   DialogPortal,
   DialogTitle,
   DialogTrigger,
+  dialogPanelVariants,
 }

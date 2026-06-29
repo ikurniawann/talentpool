@@ -1,9 +1,9 @@
-import { createClient } from "@/lib/supabase/server";
+import { createServerPgClient } from "@/lib/pg/create-client";
 import { NextResponse } from "next/server";
 
 // GET /api/analytics/sources - Source analytics for bar chart
 export async function GET(request: Request) {
-  const supabase = await createClient();
+  const db = await createServerPgClient();
   const { searchParams } = new URL(request.url);
 
   const brand_id = searchParams.get("brand_id");
@@ -43,7 +43,7 @@ export async function GET(request: Request) {
 
   const sources = Object.keys(sourceLabels);
 
-  let query = supabase
+  let query = db
     .from("candidates")
     .select("source, status")
     .gte("created_at", startDate.toISOString());

@@ -1,5 +1,5 @@
 -- Fix order status dan total_amount untuk order yang sudah ada
--- Run ini di Supabase SQL Editor
+-- Run ini di psql atau SQL client
 
 -- Update status ke 'completed' dan payment_status ke 'paid' untuk semua order
 UPDATE pos_orders 

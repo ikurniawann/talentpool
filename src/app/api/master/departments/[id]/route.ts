@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createAdminClient } from '@/lib/supabase/admin';
+import { createPgClient } from "@/lib/pg/create-client";
 
 interface RouteParams { params: Promise<{ id: string }> }
 
 export async function PUT(request: NextRequest, { params }: RouteParams) {
-  const supabase = createAdminClient();
+  const db = createPgClient();
   const { id } = await params;
   const body = await request.json();
   const { name, code, description, is_active } = body;
@@ -13,7 +13,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     return NextResponse.json({ error: 'Nama dan kode wajib diisi' }, { status: 400 });
   }
 
-  const { data, error } = await supabase
+  const { data, error } = await db
     .from('departments')
     .update({ name, code: code.toUpperCase(), description: description || null, is_active, updated_at: new Date().toISOString() })
     .eq('id', id)
@@ -28,10 +28,10 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
 }
 
 export async function DELETE(_: NextRequest, { params }: RouteParams) {
-  const supabase = createAdminClient();
+  const db = createPgClient();
   const { id } = await params;
 
-  const { count } = await supabase
+  const { count } = await db
     .from('employees')
     .select('id', { count: 'exact', head: true })
     .eq('department_id', id);
@@ -40,7 +40,7 @@ export async function DELETE(_: NextRequest, { params }: RouteParams) {
     return NextResponse.json({ error: `Tidak dapat dihapus, masih ada ${count} karyawan di departemen ini` }, { status: 400 });
   }
 
-  const { error } = await supabase.from('departments').delete().eq('id', id);
+  const { error } = await db.from('departments').delete().eq('id', id);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ message: 'Departemen berhasil dihapus' });
 }

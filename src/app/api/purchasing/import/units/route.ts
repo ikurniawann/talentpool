@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { createServerPgClient } from "@/lib/pg/create-client";
 
 export async function POST(request: NextRequest) {
   try {
@@ -28,7 +28,7 @@ export async function POST(request: NextRequest) {
     if (rows.length < 2) return NextResponse.json({ message: "File CSV harus memiliki header dan minimal 1 data" }, { status: 400 });
 
     const headers = rows[0].map((h) => h.toLowerCase().replace(/\s+/g, "_"));
-    const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
+    const db = await createServerPgClient();
     const imported: any[] = [], skipped: any[] = [], errors: Array<{ row: number; message: string }> = [];
 
     for (let i = 1; i < rows.length; i++) {
@@ -44,7 +44,7 @@ export async function POST(request: NextRequest) {
         continue;
       }
 
-      const { data: existing } = await supabase.from("units").select("id").eq("kode", rowData.kode).single();
+      const { data: existing } = await db.from("units").select("id").eq("kode", rowData.kode).single();
       if (existing) {
         errors.push({ row: rowNumber, message: `Kode satuan ${rowData.kode} sudah ada` });
         skipped.push({ row: rowNumber, data: rowData });
@@ -60,7 +60,7 @@ export async function POST(request: NextRequest) {
         is_active: rowData.status?.toLowerCase() === "active",
       };
 
-      const { error } = await supabase.from("units").insert(unitData);
+      const { error } = await db.from("units").insert(unitData);
       if (error) { errors.push({ row: rowNumber, message: error.message }); skipped.push({ row: rowNumber, data: rowData }); }
       else imported.push({ row: rowNumber, data: rowData });
     }

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { createServerPgClient } from "@/lib/pg/create-client";
 
 type PurchaseOrderKpiRow = {
   total?: number | null;
@@ -38,7 +38,7 @@ type SupplierRow = {
 
 export async function GET(request: Request) {
   try {
-    const supabase = await createClient();
+    const db = await createServerPgClient();
     const { searchParams } = new URL(request.url);
 
     // Get date range from query params
@@ -77,21 +77,21 @@ export async function GET(request: Request) {
       { count: lowStockCount },
       { count: pendingApprovalCount },
     ] = await Promise.all([
-      supabase
+      db
         .from("v_purchase_orders")
         .select("id, total, grand_total, created_at")
         .gte("created_at", startOfMonth.toISOString())
         .lte("created_at", endOfMonth.toISOString()),
-      supabase
+      db
         .from("v_purchase_orders")
         .select("id, total, grand_total, created_at")
         .gte("created_at", prevMonthStart.toISOString())
         .lte("created_at", prevMonthEnd.toISOString()),
-      supabase
+      db
         .from("v_raw_materials_stock")
         .select("id", { count: "exact", head: true })
         .in("status_stok", ["MENIPIS", "HABIS"]),
-      supabase
+      db
         .from("v_purchase_orders")
         .select("id", { count: "exact", head: true })
         .eq("status", "pending_approval"),
@@ -116,7 +116,7 @@ export async function GET(request: Request) {
 
     // ── Action POs (Overdue & Pending) ────────────────────────────────────
 
-    const { data: actionPOsData } = await supabase
+    const { data: actionPOsData } = await db
       .from("v_purchase_orders")
       .select(`
         id,
@@ -144,7 +144,7 @@ export async function GET(request: Request) {
 
     // ── Stock Alerts ───────────────────────────────────────────────────────
 
-    const { data: stockAlertsData } = await supabase
+    const { data: stockAlertsData } = await db
       .from("v_raw_materials_stock")
       .select("id, nama, kategori, qty_onhand, min_stock, satuan")
       .in("status_stok", ["MENIPIS", "HABIS"])
@@ -163,7 +163,7 @@ export async function GET(request: Request) {
 
     // ── Monthly Trends (simplified) ───────────────────────────────────────
 
-    const { data: monthlyData } = await supabase
+    const { data: monthlyData } = await db
       .from("v_purchase_orders")
       .select("grand_total, total, created_at, source_type")
       .order("created_at", { ascending: true })
@@ -194,7 +194,7 @@ export async function GET(request: Request) {
 
     // ── Supplier Performance (simplified) ─────────────────────────────────
 
-    const { data: suppliersData } = await supabase
+    const { data: suppliersData } = await db
       .from("suppliers")
       .select("id, nama_supplier")
       .limit(10);

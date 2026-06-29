@@ -1,5 +1,5 @@
-import { createClient } from "@/lib/supabase/server";
-import { NextRequest, NextResponse } from "next/server";
+import { createServerPgClient } from "@/lib/pg/create-client";
+import { NextRequest } from "next/server";
 import { z } from "zod";
 import {
   requireApiRole,
@@ -9,36 +9,29 @@ import {
 } from "@/lib/api/auth";
 
 const updateMaterialSchema = z.object({
-  nama: z.string().min(1).max(200).optional(),
-  deskripsi: z.string().optional(),
-  satuan_id: z.string().uuid().optional(),
+  nama: z.string().min(1).optional(),
+  kode: z.string().min(1).optional(),
   kategori: z.string().optional(),
-  harga_estimasi: z.number().positive().optional(),
-  minimum_stock: z.number().min(0).optional(),
-  maximum_stock: z.number().positive().optional(),
-  current_stock: z.number().min(0).optional(),
-  lokasi_rak: z.string().optional(),
-  lead_time_days: z.number().min(0).optional().refine(v => v === undefined || Number.isInteger(v)),
-  coa_production: z.string().max(50).optional(),
-  coa_rnd: z.string().max(50).optional(),
-  coa_asset: z.string().max(50).optional(),
+  satuan_id: z.string().uuid().optional(),
+  is_active: z.boolean().optional(),
 });
 
+// ========================
 // GET /api/purchasing/materials/:id
+// ========================
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    await requireApiRole(["purchasing_admin", "purchasing_staff", "purchasing_manager"]);
+    await requireApiRole(["purchasing_admin", "purchasing_staff", "purchasing_manager", "super_admin"]);
     const { id } = await params;
-    const supabase = await createClient();
+    const db = await createServerPgClient();
 
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from("bahan_baku")
-      .select(`*, satuan:satuan_id (id, kode, nama)`)
+      .select("*")
       .eq("id", id)
-      .eq("is_active", true)
       .single();
 
     if (error || !data) {
@@ -49,43 +42,33 @@ export async function GET(
   } catch (error) {
     if (error instanceof ApiError) return error.toResponse();
     console.error("Error fetching material:", error);
-    return ApiError.server("Failed to fetch material").toResponse();
+    return ApiError.server("Gagal mengambil detail bahan baku").toResponse();
   }
 }
 
+// ========================
 // PUT /api/purchasing/materials/:id
+// ========================
 export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const user = await requireApiRole(["purchasing_admin", "purchasing_staff"]);
+    const user = await requireApiRole(["purchasing_admin", "purchasing_staff", "purchasing_manager", "super_admin"]);
     const { id } = await params;
-    const supabase = await createClient();
+    const db = await createServerPgClient();
 
     const body = await request.json();
     const validated = updateMaterialSchema.parse(body);
 
-    // Verify satuan if being updated
-    if (validated.satuan_id) {
-      const { data: satuan } = await supabase
-        .from("satuan")
-        .select("id")
-        .eq("id", validated.satuan_id)
-        .eq("is_active", true)
-        .single();
-
-      if (!satuan) {
-        throw ApiError.badRequest("Satuan tidak ditemukan");
-      }
-    }
-
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from("bahan_baku")
-      .update({ ...validated, updated_by: user.id })
+      .update({
+        ...validated,
+        updated_by: user.id,
+      })
       .eq("id", id)
-      .eq("is_active", true)
-      .select(`*, satuan:satuan_id (id, kode, nama)`)
+      .select()
       .single();
 
     if (error || !data) {
@@ -96,50 +79,28 @@ export async function PUT(
   } catch (error) {
     if (error instanceof ApiError) return error.toResponse();
     if (error instanceof z.ZodError) {
-      return ApiError.badRequest("Validation failed", error.issues).toResponse();
+      return ApiError.badRequest("Validasi gagal", error.issues).toResponse();
     }
     console.error("Error updating material:", error);
-    return ApiError.server("Failed to update material").toResponse();
+    return ApiError.server("Gagal memperbarui bahan baku").toResponse();
   }
 }
 
+// ========================
 // DELETE /api/purchasing/materials/:id - Soft delete
+// ========================
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    await requireApiRole(["purchasing_admin"]);
+    const user = await requireApiRole(["purchasing_admin", "purchasing_manager", "purchasing_staff", "super_admin"]);
     const { id } = await params;
-    const supabase = await createClient();
+    const db = await createServerPgClient();
 
-    // Check if used in BOM
-    const { data: usedInBom } = await supabase
-      .from("bom")
-      .select("id")
-      .eq("bahan_baku_id", id)
-      .eq("is_active", true)
-      .limit(1);
-
-    if (usedInBom?.length) {
-      throw ApiError.conflict("Bahan baku sedang digunakan di BOM, tidak dapat dihapus");
-    }
-
-    // Check if used in supplier price lists
-    const { data: usedInSpl } = await supabase
-      .from("supplier_price_lists")
-      .select("id")
-      .eq("bahan_baku_id", id)
-      .eq("is_active", true)
-      .limit(1);
-
-    if (usedInSpl?.length) {
-      throw ApiError.conflict("Bahan baku sedang digunakan di daftar harga supplier, tidak dapat dihapus");
-    }
-
-    const { error } = await supabase
+    const { error } = await db
       .from("bahan_baku")
-      .update({ is_active: false })
+      .update({ is_active: false, updated_by: user.id })
       .eq("id", id);
 
     if (error) throw error;
@@ -148,6 +109,6 @@ export async function DELETE(
   } catch (error) {
     if (error instanceof ApiError) return error.toResponse();
     console.error("Error deleting material:", error);
-    return ApiError.server("Failed to delete material").toResponse();
+    return ApiError.server("Gagal menghapus bahan baku").toResponse();
   }
 }

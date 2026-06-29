@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createAdminClient } from '@/lib/supabase/admin';
-import { createClient } from '@/lib/supabase/server';
+import { createPgClient } from "@/lib/pg/create-client";
+import { createServerPgClient } from "@/lib/pg/create-client";
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -10,9 +10,9 @@ interface RouteParams {
 export async function GET(request: NextRequest, { params }: RouteParams) {
   try {
     const { id } = await params;
-    const supabase = createAdminClient();
+    const db = createPgClient();
 
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from('feedback_responses')
       .select(`
         *,
@@ -41,15 +41,15 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 // PUT /api/hris/feedback-responses/[id] - Update response
 export async function PUT(request: NextRequest, { params }: RouteParams) {
   try {
-    const authClient = await createClient();
+    const authClient = await createServerPgClient();
     const { data: { user } } = await authClient.auth.getUser();
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const { id } = await params;
-    const supabase = createAdminClient();
+    const db = createPgClient();
     const body = await request.json();
 
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from('feedback_responses')
       .update({
         ...body,
@@ -71,14 +71,14 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
 // DELETE /api/hris/feedback-responses/[id]
 export async function DELETE(request: NextRequest, { params }: RouteParams) {
   try {
-    const authClient = await createClient();
+    const authClient = await createServerPgClient();
     const { data: { user } } = await authClient.auth.getUser();
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const { id } = await params;
-    const supabase = createAdminClient();
+    const db = createPgClient();
 
-    const { error } = await supabase
+    const { error } = await db
       .from('feedback_responses')
       .delete()
       .eq('id', id);
@@ -95,17 +95,17 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
 // POST /api/hris/feedback-responses/[id]/approve - Approve submission
 export async function POST(request: NextRequest, { params }: RouteParams) {
   try {
-    const authClient = await createClient();
+    const authClient = await createServerPgClient();
     const { data: { user } } = await authClient.auth.getUser();
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const { id } = await params;
-    const supabase = createAdminClient();
+    const db = createPgClient();
     const body = await request.json();
     const { manager_comments, cycle_id, employee_id } = body;
 
     // Get current user's employee record
-    const { data: currentUser } = await supabase
+    const { data: currentUser } = await db
       .from('employees')
       .select('id')
       .eq('email', user.email)
@@ -116,7 +116,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     }
 
     // Update assignment status to approved
-    const { data: assignment, error: updateError } = await supabase
+    const { data: assignment, error: updateError } = await db
       .from('feedback_assignments')
       .update({
         status: 'approved',
@@ -153,12 +153,12 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 // POST /api/hris/feedback-responses/[id]/reject - Reject submission
 export async function PATCH(request: NextRequest, { params }: RouteParams) {
   try {
-    const authClient = await createClient();
+    const authClient = await createServerPgClient();
     const { data: { user } } = await authClient.auth.getUser();
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const { id } = await params;
-    const supabase = createAdminClient();
+    const db = createPgClient();
     const body = await request.json();
     const { rejection_reason, cycle_id, employee_id } = body;
 
@@ -167,7 +167,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     }
 
     // Get current user's employee record
-    const { data: currentUser } = await supabase
+    const { data: currentUser } = await db
       .from('employees')
       .select('id')
       .eq('email', user.email)
@@ -178,7 +178,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     }
 
     // Update assignment status to rejected
-    const { data: assignment, error: updateError } = await supabase
+    const { data: assignment, error: updateError } = await db
       .from('feedback_assignments')
       .update({
         status: 'rejected',

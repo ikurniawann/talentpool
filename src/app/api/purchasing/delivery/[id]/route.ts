@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server";
+import { createServerPgClient } from "@/lib/pg/create-client";
 import { NextRequest } from "next/server";
 import { z } from "zod";
 import {
@@ -31,11 +31,11 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    await requireApiRole(["purchasing_admin", "purchasing_staff"]);
-    const supabase = await createClient();
+    await requireApiRole(["purchasing_admin", "purchasing_staff", "purchasing_manager", "super_admin"]);
+    const db = await createServerPgClient();
     const { id } = await params;
 
-    const { data: delivery, error } = await supabase
+    const { data: delivery, error } = await db
       .from("deliveries")
       .select("*")
       .eq("id", id)
@@ -47,10 +47,10 @@ export async function GET(
 
     const [supplierResult, poResult] = await Promise.all([
       delivery.supplier_id
-        ? supabase.from("suppliers").select("*").eq("id", delivery.supplier_id).maybeSingle()
+        ? db.from("suppliers").select("*").eq("id", delivery.supplier_id).maybeSingle()
         : Promise.resolve({ data: null, error: null }),
       delivery.purchase_order_id
-        ? supabase.from("purchase_orders").select("*").eq("id", delivery.purchase_order_id).maybeSingle()
+        ? db.from("purchase_orders").select("*").eq("id", delivery.purchase_order_id).maybeSingle()
         : Promise.resolve({ data: null, error: null }),
     ]);
 
@@ -96,15 +96,15 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const user = await requireApiRole(["purchasing_admin", "purchasing_staff"]);
-    const supabase = await createClient();
+    const user = await requireApiRole(["purchasing_admin", "purchasing_staff", "purchasing_manager", "super_admin"]);
+    const db = await createServerPgClient();
     const { id } = await params;
 
     const body = await request.json();
     const validated = updateDeliverySchema.parse(body);
 
     // Get current delivery
-    const { data: existing, error: fetchError } = await supabase
+    const { data: existing, error: fetchError } = await db
       .from("deliveries")
       .select("*, status")
       .eq("id", id)
@@ -123,24 +123,18 @@ export async function PUT(
     const updateData: Record<string, unknown> = { updated_by: user.id };
     if (validated.no_surat_jalan) updateData.no_surat_jalan = validated.no_surat_jalan;
     if (validated.ekspedisi !== undefined) updateData.kurir = validated.ekspedisi;
-    if (validated.no_resi !== undefined) updateData.nomor_resi = validated.no_resi;
+    if (validated.no_resi !== undefined) updateData.no_resi = validated.no_resi;
     if (validated.tanggal_kirim) updateData.tanggal_kirim = validated.tanggal_kirim;
     if (validated.tanggal_estimasi_tiba) updateData.tanggal_estimasi_tiba = validated.tanggal_estimasi_tiba;
     if (validated.tanggal_aktual_tiba) updateData.tanggal_aktual_tiba = validated.tanggal_aktual_tiba;
     if (validated.status) updateData.status = validated.status;
     if (validated.catatan !== undefined) updateData.catatan = validated.catatan;
 
-    const { data: updated, error: updateError } = await supabase
+    const { data: updated, error: updateError } = await db
       .from("deliveries")
       .update(updateData)
       .eq("id", id)
-      .select(
-        `
-        *,
-        supplier:supplier_id(id, kode, nama),
-        purchase_order:purchase_order_id(id, po_number, status)
-      `
-      )
+      .select("*")
       .single();
 
     if (updateError) throw updateError;
@@ -165,11 +159,11 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const user = await requireApiRole(["purchasing_admin"]);
-    const supabase = await createClient();
+    const user = await requireApiRole(["purchasing_admin", "purchasing_manager", "purchasing_staff", "super_admin"]);
+    const db = await createServerPgClient();
     const { id } = await params;
 
-    const { data: existing, error: fetchError } = await supabase
+    const { data: existing, error: fetchError } = await db
       .from("deliveries")
       .select("id, status")
       .eq("id", id)
@@ -185,7 +179,7 @@ export async function DELETE(
       );
     }
 
-    await supabase
+    await db
       .from("deliveries")
       .update({ is_active: false, updated_by: user.id })
       .eq("id", id);

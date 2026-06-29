@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server";
+import { createServerPgClient } from "@/lib/pg/create-client";
 import { NextRequest } from "next/server";
 import { z } from "zod";
 import {
@@ -22,7 +22,7 @@ const querySchema = z.object({
 export async function GET(request: NextRequest) {
   try {
     await requireApiUser();
-    const supabase = await createClient();
+    const db = await createServerPgClient();
 
     const { searchParams } = new URL(request.url);
     const params = querySchema.parse(Object.fromEntries(searchParams));
@@ -30,7 +30,7 @@ export async function GET(request: NextRequest) {
       params;
     const offset = (page - 1) * limit;
 
-    let query = supabase
+    let query = db
       .from("inventory_movements")
       .select(
         `

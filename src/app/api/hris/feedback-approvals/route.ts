@@ -1,15 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createAdminClient } from '@/lib/supabase/admin';
-import { createClient } from '@/lib/supabase/server';
+import { createPgClient } from "@/lib/pg/create-client";
+import { createServerPgClient } from "@/lib/pg/create-client";
 
 // GET /api/hris/feedback-approvals - Get pending approvals for manager
 export async function GET(request: NextRequest) {
   try {
-    const authClient = await createClient();
+    const authClient = await createServerPgClient();
     const { data: { user } } = await authClient.auth.getUser();
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const supabase = createAdminClient();
+    const db = createPgClient();
     const searchParams = request.nextUrl.searchParams;
     const status = searchParams.get('status') || 'submitted';
     const page = parseInt(searchParams.get('page') || '1');
@@ -18,7 +18,7 @@ export async function GET(request: NextRequest) {
     console.log('Fetching approvals with status:', status);
 
     // Query assignments that need manager approval
-    let query = supabase
+    let query = db
       .from('feedback_assignments')
       .select(`
         *,
@@ -103,11 +103,11 @@ export async function GET(request: NextRequest) {
 // POST /api/hris/feedback-approvals - Bulk approve/reject
 export async function POST(request: NextRequest) {
   try {
-    const authClient = await createClient();
+    const authClient = await createServerPgClient();
     const { data: { user } } = await authClient.auth.getUser();
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const supabase = createAdminClient();
+    const db = createPgClient();
     const body = await request.json();
     const { assignment_ids, action, comments, rejection_reason } = body;
 
@@ -120,7 +120,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Get current user's employee record
-    const { data: currentUser } = await supabase
+    const { data: currentUser } = await db
       .from('employees')
       .select('id')
       .eq('email', user.email)
@@ -138,7 +138,7 @@ export async function POST(request: NextRequest) {
       ...(action === 'approve' ? { manager_comments: comments } : { rejection_reason }),
     };
 
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from('feedback_assignments')
       .update(updateData)
       .in('id', assignment_ids)

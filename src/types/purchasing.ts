@@ -322,12 +322,7 @@ export interface BOMItemFormData {
   cost?: number;
 }
 
-export type MaterialCategory = 
-  | 'BAHAN_PANGAN'
-  | 'BAHAN_NON_PANGAN'
-  | 'KEMASAN'
-  | 'BAHAN_BAKAR'
-  | 'LAINNYA';
+export type MaterialCategory = string;
 
 export interface RawMaterialWithStock {
   id: string;
@@ -356,6 +351,7 @@ export interface RawMaterialWithStock {
   coa_rnd?: string;
   coa_asset?: string;
   hpp?: number;
+  harga_beli?: number;
   avg_cost?: number;
   satuan_besar_nama?: string;
   satuan_kecil_nama?: string;
@@ -380,6 +376,7 @@ export interface RawMaterialFormData {
   kategori?: MaterialCategory;
   satuan_besar_id: string;
   satuan_kecil_id?: string | null;
+  harga_beli?: number;
   konversi_factor?: number;
   stok_minimum?: number;
   stok_maximum?: number | null;

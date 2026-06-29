@@ -1,17 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { createPgClient } from "@/lib/pg/create-client";
 
 // GET /api/hris/kpi-templates - List all templates
 export async function GET(request: NextRequest) {
   try {
-    const supabase = await createAdminClient();
+    const db = await createPgClient();
     const { searchParams } = new URL(request.url);
     
     const department_id = searchParams.get("department_id");
     const position_id = searchParams.get("position_id");
     const status = searchParams.get("status");
 
-    let query = supabase
+    let query = db
       .from("kpi_templates")
       .select(`
         *,
@@ -37,7 +37,7 @@ export async function GET(request: NextRequest) {
     if (error) {
       console.error("Error fetching templates:", error);
       // If join fails, try without joins
-      const { data: simpleData, error: simpleError, count: simpleCount } = await supabase
+      const { data: simpleData, error: simpleError, count: simpleCount } = await db
         .from("kpi_templates")
         .select("*", { count: "exact" })
         .order("created_at", { ascending: false });
@@ -71,12 +71,12 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     console.log("POST /api/hris/kpi-templates body:", body);
     
-    const supabase = await createAdminClient();
+    const db = await createPgClient();
 
     const { template_name, department_id, position_id, applicable_period, effective_date, expiry_date, status, items, total_weight, behavioral_weight, project_weight } = body;
 
     // Insert template header
-    const { data: template, error: templateError } = await supabase
+    const { data: template, error: templateError } = await db
       .from("kpi_templates")
       .insert({
         template_name,
@@ -125,7 +125,7 @@ export async function POST(request: NextRequest) {
 
       console.log("Inserting items:", itemsWithTemplateId.length);
 
-      const { error: itemsError } = await supabase
+      const { error: itemsError } = await db
         .from("kpi_template_items")
         .insert(itemsWithTemplateId);
 
@@ -134,7 +134,7 @@ export async function POST(request: NextRequest) {
       if (itemsError) {
         console.error("Items insert error:", itemsError);
         // Rollback template if items insert fails
-        await supabase.from("kpi_templates").delete().eq("id", template.id);
+        await db.from("kpi_templates").delete().eq("id", template.id);
         return NextResponse.json({ error: itemsError.message }, { status: 500 });
       }
     }
@@ -156,7 +156,7 @@ export async function POST(request: NextRequest) {
 
       console.log("Inserting behavioral items:", behavioralItemsWithTemplateId.length);
 
-      const { error: behError } = await supabase
+      const { error: behError } = await db
         .from("kpi_template_behavioral")
         .insert(behavioralItemsWithTemplateId);
 
@@ -169,7 +169,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Fetch complete template with items
-    const { data: completeTemplate, error: fetchError } = await supabase
+    const { data: completeTemplate, error: fetchError } = await db
       .from("kpi_templates")
       .select(`
         *,

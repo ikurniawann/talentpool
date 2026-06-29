@@ -13,7 +13,7 @@ export const phase2Complete = {
     "✅ Server Action untuk Create PR",
   ],
   files: {
-    migration: "supabase/migrations/20250419_purchasing_module.sql",
+    migration: "database/migrations/20250419_purchasing_module.sql",
     prList: "src/app/(dashboard)/dashboard/purchasing/pr/page.tsx",
     prNew: "src/app/(dashboard)/dashboard/purchasing/pr/new/page.tsx",
     prForm: "src/components/purchasing/pr-form.tsx",
@@ -23,7 +23,7 @@ export const phase2Complete = {
   },
   nextPhase: "Phase 3: Purchase Order (PO)",
   readyFor: [
-    "1. Jalankan SQL migration di Supabase",
+    "1. Jalankan SQL migration via `npm run db:migrate:apply`",
     "2. Test PR creation flow (draft → submit → approval)",
     "3. Lanjut ke Phase 3: Purchase Order",
   ],

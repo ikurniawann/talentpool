@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createServiceClient } from '@/lib/supabase/service-client';
+import { createPgClient } from "@/lib/pg/create-client";
 
 type KDSOrderItemRow = {
   id: string;
@@ -80,7 +80,7 @@ export async function GET(request: NextRequest) {
   const dateFrom = searchParams.get('date_from');
   const dateTo = searchParams.get('date_to');
 
-  const supabase = createServiceClient();
+  const db = createPgClient();
 
   const baseSelect = `
       id,
@@ -135,7 +135,7 @@ export async function GET(request: NextRequest) {
       )
     `;
 
-  let query = supabase
+  let query = db
     .from('pos_orders')
     .select(stationSelect)
     .in('status', statusFilter.split(','))
@@ -157,7 +157,7 @@ export async function GET(request: NextRequest) {
   let error = stationResult.error;
 
   if (error?.code === '42703' || error?.code === 'PGRST200') {
-    let legacyQuery = supabase
+    let legacyQuery = db
       .from('pos_orders')
       .select(baseSelect)
       .in('status', statusFilter.split(','))
@@ -195,7 +195,7 @@ export async function GET(request: NextRequest) {
   let tableById = new Map<string, PosTableRow>();
 
   if (tableIds.length > 0) {
-    const { data: tables, error: tableError } = await supabase
+    const { data: tables, error: tableError } = await db
       .from('pos_tables')
       .select('id, table_number, qr_code')
       .in('id', tableIds);

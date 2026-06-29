@@ -1,5 +1,5 @@
-import { createClient } from "@/lib/supabase/server";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { createServerPgClient } from "@/lib/pg/create-client";
+import { createPgClient } from "@/lib/pg/create-client";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import {
@@ -18,7 +18,16 @@ import {
   updatePOStatusAfterGrn,
   GrnStatus,
 } from "@/lib/purchasing/grn";
+import { toQty } from "@/lib/purchasing/utils";
 import { addInventoryFromGrn } from "@/lib/inventory";
+import {
+  getApiUserScope,
+  companyScopeOr,
+  branchScopeOr,
+  validateWarehouseForReceivingScope,
+  resolveBusinessScopeFromWarehouse,
+  resolveBusinessScopeByCodes,
+} from "@/lib/api/scope";
 
 // ============================================================
 // Schemas
@@ -39,6 +48,7 @@ const createGrnSchema = z.object({
   delivery_id: z.string().uuid("Delivery wajib dipilih"),
   tanggal_penerimaan: z.string().optional(),
   catatan: z.string().optional(),
+  warehouse_id: z.string().uuid("Gudang wajib dipilih"),
   items: z.array(grnItemSchema).min(1, "Minimal 1 item wajib diisi"),
 });
 
@@ -96,19 +106,25 @@ export async function GET(request: NextRequest) {
       "qc_staff",
       "admin",
     ]);
-    const supabase = await createClient();
+    const db = await createServerPgClient();
 
     const { searchParams } = new URL(request.url);
     const params = queryParamsSchema.parse(Object.fromEntries(searchParams));
     const { page, limit, search, status, delivery_id, po_id, date_from, date_to } = params;
     const offset = (page - 1) * limit;
 
-    let query = supabase
+    let query = db
       .from("grn")
       .select("*", { count: "exact" })
       .eq("is_active", true)
       .order("created_at", { ascending: false })
       .range(offset, offset + limit - 1);
+
+    const scope = await getApiUserScope();
+    const companyOr = companyScopeOr(scope);
+    if (companyOr) query = query.or(companyOr);
+    const branchOr = branchScopeOr(scope);
+    if (branchOr) query = query.or(branchOr);
 
     if (status) query = query.eq("status", status);
     if (delivery_id) query = query.eq("delivery_id", delivery_id);
@@ -131,7 +147,7 @@ export async function GET(request: NextRequest) {
     let poMap = new Map();
     
     if (deliveryIds.length > 0) {
-      const { data: deliveryData } = await supabase
+      const { data: deliveryData } = await db
         .from("deliveries")
         .select("id, nomor_resi, no_resi")
         .in("id", deliveryIds);
@@ -141,7 +157,7 @@ export async function GET(request: NextRequest) {
     }
     
     if (poIds.length > 0) {
-      const { data: poData } = await supabase
+      const { data: poData } = await db
         .from("purchase_orders")
         .select("id, nomor_po")
         .in("id", poIds);
@@ -154,7 +170,7 @@ export async function GET(request: NextRequest) {
     const supplierIds = [...new Set((data || []).map((d: any) => d.supplier_id).filter(Boolean))];
     let supplierMap = new Map();
     if (supplierIds.length > 0) {
-      const { data: supplierData } = await supabase
+      const { data: supplierData } = await db
         .from("suppliers")
         .select("id, nama_supplier")
         .in("id", supplierIds);
@@ -215,17 +231,18 @@ export async function POST(request: NextRequest) {
       "purchasing_admin",
       "purchasing_staff",
       "admin",
+      "super_admin",
     ]);
-    const supabase = await createClient();
+    const db = await createServerPgClient();
     // Use admin client to bypass RLS for all internal PO/delivery reads
-    const adminSupabase = createAdminClient();
+    const adminDb = createPgClient();
 
     const body = await request.json();
     const validated = createGrnSchema.parse(body);
 
-    // Validate delivery can be received — use adminSupabase to bypass RLS
+    // Validate delivery can be received — use adminDb to bypass RLS
     const { valid, errors, delivery, items: poItems } = await validateDeliveryCanReceive(
-      adminSupabase,
+      adminDb,
       validated.delivery_id
     );
 
@@ -233,20 +250,70 @@ export async function POST(request: NextRequest) {
       throw ApiError.badRequest(errors.join("; ") || "Delivery tidak valid untuk penerimaan barang");
     }
 
-    // Re-fetch PO items directly with adminSupabase to ensure we get data (bypass RLS)
-    const { data: freshPoItems } = await adminSupabase
+    const scope = await getApiUserScope();
+
+    const businessScope =
+      (await resolveBusinessScopeFromWarehouse(validated.warehouse_id)) ??
+      (await resolveBusinessScopeByCodes("SULU", "SULU-DAGO"));
+
+    const warehouseCheck = await validateWarehouseForReceivingScope(
+      validated.warehouse_id,
+      scope,
+      businessScope?.branch_id ?? null
+    );
+    if ("error" in warehouseCheck) {
+      const messages: Record<typeof warehouseCheck.error, string> = {
+        not_found: "Gudang tidak ditemukan",
+        inactive: "Gudang tidak aktif",
+        branch_mismatch: "Gudang tidak sesuai cabang yang diizinkan untuk penerimaan ini",
+      };
+      throw ApiError.badRequest(messages[warehouseCheck.error]);
+    }
+
+    if (businessScope) {
+      const { error: poScopeError } = await adminDb
+        .from("purchase_orders")
+        .update({
+          company_id: businessScope.company_id,
+          branch_id: businessScope.branch_id,
+        })
+        .eq("id", delivery.purchase_order_id);
+
+      if (poScopeError) {
+        console.error("Failed to backfill PO business scope:", poScopeError);
+      }
+
+      const { error: deliveryScopeError } = await adminDb
+        .from("deliveries")
+        .update({
+          company_id: businessScope.company_id,
+          branch_id: businessScope.branch_id,
+        })
+        .eq("id", validated.delivery_id);
+
+      if (deliveryScopeError) {
+        console.error("Failed to backfill delivery business scope:", deliveryScopeError);
+      }
+    }
+
+    // Re-fetch PO items directly with adminDb to ensure we get data (bypass RLS)
+    const { data: freshPoItems, error: freshPoItemsError } = await adminDb
       .from("purchase_order_items")
       .select(`
         id,
         raw_material_id,
         qty_ordered,
         qty_received,
-        harga_satuan,
-        unit_price,
-        raw_material:raw_material_id(nama)
+        harga_satuan
       `)
       .eq("purchase_order_id", delivery.purchase_order_id)
       .eq("is_active", true);
+
+    if (freshPoItemsError) {
+      throw ApiError.badRequest(
+        freshPoItemsError.message || "Gagal memuat item PO untuk penerimaan"
+      );
+    }
 
     // Use freshPoItems as source of truth
     const effectivePoItems = (freshPoItems || poItems || []) as POQtyValidationItem[];
@@ -286,7 +353,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Generate GRN number
-    const grnNumber = await generateGrnNumber(supabase);
+    const grnNumber = await generateGrnNumber(adminDb);
 
     // Calculate totals
     const totals = calculateGrnTotals(validated.items);
@@ -294,7 +361,7 @@ export async function POST(request: NextRequest) {
     // Count how many times this delivery has been received (receive counter)
     // IMPORTANT: Count ALL GRNs for this delivery, including the one being created
     // because we want THIS to be N+1 where N is existing count
-    const { count: previousGrnCount, error: countError } = await supabase
+    const { count: previousGrnCount, error: countError } = await adminDb
       .from("grn")
       .select("*", { count: "exact", head: true })
       .eq("delivery_id", validated.delivery_id)
@@ -329,12 +396,14 @@ export async function POST(request: NextRequest) {
     }
     // Otherwise stays pending (no good items received yet)
 
-    // Create GRN record
-    const insertData: any = {
+    // Scope mengikuti gudang penerimaan (mis. Company Sulu / Cabang Sulu Dago)
+    const insertData: Record<string, unknown> = {
       nomor_grn: grnNumber,
       delivery_id: validated.delivery_id,
       purchase_order_id: delivery.purchase_order_id,
       supplier_id: delivery.supplier_id,
+      company_id: businessScope?.company_id ?? null,
+      branch_id: businessScope?.branch_id ?? null,
       tanggal_penerimaan: validated.tanggal_penerimaan || new Date().toISOString().split("T")[0],
       no_surat_jalan: delivery.no_surat_jalan,
       catatan: validated.catatan || null,
@@ -346,7 +415,7 @@ export async function POST(request: NextRequest) {
       created_by: user.id,
     };
 
-    const { data: grn, error: grnError } = await supabase
+    const { data: grn, error: grnError } = await adminDb
       .from("grn")
       .insert(insertData)
       .select()
@@ -354,7 +423,9 @@ export async function POST(request: NextRequest) {
 
     if (grnError) {
       console.error("GRN insert error:", grnError);
-      throw grnError;
+      throw ApiError.server(
+        grnError.message || "Gagal menyimpan dokumen penerimaan barang"
+      );
     }
 
     // Create GRN items
@@ -368,32 +439,35 @@ export async function POST(request: NextRequest) {
       satuan_id: item.satuan_id,
       kondisi: item.kondisi,
       catatan: item.catatan || null,
+      warehouse_id: validated.warehouse_id,
     }));
 
-    const { error: itemsError } = await adminSupabase.from("grn_items").insert(grnItems);
+    const { error: itemsError } = await adminDb.from("grn_items").insert(grnItems);
 
     if (itemsError) {
       console.error("GRN items insert error:", itemsError);
-      throw itemsError;
+      throw ApiError.server(
+        itemsError.message || "Gagal menyimpan item penerimaan barang"
+      );
     }
 
-    // Update PO item received quantities (adminSupabase bypasses RLS)
+    // Update PO item received quantities (adminDb bypasses RLS)
     for (const item of validated.items) {
       if (item.purchase_order_item_id) {
         const poItem = effectivePoItems.find((p: any) => p.id === item.purchase_order_item_id);
         if (poItem) {
-          const newQty = (poItem.qty_received || 0) + item.qty_diterima;
-          await updatePOItemReceivedQty(adminSupabase, item.purchase_order_item_id, newQty);
+          const newQty = toQty(poItem.qty_received) + toQty(item.qty_diterima);
+          await updatePOItemReceivedQty(adminDb, item.purchase_order_item_id, newQty);
         } else {
           // Fallback: query item langsung
-          const { data: directItem } = await adminSupabase
+          const { data: directItem } = await adminDb
             .from("purchase_order_items")
             .select("id, qty_received")
             .eq("id", item.purchase_order_item_id)
             .single();
           if (directItem) {
-            const newQty = (directItem.qty_received || 0) + item.qty_diterima;
-              await updatePOItemReceivedQty(adminSupabase, item.purchase_order_item_id, newQty);
+            const newQty = toQty(directItem.qty_received) + toQty(item.qty_diterima);
+              await updatePOItemReceivedQty(adminDb, item.purchase_order_item_id, newQty);
           } else {
             console.warn(`[GRN] PO item ${item.purchase_order_item_id} not found even with direct query`);
           }
@@ -404,11 +478,11 @@ export async function POST(request: NextRequest) {
     }
 
     // Update delivery status
-    await updateDeliveryStatusAfterGrn(adminSupabase, validated.delivery_id, grnStatus);
+    await updateDeliveryStatusAfterGrn(adminDb, validated.delivery_id, grnStatus);
 
     // Update PO status based on received quantities
     if (delivery?.purchase_order_id) {
-      await updatePOStatusAfterGrn(adminSupabase, delivery.purchase_order_id);
+      await updatePOStatusAfterGrn(adminDb, delivery.purchase_order_id);
     }
 
     // Update inventory untuk setiap item yang diterima
@@ -416,22 +490,27 @@ export async function POST(request: NextRequest) {
     for (const item of validated.items) {
       if (item.qty_diterima > 0) {
         const poItem = effectivePoItems.find((p: any) => p.id === item.purchase_order_item_id);
-        const unitCost = poItem?.harga_satuan || poItem?.unit_price || 0;
+        const unitCost = poItem?.harga_satuan || 0;
         try {
           console.log(`  ${item.raw_material_id}: +${item.qty_diterima} @ Rp ${unitCost}`);
           await addInventoryFromGrn(
-            adminSupabase,
+            adminDb,
             item.raw_material_id,
             item.qty_diterima,
             unitCost,
             grn.id,
             grnNumber,
-            user.id
+            user.id,
+            validated.warehouse_id
           );
           console.log(`  ✅ ${item.raw_material_id}: +${item.qty_diterima} units @ Rp ${unitCost}`);
-        } catch (invErr: any) {
-          console.error(`  ❌ Inventory update failed for ${item.raw_material_id}:`, invErr.message);
-          // Don't fail the entire GRN, but log it
+        } catch (invErr: unknown) {
+          const message =
+            invErr instanceof Error ? invErr.message : "Gagal memperbarui stok inventory";
+          console.error(`  ❌ Inventory update failed for ${item.raw_material_id}:`, message);
+          throw ApiError.server(
+            `GRN tersimpan tetapi stok gagal diperbarui untuk bahan ${item.raw_material_id}: ${message}`
+          );
         }
       }
     }
@@ -441,10 +520,12 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     if (error instanceof ApiError) return error.toResponse();
     if (error instanceof z.ZodError) {
-      return ApiError.badRequest("Validation failed", error.issues).toResponse();
+      return ApiError.badRequest("Validasi gagal", error.issues).toResponse();
     }
+    const message =
+      error instanceof Error ? error.message : "Gagal membuat penerimaan barang";
     console.error("Error creating GRN:", error);
-    return ApiError.server("Failed to create GRN").toResponse();
+    return ApiError.server(message).toResponse();
   }
 }
 

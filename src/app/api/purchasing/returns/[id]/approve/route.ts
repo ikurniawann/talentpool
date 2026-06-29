@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { createServerPgClient } from "@/lib/pg/create-client";
 import { ApiError, requireApiRole } from "@/lib/api/auth";
 
 // PATCH /api/purchasing/returns/[id]/approve
@@ -17,11 +17,11 @@ export async function PATCH(
     ]);
     const approved_by = approver.id;
 
-    const supabase = await createClient();
+    const db = await createServerPgClient();
     const returnId = (await params).id;
 
     // Get current return data
-    const { data: currentReturn, error: fetchError } = await supabase
+    const { data: currentReturn, error: fetchError } = await db
       .from("purchase_returns")
       .select("*")
       .eq("id", returnId)
@@ -42,7 +42,7 @@ export async function PATCH(
     }
 
     // Update return status to approved
-    const { data: updatedReturn, error: updateError } = await supabase
+    const { data: updatedReturn, error: updateError } = await db
       .from("purchase_returns")
       .update({
         status: "approved",

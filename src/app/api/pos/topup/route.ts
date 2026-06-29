@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createServiceClient } from '@/lib/supabase/service-client';
+import { createPgClient } from "@/lib/pg/create-client";
 import { getPosSession } from '@/lib/api/auth';
 
 function getErrorMessage(error: unknown) {
@@ -14,12 +14,12 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const supabase = createServiceClient();
+    const db = createPgClient();
     const searchParams = request.nextUrl.searchParams;
     const customerId = searchParams.get('customer_id');
     const limit = parseInt(searchParams.get('limit') || '50');
 
-    let query = supabase
+    let query = db
       .from('pos_wallet_transactions')
       .select(`
         *,
@@ -55,7 +55,7 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const supabase = createServiceClient();
+    const db = createPgClient();
     const body = await request.json();
     const {
       customer_id,
@@ -77,7 +77,7 @@ export async function POST(request: NextRequest) {
     const arkCoins = amountValue / 1000;
 
     // Get current customer balance and total_spent
-    const { data: customer, error: customerError } = await supabase
+    const { data: customer, error: customerError } = await db
       .from('pos_customers')
       .select('ark_coin_balance, total_spent')
       .eq('id', customer_id)
@@ -96,7 +96,7 @@ export async function POST(request: NextRequest) {
 
     // Start transaction
     // 1. Update customer balance
-    const { error: updateError } = await supabase
+    const { error: updateError } = await db
       .from('pos_customers')
       .update({
         ark_coin_balance: balanceAfter,
@@ -108,7 +108,7 @@ export async function POST(request: NextRequest) {
     if (updateError) throw updateError;
 
     // 2. Log wallet transaction
-    const { data: transaction, error: transactionError } = await supabase
+    const { data: transaction, error: transactionError } = await db
       .from('pos_wallet_transactions')
       .insert({
         customer_id,

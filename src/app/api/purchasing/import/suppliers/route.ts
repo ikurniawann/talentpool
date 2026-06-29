@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { createServerPgClient } from "@/lib/pg/create-client";
 
 export async function POST(request: NextRequest) {
   try {
@@ -50,11 +50,8 @@ export async function POST(request: NextRequest) {
     const rows = parseCSV(text);
     const headers = rows[0].map((h) => h.toLowerCase().replace(/\s+/g, "_"));
     
-    // Create Supabase client
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-    );
+    // Create pg admin client
+    const db = await createServerPgClient();
 
     const imported: any[] = [];
     const skipped: any[] = [];
@@ -85,7 +82,7 @@ export async function POST(request: NextRequest) {
       }
 
       // Check for duplicate kode
-      const { data: existing } = await supabase
+      const { data: existing } = await db
         .from("suppliers")
         .select("id")
         .eq("kode", rowData.kode)
@@ -119,7 +116,7 @@ export async function POST(request: NextRequest) {
       };
 
       // Insert to database
-      const { error } = await supabase.from("suppliers").insert(supplierData);
+      const { error } = await db.from("suppliers").insert(supplierData);
 
       if (error) {
         errors.push({

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createServiceClient } from '@/lib/supabase/service-client';
+import { createPgClient } from "@/lib/pg/create-client";
 import { getPosSession } from '@/lib/api/auth';
 
 type TableRow = {
@@ -32,10 +32,10 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const supabase = createServiceClient();
+    const db = createPgClient();
     const includeInactive = request.nextUrl.searchParams.get('include_inactive') === 'true';
 
-    let tableQuery = supabase
+    let tableQuery = db
       .from('pos_tables')
       .select('id, table_number, capacity, status, qr_code, is_active')
       .order('table_number');
@@ -45,7 +45,7 @@ export async function GET(request: NextRequest) {
     const { data: tables, error: tableError } = await tableQuery;
     if (tableError) throw tableError;
 
-    const { data: activeOrders, error: orderError } = await supabase
+    const { data: activeOrders, error: orderError } = await db
       .from('pos_orders')
       .select('id, order_number, table_id, status, payment_status, total_amount')
       .not('table_id', 'is', null)

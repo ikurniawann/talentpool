@@ -1,4 +1,4 @@
-import { createAdminClient } from "@/lib/supabase/admin";
+import { createPgClient } from "@/lib/pg/create-client";
 import { NextRequest, NextResponse } from "next/server";
 import { requireApiRole, ApiError, successResponse } from "@/lib/api/auth";
 
@@ -13,7 +13,7 @@ export async function GET(request: NextRequest) {
       "admin",
     ]);
 
-    const supabase = createAdminClient();
+    const db = createPgClient();
     const { searchParams } = new URL(request.url);
     const poId = searchParams.get("po_id");
 
@@ -21,7 +21,7 @@ export async function GET(request: NextRequest) {
       return ApiError.badRequest("po_id parameter required").toResponse();
     }
 
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from("purchase_order_items")
       .select(`
         *,

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createAdminClient } from '@/lib/supabase/admin';
-import { createClient } from '@/lib/supabase/server';
+import { createPgClient } from "@/lib/pg/create-client";
+import { createServerPgClient } from "@/lib/pg/create-client";
 
 interface RouteContext {
   params: Promise<{ id: string }>;
@@ -9,9 +9,9 @@ interface RouteContext {
 export async function GET(request: NextRequest, { params }: RouteContext) {
   try {
     const { id } = await params;
-    const supabase = createAdminClient();
+    const db = createPgClient();
 
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from('feedback_cycles')
       .select(`
         *,
@@ -42,14 +42,14 @@ export async function GET(request: NextRequest, { params }: RouteContext) {
 export async function PUT(request: NextRequest, { params }: RouteContext) {
   try {
     const { id } = await params;
-    const authClient = await createClient();
+    const authClient = await createServerPgClient();
     const { data: { user } } = await authClient.auth.getUser();
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const supabase = createAdminClient();
+    const db = createPgClient();
     const body = await request.json();
 
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from('feedback_cycles')
       .update({ ...body, updated_at: new Date().toISOString() })
       .eq('id', id)
@@ -68,9 +68,9 @@ export async function PUT(request: NextRequest, { params }: RouteContext) {
 export async function DELETE(request: NextRequest, { params }: RouteContext) {
   try {
     const { id } = await params;
-    const supabase = createAdminClient();
+    const db = createPgClient();
 
-    const { error } = await supabase.from('feedback_cycles').delete().eq('id', id);
+    const { error } = await db.from('feedback_cycles').delete().eq('id', id);
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
     return NextResponse.json({ message: 'Cycle deleted successfully' });

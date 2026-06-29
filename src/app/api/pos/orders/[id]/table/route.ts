@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server';
-import { createServiceClient } from '@/lib/supabase/service-client';
+import { createPgClient } from "@/lib/pg/create-client";
 import { getPosSession } from '@/lib/api/auth';
 
 export async function PATCH(
@@ -16,10 +16,10 @@ export async function PATCH(
     const { table_id, order_type } = body;
     const { id: orderId } = await params;
 
-    const supabase = createServiceClient();
+    const db = createPgClient();
 
     // 1. Check order exists and is active
-    const { data: order, error: orderErr } = await supabase
+    const { data: order, error: orderErr } = await db
       .from('pos_orders')
       .select('id, status, table_id')
       .eq('id', orderId)
@@ -37,7 +37,7 @@ export async function PATCH(
     // 2. If moving to a dine-in table, check availability (skip if same table)
     const newTableId = table_id || null;
     if (newTableId && newTableId !== order.table_id) {
-      const { data: occupied, error: occErr } = await supabase
+      const { data: occupied, error: occErr } = await db
         .from('pos_orders')
         .select('id')
         .eq('table_id', newTableId)
@@ -56,7 +56,7 @@ export async function PATCH(
     if (newTableId !== undefined) updatePayload.table_id = newTableId;
     if (order_type) updatePayload.order_type = order_type;
 
-    const { error: updErr } = await supabase
+    const { error: updErr } = await db
       .from('pos_orders')
       .update(updatePayload)
       .eq('id', orderId);

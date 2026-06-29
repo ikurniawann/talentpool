@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient as createServiceClient } from "@supabase/supabase-js";
-import { createClient } from "@/lib/supabase/server";
+import { createPgClient } from "@/lib/pg/create-client";
+import { createServerPgClient } from "@/lib/pg/create-client";
 import {
   type AiAssistantModel,
   type AiAssistantScope,
@@ -13,23 +13,23 @@ import path from "path";
 type ChatMessage = { role: "user" | "assistant"; content: string };
 type Intent = "all" | "hris" | "procurement" | "pos" | "inventory" | "performance" | "payroll" | "integration" | "master";
 type DetailRow = Record<string, unknown>;
-type SupabaseQueryResult = { data?: unknown[] | null; error?: unknown; count?: number | null };
-type SupabaseQuery = PromiseLike<SupabaseQueryResult> & {
-  eq(column: string, value: unknown): SupabaseQuery;
-  gte(column: string, value: unknown): SupabaseQuery;
-  lt(column: string, value: unknown): SupabaseQuery;
-  in(column: string, values: readonly unknown[]): SupabaseQuery;
-  order(column: string, options?: { ascending?: boolean }): SupabaseQuery;
-  limit(count: number): SupabaseQuery;
-  select(columns?: string): SupabaseQuery;
+type DbQueryResult = { data?: unknown[] | null; error?: unknown; count?: number | null };
+type DbQuery = PromiseLike<DbQueryResult> & {
+  eq(column: string, value: unknown): DbQuery;
+  gte(column: string, value: unknown): DbQuery;
+  lt(column: string, value: unknown): DbQuery;
+  in(column: string, values: readonly unknown[]): DbQuery;
+  order(column: string, options?: { ascending?: boolean }): DbQuery;
+  limit(count: number): DbQuery;
+  select(columns?: string): DbQuery;
   single(): PromiseLike<{ data?: Record<string, unknown> | null; error?: unknown }>;
 };
-type SupabaseAdmin = {
+type DbAdmin = {
   from(table: string): {
-    select(columns?: string, options?: Record<string, unknown>): SupabaseQuery;
-    insert(values: unknown): SupabaseQuery;
-    update(values: unknown): SupabaseQuery;
-    delete(): SupabaseQuery;
+    select(columns?: string, options?: Record<string, unknown>): DbQuery;
+    insert(values: unknown): DbQuery;
+    update(values: unknown): DbQuery;
+    delete(): DbQuery;
   };
 };
 type LlmResult = {
@@ -57,19 +57,15 @@ type Summary = {
 
 export async function GET(request: NextRequest) {
   try {
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
+    const db = await createServerPgClient();
+    const { data: { user } } = await db.auth.getUser();
     if (!user) return NextResponse.json({ error: "Login required" }, { status: 401 });
 
     const { searchParams } = new URL(request.url);
     const sessionId = searchParams.get("session_id");
     const list = searchParams.get("list") === "true";
 
-    const admin = createServiceClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!,
-      { auth: { persistSession: false, autoRefreshToken: false } },
-    );
+    const admin = createPgClient();
 
     if (list || !sessionId) {
       const { data: sessions, error } = await admin
@@ -109,10 +105,10 @@ export async function GET(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
-    const supabase = await createClient();
+    const db = await createServerPgClient();
     const {
       data: { user },
-    } = await supabase.auth.getUser();
+    } = await db.auth.getUser();
 
     if (!user) return NextResponse.json({ error: "Login required" }, { status: 401 });
 
@@ -120,11 +116,7 @@ export async function DELETE(request: NextRequest) {
     const sessionId = searchParams.get("session_id");
     if (!sessionId) return NextResponse.json({ error: "session_id required" }, { status: 400 });
 
-    const admin = createServiceClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!,
-      { auth: { persistSession: false, autoRefreshToken: false } },
-    );
+    const admin = createPgClient();
 
     const { error } = await admin
       .from("ai_assistant_sessions")
@@ -160,28 +152,24 @@ export async function POST(request: NextRequest) {
     const scope = resolveAiAssistantScope(body.scope);
     const includeProjectData = scope !== "general";
 
-    const supabase = await createClient();
+    const db = await createServerPgClient();
     const {
       data: { user },
-    } = await supabase.auth.getUser();
+    } = await db.auth.getUser();
 
     if (!user) return NextResponse.json({ error: "Login required" }, { status: 401 });
 
-    const { data: profile } = await supabase
+    const { data: profile } = await db
       .from("users")
       .select("role, full_name")
       .eq("id", user.id)
       .single();
 
-    const admin = createServiceClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!,
-      { auth: { persistSession: false, autoRefreshToken: false } },
-    );
+    const admin = createPgClient();
 
     intent = includeProjectData ? detectIntent(prompt) : "all";
     const summary = includeProjectData
-      ? await buildSystemSummary(admin as unknown as SupabaseAdmin, intent)
+      ? await buildSystemSummary(admin as unknown as DbAdmin, intent)
       : createEmptySystemSummary();
     const fallbackAnswer = includeProjectData
       ? generateSummaryAnswer(prompt, summary, profile?.full_name ?? user.email ?? "User", intent)
@@ -205,7 +193,7 @@ export async function POST(request: NextRequest) {
         .eq("user_id", user.id);
     }
 
-    const persistedHistory = sessionId ? await loadSessionHistory(admin as unknown as SupabaseAdmin, sessionId) : [];
+    const persistedHistory = sessionId ? await loadSessionHistory(admin as unknown as DbAdmin, sessionId) : [];
     const mergedHistory = compactChatHistory([...persistedHistory, ...history]);
 
     const llmResult = await generateWithOllama({
@@ -244,7 +232,7 @@ export async function POST(request: NextRequest) {
       scope,
     });
 
-    await auditAiRequest(admin as unknown as SupabaseAdmin, {
+    await auditAiRequest(admin as unknown as DbAdmin, {
       user_id: user.id,
       user_email: user.email,
       prompt,
@@ -306,12 +294,12 @@ function compactChatHistory(history: ChatMessage[]): ChatMessage[] {
 }
 
 async function safeCount(
-  admin: SupabaseAdmin,
+  admin: DbAdmin,
   table: string,
-  filter?: (query: SupabaseQuery) => SupabaseQuery,
+  filter?: (query: DbQuery) => DbQuery,
 ): Promise<number> {
   try {
-    let query = admin.from(table).select("id", { count: "exact", head: true }) as unknown as SupabaseQuery;
+    let query = admin.from(table).select("id", { count: "exact", head: true }) as unknown as DbQuery;
     if (filter) query = filter(query);
     const { count, error } = await query;
     if (error) return 0;
@@ -322,17 +310,17 @@ async function safeCount(
 }
 
 async function safeRows(
-  admin: SupabaseAdmin,
+  admin: DbAdmin,
   table: string,
   columns: string,
   options?: {
-    filter?: (query: SupabaseQuery) => SupabaseQuery;
+    filter?: (query: DbQuery) => DbQuery;
     order?: { column: string; ascending?: boolean };
     limit?: number;
   },
 ): Promise<DetailRow[]> {
   try {
-    let query = admin.from(table).select(columns) as unknown as SupabaseQuery;
+    let query = admin.from(table).select(columns) as unknown as DbQuery;
     if (options?.filter) query = options.filter(query);
     if (options?.order) query = query.order(options.order.column, { ascending: options.order.ascending ?? false });
     if (options?.limit) query = query.limit(options.limit);
@@ -344,7 +332,7 @@ async function safeRows(
   }
 }
 
-async function buildSystemSummary(admin: SupabaseAdmin, intent: Intent): Promise<Summary> {
+async function buildSystemSummary(admin: DbAdmin, intent: Intent): Promise<Summary> {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const todayIso = today.toISOString();
@@ -688,7 +676,7 @@ function formatProviderError(error: unknown, endpoint: string): string {
   return `${endpoint}: ${error.name}: ${error.message}${causeText}`;
 }
 
-async function loadSessionHistory(admin: SupabaseAdmin, sessionId: string): Promise<ChatMessage[]> {
+async function loadSessionHistory(admin: DbAdmin, sessionId: string): Promise<ChatMessage[]> {
   try {
     const { data } = await admin
       .from("ai_assistant_messages")
@@ -741,7 +729,7 @@ async function appendAssistantMarkdown(payload: {
   }
 }
 
-async function auditAiRequest(admin: SupabaseAdmin, payload: Record<string, unknown>) {
+async function auditAiRequest(admin: DbAdmin, payload: Record<string, unknown>) {
   try {
     await admin.from("ai_assistant_logs").insert(payload);
   } catch (error) {

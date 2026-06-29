@@ -1,0 +1,21 @@
+import type {
+  InventoryValuationParams,
+  PODetailParams,
+  POSummaryParams,
+  StockCardParams,
+} from "./types";
+
+export const reportsQueryKeys = {
+  all: ["purchasing", "reports"] as const,
+  supplierPerformance: (params: { date_from?: string; date_to?: string }) =>
+    ["purchasing", "reports", "supplier-performance", params] as const,
+  hppBreakdown: ["purchasing", "reports", "hpp-breakdown"] as const,
+  poSummary: (params: POSummaryParams) =>
+    ["purchasing", "reports", "po-summary", params] as const,
+  stockCard: (params: StockCardParams) =>
+    ["purchasing", "reports", "stock-card", params] as const,
+  inventoryValuation: (params: InventoryValuationParams) =>
+    ["purchasing", "reports", "inventory-valuation", params] as const,
+  poDetail: (params: PODetailParams) =>
+    ["purchasing", "reports", "po-detail", params] as const,
+};

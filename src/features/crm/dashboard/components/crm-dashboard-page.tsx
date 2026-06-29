@@ -15,127 +15,16 @@ import {
   UsersRound,
 } from "lucide-react";
 import Link from "next/link";
-
-type CrmCustomer = {
-  id: string;
-  name: string;
-  phone: string;
-  membership_tier: string;
-  ark_coin_balance: number;
-  total_xp: number;
-  current_xp: number;
-  total_spent: number;
-  visit_count: number;
-};
-
-type CrmDashboardData = {
-  stats: {
-    totalCustomers: number;
-    totalMembers: number;
-    tierCount: number;
-    xpRuleCount: number;
-    rewardCount: number;
-    avatarCount: number;
-    redemptionCount: number;
-    externalEventCount: number;
-  };
-  topLoyalMembers: CrmCustomer[];
-  topTransactionSpenders: CrmCustomer[];
-  topArkSpenders: { customer: CrmCustomer | null; ark_coins_used: number }[];
-  recentXpActivity: CrmXpActivity[];
-};
-
-type CrmXpActivity = {
-  id: string;
-  direction: string;
-  source_channel: string;
-  source_type: string;
-  xp_delta: number;
-  balance_after: number;
-  description: string | null;
-  created_at: string;
-  member?: {
-    member_code: string;
-    customer_id: string;
-  } | null;
-};
-
-type CrmXpRule = {
-  id: string;
-  code: string;
-  name: string;
-  source_channel: "pos" | "photobooth" | "studio_game" | "manual" | "campaign";
-  source_type: string;
-  source_id: string | null;
-  outlet_scope: "all" | "specific";
-  outlet_id: string | null;
-  xp_mode: "fixed" | "per_item" | "per_amount" | "multiplier" | "percentage";
-  xp_value: number;
-  amount_step: number;
-  min_amount: number;
-  max_xp_per_event: number | null;
-  tier_multiplier_enabled: boolean;
-  priority: number;
-  starts_at: string | null;
-  ends_at: string | null;
-  is_active: boolean;
-  metadata: Record<string, unknown>;
-};
-
-type CrmTier = {
-  id?: string;
-  code: string;
-  name: string;
-  rank: number;
-  min_lifetime_xp: number;
-  min_total_spend: number;
-  xp_multiplier: number;
-  discount_percent: number;
-  benefits?: string[];
-  display_color: string;
-  is_active: boolean;
-};
-
-type PosProduct = {
-  id: string;
-  sku: string;
-  name: string;
-  base_price: number;
-  xp: number;
-  xp_points?: number;
-  category?: { name: string } | null;
-};
-
-type ApiState = {
-  loading: boolean;
-  error: string | null;
-  schemaReady: boolean;
-  data: CrmDashboardData | null;
-};
-
-type XpConfigState = {
-  loading: boolean;
-  savingKey: string | null;
-  message: string | null;
-  error: string | null;
-  rules: CrmXpRule[];
-  products: PosProduct[];
-  productDraft: Record<string, number>;
-  globalRuleDraft: {
-    xp_value: number;
-    amount_step: number;
-    tier_multiplier_enabled: boolean;
-  };
-};
-
-type TierConfigState = {
-  loading: boolean;
-  savingCode: string | null;
-  message: string | null;
-  error: string | null;
-  tiers: CrmTier[];
-  draft: Record<string, CrmTier>;
-};
+import type {
+  CrmCustomer,
+  CrmTier,
+  PosProduct,
+  TierConfigState,
+  XpConfigState,
+} from "../types";
+import { toNumber } from "../api";
+import { useCrmDashboard, useCrmTierConfig, useCrmXpConfig } from "../queries";
+import { useSaveGlobalPosRule, useSaveTierConfig, useUpdateProductXp } from "../mutations";
 
 const numberFormat = new Intl.NumberFormat("id-ID");
 const currencyFormat = new Intl.NumberFormat("id-ID", {
@@ -152,11 +41,6 @@ function formatCurrency(value: number) {
   return currencyFormat.format(value || 0);
 }
 
-function toNumber(value: unknown) {
-  const numeric = Number(value);
-  return Number.isFinite(numeric) ? numeric : 0;
-}
-
 function tierLabel(tier: string) {
   return tier ? tier.charAt(0).toUpperCase() + tier.slice(1) : "Bronze";
 }
@@ -170,13 +54,14 @@ function formatDateTime(value: string) {
   }).format(new Date(value));
 }
 
-export default function CrmDashboardPage() {
-  const [state, setState] = useState<ApiState>({
-    loading: true,
-    error: null,
-    schemaReady: false,
-    data: null,
-  });
+export function CrmDashboardPage() {
+  const dashboardQuery = useCrmDashboard();
+  const xpQuery = useCrmXpConfig();
+  const tierQuery = useCrmTierConfig();
+  const saveTierMutation = useSaveTierConfig();
+  const saveGlobalRuleMutation = useSaveGlobalPosRule();
+  const updateProductXpMutation = useUpdateProductXp();
+
   const [xpConfig, setXpConfig] = useState<XpConfigState>({
     loading: true,
     savingKey: null,
@@ -200,158 +85,47 @@ export default function CrmDashboardPage() {
     draft: {},
   });
 
-  async function loadDashboard() {
-    setState((current) => ({ ...current, loading: true, error: null }));
+  useEffect(() => {
+    if (!xpQuery.data) return;
+    setXpConfig((current) => ({
+      ...current,
+      loading: xpQuery.isLoading,
+      rules: xpQuery.data.rules,
+      products: xpQuery.data.products,
+      productDraft: xpQuery.data.productDraft,
+      globalRuleDraft: xpQuery.data.globalRuleDraft,
+    }));
+  }, [xpQuery.data, xpQuery.isLoading]);
 
-    try {
-      const response = await fetch("/api/crm/dashboard", { cache: "no-store" });
-      const json = await response.json();
+  useEffect(() => {
+    if (!tierQuery.data) return;
+    setTierConfig((current) => ({
+      ...current,
+      loading: tierQuery.isLoading,
+      tiers: tierQuery.data.tiers,
+      draft: tierQuery.data.draft,
+    }));
+  }, [tierQuery.data, tierQuery.isLoading]);
 
-      if (!response.ok || !json.success) {
-        throw new Error(json.error || "Gagal memuat dashboard CRM");
-      }
+  const dashboardData = dashboardQuery.data?.data ?? null;
+  const schemaReady = dashboardQuery.data?.schemaReady ?? false;
+  const dashboardLoading = dashboardQuery.isLoading || dashboardQuery.isFetching;
+  const dashboardError = dashboardQuery.error instanceof Error ? dashboardQuery.error.message : null;
 
-      setState({
-        loading: false,
-        error: null,
-        schemaReady: Boolean(json.meta?.schemaReady),
-        data: json.data,
-      });
-    } catch (error) {
-      setState({
-        loading: false,
-        error: error instanceof Error ? error.message : "Gagal memuat dashboard CRM",
-        schemaReady: false,
-        data: null,
-      });
-    }
-  }
-
-  async function loadXpConfig() {
-    setXpConfig((current) => ({ ...current, loading: true, error: null, message: null }));
-
-    try {
-      const [rulesResponse, productsResponse] = await Promise.all([
-        fetch("/api/crm/xp-rules?source_channel=pos", { cache: "no-store" }),
-        fetch("/api/pos/products", { cache: "no-store" }),
-      ]);
-      const [rulesJson, productsJson] = await Promise.all([
-        rulesResponse.json(),
-        productsResponse.json(),
-      ]);
-
-      if (!rulesResponse.ok || !rulesJson.success) {
-        throw new Error(rulesJson.error || "Gagal memuat rule XP");
-      }
-
-      if (!productsResponse.ok || !productsJson.success) {
-        throw new Error(productsJson.error || "Gagal memuat produk POS");
-      }
-
-      const rules = (rulesJson.data ?? []) as CrmXpRule[];
-      const products = ((productsJson.data ?? []) as PosProduct[]).map((product) => ({
-        ...product,
-        xp: toNumber(product.xp ?? product.xp_points),
-      }));
-      const globalRule = rules.find((rule) => rule.code === "pos-order-amount-default");
-
-      setXpConfig((current) => ({
-        ...current,
-        loading: false,
-        error: null,
-        rules,
-        products,
-        productDraft: Object.fromEntries(products.map((product) => [product.id, toNumber(product.xp)])),
-        globalRuleDraft: {
-          xp_value: toNumber(globalRule?.xp_value ?? current.globalRuleDraft.xp_value),
-          amount_step: toNumber(globalRule?.amount_step ?? current.globalRuleDraft.amount_step),
-          tier_multiplier_enabled: globalRule?.tier_multiplier_enabled ?? current.globalRuleDraft.tier_multiplier_enabled,
-        },
-      }));
-    } catch (error) {
-      setXpConfig((current) => ({
-        ...current,
-        loading: false,
-        error: error instanceof Error ? error.message : "Gagal memuat konfigurasi XP",
-      }));
-    }
-  }
-
-  async function loadTierConfig() {
-    setTierConfig((current) => ({ ...current, loading: true, error: null, message: null }));
-
-    try {
-      const response = await fetch("/api/crm/tiers", { cache: "no-store" });
-      const json = await response.json();
-
-      if (!response.ok || !json.success) {
-        throw new Error(json.error || "Gagal memuat tier CRM");
-      }
-
-      const tiers = ((json.data ?? []) as CrmTier[]).map((tier) => ({
-        ...tier,
-        rank: toNumber(tier.rank),
-        min_lifetime_xp: toNumber(tier.min_lifetime_xp),
-        min_total_spend: toNumber(tier.min_total_spend),
-        xp_multiplier: toNumber(tier.xp_multiplier) || 1,
-        discount_percent: toNumber(tier.discount_percent),
-        benefits: tier.benefits ?? [],
-        display_color: tier.display_color || "#6B7280",
-        is_active: tier.is_active !== false,
-      }));
-
-      setTierConfig((current) => ({
-        ...current,
-        loading: false,
-        error: null,
-        tiers,
-        draft: Object.fromEntries(tiers.map((tier) => [tier.code, tier])),
-      }));
-    } catch (error) {
-      setTierConfig((current) => ({
-        ...current,
-        loading: false,
-        error: error instanceof Error ? error.message : "Gagal memuat tier CRM",
-      }));
-    }
-  }
-
-  async function saveTierConfig(tierCode: string) {
+  async function saveTierConfigHandler(tierCode: string) {
     const draft = tierConfig.draft[tierCode];
     if (!draft) return;
 
     setTierConfig((current) => ({ ...current, savingCode: tierCode, error: null, message: null }));
 
     try {
-      const response = await fetch("/api/crm/tiers", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ...draft,
-          rank: Math.max(1, Math.floor(toNumber(draft.rank))),
-          min_lifetime_xp: Math.max(0, Math.floor(toNumber(draft.min_lifetime_xp))),
-          min_total_spend: Math.max(0, toNumber(draft.min_total_spend)),
-          xp_multiplier: Math.max(0, toNumber(draft.xp_multiplier)),
-          discount_percent: Math.min(100, Math.max(0, toNumber(draft.discount_percent))),
-          benefits: draft.benefits ?? [],
-          display_color: draft.display_color || "#6B7280",
-          is_active: draft.is_active !== false,
-        }),
-      });
-      const json = await response.json();
-
-      if (!response.ok || !json.success) {
-        throw new Error(json.error || "Gagal menyimpan tier CRM");
-      }
-
-      await loadTierConfig();
-      await loadDashboard();
+      await saveTierMutation.mutateAsync(draft);
       setTierConfig((current) => ({ ...current, savingCode: null, message: `Tier ${draft.name} tersimpan.` }));
-    } catch (error) {
+    } catch (err) {
       setTierConfig((current) => ({
         ...current,
         savingCode: null,
-        error: error instanceof Error ? error.message : "Gagal menyimpan tier CRM",
+        error: err instanceof Error ? err.message : "Gagal menyimpan tier CRM",
       }));
     }
   }
@@ -360,44 +134,13 @@ export default function CrmDashboardPage() {
     setXpConfig((current) => ({ ...current, savingKey: "global", error: null, message: null }));
 
     try {
-      const response = await fetch("/api/crm/xp-rules", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          code: "pos-order-amount-default",
-          name: "POS order amount default",
-          source_channel: "pos",
-          source_type: "order_amount",
-          source_id: null,
-          outlet_scope: "all",
-          outlet_id: null,
-          xp_mode: "per_amount",
-          xp_value: Math.max(0, toNumber(xpConfig.globalRuleDraft.xp_value)),
-          amount_step: Math.max(1, toNumber(xpConfig.globalRuleDraft.amount_step)),
-          min_amount: 0,
-          max_xp_per_event: null,
-          tier_multiplier_enabled: xpConfig.globalRuleDraft.tier_multiplier_enabled,
-          priority: 100,
-          starts_at: null,
-          ends_at: null,
-          is_active: true,
-          metadata: { description: "Default XP for paid POS transaction amount" },
-        }),
-      });
-      const json = await response.json();
-
-      if (!response.ok || !json.success) {
-        throw new Error(json.error || "Gagal menyimpan rule XP transaksi");
-      }
-
+      await saveGlobalRuleMutation.mutateAsync(xpConfig.globalRuleDraft);
       setXpConfig((current) => ({ ...current, savingKey: null, message: "Rule XP transaksi tersimpan." }));
-      await loadXpConfig();
-      await loadDashboard();
-    } catch (error) {
+    } catch (err) {
       setXpConfig((current) => ({
         ...current,
         savingKey: null,
-        error: error instanceof Error ? error.message : "Gagal menyimpan rule XP transaksi",
+        error: err instanceof Error ? err.message : "Gagal menyimpan rule XP transaksi",
       }));
     }
   }
@@ -407,35 +150,24 @@ export default function CrmDashboardPage() {
     setXpConfig((current) => ({ ...current, savingKey: product.id, error: null, message: null }));
 
     try {
-      const response = await fetch(`/api/pos/products/${product.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ xp_points: xp }),
-      });
-      const json = await response.json();
-
-      if (!response.ok || !json.success) {
-        throw new Error(json.error || "Gagal menyimpan XP produk");
-      }
-
+      await updateProductXpMutation.mutateAsync({ productId: product.id, xp });
       setXpConfig((current) => ({ ...current, savingKey: null, message: `XP ${product.name} tersimpan.` }));
-      await loadXpConfig();
-    } catch (error) {
+    } catch (err) {
       setXpConfig((current) => ({
         ...current,
         savingKey: null,
-        error: error instanceof Error ? error.message : "Gagal menyimpan XP produk",
+        error: err instanceof Error ? err.message : "Gagal menyimpan XP produk",
       }));
     }
   }
 
-  useEffect(() => {
-    void loadDashboard();
-    void loadXpConfig();
-    void loadTierConfig();
-  }, []);
+  function refreshAll() {
+    void dashboardQuery.refetch();
+    void xpQuery.refetch();
+    void tierQuery.refetch();
+  }
 
-  const stats = state.data?.stats;
+  const stats = dashboardData?.stats;
   const statCards = useMemo(
     () => [
       { label: "Customers", value: stats?.totalCustomers ?? 0, icon: UsersRound, tone: "text-sky-700 bg-sky-50" },
@@ -480,25 +212,25 @@ export default function CrmDashboardPage() {
             </Link>
             <button
               type="button"
-              onClick={() => void loadDashboard()}
+              onClick={refreshAll}
               className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-slate-300 bg-white px-3 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-100 disabled:opacity-60"
-              disabled={state.loading}
+              disabled={dashboardLoading}
             >
-              <RefreshCw className={`size-4 ${state.loading ? "animate-spin" : ""}`} />
+              <RefreshCw className={`size-4 ${dashboardLoading ? "animate-spin" : ""}`} />
               Refresh
             </button>
           </div>
         </div>
 
-        {!state.schemaReady && (
+        {!schemaReady && (
           <div className="rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
             CRM schema belum aktif di database. Dashboard saat ini membaca data awal dari POS customer.
           </div>
         )}
 
-        {state.error && (
+        {dashboardError && (
           <div className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-            {state.error}
+            {dashboardError}
           </div>
         )}
 
@@ -519,7 +251,7 @@ export default function CrmDashboardPage() {
 
         <TierConfigurationPanel
           config={tierConfig}
-          onReload={() => void loadTierConfig()}
+          onReload={() => void tierQuery.refetch()}
           onDraftChange={(tierCode, draft) =>
             setTierConfig((current) => ({
               ...current,
@@ -532,12 +264,12 @@ export default function CrmDashboardPage() {
               },
             }))
           }
-          onSave={(tierCode) => void saveTierConfig(tierCode)}
+          onSave={(tierCode) => void saveTierConfigHandler(tierCode)}
         />
 
         <XpConfigurationPanel
           config={xpConfig}
-          onReload={() => void loadXpConfig()}
+          onReload={() => void xpQuery.refetch()}
           onSaveGlobal={() => void saveGlobalPosRule()}
           onGlobalDraftChange={(draft) =>
             setXpConfig((current) => ({
@@ -558,28 +290,28 @@ export default function CrmDashboardPage() {
           <LeaderboardTable
             title="Member Paling Loyal"
             valueLabel="XP"
-            rows={state.data?.topLoyalMembers ?? []}
+            rows={dashboardData?.topLoyalMembers ?? []}
             getValue={(customer) => formatNumber(customer.total_xp)}
           />
           <LeaderboardTable
             title="Top Spender Transaksi"
             valueLabel="Spend"
-            rows={state.data?.topTransactionSpenders ?? []}
+            rows={dashboardData?.topTransactionSpenders ?? []}
             getValue={(customer) => formatCurrency(customer.total_spent)}
           />
-          <ArkCoinsTable rows={state.data?.topArkSpenders ?? []} />
+          <ArkCoinsTable rows={dashboardData?.topArkSpenders ?? []} />
         </section>
 
         <section className="grid gap-4 lg:grid-cols-[1.4fr_0.9fr]">
           <div className="rounded-lg border border-slate-200 bg-white shadow-sm">
             <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
               <h2 className="text-base font-semibold text-slate-950">XP Activity</h2>
-              <span className="text-xs text-slate-500">{formatNumber(state.data?.recentXpActivity.length ?? 0)} records</span>
+              <span className="text-xs text-slate-500">{formatNumber(dashboardData?.recentXpActivity.length ?? 0)} records</span>
             </div>
             <div className="p-4">
-              {state.schemaReady && (state.data?.recentXpActivity.length ?? 0) > 0 ? (
+              {schemaReady && (dashboardData?.recentXpActivity.length ?? 0) > 0 ? (
                 <div className="divide-y divide-slate-100 overflow-hidden rounded-md border border-slate-200">
-                  {state.data?.recentXpActivity.map((activity) => (
+                  {dashboardData?.recentXpActivity.map((activity) => (
                     <div key={activity.id} className="grid grid-cols-[1fr_auto] gap-3 px-4 py-3">
                       <div className="min-w-0">
                         <div className="truncate text-sm font-medium text-slate-900">
@@ -596,7 +328,7 @@ export default function CrmDashboardPage() {
                     </div>
                   ))}
                 </div>
-              ) : state.schemaReady ? (
+              ) : schemaReady ? (
                 <div className="rounded-md border border-slate-200 bg-slate-50 px-4 py-8 text-center text-sm text-slate-500">
                   Belum ada aktivitas XP ledger.
                 </div>
@@ -611,11 +343,11 @@ export default function CrmDashboardPage() {
           <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
             <h2 className="text-base font-semibold text-slate-950">Foundation Status</h2>
             <div className="mt-4 space-y-3">
-              <StatusRow label="Membership tiers" value={stats?.tierCount ?? 0} ready={state.schemaReady} />
-              <StatusRow label="XP rule config" value={stats?.xpRuleCount ?? 0} ready={state.schemaReady} />
-              <StatusRow label="Reward catalog" value={stats?.rewardCount ?? 0} ready={state.schemaReady} />
-              <StatusRow label="Avatar catalog" value={stats?.avatarCount ?? 0} ready={state.schemaReady} />
-              <StatusRow label="Partner event audit" value={stats?.externalEventCount ?? 0} ready={state.schemaReady} />
+              <StatusRow label="Membership tiers" value={stats?.tierCount ?? 0} ready={schemaReady} />
+              <StatusRow label="XP rule config" value={stats?.xpRuleCount ?? 0} ready={schemaReady} />
+              <StatusRow label="Reward catalog" value={stats?.rewardCount ?? 0} ready={schemaReady} />
+              <StatusRow label="Avatar catalog" value={stats?.avatarCount ?? 0} ready={schemaReady} />
+              <StatusRow label="Partner event audit" value={stats?.externalEventCount ?? 0} ready={schemaReady} />
             </div>
           </div>
         </section>

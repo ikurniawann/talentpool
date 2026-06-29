@@ -3,7 +3,7 @@
 // ============================================
 
 import { NextRequest } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { createServerPgClient } from "@/lib/pg/create-client";
 import { z } from "zod";
 
 const poItemSchema = z.object({
@@ -27,14 +27,14 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
-    const supabase = await createClient();
+    const db = await createServerPgClient();
 
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from("purchase_order_items")
       .select(`
         *,
-        raw_material:raw_material_id (*),
-        satuan:satuan_id (*)
+        raw_material:raw_materials!raw_material_id (*),
+        satuan:units!satuan_id (*)
       `)
       .eq("purchase_order_id", id)
       .eq("is_active", true)
@@ -59,14 +59,14 @@ export async function POST(
 ) {
   try {
     const { id } = await params;
-    const supabase = await createClient();
+    const db = await createServerPgClient();
     const body = await request.json();
 
     // Validasi input
     const validated = poItemSchema.parse(body);
 
     // Cek PO ada dan masih bisa diedit
-    const { data: po, error: poError } = await supabase
+    const { data: po, error: poError } = await db
       .from("purchase_orders")
       .select("*")
       .eq("id", id)
@@ -87,7 +87,7 @@ export async function POST(
     }
 
     // Cek apakah bahan sudah ada di PO ini
-    const { data: existingItem } = await supabase
+    const { data: existingItem } = await db
       .from("purchase_order_items")
       .select("id")
       .eq("purchase_order_id", id)
@@ -103,7 +103,7 @@ export async function POST(
     }
 
     // Insert item
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from("purchase_order_items")
       .insert({
         ...validated,

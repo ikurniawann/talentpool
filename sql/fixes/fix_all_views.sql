@@ -1,6 +1,6 @@
 -- ============================================
 -- FIX: Create all missing views for Purchasing Module
--- Run this in Supabase Dashboard → SQL Editor
+-- Run this in admin database → SQL Editor
 -- ============================================
 
 -- ============================================

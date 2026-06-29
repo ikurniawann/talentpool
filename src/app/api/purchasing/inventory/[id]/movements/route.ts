@@ -3,7 +3,7 @@
 // ============================================
 
 import { NextRequest } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { createServerPgClient } from "@/lib/pg/create-client";
 
 // GET /api/purchasing/inventory/:id/movements
 export async function GET(
@@ -12,16 +12,16 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
-    const supabase = await createClient();
+    const db = await createServerPgClient();
     const { searchParams } = new URL(request.url);
     const limit = parseInt(searchParams.get("limit") || "50");
 
     // Get movements dengan limit
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from("inventory_movements")
       .select(`
         *,
-        raw_material:raw_material_id (*)
+        raw_material:raw_materials!raw_material_id (*)
       `)
       .eq("raw_material_id", id)
       .order("created_at", { ascending: false })

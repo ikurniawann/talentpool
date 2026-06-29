@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server";
+import { createServerPgClient } from "@/lib/pg/create-client";
 import { NextResponse } from "next/server";
 import { candidateSchema, candidateFilterSchema } from "@/lib/validations/candidate";
 import { createApiErrorResponse, RateLimitError } from "@/lib/errors/api-errors";
@@ -7,7 +7,7 @@ import { checkRateLimit, getRateLimitHeaders } from "@/lib/rate-limit";
 // GET /api/candidates - List candidates with pagination
 export async function GET(request: Request) {
   try {
-    const supabase = await createClient();
+    const db = await createServerPgClient();
     
     // Rate limiting
     const clientIp = request.headers.get("x-forwarded-for") || "anonymous";
@@ -45,7 +45,7 @@ export async function GET(request: Request) {
     const { status, brand_id, search, page, limit } = validationResult.data;
     const offset = (page - 1) * limit;
 
-    let query = supabase
+    let query = db
       .from("candidates")
       .select("*, brands(name), positions(title)", { count: "exact" })
       .order("created_at", { ascending: false });
@@ -101,7 +101,7 @@ export async function GET(request: Request) {
 // POST /api/candidates - Create candidate with validation
 export async function POST(request: Request) {
   try {
-    const supabase = await createClient();
+    const db = await createServerPgClient();
     
     // Rate limiting
     const clientIp = request.headers.get("x-forwarded-for") || "anonymous";
@@ -112,7 +112,7 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
-    const { data: userData } = await supabase.auth.getUser();
+    const { data: userData } = await db.auth.getUser();
 
     // Validate input
     const validationResult = candidateSchema.safeParse(body);
@@ -133,7 +133,7 @@ export async function POST(request: Request) {
 
     const validatedData = validationResult.data;
 
-    const { data, error } = await supabase.from("candidates").insert({
+    const { data, error } = await db.from("candidates").insert({
       full_name: validatedData.full_name,
       email: validatedData.email,
       phone: validatedData.phone,

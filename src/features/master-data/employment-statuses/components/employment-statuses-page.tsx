@@ -1,73 +1,95 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
-import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { useEffect, useMemo, useState } from "react";
+import { IdentificationIcon, PlusIcon } from "@heroicons/react/24/outline";
+import { Loader2, Search, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Combobox } from "@/components/ui/combobox";
 import {
   Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
   DialogFooter,
+  DialogPanel,
+  DialogPanelBody,
+  DialogPanelDescription,
+  DialogPanelForm,
+  DialogPanelHeader,
+  DialogPanelTitle,
 } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { TableRow } from "@/components/ui/table";
+import { ToastContainer, useToast } from "@/components/ui/toast";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { PencilIcon, TrashIcon, PlusIcon, IdentificationIcon } from "@heroicons/react/24/outline";
-import { useToast, ToastContainer } from "@/components/ui/toast";
-
-interface EmploymentStatus {
-  id: string;
-  code: string;
-  name: string;
-  color: string;
-  description: string | null;
-  is_active: boolean;
-  created_at: string;
-}
+  FormFieldLabel,
+  formComboboxClassName,
+  formInputClassName,
+} from "@/components/layout/form-field";
+import { PurchasingListSection } from "@/modules/purchasing/components/list/PurchasingListSection";
+import { MasterDeleteDialog } from "../../components/master-delete-dialog";
+import { MasterTableActions } from "../../components/master-table-actions";
+import { useEmploymentStatusList } from "../queries";
+import {
+  useCreateEmploymentStatus,
+  useUpdateEmploymentStatus,
+  useDeleteEmploymentStatus,
+} from "../mutations";
+import type { EmploymentStatusItem } from "../types";
 
 const COLOR_OPTIONS = [
-  { value: "gray", label: "Abu-abu", class: "bg-gray-100 text-gray-700" },
-  { value: "blue", label: "Biru", class: "bg-blue-100 text-blue-700" },
-  { value: "green", label: "Hijau", class: "bg-green-100 text-green-700" },
-  { value: "yellow", label: "Kuning", class: "bg-yellow-100 text-yellow-700" },
-  { value: "orange", label: "Oranye", class: "bg-orange-100 text-orange-700" },
-  { value: "red", label: "Merah", class: "bg-red-100 text-red-700" },
-  { value: "purple", label: "Ungu", class: "bg-purple-100 text-purple-700" },
-  { value: "teal", label: "Teal", class: "bg-teal-100 text-teal-700" },
+  { value: "gray", label: "Abu-abu" },
+  { value: "blue", label: "Biru" },
+  { value: "green", label: "Hijau" },
+  { value: "yellow", label: "Kuning" },
+  { value: "orange", label: "Oranye" },
+  { value: "red", label: "Merah" },
+  { value: "purple", label: "Ungu" },
+  { value: "teal", label: "Teal" },
 ];
 
-const COLOR_CLASS_MAP: Record<string, string> = Object.fromEntries(COLOR_OPTIONS.map((c) => [c.value, c.class]));
+const COLOR_CLASS_MAP: Record<string, string> = {
+  gray: "bg-gray-100 text-gray-700",
+  blue: "bg-blue-100 text-blue-700",
+  green: "bg-green-100 text-green-700",
+  yellow: "bg-yellow-100 text-yellow-700",
+  orange: "bg-orange-100 text-orange-700",
+  red: "bg-red-100 text-red-700",
+  purple: "bg-purple-100 text-purple-700",
+  teal: "bg-teal-100 text-teal-700",
+};
 
 const EMPTY_FORM = { code: "", name: "", color: "gray", description: "", is_active: true };
 
-export default function EmploymentStatusesPage() {
+export function EmploymentStatusesPage() {
   const { toasts, showToast, removeToast } = useToast();
-  const [data, setData] = useState<EmploymentStatus[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState("");
   const [search, setSearch] = useState("");
   const [dialog, setDialog] = useState<"add" | "edit" | null>(null);
-  const [selected, setSelected] = useState<EmploymentStatus | null>(null);
+  const [selected, setSelected] = useState<EmploymentStatusItem | null>(null);
   const [form, setForm] = useState(EMPTY_FORM);
-  const [saving, setSaving] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
-  const [deleting, setDeleting] = useState(false);
 
-  const fetch = useCallback(async () => {
-    setLoading(true);
-    const res = await window.fetch("/api/master/employment-statuses");
-    const json = await res.json();
-    setData(json.data || []);
-    setLoading(false);
-  }, []);
+  const { data, isLoading } = useEmploymentStatusList();
+  const createMutation = useCreateEmploymentStatus();
+  const updateMutation = useUpdateEmploymentStatus();
+  const deleteMutation = useDeleteEmploymentStatus();
 
-  useEffect(() => { fetch(); }, [fetch]);
+  const rows = useMemo(() => data ?? [], [data]);
+  const isSaving = createMutation.isPending || updateMutation.isPending;
+  const isDeleting = deleteMutation.isPending;
+
+  useEffect(() => {
+    const timeout = window.setTimeout(() => setSearch(searchQuery.trim()), 300);
+    return () => window.clearTimeout(timeout);
+  }, [searchQuery]);
+
+  const filtered = useMemo(() => {
+    if (!search) return rows;
+    const q = search.toLowerCase();
+    return rows.filter(
+      (d) => d.name.toLowerCase().includes(q) || d.code.toLowerCase().includes(q)
+    );
+  }, [rows, search]);
 
   function openAdd() {
     setForm(EMPTY_FORM);
@@ -75,196 +97,273 @@ export default function EmploymentStatusesPage() {
     setDialog("add");
   }
 
-  function openEdit(item: EmploymentStatus) {
+  function openEdit(item: EmploymentStatusItem) {
     setSelected(item);
-    setForm({ code: item.code, name: item.name, color: item.color || "gray", description: item.description || "", is_active: item.is_active });
+    setForm({
+      code: item.code,
+      name: item.name,
+      color: item.color || "gray",
+      description: item.description || "",
+      is_active: item.is_active,
+    });
     setDialog("edit");
   }
 
-  async function handleSave() {
+  async function handleSave(e: React.FormEvent) {
+    e.preventDefault();
+    if (isSaving) return;
     if (!form.code.trim() || !form.name.trim()) {
       showToast("Kode dan nama wajib diisi", "error");
       return;
     }
-    setSaving(true);
-    const url = dialog === "edit" ? `/api/master/employment-statuses/${selected!.id}` : "/api/master/employment-statuses";
-    const res = await window.fetch(url, {
-      method: dialog === "edit" ? "PUT" : "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(form),
-    });
-    const json = await res.json();
-    if (!res.ok) { showToast(json.error || "Gagal menyimpan", "error"); }
-    else {
-      showToast(json.message || "Berhasil disimpan");
+    try {
+      if (dialog === "edit" && selected) {
+        const res = await updateMutation.mutateAsync({ id: selected.id, ...form });
+        showToast(res.message || "Status berhasil diperbarui", "success");
+      } else {
+        const res = await createMutation.mutateAsync(form);
+        showToast(res.message || "Status berhasil ditambahkan", "success");
+      }
       setDialog(null);
-      fetch();
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : "Gagal menyimpan", "error");
     }
-    setSaving(false);
   }
 
   async function handleDelete() {
-    if (!deleteId) return;
-    setDeleting(true);
-    const res = await window.fetch(`/api/master/employment-statuses/${deleteId}`, { method: "DELETE" });
-    const json = await res.json();
-    if (!res.ok) { showToast(json.error || "Gagal menghapus", "error"); }
-    else { showToast(json.message || "Berhasil dihapus"); fetch(); }
-    setDeleteId(null);
-    setDeleting(false);
+    if (!deleteId || isDeleting) return;
+    try {
+      await deleteMutation.mutateAsync(deleteId);
+      showToast("Status berhasil dihapus", "success");
+      setDeleteId(null);
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : "Gagal menghapus", "error");
+    }
   }
-
-  const filtered = data.filter(
-    (d) => d.name.toLowerCase().includes(search.toLowerCase()) || d.code.toLowerCase().includes(search.toLowerCase())
-  );
 
   return (
     <div className="space-y-6">
       <ToastContainer toasts={toasts} removeToast={removeToast} />
 
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <IdentificationIcon className="w-6 h-6 text-yellow-600" />
-          <div>
-            <h1 className="text-xl font-bold text-gray-900">Master Status Kepegawaian</h1>
-            <p className="text-sm text-gray-500">{data.length} status terdaftar</p>
-          </div>
+      <div className="flex flex-col items-start justify-between gap-4 border-b border-gray-200/70 pb-4 sm:flex-row sm:items-center">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Master Status Kepegawaian</h1>
+          <p className="mt-1 text-sm text-gray-500">
+            Kategori status karyawan — {rows.length} status terdaftar
+          </p>
         </div>
-        <Button onClick={openAdd} className="gap-1">
-          <PlusIcon className="w-4 h-4" /> Tambah Status
+        <Button
+          type="button"
+          onClick={openAdd}
+          className="h-10 w-full gap-2 rounded-lg bg-pink-600 px-3 text-sm font-semibold text-white shadow-sm hover:bg-pink-700 sm:w-auto"
+        >
+          <PlusIcon className="h-4 w-4" />
+          Tambah Status
         </Button>
       </div>
 
-      <Card>
-        <CardContent className="pt-4">
-          <Input
-            placeholder="Cari kode atau nama status..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="max-w-sm mb-4"
-          />
-          {loading ? (
-            <div className="flex justify-center py-12">
-              <div className="animate-spin w-6 h-6 border-2 border-gray-300 border-t-blue-500 rounded-full" />
-            </div>
-          ) : filtered.length === 0 ? (
-            <div className="text-center py-12 text-gray-400">
-              <IdentificationIcon className="w-8 h-8 mx-auto mb-2 text-gray-300" />
-              Belum ada status kepegawaian
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-gray-100 bg-gray-50">
-                    <th className="text-left p-3 font-medium text-gray-600">Tampilan</th>
-                    <th className="text-left p-3 font-medium text-gray-600">Kode</th>
-                    <th className="text-left p-3 font-medium text-gray-600">Deskripsi</th>
-                    <th className="text-left p-3 font-medium text-gray-600">Status</th>
-                    <th className="text-right p-3 font-medium text-gray-600">Aksi</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filtered.map((item) => (
-                    <tr key={item.id} className="border-b border-gray-50 hover:bg-gray-50 transition-colors">
-                      <td className="p-3">
-                        <Badge className={COLOR_CLASS_MAP[item.color] || "bg-gray-100 text-gray-700"}>
-                          {item.name}
-                        </Badge>
-                      </td>
-                      <td className="p-3">
-                        <span className="font-mono text-xs bg-gray-100 px-2 py-0.5 rounded">{item.code}</span>
-                      </td>
-                      <td className="p-3 text-gray-500">{item.description || "-"}</td>
-                      <td className="p-3">
-                        <Badge className={item.is_active ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500"}>
-                          {item.is_active ? "Aktif" : "Nonaktif"}
-                        </Badge>
-                      </td>
-                      <td className="p-3">
-                        <div className="flex justify-end gap-1">
-                          <Button size="sm" variant="ghost" onClick={() => openEdit(item)} className="p-1.5 text-blue-600 hover:bg-blue-50">
-                            <PencilIcon className="w-4 h-4" />
-                          </Button>
-                          <Button size="sm" variant="ghost" onClick={() => setDeleteId(item.id)} className="p-1.5 text-red-500 hover:bg-red-50">
-                            <TrashIcon className="w-4 h-4" />
-                          </Button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Add/Edit Dialog */}
-      <Dialog open={!!dialog} onOpenChange={(o) => !o && setDialog(null)}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>{dialog === "edit" ? "Edit Status Kepegawaian" : "Tambah Status Kepegawaian"}</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-3 py-2">
-            <div>
-              <label className="text-xs font-medium text-gray-600">Kode * <span className="text-gray-400">(disimpan di data karyawan)</span></label>
-              <Input
-                value={form.code}
-                onChange={(e) => setForm((f) => ({ ...f, code: e.target.value.toLowerCase().replace(/\s+/g, "_") }))}
-                placeholder="e.g. probation"
-                disabled={dialog === "edit"}
-              />
-              <p className="text-xs text-gray-400 mt-0.5">Huruf kecil, tanpa spasi. Tidak bisa diubah setelah disimpan.</p>
-            </div>
-            <div>
-              <label className="text-xs font-medium text-gray-600">Nama Tampilan *</label>
-              <Input value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} placeholder="e.g. Probasi" />
-            </div>
-            <div>
-              <label className="text-xs font-medium text-gray-600">Warna Badge</label>
-              <Select value={form.color} onValueChange={(v) => setForm((f) => ({ ...f, color: v }))}>
-                <SelectTrigger>
-                  <SelectValue placeholder={COLOR_OPTIONS.find((c) => c.value === form.color)?.label || form.color} />
-                </SelectTrigger>
-                <SelectContent>
-                  {COLOR_OPTIONS.map((c) => (
-                    <SelectItem key={c.value} value={c.value}>
-                      <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${c.class}`}>{c.label}</span>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <label className="text-xs font-medium text-gray-600">Deskripsi</label>
-              <Input value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))} placeholder="Opsional" />
-            </div>
-            <div className="flex items-center gap-2">
-              <input type="checkbox" id="is_active_status" checked={form.is_active} onChange={(e) => setForm((f) => ({ ...f, is_active: e.target.checked }))} className="w-4 h-4 accent-blue-600" />
-              <label htmlFor="is_active_status" className="text-sm text-gray-700">Aktif (muncul di dropdown karyawan)</label>
-            </div>
+      <PurchasingListSection
+        icon={IdentificationIcon}
+        title="Daftar Status Kepegawaian"
+        description="Kelola label status yang dipakai di profil karyawan."
+        toolbar={
+          <label className="relative w-full sm:w-80">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+            <Input
+              placeholder="Cari kode atau nama..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="h-10 bg-white pl-9 pr-9 text-sm focus:border-pink-400 focus:ring-2 focus:ring-pink-100"
+            />
+            {searchQuery ? (
+              <button
+                type="button"
+                onClick={() => setSearchQuery("")}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700"
+                aria-label="Hapus pencarian"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            ) : null}
+          </label>
+        }
+      >
+        {isLoading ? (
+          <div className="py-14 text-center">
+            <Loader2 className="mx-auto h-8 w-8 animate-spin text-pink-600" />
+            <p className="mt-2 text-sm text-gray-500">Memuat data status...</p>
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setDialog(null)}>Batal</Button>
-            <Button onClick={handleSave} disabled={saving}>{saving ? "Menyimpan..." : "Simpan"}</Button>
-          </DialogFooter>
-        </DialogContent>
+        ) : filtered.length === 0 ? (
+          <div className="py-14 text-center">
+            <IdentificationIcon className="mx-auto mb-4 h-12 w-12 text-gray-300" />
+            <p className="text-gray-500">
+              {search ? "Tidak ada status yang cocok" : "Belum ada status kepegawaian"}
+            </p>
+            {!search ? (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={openAdd}
+                className="mt-4 h-10 rounded-lg border-pink-200 text-pink-700 hover:bg-pink-50"
+              >
+                Tambah Status Pertama
+              </Button>
+            ) : null}
+          </div>
+        ) : (
+          <div className="overflow-x-auto px-4 pb-4">
+            <table className="w-full text-sm">
+              <thead>
+                <TableRow className="border-b border-gray-200/70 bg-gray-50/80 text-xs uppercase tracking-wide text-gray-500 hover:bg-gray-50/80">
+                  <th className="px-4 py-3 text-left font-semibold">Tampilan</th>
+                  <th className="px-4 py-3 text-left font-semibold">Kode</th>
+                  <th className="px-4 py-3 text-left font-semibold">Deskripsi</th>
+                  <th className="px-4 py-3 text-left font-semibold">Status</th>
+                  <th className="px-4 py-3 text-right font-semibold">Aksi</th>
+                </TableRow>
+              </thead>
+              <tbody className="divide-y divide-gray-200/50">
+                {filtered.map((item) => (
+                  <TableRow key={item.id} className="hover:bg-gray-50/80">
+                    <td className="px-4 py-3">
+                      <Badge
+                        className={`border-0 font-normal ${COLOR_CLASS_MAP[item.color] || COLOR_CLASS_MAP.gray}`}
+                      >
+                        {item.name}
+                      </Badge>
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className="rounded bg-gray-100 px-2 py-0.5 font-mono text-xs">
+                        {item.code}
+                      </span>
+                    </td>
+                    <td className="max-w-xs truncate px-4 py-3 text-gray-500">
+                      {item.description || "—"}
+                    </td>
+                    <td className="px-4 py-3">
+                      <Badge
+                        className={
+                          item.is_active
+                            ? "border-0 bg-emerald-100 font-normal text-emerald-700"
+                            : "border-0 bg-gray-100 font-normal text-gray-500"
+                        }
+                      >
+                        {item.is_active ? "Aktif" : "Nonaktif"}
+                      </Badge>
+                    </td>
+                    <td className="px-4 py-3">
+                      <MasterTableActions
+                        onEdit={() => openEdit(item)}
+                        onDelete={() => setDeleteId(item.id)}
+                      />
+                    </td>
+                  </TableRow>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </PurchasingListSection>
+
+      <Dialog open={!!dialog} onOpenChange={(open) => !open && setDialog(null)}>
+        <DialogPanel size="sm">
+          <DialogPanelForm onSubmit={handleSave}>
+            <DialogPanelHeader>
+              <DialogPanelTitle>
+                {dialog === "edit" ? "Edit Status Kepegawaian" : "Tambah Status Kepegawaian"}
+              </DialogPanelTitle>
+              <DialogPanelDescription>
+                Kode disimpan di data karyawan dan tidak dapat diubah setelah dibuat.
+              </DialogPanelDescription>
+            </DialogPanelHeader>
+            <DialogPanelBody className="space-y-4">
+              <div>
+                <FormFieldLabel required>Kode</FormFieldLabel>
+                <Input
+                  value={form.code}
+                  onChange={(e) =>
+                    setForm((f) => ({
+                      ...f,
+                      code: e.target.value.toLowerCase().replace(/\s+/g, "_"),
+                    }))
+                  }
+                  placeholder="Contoh: probation"
+                  disabled={dialog === "edit"}
+                  className={formInputClassName}
+                />
+                <p className="mt-1 text-xs text-gray-400">Huruf kecil, tanpa spasi</p>
+              </div>
+              <div>
+                <FormFieldLabel required>Nama Tampilan</FormFieldLabel>
+                <Input
+                  value={form.name}
+                  onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+                  placeholder="Contoh: Probasi"
+                  className={formInputClassName}
+                />
+              </div>
+              <div>
+                <FormFieldLabel>Warna Badge</FormFieldLabel>
+                <Combobox
+                  options={COLOR_OPTIONS}
+                  value={form.color}
+                  onChange={(value) => setForm((f) => ({ ...f, color: value }))}
+                  placeholder="Pilih warna"
+                  searchPlaceholder="Cari warna..."
+                  emptyMessage="Warna tidak ditemukan"
+                  className={formComboboxClassName}
+                />
+              </div>
+              <div>
+                <FormFieldLabel>Deskripsi</FormFieldLabel>
+                <Input
+                  value={form.description}
+                  onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
+                  placeholder="Opsional"
+                  className={formInputClassName}
+                />
+              </div>
+              <label className="flex items-center gap-2">
+                <Checkbox
+                  checked={form.is_active}
+                  onCheckedChange={(checked) =>
+                    setForm((f) => ({ ...f, is_active: checked === true }))
+                  }
+                />
+                <span className="text-sm text-gray-700">Aktif (muncul di form karyawan)</span>
+              </label>
+            </DialogPanelBody>
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setDialog(null)}
+                disabled={isSaving}
+                className="h-10 rounded-lg border-gray-200/80"
+              >
+                Batal
+              </Button>
+              <Button
+                type="submit"
+                disabled={isSaving}
+                className="h-10 gap-2 rounded-lg bg-pink-600 px-4 text-white hover:bg-pink-700"
+              >
+                {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                {isSaving ? "Menyimpan..." : "Simpan"}
+              </Button>
+            </DialogFooter>
+          </DialogPanelForm>
+        </DialogPanel>
       </Dialog>
 
-      {/* Delete Confirm */}
-      <Dialog open={!!deleteId} onOpenChange={(o) => !o && setDeleteId(null)}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle>Hapus Status?</DialogTitle>
-          </DialogHeader>
-          <p className="text-sm text-gray-600 py-2">Status yang masih digunakan karyawan tidak dapat dihapus.</p>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setDeleteId(null)}>Batal</Button>
-            <Button variant="destructive" onClick={handleDelete} disabled={deleting}>{deleting ? "Menghapus..." : "Hapus"}</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <MasterDeleteDialog
+        open={!!deleteId}
+        title="Hapus Status?"
+        description="Status yang masih digunakan karyawan tidak dapat dihapus."
+        isDeleting={isDeleting}
+        onClose={() => setDeleteId(null)}
+        onConfirm={handleDelete}
+      />
     </div>
   );
 }

@@ -101,7 +101,7 @@ export interface Employee {
   created_at: string;
   updated_at: string;
   
-  // Relasi (hanya ada saat data di-join dari Supabase)
+  // Relasi (hanya ada saat data di-join dari query dengan embed)
   department?: Department | null;
   section?: Section | null;
   job_title?: Position | null;

@@ -94,7 +94,7 @@ export default function RawMaterialsNewPage() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || "Gagal menyimpan");
-      router.push("/dashboard/purchasing/raw-materials");
+      router.push("/dashboard/items/raw-materials");
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -109,7 +109,7 @@ export default function RawMaterialsNewPage() {
           items={[
             { label: "Dashboard", href: "/dashboard" },
             { label: "Purchasing", href: "/dashboard/purchasing" },
-            { label: "Bahan Baku", href: "/dashboard/purchasing/raw-materials" },
+            { label: "Bahan Baku", href: "/dashboard/items/raw-materials" },
             { label: "Tambah Bahan" },
           ]}
         />
@@ -119,7 +119,7 @@ export default function RawMaterialsNewPage() {
             <h1 className="text-2xl font-bold text-gray-900">Tambah Bahan Baku</h1>
             <p className="text-sm text-gray-500">Formulir bahan baku baru</p>
           </div>
-          <Link href="/dashboard/purchasing/raw-materials">
+          <Link href="/dashboard/items/raw-materials">
             <Button variant="ghost">Batal</Button>
           </Link>
         </div>
@@ -308,7 +308,7 @@ export default function RawMaterialsNewPage() {
           )}
 
           <div className="flex justify-end gap-3">
-            <Link href="/dashboard/purchasing/raw-materials">
+            <Link href="/dashboard/items/raw-materials">
               <Button type="button" variant="outline">Batal</Button>
             </Link>
             <Button type="submit" disabled={loading || !form.nama || !form.kategori || !form.satuan_besar_id}>

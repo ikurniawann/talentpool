@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server";
+import { createServerPgClient } from "@/lib/pg/create-client";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import {
@@ -20,14 +20,14 @@ const querySchema = z.object({
 export async function GET(request: NextRequest) {
   try {
     const user = await requireApiRole(["purchasing_admin", "purchasing_manager", "purchasing_staff"]);
-    const supabase = await createClient();
+    const db = await createServerPgClient();
 
     const { searchParams } = new URL(request.url);
     const params = querySchema.parse(Object.fromEntries(searchParams));
     const { date_from, date_to, vendor_id, export: exportFormat } = params;
 
     // Fetch vendors with their PO stats
-    let vendorQuery = supabase
+    let vendorQuery = db
       .from("vendors")
       .select(
         `
@@ -47,7 +47,7 @@ export async function GET(request: NextRequest) {
     const vendorStats = await Promise.all(
       (vendors || []).map(async (vendor: any) => {
         // PO stats
-        let poQuery = supabase
+        let poQuery = db
           .from("purchase_orders")
           .select("id, status, total_amount, tanggal_po")
           .eq("vendor_id", vendor.id);
@@ -63,14 +63,14 @@ export async function GET(request: NextRequest) {
         const avgPOValue = totalPO > 0 ? totalSpent / totalPO : 0;
 
         // On-time delivery rate (from GRN)
-        const { data: grns } = await supabase
+        const { data: grns } = await db
           .from("goods_receipts")
           .select("id, tanggal_terima, po_id")
           .not("po_id", "is", null)
           .contains("vendor_id", [vendor.id]);
 
         // Count GRN items with QC
-        const { data: qcData } = await supabase
+        const { data: qcData } = await db
           .from("qc_inspections")
           .select("id, status, jumlah_qc, jumlah_reject, goods_receipt_id")
           .in(
@@ -83,7 +83,7 @@ export async function GET(request: NextRequest) {
         const rejectRate = totalQC > 0 ? (totalReject / totalQC) * 100 : 0;
 
         // On-time: GRN arrived <= PO expected date
-        const { data: deliveryData } = await supabase
+        const { data: deliveryData } = await db
           .from("delivery_items")
           .select("id, po_id, received_date, po_item:po_item_id(purchase_order:tanggal_diterima)")
           .in("po_id", (pos || []).map((p) => p.id));

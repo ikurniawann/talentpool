@@ -113,6 +113,6 @@ KPI Templates → Assign to Employee → Monthly Progress Updates → Performanc
 ---
 
 ## 🔗 Related Files
-- Migration: `supabase/migrations/20260507_000001_create_kpi_performance.sql`
+- Migration: `database/migrations/20260507_000001_create_kpi_performance.sql`
 - Pages: `src/app/dashboard/(dashboard)/hris/performance/`
 - API: `src/app/api/hris/kpi-templates|employee-kpis|performance-reviews/`

@@ -1,6 +1,6 @@
 import { ComingSoonPage } from "@/components/dashboard/coming-soon-page";
 
-export default function InventoryTransfersPage() {
+export function InventoryTransfersPage() {
   return (
     <ComingSoonPage
       title="Transfer Out / In"

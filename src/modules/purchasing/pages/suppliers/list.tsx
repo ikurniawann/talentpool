@@ -23,7 +23,7 @@ export default function SuppliersListPage() {
             <h1 className="text-2xl font-bold text-gray-900">Supplier</h1>
             <p className="text-sm text-gray-500">Kelola vendor &amp; supplier</p>
           </div>
-          <Link href="/dashboard/purchasing/suppliers/new">
+          <Link href="/dashboard/purchasing/suppliers/insert">
             <Button>+ Tambah Supplier</Button>
           </Link>
         </div>

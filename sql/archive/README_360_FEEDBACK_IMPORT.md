@@ -64,10 +64,10 @@ migrations/
 -- Run: migrations/004_seed_360_combined.sql
 ```
 
-### Option C: Supabase Dashboard Import (Recommended)
+### Option C: admin database Import (Recommended)
 
-1. **Open Supabase Dashboard**
-   - Go to https://app.supabase.com
+1. **Open admin database**
+   - Go to PostgreSQL admin
    - Select your project
    - Navigate to SQL Editor
 
@@ -214,7 +214,7 @@ After import, verify data in UI:
 ## Support
 
 If you encounter issues:
-1. Check Supabase logs
+1. Check PostgreSQL / app logs
 2. Verify table schema matches migration
 3. Ensure all prerequisite tables exist (employees, departments, etc.)
 4. Contact: Bang Ilham

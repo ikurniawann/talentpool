@@ -6,7 +6,7 @@
 // ============================================================
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createAdminClient } from '@/lib/supabase/admin';
+import { createPgClient } from "@/lib/pg/create-client";
 import { Employee, EmployeeUpdateData, ApiResponse } from '@/types/hris';
 
 interface RouteParams {
@@ -19,10 +19,10 @@ interface RouteParams {
 
 export async function GET(request: NextRequest, { params }: RouteParams) {
   try {
-    const supabase = createAdminClient();
+    const db = createPgClient();
     const { id } = await params;
 
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from('employees')
       .select(`
         *,
@@ -51,7 +51,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     // Fetch manager separately to avoid self-referential join ambiguity
     let manager = null;
     if (data.reporting_to) {
-      const { data: managerData } = await supabase
+      const { data: managerData } = await db
         .from('employees')
         .select('id, full_name, nip')
         .eq('id', data.reporting_to)
@@ -78,12 +78,12 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 
 export async function PUT(request: NextRequest, { params }: RouteParams) {
   try {
-    const supabase = createAdminClient();
+    const db = createPgClient();
     const { id } = await params;
     const body: EmployeeUpdateData = await request.json();
 
     // Check if employee exists
-    const { data: existing } = await supabase
+    const { data: existing } = await db
       .from('employees')
       .select('id')
       .eq('id', id)
@@ -98,7 +98,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
 
     // Check if email already exists (excluding current employee)
     if (body.email) {
-      const { data: existingEmail } = await supabase
+      const { data: existingEmail } = await db
         .from('employees')
         .select('id')
         .eq('email', body.email)
@@ -115,7 +115,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
 
     // Check if NIP already exists (excluding current employee)
     if (body.nip) {
-      const { data: existingNip } = await supabase
+      const { data: existingNip } = await db
         .from('employees')
         .select('id')
         .eq('nip', body.nip)
@@ -131,7 +131,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     }
 
     // Get current employee data for comparison
-    const { data: currentData } = await supabase
+    const { data: currentData } = await db
       .from('employees')
       .select('employment_status, department_id, section_id, job_title_id')
       .eq('id', id)
@@ -144,7 +144,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
       updated_at: new Date().toISOString()
     };
 
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from('employees')
       .update(updateData)
       .eq('id', id)
@@ -182,7 +182,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
       }
 
       if (hasChanges) {
-        const { error: historyError } = await supabase
+        const { error: historyError } = await db
           .from('employment_history')
           .insert({
             employee_id: id,
@@ -207,7 +207,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     // Fetch manager separately
     let manager = null;
     if (data.reporting_to) {
-      const { data: managerData } = await supabase
+      const { data: managerData } = await db
         .from('employees')
         .select('id, full_name, nip')
         .eq('id', data.reporting_to)
@@ -236,11 +236,11 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
 
 export async function DELETE(request: NextRequest, { params }: RouteParams) {
   try {
-    const supabase = createAdminClient();
+    const db = createPgClient();
     const { id } = await params;
 
     // Check if employee exists
-    const { data: existing } = await supabase
+    const { data: existing } = await db
       .from('employees')
       .select('id, is_active')
       .eq('id', id)
@@ -254,7 +254,7 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     }
 
     // Soft delete: set is_active = false
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from('employees')
       .update({ 
         is_active: false,

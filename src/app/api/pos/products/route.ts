@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createServiceClient } from '@/lib/supabase/service-client';
+import { createPgClient } from "@/lib/pg/create-client";
 
 type ProductVariantPayload = {
   name?: string;
@@ -57,17 +57,17 @@ function normalizeStation(value?: string) {
   return 'kitchen';
 }
 
-// Initialize Supabase client (service role for admin access)
+// Initialize pg client (admin access)
 // GET /api/pos/products - List all active products
 export async function GET(request: NextRequest) {
   try {
-    const supabase = createServiceClient();
+    const db = createPgClient();
     const searchParams = request.nextUrl.searchParams;
     const category = searchParams.get('category');
     const search = searchParams.get('search');
     const includeInactive = searchParams.get('include_inactive') === 'true';
 
-    let query = supabase
+    let query = db
       .from('pos_products')
       .select(`
         *,
@@ -115,7 +115,7 @@ export async function GET(request: NextRequest) {
 // POST /api/pos/products - Create new product
 export async function POST(request: NextRequest) {
   try {
-    const supabase = createServiceClient();
+    const db = createPgClient();
     const body = (await request.json()) as ProductCreatePayload;
     const {
       sku,
@@ -153,7 +153,7 @@ export async function POST(request: NextRequest) {
       is_active
     };
 
-    let { data: product, error: productError } = await supabase
+    let { data: product, error: productError } = await db
       .from('pos_products')
       .insert(productPayload)
       .select()
@@ -165,7 +165,7 @@ export async function POST(request: NextRequest) {
       delete (legacyPayload as { xp_points?: number }).xp_points;
       delete (legacyPayload as { station?: string }).station;
 
-      const legacyRetry = await supabase
+      const legacyRetry = await db
         .from('pos_products')
         .insert(legacyPayload)
         .select()
@@ -175,7 +175,7 @@ export async function POST(request: NextRequest) {
         const payloadWithoutXp: Omit<typeof productPayload, 'xp_points' | 'station'> = { ...productPayload };
         delete (payloadWithoutXp as { xp_points?: number }).xp_points;
         delete (payloadWithoutXp as { station?: string }).station;
-        const plainRetry = await supabase
+        const plainRetry = await db
           .from('pos_products')
           .insert(payloadWithoutXp)
           .select()
@@ -201,7 +201,7 @@ export async function POST(request: NextRequest) {
         display_order: v.display_order || 0
       }));
 
-      const { error: variantError } = await supabase
+      const { error: variantError } = await db
         .from('pos_product_variants')
         .insert(variantsData);
 
@@ -211,7 +211,7 @@ export async function POST(request: NextRequest) {
     // Insert modifier groups and modifiers if provided
     for (const group of modifierGroups) {
       // Insert modifier group
-      const { data: modifierGroup, error: groupError } = await supabase
+      const { data: modifierGroup, error: groupError } = await db
         .from('pos_modifier_groups')
         .insert({
           name: group.name,
@@ -225,7 +225,7 @@ export async function POST(request: NextRequest) {
       if (groupError) throw groupError;
 
       // Link product to modifier group
-      const { error: linkError } = await supabase
+      const { error: linkError } = await db
         .from('pos_product_modifiers')
         .insert({
           product_id: product.id,
@@ -243,7 +243,7 @@ export async function POST(request: NextRequest) {
           display_order: m.display_order || 0
         }));
 
-        const { error: modifierError } = await supabase
+        const { error: modifierError } = await db
           .from('pos_modifiers')
           .insert(modifiersData);
 
@@ -252,7 +252,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Fetch complete product with relations
-    const { data: completeProduct } = await supabase
+    const { data: completeProduct } = await db
       .from('pos_products')
       .select(`
         *,

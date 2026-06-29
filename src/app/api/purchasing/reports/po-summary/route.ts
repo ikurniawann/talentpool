@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server";
+import { createServerPgClient } from "@/lib/pg/create-client";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import {
@@ -21,13 +21,13 @@ const querySchema = z.object({
 export async function GET(request: NextRequest) {
   try {
     await requireApiRole(["purchasing_admin", "purchasing_manager", "purchasing_staff"]);
-    const supabase = await createClient();
+    const db = await createServerPgClient();
 
     const { searchParams } = new URL(request.url);
     const params = querySchema.parse(Object.fromEntries(searchParams));
     const { date_from, date_to, vendor_id, status, export: exportFormat } = params;
 
-    let query = supabase
+    let query = db
       .from("v_purchase_orders")
       .select(
         `*

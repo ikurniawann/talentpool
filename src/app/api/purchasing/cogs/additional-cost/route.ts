@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server";
+import { createServerPgClient } from "@/lib/pg/create-client";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import {
@@ -32,8 +32,8 @@ const additionalCostSchema = z.object({
 
 export async function POST(request: NextRequest) {
   try {
-    const user = await requireApiRole(["purchasing_admin", "purchasing_staff"]);
-    const supabase = await createClient();
+    const user = await requireApiRole(["purchasing_admin", "purchasing_staff", "purchasing_manager", "super_admin"]);
+    const db = await createServerPgClient();
 
     const body = await request.json();
     const validated = additionalCostSchema.parse(body);
@@ -65,7 +65,7 @@ export async function POST(request: NextRequest) {
     } else {
       // Auto allocation based on PO/GRN items
       if (validated.po_id) {
-        const { data: poItems } = await supabase
+        const { data: poItems } = await db
           .from("purchase_order_items")
           .select("id, jumlah, harga_satuan, produk_id")
           .eq("purchase_order_id", validated.po_id);
@@ -99,7 +99,7 @@ export async function POST(request: NextRequest) {
           }));
         }
       } else if (validated.grn_id) {
-        const { data: grnItems } = await supabase
+        const { data: grnItems } = await db
           .from("goods_receipt_items")
           .select("id, jumlah_diterima, po_item_id")
           .eq("goods_receipt_id", validated.grn_id);
@@ -109,7 +109,7 @@ export async function POST(request: NextRequest) {
         }
 
         if (validated.metode_alokasi === "by_value") {
-          const { data: poItems } = await supabase
+          const { data: poItems } = await db
             .from("purchase_order_items")
             .select("id, jumlah, harga_satuan")
             .in(
@@ -148,7 +148,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Insert additional cost record
-    const { data: costRecord, error: costError } = await supabase
+    const { data: costRecord, error: costError } = await db
       .from("additional_costs")
       .insert({
         po_id: validated.po_id,
@@ -175,11 +175,11 @@ export async function POST(request: NextRequest) {
         proportion: item.proportion,
       }));
 
-      await supabase.from("additional_cost_allocations").insert(allocationInserts);
+      await db.from("additional_cost_allocations").insert(allocationInserts);
     }
 
     // Fetch complete record
-    const { data: complete } = await supabase
+    const { data: complete } = await db
       .from("additional_costs")
       .select(
         `*,
@@ -211,14 +211,14 @@ export async function POST(request: NextRequest) {
 export async function GET(request: NextRequest) {
   try {
     await requireApiRole(["purchasing_admin", "purchasing_staff", "purchasing_manager"]);
-    const supabase = await createClient();
+    const db = await createServerPgClient();
 
     const { searchParams } = new URL(request.url);
     const po_id = searchParams.get("po_id");
     const grn_id = searchParams.get("grn_id");
     const jenis_biaya = searchParams.get("jenis_biaya");
 
-    let query = supabase
+    let query = db
       .from("additional_costs")
       .select(
         `*,

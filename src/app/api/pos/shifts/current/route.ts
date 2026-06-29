@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createServiceClient } from '@/lib/supabase/service-client';
+import { createPgClient } from "@/lib/pg/create-client";
 import { getPosSession } from '@/lib/api/auth';
 
 /** GET /api/pos/shifts/current?cashier_id=uuid
@@ -18,9 +18,9 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ success: false, error: 'cashier_id required' }, { status: 400 });
   }
 
-  const supabase = createServiceClient();
+  const db = createPgClient();
 
-  const { data, error } = await supabase
+  const { data, error } = await db
     .from('pos_shifts')
     .select('*, pos_orders(id)')
     .eq('cashier_id', cashierId)

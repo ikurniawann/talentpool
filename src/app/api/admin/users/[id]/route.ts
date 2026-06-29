@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { createPgClient } from "@/lib/pg/create-client";
 import { ApiError, requireApiRole, validateBody } from "@/lib/api/auth";
 import { updateAdminUserSchema } from "@/lib/admin/user-management";
 
@@ -11,7 +11,7 @@ export async function PATCH(
     const { id } = await params;
     const actor = await requireApiRole(["super_admin"]);
     const body = await validateBody(request, updateAdminUserSchema);
-    const supabase = createAdminClient();
+    const db = createPgClient();
 
     if (actor.id === id && (body.status === "inactive" || (body.role && body.role !== "super_admin"))) {
       throw ApiError.badRequest("Super admin tidak bisa menonaktifkan atau menurunkan role dirinya sendiri");
@@ -24,9 +24,9 @@ export async function PATCH(
     if (body.status) authUpdates.ban_duration = body.status === "inactive" ? "876000h" : "none";
 
     if (Object.keys(authUpdates).length > 0) {
-      const { error: authError } = await supabase.auth.admin.updateUserById(
+      const { error: authError } = await db.auth.admin.updateUserById(
         id,
-        authUpdates as Parameters<typeof supabase.auth.admin.updateUserById>[1]
+        authUpdates as Parameters<typeof db.auth.admin.updateUserById>[1]
       );
       if (authError) throw ApiError.badRequest(authError.message);
     }
@@ -38,7 +38,7 @@ export async function PATCH(
     if (body.brand_id !== undefined) profileUpdates.brand_id = body.brand_id;
     if (body.status) profileUpdates.status = body.status;
 
-    const { data: profile, error: profileError } = await supabase
+    const { data: profile, error: profileError } = await db
       .from("users")
       .update(profileUpdates)
       .eq("id", id)
@@ -48,7 +48,7 @@ export async function PATCH(
     if (profileError) throw profileError;
 
     if (body.approval_permissions) {
-      const { error: deactivateError } = await supabase
+      const { error: deactivateError } = await db
         .from("user_approval_permissions")
         .update({ is_active: false, updated_by: actor.id, updated_at: new Date().toISOString() })
         .eq("user_id", id);
@@ -57,7 +57,7 @@ export async function PATCH(
 
       const activePermissions = body.approval_permissions.filter((permission) => permission.is_active);
       if (activePermissions.length > 0) {
-        const { error: insertError } = await supabase.from("user_approval_permissions").insert(
+        const { error: insertError } = await db.from("user_approval_permissions").insert(
           activePermissions.map((permission) => ({
             user_id: id,
             module: permission.module,
@@ -73,7 +73,7 @@ export async function PATCH(
       }
     }
 
-    await supabase.from("admin_user_audit_logs").insert({
+    await db.from("admin_user_audit_logs").insert({
       actor_id: actor.id,
       target_user_id: id,
       action: "update_user",

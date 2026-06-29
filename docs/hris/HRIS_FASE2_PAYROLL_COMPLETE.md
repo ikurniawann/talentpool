@@ -10,7 +10,7 @@
 
 ### 1. Database Schema (8 Tables)
 
-**Migration File:** `supabase/migrations/20260505_000001_create_payroll_benefits.sql`
+**Migration File:** `database/migrations/20260505_000001_create_payroll_benefits.sql`
 
 | Table | Purpose |
 |-------|---------|
@@ -141,7 +141,7 @@
 
 ### New Files:
 ```
-supabase/migrations/20260505_000001_create_payroll_benefits.sql (25KB)
+database/migrations/20260505_000001_create_payroll_benefits.sql (25KB)
 src/lib/payroll/calculator.ts (15KB)
 src/lib/payroll/index.ts
 src/app/api/hris/payroll/route.ts
@@ -165,7 +165,7 @@ HRIS_FASE2_PAYROLL_COMPLETE.md (this file)
 ## 🧪 TESTING CHECKLIST
 
 ### Database
-- [ ] Run migration: `supabase db push`
+- [ ] Run migration: `npm run db:migrate:apply`
 - [ ] Verify all 8 tables created
 - [ ] Test RLS policies (login as HRD vs regular employee)
 - [ ] Test `calculate_pph21_etr()` function with various incomes
@@ -229,7 +229,7 @@ HRIS_FASE2_PAYROLL_COMPLETE.md (this file)
 
 **Documentation:**
 - This file: `/Users/ilham/Desktop/talentpool/HRIS_FASE2_PAYROLL_COMPLETE.md`
-- Migration: `supabase/migrations/20260505_000001_create_payroll_benefits.sql`
+- Migration: `database/migrations/20260505_000001_create_payroll_benefits.sql`
 - Calculator: `src/lib/payroll/calculator.ts`
 
 **Repository:**

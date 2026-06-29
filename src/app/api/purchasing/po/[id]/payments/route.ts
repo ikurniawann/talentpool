@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { createServiceClient } from "@/lib/supabase/service-client";
+import { createPgClient } from "@/lib/pg/create-client";
 import { ApiError, requireApiRole } from "@/lib/api/auth";
 import { z } from "zod";
 
@@ -18,14 +18,14 @@ function getErrorMessage(error: unknown, fallback: string) {
   return error instanceof Error ? error.message : fallback;
 }
 
-async function generatePaymentNumber(supabase: ReturnType<typeof createServiceClient>) {
+async function generatePaymentNumber(db: import("@/lib/pg/types").DbClient) {
   const now = new Date();
   const year = now.getFullYear();
   const month = String(now.getMonth() + 1).padStart(2, "0");
   const day = String(now.getDate()).padStart(2, "0");
   const prefix = `VP-${year}${month}${day}`;
 
-  const { data, error } = await supabase
+  const { data, error } = await db
     .from("vendor_payments")
     .select("payment_number")
     .ilike("payment_number", `${prefix}-%`)
@@ -39,8 +39,8 @@ async function generatePaymentNumber(supabase: ReturnType<typeof createServiceCl
   return `${prefix}-${String(nextNumber).padStart(4, "0")}`;
 }
 
-async function recalculateTerm(supabase: ReturnType<typeof createServiceClient>, termId: string) {
-  const { data: term, error: termError } = await supabase
+async function recalculateTerm(db: import("@/lib/pg/types").DbClient, termId: string) {
+  const { data: term, error: termError } = await db
     .from("purchase_order_payment_terms")
     .select("id, amount, due_date")
     .eq("id", termId)
@@ -48,7 +48,7 @@ async function recalculateTerm(supabase: ReturnType<typeof createServiceClient>,
 
   if (termError || !term) return;
 
-  const { data: payments, error: paymentsError } = await supabase
+  const { data: payments, error: paymentsError } = await db
     .from("vendor_payments")
     .select("amount")
     .eq("payment_term_id", termId)
@@ -71,7 +71,7 @@ async function recalculateTerm(supabase: ReturnType<typeof createServiceClient>,
       ? "overdue"
       : "unpaid";
 
-  const { error } = await supabase
+  const { error } = await db
     .from("purchase_order_payment_terms")
     .update({ paid_amount: paidAmount, status, updated_at: new Date().toISOString() })
     .eq("id", termId);
@@ -86,11 +86,11 @@ export async function POST(
   try {
     await requireApiRole([...PAYMENT_ROLES]);
     const { id } = await params;
-    const supabase = createServiceClient();
+    const db = createPgClient();
     const body = await request.json();
     const validated = paymentSchema.parse(body);
 
-    const { data: po, error: poError } = await supabase
+    const { data: po, error: poError } = await db
       .from("purchase_orders")
       .select("id, supplier_id")
       .eq("id", id)
@@ -103,7 +103,7 @@ export async function POST(
     let termId = validated.payment_term_id || null;
 
     if (!termId) {
-      const { data: term, error: termError } = await supabase
+      const { data: term, error: termError } = await db
         .from("purchase_order_payment_terms")
         .select("id")
         .eq("purchase_order_id", id)
@@ -124,8 +124,8 @@ export async function POST(
       );
     }
 
-    const paymentNumber = await generatePaymentNumber(supabase);
-    const { data, error } = await supabase
+    const paymentNumber = await generatePaymentNumber(db);
+    const { data, error } = await db
       .from("vendor_payments")
       .insert({
         payment_number: paymentNumber,
@@ -144,7 +144,7 @@ export async function POST(
 
     if (error) throw error;
 
-    await recalculateTerm(supabase, termId);
+    await recalculateTerm(db, termId);
 
     return Response.json({ success: true, data, message: "Pembayaran vendor berhasil dicatat" }, { status: 201 });
   } catch (error: unknown) {

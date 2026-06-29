@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState } from "react";
 import { useToast, ToastContainer } from "@/components/ui/toast";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -37,115 +37,30 @@ import {
   ResponsiveContainer,
   ReferenceLine,
 } from "recharts";
+import { useAnalyticsBrands, useAnalyticsData } from "../queries";
 
 
 const COLORS = ["#6366f1", "#22c55e", "#f59e0b", "#ef4444", "#8b5cf6", "#06b6d4", "#ec4899", "#14b8a6"];
 
-export default function AnalyticsPage() {
+export function AnalyticsPage() {
   const { toasts, showToast, removeToast } = useToast();
   const [brandFilter, setBrandFilter] = useState("all");
   const [period, setPeriod] = useState("month");
-  const [brands, setBrands] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
 
-  // Analytics metrics
-  const [timeToHire, setTimeToHire] = useState<any>(null);
-  const [conversionRates, setConversionRates] = useState<any[]>([]);
-  const [topSources, setTopSources] = useState<any[]>([]);
-  const [hardToFill, setHardToFill] = useState<any[]>([]);
-  const [brandComparison, setBrandComparison] = useState<any[]>([]);
-  const [monthlyTrend, setMonthlyTrend] = useState<any[]>([]);
-  const [hiredByBrand, setHiredByBrand] = useState<any[]>([]);
+  const brandsQuery = useAnalyticsBrands();
+  const dataQuery = useAnalyticsData(brandFilter, period);
 
-  const fetchData = useCallback(async () => {
-    setLoading(true);
-    const brandParam = brandFilter !== "all" ? `&brand_id=${brandFilter}` : "";
+  const brands = brandsQuery.data ?? [];
+  const loading = dataQuery.isLoading;
+  const timeToHire = dataQuery.data?.timeToHire ?? null;
+  const conversionRates = dataQuery.data?.conversionRates ?? [];
+  const topSources = dataQuery.data?.topSources ?? [];
+  const hardToFill = dataQuery.data?.hardToFill ?? [];
+  const brandComparison = dataQuery.data?.brandComparison ?? [];
+  const monthlyTrend = dataQuery.data?.monthlyTrend ?? [];
+  const hiredByBrand = dataQuery.data?.hiredByBrand ?? [];
 
-    try {
-      // Fetch all analytics data in parallel
-      const [overviewRes, sourcesRes, brandsRes] = await Promise.all([
-        fetch(`/api/analytics/overview?period=${period}${brandParam}`),
-        fetch(`/api/analytics/sources?period=${period}${brandParam}`),
-        fetch(`/api/analytics/brands?period=${period}${brandParam}`),
-      ]);
-
-      const overviewData = await overviewRes.json().catch(() => ({}));
-      const sourcesData = await sourcesRes.json().catch(() => ({}));
-      const brandsData = await brandsRes.json().catch(() => ({}));
-
-      // Set time to hire from overview
-      setTimeToHire({
-        avgDays: overviewData.time_to_hire_avg ?? 0,
-        count: overviewData.total_hired ?? 0,
-      });
-
-      // Set conversion rates from overview - map API stages to display
-      const stageLabels: Record<string, string> = {
-        "Applied": "Applied",
-        "Screening": "Screening",
-        "Interview HRD": "Interview HRD",
-        "Interview Manager": "Interview Manager",
-        "Talent Pool": "Talent Pool",
-        "Hired": "Hired",
-      };
-      const convRates = (overviewData.conversion_rates || []).map((c: any) => ({
-        stage: stageLabels[c.stage] || c.stage,
-        rate: c.rate,
-        from: 0,
-        to: 0,
-      }));
-      setConversionRates(convRates);
-
-      // Set top sources from sources API
-      setTopSources(Array.isArray(sourcesData.data) ? sourcesData.data : []);
-
-      // Set hard to fill from overview
-      setHardToFill(Array.isArray(overviewData.hard_to_fill) ? overviewData.hard_to_fill : []);
-
-      // Set brand comparison from brands API
-      setBrandComparison(Array.isArray(brandsData.barData) ? brandsData.barData : []);
-
-      // Set hired by brand from brands API
-      setHiredByBrand(Array.isArray(brandsData.pieData) ? brandsData.pieData : []);
-
-      // Compute monthly trend client-side from overview totals
-      const monthly = [];
-      for (let i = 5; i >= 0; i--) {
-        const mStart = new Date();
-        mStart.setMonth(mStart.getMonth() - i);
-        mStart.setDate(1);
-        const label = mStart.toLocaleDateString("id-ID", { month: "short", year: "2-digit" });
-        monthly.push({
-          month: label,
-          applied: Math.round((overviewData.total_applicants || 0) / 6),
-          hired: Math.round((overviewData.total_hired || 0) / 6),
-        });
-      }
-      setMonthlyTrend(monthly);
-    } catch (err) {
-      console.error("Analytics fetch error:", err);
-    } finally {
-      setLoading(false);
-    }
-  }, [period, brandFilter]);
-
-  // Fetch brands list (for filter dropdown)
-  useEffect(() => {
-    const fetchBrands = async () => {
-      try {
-        const res = await fetch("/api/brands");
-        if (!res.ok) throw new Error("Failed to fetch brands");
-        const data = await res.json().catch(() => ({}));
-        setBrands(Array.isArray(data.data) ? data.data : Array.isArray(data) ? data : []);
-      } catch (err) {
-        console.error("Brands fetch error:", err);
-        setBrands([]);
-      }
-    };
-    fetchBrands();
-  }, []);
-
-  useEffect(() => { fetchData(); }, [fetchData]);
+  const fetchData = () => dataQuery.refetch();
 
   const exportCSV = () => {
     const rows = [["Metrik", "Nilai"]];

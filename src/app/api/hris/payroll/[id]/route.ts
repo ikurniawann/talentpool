@@ -6,7 +6,7 @@
 // ============================================================
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { createServerPgClient } from "@/lib/pg/create-client";
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -18,10 +18,10 @@ interface RouteParams {
 
 export async function GET(request: NextRequest, { params }: RouteParams) {
   try {
-    const supabase = await createClient();
+    const db = await createServerPgClient();
     const { id } = await params;
 
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from('payroll_runs')
       .select(`
         *,
@@ -89,13 +89,13 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 
 export async function PUT(request: NextRequest, { params }: RouteParams) {
   try {
-    const supabase = await createClient();
+    const db = await createServerPgClient();
     const { id } = await params;
     const body = await request.json();
     const { status, notes } = body;
 
     // Get current user
-    const { data: { user } } = await supabase.auth.getUser();
+    const { data: { user } } = await db.auth.getUser();
     if (!user) {
       return NextResponse.json(
         { error: 'Unauthorized' },
@@ -104,7 +104,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     }
 
     // Get employee record for current user
-    const { data: currentUser } = await supabase
+    const { data: currentUser } = await db
       .from('employees')
       .select('id')
       .eq('auth_id', user.id)
@@ -134,7 +134,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
       }
     }
 
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from('payroll_runs')
       .update(updateData)
       .eq('id', id)
@@ -182,11 +182,11 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
 
 export async function DELETE(request: NextRequest, { params }: RouteParams) {
   try {
-    const supabase = await createClient();
+    const db = await createServerPgClient();
     const { id } = await params;
 
     // Check if payroll run exists
-    const { data: existing } = await supabase
+    const { data: existing } = await db
       .from('payroll_runs')
       .select('id, status')
       .eq('id', id)
@@ -200,13 +200,13 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     }
 
     // First, delete all payroll details (to avoid FK constraint issues)
-    await supabase
+    await db
       .from('payroll_details')
       .delete()
       .eq('payroll_run_id', id);
 
     // Then delete the payroll run
-    const { error } = await supabase
+    const { error } = await db
       .from('payroll_runs')
       .delete()
       .eq('id', id);

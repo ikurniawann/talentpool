@@ -33,7 +33,7 @@
 | Attribute | Detail |
 |-----------|--------|
 | **Project Name** | Arkiv OS |
-| **Stack** | Next.js 16.2.3, React 19, TypeScript, Supabase, Tailwind v4 |
+| **Stack** | Next.js 16.2.3, React 19, TypeScript, PostgreSQL, Tailwind v4 |
 | **Scope** | ERP Terintegrasi (HRIS, Purchasing, Inventory, POS) |
 | **Test Framework** | Vitest + jsdom + @testing-library/react |
 | **Coverage Provider** | v8 |
@@ -76,7 +76,7 @@ Membuat unit test yang komprehensif untuk:
 
 1. **No API Route Tests** - Semua API route tidak punya unit test
 2. **No Component Tests** - Render logic tidak ter-cover
-3. **No Mock Strategy** - Supabase client mock belum standardisasi
+3. **No Mock Strategy** - pg pool / REST API mock belum standardisasi
 4. **Missing Fixtures** - Tidak ada sample data reusable
 5. **POS XP Logic** - Fitur kritis tetapi tidak di-test
 6. **HRIS Promotion** - Flow sensitif tetapi tidak di-proteksi dengan test
@@ -162,7 +162,7 @@ src/
 │   ├── setup.ts                          # ✅ Existing - tambah mocks
 │   ├── setup.mocks.ts                    # 🆕 Mock registration global
 │   ├── mocks/
-│   │   ├── supabase.ts                   # 🆕 Mock Supabase client
+│   │   ├── pg-pool.ts                   # 🆕 Mock pg pool / REST API
 │   │   ├── nextjs.ts                     # 🆕 Mock next/navigation, next/server
 │   │   └── fixtures/
 │   │       ├── candidates.ts            # 🆕 Sample candidate data
@@ -355,7 +355,7 @@ describe('POS XP Accumulation (CRITICAL BUG FIX)', () => {
     const visitCount = 5;
     
     // Mock customer dengan data sebelumnya
-    mockSupabase.from.mockReturnValueOnce({
+    mockDb.from.mockReturnValueOnce({
       select: vi.fn().mockReturnThis(),
       eq: vi.fn().mockReturnThis(),
       single: vi.fn().mockResolvedValue({
@@ -374,8 +374,8 @@ describe('POS XP Accumulation (CRITICAL BUG FIX)', () => {
     const response = await POST(createRequest(order));
     
     // Assert: Total XP harus 175 (100 + 75), bukan 75
-    expect(mockSupabase.from).toHaveBeenCalledWith('pos_customers');
-    expect(mockSupabase.from().update).toHaveBeenCalledWith(
+    expect(mockDb.from).toHaveBeenCalledWith('pos_customers');
+    expect(mockDb.from().update).toHaveBeenCalledWith(
       expect.objectContaining({
         total_xp: currentXp + xpEarned,        // 175, bukan 75
         current_xp: currentXp + xpEarned,      // 175, bukan 75
@@ -535,16 +535,16 @@ describe('PromoteCandidateButton Component', () => {
 
 ## 7. Mocking Strategy
 
-### 7.1 Supabase Mock (`src/test/mocks/supabase.ts`)
+### 7.1 pg pool Mock (`src/test/mocks/pg-pool.ts`)
 
 ```typescript
 import { vi } from 'vitest';
 
 /**
- * Mock Supabase client untuk testing API routes
- * Tidak perlu instance Supabase asli (tidak ada network call)
+ * Mock pg pool / REST API untuk testing API routes
+ * Tidak perlu koneksi database asli (tidak ada network call)
  */
-export const createMockSupabase = () => ({
+export const createMockDb = () => ({
   auth: {
     getUser: vi.fn(() => 
       Promise.resolve({ data: { user: { id: 'test-user-1', email: 'test@test.com' } } })
@@ -578,8 +578,8 @@ export const createMockSupabase = () => ({
  * Mock untuk createClient (server)
  */
 export const mockServerClient = () => {
-  const mock = createMockSupabase();
-  vi.mock('@/lib/supabase/server', () => ({
+  const mock = createMockDb();
+  vi.mock('@/lib/pg/create-client', () => ({
     createClient: vi.fn(() => Promise.resolve(mock)),
   }));
   return mock;
@@ -706,7 +706,7 @@ Week 3 (Sprint 5-6):  Integration + Coverage
 ### B. Best Practices
 
 1. **Arrange-Act-Assert** - Selalu gunakan pattern 3A
-2. **Mock External Dependencies** - Supabase, fetch, next/router
+2. **Mock External Dependencies** - pg pool, fetch, next/router
 3. **Descriptive Names** - `it('should return 404 when candidate not found')`
 4. **Isolation** - Tiap test harus bisa jalan sendiri
 5. **Cleanup** - Gunakan `beforeEach` untuk reset mocks

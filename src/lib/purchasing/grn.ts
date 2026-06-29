@@ -1,4 +1,5 @@
-import { SupabaseClient } from "@supabase/supabase-js";
+import type { DbClient } from "@/lib/pg/types";
+import { toQty } from "@/lib/purchasing/utils";
 
 // ============================================================
 // GRN State Machine
@@ -47,12 +48,12 @@ export function validateGrnTransition(from: GrnStatus, to: GrnStatus): void {
 // Format: GRN-YYYYMMDD-XXXX
 // ============================================================
 
-export async function generateGrnNumber(supabase: SupabaseClient): Promise<string> {
+export async function generateGrnNumber(db: DbClient): Promise<string> {
   const today = new Date();
   const datePrefix = `GRN-${today.getFullYear()}${String(today.getMonth() + 1).padStart(2, "0")}${String(today.getDate()).padStart(2, "0")}`;
 
   // Ambil sequence terakhir agar aman jika ada nomor yang pernah dihapus/skip.
-  const { data } = await supabase
+  const { data } = await db
     .from("grn")
     .select("nomor_grn")
     .ilike("nomor_grn", `${datePrefix}-%`)
@@ -73,13 +74,13 @@ export async function generateGrnNumber(supabase: SupabaseClient): Promise<strin
 // ============================================================
 
 export async function validateDeliveryCanReceive(
-  supabase: SupabaseClient,
+  db: DbClient,
   deliveryId: string
 ): Promise<{ valid: boolean; errors: string[]; delivery?: DeliveryForGrn; items?: POItemForGrn[] }> {
   const errors: string[] = [];
 
   // Get delivery details
-  const { data: delivery, error } = await supabase
+  const { data: delivery, error } = await db
     .from("deliveries")
     .select("*")
     .eq("id", deliveryId)
@@ -97,7 +98,7 @@ export async function validateDeliveryCanReceive(
   }
 
   // One delivery / surat jalan should produce one GRN. Additional arrivals should use a new delivery.
-  const { data: existingGrn } = await supabase
+  const { data: existingGrn } = await db
     .from("grn")
     .select("id, nomor_grn, status")
     .eq("delivery_id", deliveryId)
@@ -110,15 +111,15 @@ export async function validateDeliveryCanReceive(
     );
   }
 
-  // Get PO items for reference — always use adminSupabase-level access here
-  const { data: poItems, error: poItemsError } = await supabase
+  // Get PO items for reference — gunakan admin DB client (bypass RLS)
+  const { data: poItems, error: poItemsError } = await db
     .from("purchase_order_items")
     .select(`
       id,
       raw_material_id,
       qty_ordered,
       qty_received,
-      raw_material:raw_material_id(id, nama)
+      harga_satuan
     `)
     .eq("purchase_order_id", delivery.purchase_order_id)
     .eq("is_active", true);
@@ -131,10 +132,7 @@ export async function validateDeliveryCanReceive(
     valid: errors.length === 0,
     errors,
     delivery: delivery as DeliveryForGrn,
-    items: (poItems || []).map((item) => ({
-      ...item,
-      raw_material: Array.isArray(item.raw_material) ? item.raw_material[0] ?? null : item.raw_material,
-    })) as POItemForGrn[],
+    items: (poItems || []) as POItemForGrn[],
   };
 }
 
@@ -157,11 +155,11 @@ export function calculateGrnTotals(items: { qty_diterima: number; qty_ditolak: n
 // ============================================================
 
 export async function updatePOItemReceivedQty(
-  supabase: SupabaseClient,
+  db: DbClient,
   poItemId: string,
   qtyReceived: number
 ): Promise<void> {
-  const { error } = await supabase
+  const { error } = await db
     .from("purchase_order_items")
     .update({ qty_received: qtyReceived })
     .eq("id", poItemId);
@@ -174,7 +172,7 @@ export async function updatePOItemReceivedQty(
 // ============================================================
 
 export async function updateDeliveryStatusAfterGrn(
-  supabase: SupabaseClient,
+  db: DbClient,
   deliveryId: string,
   grnStatus: GrnStatus
 ): Promise<void> {
@@ -194,7 +192,7 @@ export async function updateDeliveryStatusAfterGrn(
       return;
   }
 
-  const { error } = await supabase
+  const { error } = await db
     .from("deliveries")
     .update({ status: newStatus })
     .eq("id", deliveryId);
@@ -207,11 +205,11 @@ export async function updateDeliveryStatusAfterGrn(
 // ============================================================
 
 export async function updatePOStatusAfterGrn(
-  supabase: SupabaseClient,
+  db: DbClient,
   poId: string
 ): Promise<void> {
   // Get all PO items
-  const { data: poItems, error: itemsError } = await supabase
+  const { data: poItems, error: itemsError } = await db
     .from("purchase_order_items")
     .select("qty_ordered, qty_received")
     .eq("purchase_order_id", poId)
@@ -221,9 +219,15 @@ export async function updatePOStatusAfterGrn(
 
   if (!poItems || poItems.length === 0) return;
 
-  // Calculate totals
-  const totalOrdered = poItems.reduce((sum, item) => sum + (item.qty_ordered || 0), 0);
-  const totalReceived = poItems.reduce((sum, item) => sum + (item.qty_received || 0), 0);
+  // Calculate totals (coerce numeric strings from Postgres)
+  const totalOrdered = poItems.reduce(
+    (sum, item) => sum + toQty(item.qty_ordered),
+    0
+  );
+  const totalReceived = poItems.reduce(
+    (sum, item) => sum + toQty(item.qty_received),
+    0
+  );
 
   // Determine new status
   let newStatus: string;
@@ -236,7 +240,7 @@ export async function updatePOStatusAfterGrn(
   }
 
   // Update PO status
-  const { error } = await supabase
+  const { error } = await db
     .from("purchase_orders")
     .update({ 
       status: newStatus,

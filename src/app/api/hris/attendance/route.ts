@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { createServerPgClient } from "@/lib/pg/create-client";
 import { z } from 'zod';
 
 // Validation schemas
@@ -34,7 +34,7 @@ const clockOutSchema = z.object({
  */
 export async function GET(request: NextRequest) {
   try {
-    const supabase = await createClient();
+    const db = await createServerPgClient();
     
     // Get query params
     const searchParams = request.nextUrl.searchParams;
@@ -47,7 +47,7 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get('limit') || '20');
 
     // Build query
-    let query = supabase
+    let query = db
       .from('attendance')
       .select(`
         id,
@@ -131,11 +131,11 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createClient();
+    const db = await createServerPgClient();
     const body = await request.json();
 
     // Check authentication
-    const { data: { user } } = await supabase.auth.getUser();
+    const { data: { user } } = await db.auth.getUser();
     if (!user) {
       return NextResponse.json(
         { error: 'Unauthorized' },
@@ -151,7 +151,7 @@ export async function POST(request: NextRequest) {
       const validated = clockInSchema.parse(body);
       
       // Get current user's employee ID if not provided
-      const empId = employee_id || await getCurrentEmployeeId(supabase, user.id);
+      const empId = employee_id || await getCurrentEmployeeId(db, user.id);
       if (!empId) {
         return NextResponse.json(
           { error: 'Employee not found for this user' },
@@ -161,7 +161,7 @@ export async function POST(request: NextRequest) {
 
       // Check if already clocked in today
       const today = date || new Date().toISOString().split('T')[0];
-      const { data: existing } = await supabase
+      const { data: existing } = await db
         .from('attendance')
         .select('id')
         .eq('employee_id', empId)
@@ -176,7 +176,7 @@ export async function POST(request: NextRequest) {
       }
 
       // Create attendance record
-      const { data, error } = await supabase
+      const { data, error } = await db
         .from('attendance')
         .insert({
           employee_id: empId,
@@ -208,7 +208,7 @@ export async function POST(request: NextRequest) {
       const validated = clockOutSchema.parse(body);
 
       // Get attendance record
-      const { data: attendance, error: fetchError } = await supabase
+      const { data: attendance, error: fetchError } = await db
         .from('attendance')
         .select('*')
         .eq('id', validated.attendance_id)
@@ -222,7 +222,7 @@ export async function POST(request: NextRequest) {
       }
 
       // Update clock-out
-      const { data, error } = await supabase
+      const { data, error } = await db
         .from('attendance')
         .update({
           clock_out: new Date().toISOString(),
@@ -270,8 +270,8 @@ export async function POST(request: NextRequest) {
 }
 
 // Helper function to get employee ID from user ID
-async function getCurrentEmployeeId(supabase: any, userId: string) {
-  const { data } = await supabase
+async function getCurrentEmployeeId(db: any, userId: string) {
+  const { data } = await db
     .from('employees')
     .select('id')
     .eq('user_id', userId)

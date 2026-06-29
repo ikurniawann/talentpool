@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createServiceClient } from '@/lib/supabase/service-client';
+import { createPgClient } from "@/lib/pg/create-client";
 import { getPosSession } from '@/lib/api/auth';
 
 /** GET /api/pos/shifts — list shifts with optional filters */
@@ -16,9 +16,9 @@ export async function GET(request: NextRequest) {
   const limit = Math.min(parseInt(searchParams.get('limit') || '50', 10), 200);
   const offset = parseInt(searchParams.get('offset') || '0', 10);
 
-  const supabase = createServiceClient();
+  const db = createPgClient();
   
-  let query = supabase
+  let query = db
     .from('pos_shifts')
     .select('*, pos_orders(id, total_amount, payment_method, amount_paid, ark_coins_used)', { count: 'exact' })
     .order('opened_at', { ascending: false })
@@ -54,10 +54,10 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ success: false, error: 'cashier_id required' }, { status: 400 });
   }
 
-  const supabase = createServiceClient();
+  const db = createPgClient();
 
   // Check if cashier already has active shift
-  const { data: activeShift, error: activeError } = await supabase
+  const { data: activeShift, error: activeError } = await db
     .from('pos_shifts')
     .select('id, shift_number, opened_at')
     .eq('cashier_id', cashier_id)
@@ -76,13 +76,13 @@ export async function POST(request: NextRequest) {
   }
 
   // Generate shift number via RPC
-  const { data: shiftNum, error: rpcError } = await supabase.rpc('generate_shift_number');
+  const { data: shiftNum, error: rpcError } = await db.rpc('generate_shift_number');
   if (rpcError) {
     console.error('RPC generate_shift_number error:', rpcError);
     return NextResponse.json({ success: false, error: 'Failed to generate shift number' }, { status: 500 });
   }
 
-  const { data: newShift, error: insertError } = await supabase
+  const { data: newShift, error: insertError } = await db
     .from('pos_shifts')
     .insert({
       shift_number: shiftNum || `SHF-${new Date().toISOString().slice(0,10).replace(/-/g,'')}-001`,

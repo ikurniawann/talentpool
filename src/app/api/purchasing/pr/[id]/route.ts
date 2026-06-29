@@ -1,5 +1,5 @@
-import { createClient } from "@/lib/supabase/server";
-import { requireUser } from "@/lib/supabase/auth";
+import { createServerPgClient } from "@/lib/pg/create-client";
+import { requireUser } from "@/lib/auth/require-user";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
@@ -25,14 +25,102 @@ type RouteParams = {
   params: Promise<{ id: string }>;
 };
 
+function buildPRPermissions(
+  pr: { status: string; converted_po_id?: string | null; requester_id: string },
+  user: { id: string; role: string }
+) {
+  const canEdit =
+    pr.status === "draft" &&
+    (pr.requester_id === user.id ||
+      ["purchasing_manager", "purchasing_admin", "super_admin", "admin"].includes(user.role));
+
+  const canApprove =
+    pr.status !== "approved" &&
+    pr.status !== "rejected" &&
+    pr.status !== "converted" &&
+    pr.status === "pending_head" &&
+    ["hrd", "purchasing_manager", "purchasing_admin", "super_admin", "admin", "pos_supervisor", "direksi"].includes(
+      user.role
+    );
+
+  const canCreatePO =
+    pr.status === "approved" &&
+    !pr.converted_po_id &&
+    (user.role === "purchasing_manager" || user.role === "purchasing_staff");
+
+  return { canEdit, canApprove, canCreatePO };
+}
+
+export async function GET(_request: NextRequest, { params }: RouteParams) {
+  try {
+    const { id } = await params;
+    const db = await createServerPgClient();
+    const user = await requireUser();
+
+    const { data: pr, error } = await db
+      .from("purchase_requests")
+      .select(`
+        *,
+        items:pr_items(
+          *,
+          raw_material:raw_materials!raw_material_id(id, kode, nama),
+          satuan:units!satuan_id(id, nama)
+        )
+      `)
+      .eq("id", id)
+      .single();
+
+    if (error || !pr) {
+      return NextResponse.json({ error: "PR tidak ditemukan" }, { status: 404 });
+    }
+
+    const relatedUserIds = [
+      pr.requester_id,
+      pr.approved_by_head,
+      pr.approved_by_finance,
+      pr.approved_by_direksi,
+      pr.rejected_by,
+    ].filter(Boolean);
+
+    const [{ data: relatedUsers }, { data: department }] = await Promise.all([
+      relatedUserIds.length
+        ? db.from("users").select("id, full_name").in("id", relatedUserIds)
+        : Promise.resolve({ data: [] as Array<{ id: string; full_name: string }> }),
+      pr.department_id
+        ? db.from("departments").select("name, code").eq("id", pr.department_id).single()
+        : Promise.resolve({ data: null }),
+    ]);
+
+    const userNameById = new Map(
+      (relatedUsers || []).map((relatedUser) => [relatedUser.id, relatedUser.full_name])
+    );
+
+    return NextResponse.json({
+      data: {
+        ...pr,
+        department,
+        requester_name: userNameById.get(pr.requester_id) || "-",
+        approved_head_name: pr.approved_by_head ? userNameById.get(pr.approved_by_head) : null,
+        approved_finance_name: pr.approved_by_finance ? userNameById.get(pr.approved_by_finance) : null,
+        approved_direksi_name: pr.approved_by_direksi ? userNameById.get(pr.approved_by_direksi) : null,
+        rejected_by_name: pr.rejected_by ? userNameById.get(pr.rejected_by) : null,
+        permissions: buildPRPermissions(pr, user),
+      },
+    });
+  } catch (error) {
+    console.error("Error fetching PR detail:", error);
+    return NextResponse.json({ error: "Gagal mengambil detail PR" }, { status: 500 });
+  }
+}
+
 export async function PUT(request: NextRequest, { params }: RouteParams) {
   try {
     const { id } = await params;
-    const supabase = await createClient();
+    const db = await createServerPgClient();
     const user = await requireUser();
     const validated = updatePRSchema.parse(await request.json());
 
-    const { data: existingPR, error: findError } = await supabase
+    const { data: existingPR, error: findError } = await db
       .from("purchase_requests")
       .select("id, requester_id, status")
       .eq("id", id)
@@ -61,7 +149,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
 
     const nextStatus = validated.action === "submit" ? "pending_head" : "draft";
 
-    const { error: deleteItemsError } = await supabase
+    const { error: deleteItemsError } = await db
       .from("pr_items")
       .delete()
       .eq("pr_id", id);
@@ -79,10 +167,10 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
       total: item.qty * item.estimated_price,
     }));
 
-    const { error: insertItemsError } = await supabase.from("pr_items").insert(items);
+    const { error: insertItemsError } = await db.from("pr_items").insert(items);
     if (insertItemsError) throw insertItemsError;
 
-    const { error: updateError } = await supabase
+    const { error: updateError } = await db
       .from("purchase_requests")
       .update({
         department_id: validated.department_id,

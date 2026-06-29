@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createServiceClient } from '@/lib/supabase/service-client';
+import { createPgClient } from "@/lib/pg/create-client";
 import { getPosSession } from '@/lib/api/auth';
 
 // PATCH /api/pos/orders/{id}/splits/{splitId} — cancel a split
@@ -14,9 +14,9 @@ export async function PATCH(
 
   try {
     const { splitId } = await params;
-    const supabase = createServiceClient();
+    const db = createPgClient();
 
-    const { data, error } = await supabase.rpc('pos_cancel_split', {
+    const { data, error } = await db.rpc('pos_cancel_split', {
       p_split_id: splitId,
       p_cashier_id: await resolveCashierId(sessionUserId),
     });

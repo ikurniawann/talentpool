@@ -43,8 +43,8 @@ Status: Done
 
 File/migration:
 
-- `supabase/migrations/20260522063106_crm_membership_loyalty_foundation.sql`
-- `supabase/migrations/20260522064730_crm_pos_xp_integration.sql`
+- `database/migrations/20260522063106_crm_membership_loyalty_foundation.sql`
+- `database/migrations/20260522064730_crm_pos_xp_integration.sql`
 - `src/lib/crm/server.ts`
 - `src/lib/crm/loyalty-engine.ts`
 
@@ -75,7 +75,7 @@ Yang sudah selesai:
 - Auto-create/sync CRM member profile saat transaksi XP masuk.
 - Sync `pos_customers.current_xp`, `total_xp`, `total_spent`, `visit_count`.
 - Konfigurasi XP POS dari CRM dashboard.
-- Test live Supabase untuk award XP dan idempotency sudah pernah dilakukan dan berhasil.
+- Test live PostgreSQL untuk award XP dan idempotency sudah pernah dilakukan dan berhasil.
 
 ### Phase 3 - CRM Dashboard & Member Management
 
@@ -332,7 +332,7 @@ Avatar activity baseline:
 
 Sudah pernah diverifikasi:
 
-- Migration berhasil diterapkan di Supabase.
+- Migration berhasil diterapkan di PostgreSQL.
 - XP POS integration live smoke test berhasil.
 - Product XP save dari UI berhasil.
 - Member list dan member detail render.

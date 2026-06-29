@@ -1,14 +1,14 @@
-import { createClient } from "@/lib/supabase/server";
+import { createServerPgClient } from "@/lib/pg/create-client";
 import { NextResponse } from "next/server";
 
 // GET /api/staff-schedules
 export async function GET(request: Request) {
-  const supabase = await createClient();
+  const db = await createServerPgClient();
   const { searchParams } = new URL(request.url);
 
   const staff_id = searchParams.get("staff_id");
 
-  let query = supabase
+  let query = db
     .from("staff_schedules")
     .select("*", { count: "exact" })
     .order("day_of_week", { ascending: true });
@@ -26,12 +26,12 @@ export async function GET(request: Request) {
 
 // POST /api/staff-schedules - Create schedule
 export async function POST(request: Request) {
-  const supabase = await createClient();
+  const db = await createServerPgClient();
   const body = await request.json();
 
   // If posting multiple schedules at once (bulk)
   if (Array.isArray(body.schedules)) {
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from("staff_schedules")
       .insert(body.schedules)
       .select();
@@ -43,7 +43,7 @@ export async function POST(request: Request) {
   }
 
   // Single schedule
-  const { data, error } = await supabase
+  const { data, error } = await db
     .from("staff_schedules")
     .insert({
       staff_id: body.staff_id,
@@ -66,7 +66,7 @@ export async function POST(request: Request) {
 
 // DELETE /api/staff-schedules?staff_id=xxx
 export async function DELETE(request: Request) {
-  const supabase = await createClient();
+  const db = await createServerPgClient();
   const { searchParams } = new URL(request.url);
   const staff_id = searchParams.get("staff_id");
 
@@ -74,7 +74,7 @@ export async function DELETE(request: Request) {
     return NextResponse.json({ error: "staff_id required" }, { status: 400 });
   }
 
-  const { error } = await supabase
+  const { error } = await db
     .from("staff_schedules")
     .delete()
     .eq("staff_id", staff_id);

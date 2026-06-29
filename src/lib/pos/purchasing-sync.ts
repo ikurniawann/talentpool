@@ -1,6 +1,6 @@
-import { createServiceClient } from "@/lib/supabase/service-client";
+import { createPgClient } from "@/lib/pg/create-client";
 
-type SupabaseServiceClient = ReturnType<typeof createServiceClient>;
+type PgServiceClient = import("@/lib/pg/types").DbClient;
 
 type PurchasingProduct = {
   id: string;
@@ -54,10 +54,10 @@ function skuForPurchasingProduct(product: Pick<PurchasingProduct, "id" | "kode">
 }
 
 async function findOrCreateCategory(
-  supabase: SupabaseServiceClient,
+  db: PgServiceClient,
   name: string
 ) {
-  const { data: existing, error: existingError } = await supabase
+  const { data: existing, error: existingError } = await db
     .from("pos_categories")
     .select("id, name")
     .ilike("name", name)
@@ -67,7 +67,7 @@ async function findOrCreateCategory(
   if (existingError && existingError.code !== "PGRST116") throw existingError;
   if (existing) return (existing as PosCategory).id;
 
-  const { data: created, error: createError } = await supabase
+  const { data: created, error: createError } = await db
     .from("pos_categories")
     .insert({ name, is_active: true })
     .select("id")
@@ -82,11 +82,11 @@ async function findOrCreateCategory(
 }
 
 export async function syncPurchasingProductToPos(
-  supabase: SupabaseServiceClient,
+  db: PgServiceClient,
   purchasingProductId: string,
   options: { station?: string | null; costPriceOverride?: number | null } = {}
 ) {
-  const { data: product, error: productError } = await supabase
+  const { data: product, error: productError } = await db
     .from("v_products_cogs")
     .select("*")
     .eq("id", purchasingProductId)
@@ -99,7 +99,7 @@ export async function syncPurchasingProductToPos(
   const purchasingProduct = product as PurchasingProduct;
   const sku = skuForPurchasingProduct(purchasingProduct);
   const categoryName = normalizeCategoryName(purchasingProduct.kategori);
-  const categoryId = await findOrCreateCategory(supabase, categoryName);
+  const categoryId = await findOrCreateCategory(db, categoryName);
   const basePrice = toNumber(purchasingProduct.harga_jual);
   const costPrice = options.costPriceOverride != null
     ? toNumber(options.costPriceOverride)
@@ -120,7 +120,7 @@ export async function syncPurchasingProductToPos(
     updated_at: now,
   };
 
-  const { data: existing, error: existingError } = await supabase
+  const { data: existing, error: existingError } = await db
     .from("pos_products")
     .select("id")
     .eq("sku", sku)
@@ -129,7 +129,7 @@ export async function syncPurchasingProductToPos(
   if (existingError && existingError.code !== "PGRST116") throw existingError;
 
   if (existing?.id) {
-    const { data: updated, error: updateError } = await supabase
+    const { data: updated, error: updateError } = await db
       .from("pos_products")
       .update(payload)
       .eq("id", existing.id)
@@ -140,7 +140,7 @@ export async function syncPurchasingProductToPos(
     return buildSyncResult("updated", updated as PosProductCostRow, costPrice);
   }
 
-  const { data: created, error: createError } = await supabase
+  const { data: created, error: createError } = await db
     .from("pos_products")
     .insert({
       ...payload,
@@ -154,11 +154,11 @@ export async function syncPurchasingProductToPos(
 }
 
 export async function syncProductionHppToPos(
-  supabase: SupabaseServiceClient,
+  db: PgServiceClient,
   purchasingProductId: string,
   hppPerUnit: number
 ) {
-  return syncPurchasingProductToPos(supabase, purchasingProductId, {
+  return syncPurchasingProductToPos(db, purchasingProductId, {
     costPriceOverride: hppPerUnit,
   });
 }
@@ -179,13 +179,13 @@ function buildSyncResult(mode: "created" | "updated", product: PosProductCostRow
 }
 
 export async function loadPosProductCostMap(
-  supabase: SupabaseServiceClient,
+  db: PgServiceClient,
   productIds: string[]
 ) {
   const ids = Array.from(new Set(productIds.filter(Boolean)));
   if (ids.length === 0) return new Map<string, PosProductCostRow>();
 
-  const { data, error } = await supabase
+  const { data, error } = await db
     .from("pos_products")
     .select("id, sku, name, base_price, cost_price")
     .in("id", ids);

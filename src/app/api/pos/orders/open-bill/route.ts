@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createServiceClient } from '@/lib/supabase/service-client';
+import { createPgClient } from "@/lib/pg/create-client";
 import { getPosSession } from '@/lib/api/auth';
 import { buildCostSnapshot, loadPosProductCostMap } from '@/lib/pos/purchasing-sync';
 
@@ -138,10 +138,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'Items are required' }, { status: 400 });
     }
 
-    const supabase = createServiceClient();
+    const db = createPgClient();
 
     // Generate order number via existing RPC
-    const { data: orderNumData, error: orderNumErr } = await supabase.rpc('generate_order_number');
+    const { data: orderNumData, error: orderNumErr } = await db.rpc('generate_order_number');
     if (orderNumErr) {
       console.error('Order number generation error:', orderNumErr);
       return NextResponse.json({ success: false, error: 'Failed to generate order number' }, { status: 500 });
@@ -149,7 +149,7 @@ export async function POST(request: NextRequest) {
     const orderNumber = typeof orderNumData === 'string' ? orderNumData : String(orderNumData);
 
     // Insert order
-    const { data: orderData, error: orderErr } = await supabase
+    const { data: orderData, error: orderErr } = await db
       .from('pos_orders')
       .insert({
         order_number: orderNumber,
@@ -187,7 +187,7 @@ export async function POST(request: NextRequest) {
     // The DB schema does not have separate variant_price_adjustment / modifier_price_adjustment columns,
     // so adjustments are folded into unit_price/subtotal/total_amount here.
     const productCostMap = await loadPosProductCostMap(
-      supabase,
+      db,
       items.map((item) => String(item.product_id || '')).filter(Boolean)
     );
 
@@ -226,7 +226,7 @@ export async function POST(request: NextRequest) {
     });
 
     let insertedItems: PrintJobItem[] | null = null;
-    const insertResult = await supabase
+    const insertResult = await db
       .from('pos_order_items')
       .insert(orderItems)
       .select('id, product_id, product_name, product_sku, variants, modifiers, quantity, unit_price, total_amount, station, kitchen_notes');
@@ -244,7 +244,7 @@ export async function POST(request: NextRequest) {
         delete legacyItem.gross_margin_pct;
         return legacyItem;
       });
-      const legacyResult = await supabase
+      const legacyResult = await db
         .from('pos_order_items')
         .insert(legacyItems)
         .select('id, product_id, product_name, product_sku, variants, modifiers, quantity, unit_price, total_amount');
@@ -259,7 +259,7 @@ export async function POST(request: NextRequest) {
 
     const printJobs = buildPrintJobs(orderData, (insertedItems || orderItems) as PrintJobItem[]);
     if (printJobs.length > 0) {
-      const { error: printJobError } = await supabase
+      const { error: printJobError } = await db
         .from('pos_print_jobs')
         .insert(printJobs);
 
@@ -268,7 +268,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    await supabase.from('pos_order_status_history').insert({
+    await db.from('pos_order_status_history').insert({
       order_id: orderData.id,
       from_status: null,
       to_status: 'pending',

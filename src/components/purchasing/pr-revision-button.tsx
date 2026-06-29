@@ -35,7 +35,7 @@ export function PRRevisionButton({ prId }: PRRevisionButtonProps) {
       if (!response.ok) throw new Error(payload.error || "Gagal membuat revisi PR");
 
       setOpen(false);
-      router.push(`/dashboard/purchasing/pr/${payload.data.id}/edit?revision=created`);
+      router.push(`/dashboard/purchasing/pr/edit/${payload.data.id}?revision=created`);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Gagal membuat revisi PR");
     } finally {

@@ -5,18 +5,18 @@
 // ============================================================
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { createServerPgClient } from "@/lib/pg/create-client";
 
 export async function GET(request: NextRequest) {
   try {
-    const supabase = await createClient();
+    const db = await createServerPgClient();
     const employee_id = request.nextUrl.searchParams.get('employee_id');
 
     if (!employee_id) {
       return NextResponse.json({ error: 'employee_id diperlukan' }, { status: 400 });
     }
 
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from('employment_history')
       .select(`
         *,
@@ -44,7 +44,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createClient();
+    const db = await createServerPgClient();
     const body = await request.json();
 
     const {
@@ -61,7 +61,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from('employment_history')
       .insert({
         employee_id, change_type, effective_date,

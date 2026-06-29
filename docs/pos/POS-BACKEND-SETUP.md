@@ -2,13 +2,13 @@
 
 ## 📋 Overview
 
-Backend POS menggunakan **Next.js API Routes** + **Supabase** (PostgreSQL).
+Backend POS menggunakan **Next.js API Routes** + **PostgreSQL** (`pg`).
 
 ## 🚀 Setup Steps
 
-### 1. Run Migrations di Supabase
+### 1. Run Migrations di PostgreSQL
 
-Buka Supabase Dashboard → SQL Editor, lalu run:
+Buka admin database → SQL Editor, lalu run:
 
 ```sql
 -- Migration 1: Core Schema
@@ -21,17 +21,7 @@ Buka Supabase Dashboard → SQL Editor, lalu run:
 **Atau via CLI:**
 
 ```bash
-# Install Supabase CLI (if not installed)
-npm install -g supabase
-
-# Login
-supabase login
-
-# Link ke project kamu
-supabase link --project-ref <your-project-ref>
-
-# Push migrations
-supabase db push
+npm run db:migrate:apply
 ```
 
 ### 2. Setup Environment Variables
@@ -39,8 +29,8 @@ supabase db push
 Pastikan `.env.local` sudah ada:
 
 ```env
-NEXT_PUBLIC_SUPABASE_URL=https://xxxxx.supabase.co
-SUPABASE_SERVICE_ROLE_KEY=eyJhbGc... (service role key dari Supabase Settings → API)
+DATABASE_URL=postgresql://postgres:postgres@localhost:5432/arkiv
+MIGRATE_DATABASE_URL=postgresql://postgres:postgres@localhost:5432/arkiv
 ```
 
 ### 3. Test API Endpoints
@@ -134,10 +124,10 @@ const { data: order } = await createOrder(orderData);
 
 ## 🔐 Authentication
 
-API menggunakan **Supabase Service Role Key** untuk bypass RLS. Untuk production:
+API memakai `DATABASE_URL` di server. Untuk production:
 
-1. Enable RLS di semua tabel POS
-2. Gunakan user JWT dari `@supabase/auth-helpers-nextjs`
+1. Enable RLS di semua tabel POS (opsional)
+2. Gunakan session JWT dari `@/lib/auth/require-user`
 3. Buat policies per role (admin, cashier, manager)
 
 Example policy:
@@ -152,7 +142,7 @@ WITH CHECK (auth.jwt()->>'role' IN ('pos_cashier', 'pos_manager', 'pos_admin'));
 
 ## 📊 Next Steps
 
-1. ✅ Run migrations di Supabase
+1. ✅ Run migrations di PostgreSQL
 2. ✅ Test API endpoints
 3. ⏳ Update UI components untuk connect ke API
 4. ⏳ Implement inventory deduction on order checkout
@@ -161,11 +151,11 @@ WITH CHECK (auth.jwt()->>'role' IN ('pos_cashier', 'pos_manager', 'pos_admin'));
 
 ## 🆘 Troubleshooting
 
-**Error: "Missing Supabase credentials"**
-→ Pastikan `.env.local` ada dan berisi `NEXT_PUBLIC_SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY`
+**Error: "Missing DATABASE_URL"**
+→ Pastikan `.env.local` ada dan berisi `DATABASE_URL`
 
 **Error: "relation does not exist"**
-→ Run migrations dulu di Supabase SQL Editor
+→ Run migrations dulu di psql atau SQL client
 
 **Error CORS**
-→ Tambahkan domain kamu di Supabase Dashboard → Authentication → URL Configuration
+→ Tambahkan domain kamu di admin database → Authentication → URL Configuration

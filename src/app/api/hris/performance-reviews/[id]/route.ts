@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createAdminClient } from '@/lib/supabase/admin';
-import { createClient } from '@/lib/supabase/server';
+import { createPgClient } from "@/lib/pg/create-client";
+import { createServerPgClient } from "@/lib/pg/create-client";
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const supabase = createAdminClient();
+    const db = createPgClient();
     const { id } = await params;
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from('performance_reviews')
       .select(`
         *,
@@ -27,14 +27,14 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
-    const authClient = await createClient();
+    const authClient = await createServerPgClient();
     const { data: { user } } = await authClient.auth.getUser();
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const supabase = createAdminClient();
+    const db = createPgClient();
     const body = await request.json();
 
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from('performance_reviews')
       .update({ ...body, updated_at: new Date().toISOString() })
       .eq('id', id)

@@ -1,14 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { createServerPgClient } from "@/lib/pg/create-client";
 
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const supabase = await createClient();
+    const db = await createServerPgClient();
     const { id } = await params;
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from("qc_inspections")
       .select(`
         *,
@@ -34,12 +34,12 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const supabase = await createClient();
+    const db = await createServerPgClient();
     const { id } = await params;
     const body = await request.json();
 
     // Check GRN status
-    const { data: grn } = await supabase
+    const { data: grn } = await db
       .from("goods_receipts")
       .select("status")
       .eq("id", id)
@@ -60,7 +60,7 @@ export async function POST(
     }
 
     // Create QC inspection
-    const { data: qc, error: qcError } = await supabase
+    const { data: qc, error: qcError } = await db
       .from("qc_inspections")
       .insert({
         grn_id: id,
@@ -81,7 +81,7 @@ export async function POST(
     if (body.status === "REJECTED") newStatus = "QC_REJECTED";
     if (body.status === "PARTIAL") newStatus = "QC_APPROVED";
 
-    await supabase
+    await db
       .from("goods_receipts")
       .update({
         status: newStatus,

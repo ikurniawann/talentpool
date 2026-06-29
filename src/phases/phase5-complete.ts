@@ -17,7 +17,7 @@ export const phase5Complete = {
     dashboard: "src/app/(dashboard)/dashboard/purchasing/page.tsx",
     reports: "src/app/(dashboard)/dashboard/purchasing/reports/page.tsx",
     notifications: "src/lib/purchasing/notifications.ts",
-    notificationMigration: "supabase/migrations/20250419_notifications.sql",
+    notificationMigration: "database/migrations/20250419_notifications.sql",
   },
   nextPhase: "Phase 6: Polish + Security Hardening",
   readyFor: [

@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createAdminClient } from '@/lib/supabase/admin';
+import { createPgClient } from "@/lib/pg/create-client";
 
 export async function GET() {
-  const supabase = createAdminClient();
-  const { data, error } = await supabase
+  const db = createPgClient();
+  const { data, error } = await db
     .from('departments')
     .select('id, name, code, description, is_active, created_at, updated_at')
     .order('name');
@@ -12,7 +12,7 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
-  const supabase = createAdminClient();
+  const db = createPgClient();
   const body = await request.json();
   const { name, code, description, is_active = true } = body;
 
@@ -20,7 +20,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Nama dan kode wajib diisi' }, { status: 400 });
   }
 
-  const { data, error } = await supabase
+  const { data, error } = await db
     .from('departments')
     .insert({ name, code: code.toUpperCase(), description: description || null, is_active })
     .select('id, name, code, description, is_active, created_at, updated_at')

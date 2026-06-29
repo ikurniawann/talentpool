@@ -3,18 +3,18 @@
 // ============================================
 
 import { NextRequest } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { createServerPgClient } from "@/lib/pg/create-client";
 
 // GET /api/purchasing/inventory
 export async function GET(request: NextRequest) {
   try {
-    const supabase = await createClient();
+    const db = await createServerPgClient();
     const { searchParams } = new URL(request.url);
 
     const belowMinimum = searchParams.get("below_minimum") === "true";
     const search = searchParams.get("search");
 
-    let query = supabase
+    let query = db
       .from("v_raw_materials_stock")
       .select("*")
       .eq("is_active", true);

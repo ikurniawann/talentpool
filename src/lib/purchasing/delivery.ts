@@ -1,4 +1,4 @@
-import { SupabaseClient } from "@supabase/supabase-js";
+import type { DbClient } from "@/lib/pg/types";
 
 // ============================================================
 // Delivery State Machine
@@ -100,14 +100,14 @@ export function validateReturnTransition(from: ReturnStatus, to: ReturnStatus): 
 // Generate delivery number: DEV-{YYYY}{MM}{DD}-{SEQ:4}
 // ============================================================
 
-export async function generateDeliveryNumber(supabase: SupabaseClient): Promise<string> {
+export async function generateDeliveryNumber(db: DbClient): Promise<string> {
   const now = new Date();
   const year = now.getFullYear();
   const month = String(now.getMonth() + 1).padStart(2, "0");
   const day = String(now.getDate()).padStart(2, "0");
   const prefix = `DEV-${year}${month}${day}`;
 
-  const { data } = await supabase
+  const { data } = await db
     .from("deliveries")
     .select("nomor_resi")
     .ilike("nomor_resi", `${prefix}-%`)
@@ -130,7 +130,7 @@ export async function generateDeliveryNumber(supabase: SupabaseClient): Promise<
 // ============================================================
 
 export async function validatePOCanDelivery(
-  supabase: SupabaseClient,
+  db: DbClient,
   poId: string
 ): Promise<{ valid: boolean; errors: string[]; po?: DeliveryPO }> {
   const errors: string[] = [];
@@ -138,7 +138,7 @@ export async function validatePOCanDelivery(
   console.log("=== validatePOCanDelivery ===");
   console.log("Looking for PO with id:", poId);
 
-  const { data: po, error } = await supabase
+  const { data: po, error } = await db
     .from("purchase_orders")
     .select("id, nomor_po, status, supplier_id, is_active")
     .eq("id", poId)
@@ -147,7 +147,7 @@ export async function validatePOCanDelivery(
   console.log("Query result:", { po, error });
   
   if (error) {
-    console.error("Supabase query error:", error);
+    console.error("Database query error:", error);
     errors.push(`Database error: ${error.message}`);
     return { valid: false, errors };
   }
@@ -181,14 +181,14 @@ export async function validatePOCanDelivery(
 // ============================================================
 
 export async function validateDeliveryForGRN(
-  supabase: SupabaseClient,
+  db: DbClient,
   deliveryId: string
 ): Promise<{ valid: boolean; errors: string[]; delivery?: DeliveryWithPO }> {
   const errors: string[] = [];
 
-  const { data: delivery } = await supabase
+  const { data: delivery } = await db
     .from("deliveries")
-    .select("*, purchase_order:purchase_order_id(*)")
+    .select("*, purchase_order:purchase_orders!purchase_order_id(*)")
     .eq("id", deliveryId)
     .single();
 
@@ -209,11 +209,11 @@ export async function validateDeliveryForGRN(
 // ============================================================
 
 export async function updateGRNStatusFromQC(
-  supabase: SupabaseClient,
+  db: DbClient,
   grnId: string
 ): Promise<{ newStatus: GRNStatus; isComplete: boolean }> {
   // Get all QC inspections for this GRN
-  const { data: qcItems } = await supabase
+  const { data: qcItems } = await db
     .from("qc_inspections")
     .select("jumlah_diterima, jumlah_ditolak, hasil")
     .eq("goods_receipt_id", grnId)
@@ -233,7 +233,7 @@ export async function updateGRNStatusFromQC(
     newStatus = "partial";
   }
 
-  await supabase
+  await db
     .from("goods_receipts")
     .update({ status: newStatus })
     .eq("id", grnId);

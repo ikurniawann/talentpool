@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createAdminClient } from '@/lib/supabase/admin';
-import { createClient } from '@/lib/supabase/server';
+import { createPgClient } from "@/lib/pg/create-client";
+import { createServerPgClient } from "@/lib/pg/create-client";
 
 export async function GET(request: NextRequest) {
   try {
-    const supabase = createAdminClient();
+    const db = createPgClient();
     const searchParams = request.nextUrl.searchParams;
     const employeeId = searchParams.get('employee_id');
     const status = searchParams.get('status');
@@ -12,7 +12,7 @@ export async function GET(request: NextRequest) {
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '20');
 
-    let query = supabase
+    let query = db
       .from('employee_kpis')
       .select(`
         *,
@@ -43,14 +43,14 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const authClient = await createClient();
+    const authClient = await createServerPgClient();
     const { data: { user } } = await authClient.auth.getUser();
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const supabase = createAdminClient();
+    const db = createPgClient();
     const body = await request.json();
 
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from('employee_kpis')
       .insert(body)
       .select()

@@ -43,7 +43,7 @@ export const APPROVAL_LEVELS = [
   { value: "final_approver", label: "Final Approver" },
 ] as const;
 
-const approvalPermissionSchema = z.object({
+export const approvalPermissionSchema = z.object({
   id: z.string().uuid().optional(),
   module: z.enum(["purchasing", "inventory", "pos", "finance", "hris"]),
   workflow: z.enum([

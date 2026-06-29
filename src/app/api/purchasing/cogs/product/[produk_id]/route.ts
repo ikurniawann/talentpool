@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server";
+import { createServerPgClient } from "@/lib/pg/create-client";
 import { NextRequest } from "next/server";
 import { z } from "zod";
 import {
@@ -29,14 +29,14 @@ export async function GET(
 ) {
   try {
     await requireApiUser();
-    const supabase = await createClient();
+    const db = await createServerPgClient();
     const { produk_id } = await params;
 
     if (!z.string().uuid().safeParse(produk_id).success) {
       throw ApiError.badRequest("Invalid produk ID");
     }
 
-    const { data: product, error: productError } = await supabase
+    const { data: product, error: productError } = await db
       .from("products")
       .select(`
         *,
@@ -50,7 +50,7 @@ export async function GET(
       throw ApiError.notFound("Produk tidak ditemukan");
     }
 
-    const { data: bomItems, error: bomError } = await supabase
+    const { data: bomItems, error: bomError } = await db
       .from("bom_items")
       .select(`
         *,
@@ -84,7 +84,7 @@ export async function GET(
     );
 
     const { data: stockRows, error: stockError } = materialIds.length > 0
-      ? await supabase
+      ? await db
           .from("v_raw_materials_stock")
           .select("id, qty_onhand, qty_on_order, avg_cost, material_type, source_product_id")
           .in("id", materialIds)
@@ -96,7 +96,7 @@ export async function GET(
       (stockRows || []).map((stock) => [stock.id, stock as StockRow])
     );
 
-    const { data: settings } = await supabase
+    const { data: settings } = await db
       .from("settings")
       .select("value")
       .eq("key", "overhead_rate")

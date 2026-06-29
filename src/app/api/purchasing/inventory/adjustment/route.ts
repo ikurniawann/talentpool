@@ -3,7 +3,7 @@
 // ============================================
 
 import { NextRequest } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { createServerPgClient } from "@/lib/pg/create-client";
 import { ApiError, requireApiRole } from "@/lib/api/auth";
 import { z } from "zod";
 
@@ -19,14 +19,14 @@ const ADJUST_ROLES = ["super_admin", "warehouse_admin", "purchasing_admin"] as c
 export async function POST(request: NextRequest) {
   try {
     await requireApiRole([...ADJUST_ROLES]);
-    const supabase = await createClient();
+    const db = await createServerPgClient();
     const body = await request.json();
 
     // Validasi input
     const validated = adjustmentSchema.parse(body);
 
     // Get current inventory
-    const { data: currentInv, error: invError } = await supabase
+    const { data: currentInv, error: invError } = await db
       .from("inventory")
       .select("*")
       .eq("raw_material_id", validated.raw_material_id)
@@ -44,7 +44,7 @@ export async function POST(request: NextRequest) {
     const qtyDiff = validated.qty_actual - qtyBefore;
 
     // Update inventory
-    const { data: updatedInv, error: updateError } = await supabase
+    const { data: updatedInv, error: updateError } = await db
       .from("inventory")
       .update({
         qty_available: validated.qty_actual,
@@ -59,7 +59,7 @@ export async function POST(request: NextRequest) {
 
     // Record movement jika ada perubahan
     if (qtyDiff !== 0) {
-      const { error: movementError } = await supabase
+      const { error: movementError } = await db
         .from("inventory_movements")
         .insert({
           inventory_id: currentInv.id,
@@ -70,6 +70,8 @@ export async function POST(request: NextRequest) {
           qty_after: validated.qty_actual,
           unit_cost: currentInv.unit_cost || 0,
           total_cost: Math.abs(qtyDiff) * Number(currentInv.unit_cost || 0),
+          branch_id: currentInv.branch_id ?? null,
+          warehouse_id: currentInv.warehouse_id ?? null,
           reference_type: "adjustment",
           alasan: validated.notes || `Stok opname: ${qtyDiff > 0 ? "+" : ""}${qtyDiff}`,
         });

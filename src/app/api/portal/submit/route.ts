@@ -1,24 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { uploadFile } from "@/lib/storage";
 import { Resend } from "resend";
-import { createClient } from "@/lib/supabase/server";
-import { createClient as createServiceClient } from "@supabase/supabase-js";
+import { createPgClient } from "@/lib/pg/create-client";
 import type { CandidateSource } from "@/types";
 
 const FROM_EMAIL = process.env.FROM_EMAIL ?? "noreply@aapextechnology.com";
 
-// Admin client dengan service role key untuk bypass RLS
-function getAdminSupabase() {
-  return createServiceClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false,
-      },
-    }
-  );
+function getAdminDb() {
+  return createPgClient();
 }
 
 export async function POST(request: NextRequest) {
@@ -91,25 +80,23 @@ export async function POST(request: NextRequest) {
       photoUrl = result.url;
     }
 
-    // --- Save to Supabase ---
-    // Gunakan admin client untuk bypass RLS
-    const adminSupabase = getAdminSupabase();
-    const supabase = await createClient(); // tetap pakai untuk auth session kalau perlu
+    // --- Save to database ---
+    const adminDb = getAdminDb();
 
     // Get position and brand names for email
     let positionTitle = "Belum ditentukan";
     let brandName = "Umum";
     
     if (position_id) {
-      const { data: pos } = await adminSupabase.from("positions").select("title").eq("id", position_id).single();
+      const { data: pos } = await adminDb.from("positions").select("title").eq("id", position_id).single();
       if (pos) positionTitle = pos.title;
     }
     if (brand_id) {
-      const { data: br } = await adminSupabase.from("brands").select("name").eq("id", brand_id).single();
+      const { data: br } = await adminDb.from("brands").select("name").eq("id", brand_id).single();
       if (br) brandName = br.name;
     }
 
-    const { data: candidate, error: insertError } = await adminSupabase
+    const { data: candidate, error: insertError } = await adminDb
       .from("candidates")
       .insert({
         full_name,

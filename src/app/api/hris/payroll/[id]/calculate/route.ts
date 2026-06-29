@@ -4,7 +4,7 @@
 // ============================================================
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { createServerPgClient } from "@/lib/pg/create-client";
 import { calculatePayroll } from '@/lib/payroll/calculator';
 
 interface RouteParams {
@@ -17,11 +17,11 @@ interface RouteParams {
 
 export async function POST(request: NextRequest, { params }: RouteParams) {
   try {
-    const supabase = await createClient();
+    const db = await createServerPgClient();
     const { id } = await params;
 
     // Get payroll run
-    const { data: payrollRun } = await supabase
+    const { data: payrollRun } = await db
       .from('payroll_runs')
       .select('*')
       .eq('id', id)
@@ -46,7 +46,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     const includeThr = body.include_thr ?? false;
 
     // Delete existing payroll details for this run (prevent duplicates on recalculate)
-    const { error: deleteError } = await supabase
+    const { error: deleteError } = await db
       .from('payroll_details')
       .delete()
       .eq('payroll_run_id', id);
@@ -56,7 +56,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     }
 
     // Get all active employees
-    const { data: employees, error: empError } = await supabase
+    const { data: employees, error: empError } = await db
       .from('employees')
       .select('id, full_name, nip, is_active, employment_status, join_date')
       .eq('is_active', true);
@@ -95,7 +95,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     // Calculate payroll for each employee
     for (const employee of employees) {
       // Get salary data
-      const { data: salary } = await supabase
+      const { data: salary } = await db
         .from('employee_salary')
         .select('*')
         .eq('employee_id', employee.id)
@@ -117,7 +117,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       const startDate = `${payrollRun.period_year}-${String(payrollRun.period_month).padStart(2, '0')}-01`;
       const endDate = `${payrollRun.period_year}-${String(payrollRun.period_month).padStart(2, '0')}-31`;
 
-      const { data: attendance } = await supabase
+      const { data: attendance } = await db
         .from('attendance')
         .select('date, work_hours, status')
         .gte('date', startDate)
@@ -129,7 +129,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       const lateDays = attendance?.filter(d => d.status === 'late').length || 0;
 
       // Get unpaid leave
-      const { data: leaves } = await supabase
+      const { data: leaves } = await db
         .from('leaves')
         .select('start_date, end_date')
         .eq('employee_id', employee.id)
@@ -179,7 +179,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       }
 
       // Insert payroll detail
-      const { data: detail, error } = await supabase
+      const { data: detail, error } = await db
         .from('payroll_details')
         .insert({
           payroll_run_id: id,
@@ -255,7 +255,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     });
 
     // Update payroll run with totals
-    await supabase
+    await db
       .from('payroll_runs')
       .update({
         total_employees: results.length,

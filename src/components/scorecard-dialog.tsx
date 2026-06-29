@@ -200,8 +200,8 @@ export default function ScorecardDialog({
 
     setSaving(true);
 
-    const { createClient } = await import("@/lib/supabase/client");
-    const supabase = createClient();
+    const { createBrowserClient } = await import("@/lib/pg/browser-client");
+    const db = createBrowserClient();
 
     // Build scorecard from form values
     const scorecard: Scorecard = { notes: values.notes, overall_score: values.overall_score };
@@ -220,7 +220,7 @@ export default function ScorecardDialog({
     }
 
     // 1. Update interview with scorecard + recommendation
-    await supabase
+    await db
       .from("interviews")
       .update({
         scorecard,
@@ -230,7 +230,7 @@ export default function ScorecardDialog({
 
     // 2. Update candidate status if applicable
     if (newStatus) {
-      await supabase
+      await db
         .from("candidates")
         .update({ status: newStatus })
         .eq("id", interview.candidate_id);
@@ -244,7 +244,7 @@ export default function ScorecardDialog({
     };
     if (newStatus) logDetails.new_status = newStatus;
 
-    await supabase.from("activity_logs").insert({
+    await db.from("activity_logs").insert({
       candidate_id: interview.candidate_id,
       action: `scorecard_submitted_${values.recommendation}`,
       details: logDetails,

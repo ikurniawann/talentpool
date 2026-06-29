@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
-import { createAdminClient } from '@/lib/supabase/admin';
+import { createServerPgClient } from "@/lib/pg/create-client";
+import { createPgClient } from "@/lib/pg/create-client";
 import { z } from 'zod';
 
 // Validation schema for leave request
@@ -19,7 +19,7 @@ const leaveRequestSchema = z.object({
  */
 export async function GET(request: NextRequest) {
   try {
-    const supabase = createAdminClient();
+    const db = createPgClient();
     
     // Get query params
     const searchParams = request.nextUrl.searchParams;
@@ -33,7 +33,7 @@ export async function GET(request: NextRequest) {
 
     // Build query
     // Use FK column names as hints to disambiguate multiple relationships to employees
-    let query = supabase
+    let query = db
       .from('leaves')
       .select(`
         *,
@@ -106,8 +106,8 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
   try {
-    const authClient = await createClient();
-    const supabase = createAdminClient();
+    const authClient = await createServerPgClient();
+    const db = createPgClient();
     const body = await request.json();
 
     console.log('POST /api/hris/leaves - Request body:', body);
@@ -139,7 +139,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Get employee ID (from request or current user)
-    const empId = validated.employee_id || await getCurrentEmployeeId(supabase, user.id);
+    const empId = validated.employee_id || await getCurrentEmployeeId(db, user.id);
     if (!empId) {
       return NextResponse.json(
         { error: 'Employee not found for this user' },
@@ -148,7 +148,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if employee exists and is active
-    const { data: employee } = await supabase
+    const { data: employee } = await db
       .from('employees')
       .select('id, full_name, employment_status, is_active')
       .eq('id', empId)
@@ -166,7 +166,7 @@ export async function POST(request: NextRequest) {
 
     // For annual leave, check quota
     if (validated.leave_type === 'annual') {
-      const { data: balance } = await supabase
+      const { data: balance } = await db
         .from('leave_balances')
         .select('annual_leave_remaining')
         .eq('employee_id', empId)
@@ -186,7 +186,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Create leave request
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from('leaves')
       .insert({
         employee_id: empId,
@@ -250,8 +250,8 @@ function calculateBusinessDays(startDate: string, endDate: string): number {
 }
 
 // Helper function to get employee ID from user ID
-async function getCurrentEmployeeId(supabase: any, userId: string) {
-  const { data } = await supabase
+async function getCurrentEmployeeId(db: any, userId: string) {
+  const { data } = await db
     .from('employees')
     .select('id')
     .eq('user_id', userId)

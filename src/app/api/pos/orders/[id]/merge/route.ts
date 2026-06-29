@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server';
-import { createServiceClient } from '@/lib/supabase/service-client';
+import { createPgClient } from "@/lib/pg/create-client";
 import { getPosSession } from '@/lib/api/auth';
 
 export async function POST(
@@ -24,10 +24,10 @@ export async function POST(
       return Response.json({ success: false, error: 'Cannot merge order with itself' }, { status: 400 });
     }
 
-    const supabase = createServiceClient();
+    const db = createPgClient();
 
     // 1. Validate supervisor PIN
-    const { data: supervisor } = await supabase
+    const { data: supervisor } = await db
       .from('users')
       .select('id, full_name, role')
       .eq('role', 'pos_supervisor')
@@ -39,13 +39,13 @@ export async function POST(
     }
 
     // 2. Check both orders exist and are active
-    const { data: source } = await supabase
+    const { data: source } = await db
       .from('pos_orders')
       .select('id, status, subtotal, discount_amount, tax_amount')
       .eq('id', sourceOrderId)
       .single();
 
-    const { data: target } = await supabase
+    const { data: target } = await db
       .from('pos_orders')
       .select('id, status, subtotal, discount_amount, tax_amount, merged_from_orders')
       .eq('id', target_order_id)
@@ -64,7 +64,7 @@ export async function POST(
     }
 
     // 3. Move items from source to target
-    const { error: moveErr } = await supabase
+    const { error: moveErr } = await db
       .from('pos_order_items')
       .update({ order_id: target_order_id })
       .eq('order_id', sourceOrderId);
@@ -72,7 +72,7 @@ export async function POST(
     if (moveErr) throw moveErr;
 
     // 4. Recalculate target totals (sum from its items)
-    const { data: itemsAgg } = await supabase
+    const { data: itemsAgg } = await db
       .from('pos_order_items')
       .select('subtotal, total_amount')
       .eq('order_id', target_order_id);
@@ -81,7 +81,7 @@ export async function POST(
     const newTotal = (itemsAgg || []).reduce((s, it) => s + (it.total_amount || 0), 0);
 
     // 5. Update target order
-    const { error: updTargetErr } = await supabase
+    const { error: updTargetErr } = await db
       .from('pos_orders')
       .update({
         subtotal: newSubtotal,
@@ -99,7 +99,7 @@ export async function POST(
     if (updTargetErr) throw updTargetErr;
 
     // 6. Mark source as merged
-    await supabase
+    await db
       .from('pos_orders')
       .update({
         status: 'merged',
@@ -109,7 +109,7 @@ export async function POST(
       .eq('id', sourceOrderId);
 
     // 7. Cancel pending splits on source
-    await supabase
+    await db
       .from('pos_order_splits')
       .update({ status: 'cancelled', updated_at: new Date().toISOString() })
       .eq('order_id', sourceOrderId)

@@ -3,8 +3,15 @@
 // ============================================
 
 import { NextRequest } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { createServerPgClient } from "@/lib/pg/create-client";
 import { z } from "zod";
+import {
+  getApiUserScope,
+  companyScopeOr,
+  branchScopeOr,
+  effectiveCompanyId,
+  effectiveBranchId,
+} from "@/lib/api/scope";
 
 const optionalDateSchema = z
   .union([z.string().regex(/^\d{4}-\d{2}-\d{2}$/), z.literal(""), z.null()])
@@ -41,14 +48,14 @@ function getErrorMessage(error: unknown, fallback: string) {
 }
 
 // Helper: Generate nomor PO
-async function generateNomorPO(supabase: Awaited<ReturnType<typeof createClient>>): Promise<string> {
+async function generateNomorPO(db: Awaited<ReturnType<typeof createServerPgClient>>): Promise<string> {
   const today = new Date();
   const year = today.getFullYear();
   const month = String(today.getMonth() + 1).padStart(2, "0");
   const prefix = `PO-${year}${month}`;
   
   // Get latest PO number for this month
-  const { data, error } = await supabase
+  const { data, error } = await db
     .from("purchase_orders")
     .select("nomor_po")
     .ilike("nomor_po", `${prefix}-%`)
@@ -69,7 +76,7 @@ async function generateNomorPO(supabase: Awaited<ReturnType<typeof createClient>
 // GET /api/purchasing/po
 export async function GET(request: NextRequest) {
   try {
-    const supabase = await createClient();
+    const db = await createServerPgClient();
     const { searchParams } = new URL(request.url);
 
     // Query params
@@ -82,9 +89,16 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get("limit") || "20");
 
     // Build query
-    let query = supabase
+    let query = db
       .from("v_purchase_orders")
       .select("*", { count: "exact" });
+
+    // Business scope: branch
+    const scope = await getApiUserScope();
+    const companyOr = companyScopeOr(scope);
+    if (companyOr) query = query.or(companyOr);
+    const branchOr = branchScopeOr(scope);
+    if (branchOr) query = query.or(branchOr);
 
     // Filters
     if (search) {
@@ -121,7 +135,7 @@ export async function GET(request: NextRequest) {
 
     const poIds = (data || []).map((po) => po.id).filter(Boolean);
     const { data: deliveries, error: deliveriesError } = poIds.length
-      ? await supabase
+      ? await db
           .from("deliveries")
           .select("id, purchase_order_id, nomor_resi, no_surat_jalan, status, created_at")
           .in("purchase_order_id", poIds)
@@ -171,11 +185,14 @@ export async function GET(request: NextRequest) {
 // POST /api/purchasing/po
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createClient();
+    const db = await createServerPgClient();
     const body = await request.json();
     
     // Validasi input
     const validated = poSchema.parse(body);
+    const scope = await getApiUserScope();
+    const companyId = effectiveCompanyId(scope);
+    const branchId = effectiveBranchId(scope);
 
     const { items, ...poPayload } = validated;
     const subtotal = items.reduce((sum, item) => sum + item.qty_ordered * item.harga_satuan, 0);
@@ -187,12 +204,14 @@ export async function POST(request: NextRequest) {
     const total = taxableAmount + ppnNominal;
 
     // Generate nomor PO
-    const nomor_po = await generateNomorPO(supabase);
+    const nomor_po = await generateNomorPO(db);
 
     // Insert PO dengan status draft
     const insertData = {
       ...poPayload,
       nomor_po,
+      company_id: companyId,
+      branch_id: branchId,
       status: "draft",
       subtotal,
       diskon_nominal: diskonNominal,
@@ -201,7 +220,7 @@ export async function POST(request: NextRequest) {
       is_active: true,
     };
 
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from("purchase_orders")
       .insert(insertData)
       .select()
@@ -220,7 +239,7 @@ export async function POST(request: NextRequest) {
       is_active: true,
     }));
 
-    const { error: itemError } = await supabase
+    const { error: itemError } = await db
       .from("purchase_order_items")
       .insert(poItems);
 

@@ -1,152 +1,99 @@
-import { createClient } from "@/lib/supabase/server";
-import { NextRequest, NextResponse } from "next/server";
+import { createServerPgClient } from "@/lib/pg/create-client";
+import { NextRequest } from "next/server";
 import { z } from "zod";
-import {
-  requireApiUser,
-  requireApiRole,
-  ApiError,
-  successResponse,
-  createdResponse,
-  paginatedResponse,
-} from "@/lib/api/auth";
-
-// Zod schemas
-const createMaterialSchema = z.object({
-  kode: z.string().min(1, "Kode bahan baku wajib diisi").max(50),
-  nama: z.string().min(1, "Nama bahan baku wajib diisi").max(200),
-  deskripsi: z.string().optional(),
-  satuan_id: z.string().uuid("Satuan ID tidak valid"),
-  kategori: z.string().optional(),
-  harga_estimasi: z.number().positive().optional(),
-  minimum_stock: z.number().min(0).default(0),
-  maximum_stock: z.number().positive().optional(),
-  current_stock: z.number().min(0).default(0),
-  lokasi_rak: z.string().optional(),
-  lead_time_days: z.number().min(0).default(0).refine(v => Number.isInteger(v)),
-  coa_production: z.string().max(50).optional(),
-  coa_rnd: z.string().max(50).optional(),
-  coa_asset: z.string().max(50).optional(),
-});
-
-const updateMaterialSchema = createMaterialSchema.omit({ kode: true }).partial();
+import { requireApiRole, ApiError, successResponse, paginatedResponse } from "@/lib/api/auth";
+import { getApiUserScope, companyScopeOr, branchScopeOr } from "@/lib/api/scope";
 
 const queryParamsSchema = z.object({
-  page: z.coerce.number().min(1).default(1),
-  limit: z.coerce.number().min(1).max(100).default(20),
   search: z.string().optional(),
   kategori: z.string().optional(),
-  satuan_id: z.string().uuid().optional(),
+  page: z.coerce.number().min(1).default(1),
+  limit: z.coerce.number().min(1).max(100).default(20),
 });
 
-// Helper: include related satuan
-function buildMaterialWithSatuan(materials: any[]) {
-  return materials;
-}
-
-// GET /api/purchasing/materials - List with filter & pagination
+// ========================
+// GET /api/purchasing/materials - List bahan baku
+// ========================
 export async function GET(request: NextRequest) {
   try {
-    await requireApiUser();
-    const supabase = await createClient();
+    await requireApiRole(["purchasing_admin", "purchasing_staff", "purchasing_manager", "super_admin"]);
+    const db = await createServerPgClient();
 
-    const url = new URL(request.url);
-    const rawParams = Object.fromEntries(url.searchParams);
-    const params = queryParamsSchema.parse(rawParams);
-    const { page, limit, search, kategori, satuan_id } = params;
+    const { searchParams } = new URL(request.url);
+    const params = queryParamsSchema.parse(Object.fromEntries(searchParams));
+    const { page, limit, search, kategori } = params;
     const offset = (page - 1) * limit;
 
-    let query = supabase
+    let query = db
       .from("bahan_baku")
-      .select(`
-        *,
-        satuan:satuan_id (id, kode, nama)
-      `, { count: "exact" })
+      .select("*", { count: "exact" })
       .eq("is_active", true);
 
-    if (kategori) query = query.eq("kategori", kategori);
-    if (satuan_id) query = query.eq("satuan_id", satuan_id);
+    const scope = await getApiUserScope();
+    const companyOr = companyScopeOr(scope);
+    if (companyOr) query = query.or(companyOr);
+    const branchOr = branchScopeOr(scope);
+    if (branchOr) query = query.or(branchOr);
+
     if (search) {
-      query = query.or(`nama.ilike.%${search}%,kode.ilike.%${search}%`);
+      query = query.or(
+        `nama.ilike.%${search}%,kode.ilike.%${search}%,kategori.ilike.%${search}%`
+      );
     }
+    if (kategori) query = query.eq("kategori", kategori);
 
     const { data, count, error } = await query
-      .order("created_at", { ascending: false })
+      .order("nama", { ascending: true })
       .range(offset, offset + limit - 1);
 
     if (error) throw error;
 
-    return NextResponse.json(
-      paginatedResponse(data, {
-        page,
-        limit,
-        total: count ?? 0,
-        totalPages: Math.ceil((count ?? 0) / limit),
-      })
-    );
+    return paginatedResponse(data ?? [], {
+      page,
+      limit,
+      total: count ?? 0,
+      totalPages: Math.ceil((count ?? 0) / limit),
+    });
   } catch (error) {
     if (error instanceof ApiError) return error.toResponse();
     if (error instanceof z.ZodError) {
-      return ApiError.badRequest("Invalid query parameters", error.issues).toResponse();
+      return ApiError.badRequest("Parameter query tidak valid", error.issues).toResponse();
     }
     console.error("Error fetching materials:", error);
-    return ApiError.server("Failed to fetch materials").toResponse();
+    return ApiError.server("Gagal mengambil data bahan baku").toResponse();
   }
 }
 
-// POST /api/purchasing/materials - Create
+// ========================
+// POST /api/purchasing/materials - Create bahan baku
+// ========================
 export async function POST(request: NextRequest) {
   try {
-    const user = await requireApiRole(["purchasing_admin", "purchasing_staff"]);
-    const supabase = await createClient();
+    const user = await requireApiRole(["purchasing_admin", "purchasing_staff", "purchasing_manager", "super_admin"]);
+    const db = await createServerPgClient();
 
     const body = await request.json();
-    const validated = createMaterialSchema.parse(body);
+    const scope = await getApiUserScope();
+    const companyId = effectiveCompanyId(scope);
+    const branchId = effectiveBranchId(scope);
 
-    // Verify satuan exists
-    const { data: satuan } = await supabase
-      .from("satuan")
-      .select("id")
-      .eq("id", validated.satuan_id)
-      .eq("is_active", true)
-      .single();
-
-    if (!satuan) {
-      throw ApiError.badRequest("Satuan tidak ditemukan");
-    }
-
-    // Check duplicate kode
-    const { data: existing } = await supabase
-      .from("bahan_baku")
-      .select("id")
-      .eq("kode", validated.kode)
-      .eq("is_active", true)
-      .single();
-
-    if (existing) {
-      throw ApiError.conflict("Kode bahan baku sudah ada");
-    }
-
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from("bahan_baku")
       .insert({
-        ...validated,
+        ...body,
+        company_id: companyId,
+        branch_id: branchId,
         created_by: user.id,
       })
-      .select(`
-        *,
-        satuan:satuan_id (id, kode, nama)
-      `)
+      .select()
       .single();
 
     if (error) throw error;
 
-    return createdResponse(data, "Bahan baku berhasil dibuat");
+    return successResponse(data, "Bahan baku berhasil dibuat");
   } catch (error) {
     if (error instanceof ApiError) return error.toResponse();
-    if (error instanceof z.ZodError) {
-      return ApiError.badRequest("Validation failed", error.issues).toResponse();
-    }
     console.error("Error creating material:", error);
-    return ApiError.server("Failed to create material").toResponse();
+    return ApiError.server("Gagal membuat bahan baku").toResponse();
   }
 }

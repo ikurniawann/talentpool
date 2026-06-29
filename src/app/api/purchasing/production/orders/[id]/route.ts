@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { createServiceClient } from "@/lib/supabase/service-client";
+import { createPgClient } from "@/lib/pg/create-client";
 import { requireApiRole, ApiError } from "@/lib/api/auth";
 import { addInventoryFromProduction } from "@/lib/inventory";
 import { syncProductionHppToPos } from "@/lib/pos/purchasing-sync";
@@ -60,13 +60,13 @@ type StockRow = {
 };
 
 async function loadStockMap(
-  supabase: ReturnType<typeof createServiceClient>,
+  db: import("@/lib/pg/types").DbClient,
   materialIds: string[]
 ) {
   const uniqueIds = Array.from(new Set(materialIds.filter(Boolean)));
   if (uniqueIds.length === 0) return new Map<string, StockRow>();
 
-  const { data, error } = await supabase
+  const { data, error } = await db
     .from("v_raw_materials_stock")
     .select("id, qty_onhand, avg_cost")
     .in("id", uniqueIds);
@@ -102,12 +102,12 @@ function buildStockCoverage(
 }
 
 async function validateMaterialStock(
-  supabase: ReturnType<typeof createServiceClient>,
+  db: import("@/lib/pg/types").DbClient,
   productionOrderId: string,
   mode: "planned" | "actual" = "planned",
   overrides?: Map<string, { qty_actual: number }>
 ) {
-  const { data: materials, error } = await supabase
+  const { data: materials, error } = await db
     .from("production_order_materials")
     .select("id, raw_material_id, qty_planned, qty_actual, inventory_movement_id, raw_material:raw_material_id(kode,nama)")
     .eq("production_order_id", productionOrderId);
@@ -121,7 +121,7 @@ async function validateMaterialStock(
     } as ProductionMaterialRow;
   });
 
-  const stockMap = await loadStockMap(supabase, rows.map((material) => material.raw_material_id));
+  const stockMap = await loadStockMap(db, rows.map((material) => material.raw_material_id));
   const coverage = buildStockCoverage(
     rows.filter((material) => !material.inventory_movement_id),
     stockMap,
@@ -141,11 +141,11 @@ function buildWipCode(productCode?: string | null) {
 }
 
 async function ensureWipRawMaterial(
-  supabase: ReturnType<typeof createServiceClient>,
+  db: import("@/lib/pg/types").DbClient,
   product: { id: string; kode?: string | null; nama?: string | null; satuan_id?: string | null },
   userId: string
 ) {
-  const { data: existing, error: existingError } = await supabase
+  const { data: existing, error: existingError } = await db
     .from("raw_materials")
     .select("id")
     .eq("source_product_id", product.id)
@@ -154,7 +154,7 @@ async function ensureWipRawMaterial(
   if (existingError) throw existingError;
   if (existing?.id) return existing.id as string;
 
-  const { data, error } = await supabase
+  const { data, error } = await db
     .from("raw_materials")
     .insert({
       kode: buildWipCode(product.kode),
@@ -181,9 +181,9 @@ export async function GET(
   try {
     await requireApiRole(["admin", "purchasing_admin", "purchasing_manager", "warehouse_admin"]);
     const { id } = await params;
-    const supabase = createServiceClient();
+    const db = createPgClient();
 
-    const { data: order, error: orderError } = await supabase
+    const { data: order, error: orderError } = await db
       .from("v_production_orders")
       .select("*")
       .eq("id", id)
@@ -198,12 +198,12 @@ export async function GET(
 
     const [{ data: materials, error: materialsError }, { data: batches, error: batchesError }] =
       await Promise.all([
-        supabase
+        db
           .from("production_order_materials")
           .select("*, raw_material:raw_material_id(id,kode,nama), satuan:satuan_id(id,kode,nama)")
           .eq("production_order_id", id)
           .order("created_at", { ascending: true }),
-        supabase
+        db
           .from("production_batches")
           .select("*")
           .eq("production_order_id", id)
@@ -214,7 +214,7 @@ export async function GET(
     if (batchesError) throw batchesError;
 
     const stockMap = await loadStockMap(
-      supabase,
+      db,
       (materials || []).map((material) => material.raw_material_id)
     );
     const stockCoverage = buildStockCoverage(
@@ -258,11 +258,11 @@ export async function PATCH(
   try {
     const user = await requireApiRole(["admin", "purchasing_admin", "purchasing_manager", "warehouse_admin"]);
     const { id } = await params;
-    const supabase = createServiceClient();
+    const db = createPgClient();
     const body = await request.json();
     const validated = updateProductionSchema.parse(body);
 
-    const { data: order, error: orderError } = await supabase
+    const { data: order, error: orderError } = await db
       .from("production_orders")
       .select("*, product:product_id(id,kode,nama,satuan_id)")
       .eq("id", id)
@@ -277,10 +277,10 @@ export async function PATCH(
 
     if (validated.action === "recheck_stock") {
       const mode = ["IN_PROGRESS", "COMPLETED"].includes(order.status) ? "actual" : "planned";
-      const stockCheck = await validateMaterialStock(supabase, id, mode);
+      const stockCheck = await validateMaterialStock(db, id, mode);
       const shortageCount = stockCheck.shortages.length;
 
-      const { error: touchError } = await supabase
+      const { error: touchError } = await db
         .from("production_orders")
         .update({
           updated_by: user.id,
@@ -313,7 +313,7 @@ export async function PATCH(
         );
       }
 
-      const stockCheck = await validateMaterialStock(supabase, id, "planned");
+      const stockCheck = await validateMaterialStock(db, id, "planned");
       if (stockCheck.shortages.length > 0) {
         return NextResponse.json(
           {
@@ -325,7 +325,7 @@ export async function PATCH(
         );
       }
 
-      const { data, error } = await supabase
+      const { data, error } = await db
         .from("production_orders")
         .update({ status: "RELEASED", updated_by: user.id, updated_at: new Date().toISOString() })
         .eq("id", id)
@@ -344,7 +344,7 @@ export async function PATCH(
         );
       }
 
-      const { data, error } = await supabase
+      const { data, error } = await db
         .from("production_orders")
         .update({
           status: "IN_PROGRESS",
@@ -368,7 +368,7 @@ export async function PATCH(
         );
       }
 
-      const { data, error } = await supabase
+      const { data, error } = await db
         .from("production_orders")
         .update({
           status: "CANCELLED",
@@ -396,7 +396,7 @@ export async function PATCH(
     }
 
     const actualQty = validated.actual_qty || toNumber(order.planned_qty);
-    const { data: materials, error: materialsError } = await supabase
+    const { data: materials, error: materialsError } = await db
       .from("production_order_materials")
       .select("*")
       .eq("production_order_id", id);
@@ -410,7 +410,7 @@ export async function PATCH(
     }
 
     const actualByMaterialId = new Map((validated.materials || []).map((item) => [item.id, item]));
-    const stockCheck = await validateMaterialStock(supabase, id, "actual", actualByMaterialId);
+    const stockCheck = await validateMaterialStock(db, id, "actual", actualByMaterialId);
     if (stockCheck.shortages.length > 0) {
       return NextResponse.json(
         {
@@ -438,7 +438,7 @@ export async function PATCH(
 
     for (const material of materialUpdates) {
       if (material.inventory_movement_id) {
-        const { error: materialUpdateError } = await supabase
+        const { error: materialUpdateError } = await db
           .from("production_order_materials")
           .update({
             qty_actual: material.qtyActual,
@@ -452,9 +452,9 @@ export async function PATCH(
         continue;
       }
 
-      const { data: inventory, error: inventoryError } = await supabase
+      const { data: inventory, error: inventoryError } = await db
         .from("inventory")
-        .select("id, qty_available, unit_cost")
+        .select("id, qty_available, unit_cost, branch_id, warehouse_id")
         .eq("raw_material_id", material.raw_material_id)
         .eq("is_active", true)
         .single();
@@ -475,7 +475,7 @@ export async function PATCH(
       }
 
       const qtyAfter = qtyBefore - material.qtyActual;
-      const { data: movement, error: movementError } = await supabase
+      const { data: movement, error: movementError } = await db
         .from("inventory_movements")
         .insert({
           inventory_id: inventory.id,
@@ -486,6 +486,8 @@ export async function PATCH(
           qty_after: qtyAfter,
           unit_cost: material.unitCost,
           total_cost: material.totalCost,
+          branch_id: inventory.branch_id ?? null,
+          warehouse_id: inventory.warehouse_id ?? null,
           reference_type: "production",
           reference_id: id,
           reference_number: order.nomor_produksi,
@@ -497,7 +499,7 @@ export async function PATCH(
 
       if (movementError) throw movementError;
 
-      const { error: inventoryUpdateError } = await supabase
+      const { error: inventoryUpdateError } = await db
         .from("inventory")
         .update({
           qty_available: qtyAfter,
@@ -508,7 +510,7 @@ export async function PATCH(
 
       if (inventoryUpdateError) throw inventoryUpdateError;
 
-      const { error: materialUpdateError } = await supabase
+      const { error: materialUpdateError } = await db
         .from("production_order_materials")
         .update({
           qty_actual: material.qtyActual,
@@ -533,11 +535,11 @@ export async function PATCH(
 
     const outputType = order.output_type || "FINISHED_GOOD";
     const wipRawMaterialId = outputType === "WIP" && order.product
-      ? await ensureWipRawMaterial(supabase, order.product, user.id)
+      ? await ensureWipRawMaterial(db, order.product, user.id)
       : null;
 
     const nextBatchNumber = batchNumber(order.nomor_produksi);
-    const { data: existingBatch, error: existingBatchError } = await supabase
+    const { data: existingBatch, error: existingBatchError } = await db
       .from("production_batches")
       .select("*")
       .eq("batch_number", nextBatchNumber)
@@ -546,7 +548,7 @@ export async function PATCH(
     if (existingBatchError) throw existingBatchError;
 
     const { data: batch, error: batchError } = existingBatch
-      ? await supabase
+      ? await db
           .from("production_batches")
           .update({
             output_type: outputType,
@@ -558,7 +560,7 @@ export async function PATCH(
           .eq("id", existingBatch.id)
           .select()
           .single()
-      : await supabase
+      : await db
           .from("production_batches")
           .insert({
             production_order_id: id,
@@ -578,7 +580,7 @@ export async function PATCH(
 
     if (outputType === "WIP" && wipRawMaterialId) {
       await addInventoryFromProduction(
-        supabase,
+        db,
         wipRawMaterialId,
         actualQty,
         hppPerUnit,
@@ -587,7 +589,7 @@ export async function PATCH(
         user.id
       );
     } else {
-      const { data: finishedInventory } = await supabase
+      const { data: finishedInventory } = await db
         .from("finished_goods_inventory")
         .select("id, qty_available, unit_cost")
         .eq("product_id", order.product_id)
@@ -600,7 +602,7 @@ export async function PATCH(
           ? ((currentQty * toNumber(finishedInventory.unit_cost)) + totalCost) / totalQty
           : hppPerUnit;
 
-        const { error } = await supabase
+        const { error } = await db
           .from("finished_goods_inventory")
           .update({
             qty_available: totalQty,
@@ -613,7 +615,7 @@ export async function PATCH(
 
         if (error) throw error;
       } else {
-        const { error } = await supabase.from("finished_goods_inventory").insert({
+        const { error } = await db.from("finished_goods_inventory").insert({
           product_id: order.product_id,
           qty_available: actualQty,
           unit_cost: hppPerUnit,
@@ -625,7 +627,7 @@ export async function PATCH(
       }
     }
 
-    const { data: updatedOrder, error: completeError } = await supabase
+    const { data: updatedOrder, error: completeError } = await db
       .from("production_orders")
       .update({
         status: "COMPLETED",
@@ -647,7 +649,7 @@ export async function PATCH(
     if (completeError) throw completeError;
 
     const posSync = outputType === "FINISHED_GOOD"
-      ? await syncProductionHppToPos(supabase, order.product_id, hppPerUnit)
+      ? await syncProductionHppToPos(db, order.product_id, hppPerUnit)
       : null;
 
     return NextResponse.json({

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { createClient } from "@/lib/supabase/client";
+import { createBrowserClient } from "@/lib/pg/browser-client";
 import { UserRole } from "@/types";
 
 export interface AuthUser {
@@ -27,10 +27,10 @@ export function useAuth(): UseAuthResult {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const supabase = createClient();
+    const db = createBrowserClient();
 
     // Try to get session
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    db.auth.getSession().then(({ data: { session } }) => {
       if (session?.user) {
         const u = session.user;
         setUser({
@@ -46,7 +46,7 @@ export function useAuth(): UseAuthResult {
       setLoading(false);
     });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = db.auth.onAuthStateChange((_event, session) => {
       if (session?.user) {
         const u = session.user;
         setUser({
@@ -65,8 +65,8 @@ export function useAuth(): UseAuthResult {
   }, []);
 
   async function signOut() {
-    const supabase = createClient();
-    await supabase.auth.signOut();
+    const db = createBrowserClient();
+    await db.auth.signOut();
     setUser(null);
   }
 

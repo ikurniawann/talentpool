@@ -3,7 +3,7 @@
 // ============================================
 
 import { NextRequest } from "next/server";
-import { createServiceClient } from "@/lib/supabase/service-client";
+import { createPgClient } from "@/lib/pg/create-client";
 import { adjustInventoryOnOrder } from "@/lib/inventory";
 import { z } from "zod";
 
@@ -29,10 +29,10 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
-    const supabase = createServiceClient();
+    const db = createPgClient();
 
     // Get PO header
-    const { data: po, error: poError } = await supabase
+    const { data: po, error: poError } = await db
       .from("v_purchase_orders")
       .select("*")
       .eq("id", id)
@@ -48,17 +48,15 @@ export async function GET(
       throw poError;
     }
 
-    // Get PO items
-    const { data: items, error: itemsError } = await supabase
+    // Get PO items.
+    // Query builder hanya mendukung embed satu level, jadi satuan_besar/satuan_kecil
+    // dari raw_material di-resolve manual lewat lookup units di bawah.
+    const { data: items, error: itemsError } = await db
       .from("purchase_order_items")
       .select(`
         *,
-        raw_material:raw_material_id (
-          *,
-          satuan_besar:satuan_besar_id(id,nama,kode),
-          satuan_kecil:satuan_kecil_id(id,nama,kode)
-        ),
-        satuan:satuan_id (*)
+        raw_material:raw_materials!raw_material_id (*),
+        satuan:units!satuan_id (*)
       `)
       .eq("purchase_order_id", id)
       .eq("is_active", true)
@@ -66,7 +64,30 @@ export async function GET(
 
     if (itemsError) throw itemsError;
 
-    const { data: activeDelivery, error: deliveryError } = await supabase
+    // Enrich raw_material dengan nama satuan besar/kecil (units).
+    const itemUnitIds = Array.from(
+      new Set(
+        (items || []).flatMap((item) => {
+          const rm = (item as { raw_material?: { satuan_besar_id?: string | null; satuan_kecil_id?: string | null } | null }).raw_material;
+          return [rm?.satuan_besar_id, rm?.satuan_kecil_id].filter(Boolean) as string[];
+        })
+      )
+    );
+    if (itemUnitIds.length > 0) {
+      const { data: unitRows } = await db
+        .from("units")
+        .select("id, nama, kode")
+        .in("id", itemUnitIds);
+      const unitMap = new Map((unitRows || []).map((u) => [u.id as string, u]));
+      for (const item of items || []) {
+        const rm = (item as { raw_material?: { satuan_besar_id?: string | null; satuan_kecil_id?: string | null; satuan_besar?: unknown; satuan_kecil?: unknown } | null }).raw_material;
+        if (!rm) continue;
+        rm.satuan_besar = rm.satuan_besar_id ? unitMap.get(rm.satuan_besar_id) ?? null : null;
+        rm.satuan_kecil = rm.satuan_kecil_id ? unitMap.get(rm.satuan_kecil_id) ?? null : null;
+      }
+    }
+
+    const { data: activeDelivery, error: deliveryError } = await db
       .from("deliveries")
       .select("id, nomor_resi, no_surat_jalan, status")
       .eq("purchase_order_id", id)
@@ -104,14 +125,14 @@ export async function PUT(
 ) {
   try {
     const { id } = await params;
-    const supabase = createServiceClient();
+    const db = createPgClient();
     const body = await request.json();
 
     // Validasi input
     const validated = poSchema.parse(body);
 
     // Cek PO ada dan status masih bisa diedit (hanya draft)
-    const { data: po, error: findError } = await supabase
+    const { data: po, error: findError } = await db
       .from("purchase_orders")
       .select("*")
       .eq("id", id)
@@ -132,7 +153,7 @@ export async function PUT(
     }
 
     // Update data
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from("purchase_orders")
       .update({
         ...validated,
@@ -177,10 +198,10 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params;
-    const supabase = createServiceClient();
+    const db = createPgClient();
 
     // Cek PO ada
-    const { data: po, error: findError } = await supabase
+    const { data: po, error: findError } = await db
       .from("purchase_orders")
       .select("*")
       .eq("id", id)
@@ -205,7 +226,7 @@ export async function DELETE(
 
     const shouldReleaseOnOrder = normalizedStatus === "sent" || normalizedStatus === "partial" || normalizedStatus === "partially_received";
     const { data: items, error: itemsError } = shouldReleaseOnOrder
-      ? await supabase
+      ? await db
           .from("purchase_order_items")
           .select("raw_material_id, qty_ordered, qty_received")
           .eq("purchase_order_id", id)
@@ -215,7 +236,7 @@ export async function DELETE(
     if (itemsError) throw itemsError;
 
     // Soft delete / cancel
-    const { error } = await supabase
+    const { error } = await db
       .from("purchase_orders")
       .update({
         status: "cancelled",
@@ -230,7 +251,7 @@ export async function DELETE(
       for (const item of items || []) {
         const remainingQty = Math.max(0, Number(item.qty_ordered || 0) - Number(item.qty_received || 0));
         if (item.raw_material_id && remainingQty > 0) {
-          await adjustInventoryOnOrder(supabase, item.raw_material_id, -remainingQty);
+          await adjustInventoryOnOrder(db, item.raw_material_id, -remainingQty);
         }
       }
     }

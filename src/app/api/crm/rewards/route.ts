@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getPosSession } from "@/lib/api/auth";
-import { createServiceClient } from "@/lib/supabase/service-client";
+import { createPgClient } from "@/lib/pg/create-client";
 import { apiErrorResponse, isMissingCrmSchema, validationErrorResponse } from "@/lib/crm/server";
 
 const rewardSchema = z.object({
@@ -28,11 +28,11 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const supabase = createServiceClient();
+    const db = createPgClient();
     const rewardType = request.nextUrl.searchParams.get("reward_type");
     const includeAvatarRewards = request.nextUrl.searchParams.get("include_avatar_rewards") === "true";
 
-    let query = supabase
+    let query = db
       .from("crm_rewards")
       .select("*, required_tier:crm_membership_tiers(code, name, rank)")
       .order("created_at", { ascending: false });
@@ -63,8 +63,8 @@ export async function POST(request: NextRequest) {
 
   try {
     const payload = rewardSchema.parse(await request.json());
-    const supabase = createServiceClient();
-    const { data, error } = await supabase
+    const db = createPgClient();
+    const { data, error } = await db
       .from("crm_rewards")
       .upsert(payload, { onConflict: "code" })
       .select()
@@ -102,8 +102,8 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ success: false, error: "Reward id wajib diisi" }, { status: 400 });
     }
 
-    const supabase = createServiceClient();
-    const { error } = await supabase
+    const db = createPgClient();
+    const { error } = await db
       .from("crm_rewards")
       .delete()
       .eq("id", rewardId);

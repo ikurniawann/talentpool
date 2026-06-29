@@ -2,7 +2,7 @@
 -- STEP 2: Assign Reviewers for Testing (FIXED)
 -- =====================================================
 -- Menggunakan employees yang ada: EMP013, EMP016, EMP017, EMP026, EMP030
--- Jalankan di Supabase Dashboard > SQL Editor
+-- Jalankan di admin database > SQL Editor
 -- =====================================================
 
 -- 1. Verify cycle Q2 2026 exists

@@ -6,7 +6,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { createClient } from "@/lib/supabase/client";
+import { createBrowserClient } from "@/lib/pg/browser-client";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Loader2, Upload, X, CheckCircle, Phone, Mail, MapPin, Briefcase, ArrowUp } from "lucide-react";
@@ -38,7 +38,7 @@ const logoUrl = "/logos/sulu-in-wounderland-logo.png";
 
 export default function PortalPage() {
   const router = useRouter();
-  const supabase = createClient();
+  const db = createBrowserClient();
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -98,7 +98,7 @@ export default function PortalPage() {
     // If job_opening_id is present, fetch job details and auto-fill brand & position
     if (openingId) {
       setIsBrandReadOnly(true);
-      supabase
+      db
         .from("job_openings")
         .select("brand_id, position_id")
         .eq("id", openingId)
@@ -118,7 +118,7 @@ export default function PortalPage() {
 
   // Fetch brands
   useEffect(() => {
-    supabase
+    db
       .from("brands")
       .select("id, name")
       .eq("is_active", true)
@@ -134,7 +134,7 @@ export default function PortalPage() {
     const fetchPositions = async () => {
       setPositionsLoading(true);
       try {
-        const { data, error } = await supabase
+        const { data, error } = await db
           .from("positions")
           .select("id, title, brand_id")
           .eq("is_active", true)
@@ -155,7 +155,7 @@ export default function PortalPage() {
         }
 
         console.warn("[Positions] No active positions, trying fallback...");
-        const { data: fallbackData, error: fallbackError } = await supabase
+        const { data: fallbackData, error: fallbackError } = await db
           .from("positions")
           .select("id, title, brand_id")
           .order("title", { ascending: true })

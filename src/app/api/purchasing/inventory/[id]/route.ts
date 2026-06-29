@@ -3,7 +3,7 @@
 // ============================================
 
 import { NextRequest } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { createServerPgClient } from "@/lib/pg/create-client";
 
 // GET /api/purchasing/inventory/:id
 export async function GET(
@@ -12,10 +12,10 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
-    const supabase = await createClient();
+    const db = await createServerPgClient();
 
     // Get inventory dengan detail bahan
-    const { data: inventory, error: invError } = await supabase
+    const { data: inventory, error: invError } = await db
       .from("v_raw_materials_stock")
       .select("*")
       .eq("id", id)

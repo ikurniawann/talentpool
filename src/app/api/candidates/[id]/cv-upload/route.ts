@@ -1,5 +1,5 @@
 import { uploadFile, validateFile } from "@/lib/storage";
-import { createClient } from "@/lib/supabase/server";
+import { createServerPgClient } from "@/lib/pg/create-client";
 import { NextResponse } from "next/server";
 
 const ALLOWED_TYPES = [
@@ -17,11 +17,11 @@ export async function POST(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const supabase = await createClient();
+  const db = await createServerPgClient();
   const { id: candidateId } = await params;
 
   // Verify candidate exists
-  const { data: candidate, error: candidateError } = await supabase
+  const { data: candidate, error: candidateError } = await db
     .from("candidates")
     .select("id")
     .eq("id", candidateId)
@@ -59,7 +59,7 @@ export async function POST(
     return NextResponse.json({ error: sizeError }, { status: 400 });
   }
 
-  // Upload to Supabase Storage
+  // Upload to local storage
   const { url, error: uploadError } = await uploadFile(
     "candidates",
     file,
@@ -71,7 +71,7 @@ export async function POST(
   }
 
   // Update candidate with cv_url
-  const { error: updateError } = await supabase
+  const { error: updateError } = await db
     .from("candidates")
     .update({ cv_url: url, updated_at: new Date().toISOString() })
     .eq("id", candidateId);
@@ -91,10 +91,10 @@ export async function DELETE(
   _request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const supabase = await createClient();
+  const db = await createServerPgClient();
   const { id: candidateId } = await params;
 
-  const { error: updateError } = await supabase
+  const { error: updateError } = await db
     .from("candidates")
     .update({ cv_url: null, updated_at: new Date().toISOString() })
     .eq("id", candidateId);

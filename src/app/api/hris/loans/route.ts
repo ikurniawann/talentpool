@@ -5,7 +5,7 @@
 // ============================================================
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { createServerPgClient } from "@/lib/pg/create-client";
 import { ApiError, requireApiRole } from '@/lib/api/auth';
 
 // Loan records are sensitive financial PII — restrict listing to HR/finance.
@@ -18,12 +18,12 @@ const LOAN_VIEW_ROLES = ['super_admin', 'hrd', 'finance_staff'] as const;
 export async function GET(request: NextRequest) {
   try {
     await requireApiRole([...LOAN_VIEW_ROLES]);
-    const supabase = await createClient();
+    const db = await createServerPgClient();
     const { searchParams } = new URL(request.url);
     const employeeId = searchParams.get('employee_id');
     const status = searchParams.get('status');
 
-    let query = supabase
+    let query = db
       .from('loans')
       .select(`
         *,
@@ -78,7 +78,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createClient();
+    const db = await createServerPgClient();
     const body = await request.json();
     const {
       employee_id,
@@ -99,7 +99,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if employee exists
-    const { data: employee } = await supabase
+    const { data: employee } = await db
       .from('employees')
       .select('id, is_active')
       .eq('id', employee_id)
@@ -125,7 +125,7 @@ export async function POST(request: NextRequest) {
       : principal_amount / tenor_months;
 
     // Create loan request
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from('loans')
       .insert({
         employee_id,

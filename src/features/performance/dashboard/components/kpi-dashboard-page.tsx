@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useMemo, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
@@ -15,76 +15,24 @@ import {
   ChartPieIcon
 } from "lucide-react";
 import { BarChart, Bar, PieChart, Pie, Cell, ResponsiveContainer, XAxis, YAxis, Tooltip } from "recharts";
-
-interface EmployeeKpi {
-  id: string;
-  name: string;
-  category: string;
-  target: number;
-  actual_value: number | null;
-  achievement_percentage: number | null;
-  unit: string;
-  period_label: string;
-  status: string;
-  weight: number | null;
-  employee: { 
-    id: string; 
-    full_name: string; 
-    nip: string; 
-    department?: { name: string };
-    position?: { title: string };
-  };
-}
-
-interface PerformanceReview {
-  id: string;
-  period_label: string;
-  overall_score: number | null;
-  status: string;
-  employee: { 
-    id: string; 
-    full_name: string; 
-    department?: { name: string };
-  };
-}
+import { useKpiDashboard } from "../queries";
 
 const COLORS = ["#22c55e", "#eab308", "#f97316", "#ef4444", "#3b82f6", "#8b5cf6", "#ec4899"];
 
-export default function KpiDashboardPage() {
-  const [kpis, setKpis] = useState<EmployeeKpi[]>([]);
-  const [reviews, setReviews] = useState<PerformanceReview[]>([]);
-  const [loading, setLoading] = useState(true);
+export function KpiDashboardPage() {
   const [periodFilter, setPeriodFilter] = useState("");
+  const { data, isLoading: loading, error } = useKpiDashboard({
+    period_label: periodFilter || undefined,
+  });
 
-  useEffect(() => {
-    fetchData();
-  }, [periodFilter]);
+  const kpis = data?.kpis ?? [];
+  const reviews = data?.reviews ?? [];
+  const queryError = error instanceof Error ? error.message : null;
 
-  const fetchData = async () => {
-    setLoading(true);
-    try {
-      const kpiParams = new URLSearchParams({ limit: "500", status: "active" });
-      if (periodFilter) kpiParams.set("period_label", periodFilter);
-
-      const reviewParams = new URLSearchParams({ limit: "100" });
-      if (periodFilter) reviewParams.set("period_label", periodFilter);
-
-      const [kpiRes, reviewRes] = await Promise.all([
-        fetch(`/api/hris/employee-kpis?${kpiParams}`),
-        fetch(`/api/hris/performance-reviews?${reviewParams}`),
-      ]);
-
-      const kpiJson = await kpiRes.json();
-      const reviewJson = await reviewRes.json();
-
-      setKpis(kpiJson.data || []);
-      setReviews(reviewJson.data || []);
-    } catch (error) {
-      console.error("Error fetching data:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const completedReviews = useMemo(
+    () => reviews.filter((review) => review.status === "finalized" || review.status === "completed").length,
+    [reviews]
+  );
 
   // Calculate statistics
   const stats = {
@@ -181,6 +129,16 @@ export default function KpiDashboardPage() {
     );
   }
 
+  if (queryError) {
+    return (
+      <div className="container mx-auto py-8">
+        <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          {queryError}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="container mx-auto py-8 max-w-7xl">
       {/* Header */}
@@ -256,7 +214,7 @@ export default function KpiDashboardPage() {
           <CardContent>
             <div className="text-3xl font-bold text-gray-900 mb-2">{reviews.length}</div>
             <div className="text-xs text-gray-500">
-              {reviews.filter(r => r.status === "completed").length} review selesai
+              {completedReviews} review selesai
             </div>
           </CardContent>
         </Card>
@@ -280,7 +238,7 @@ export default function KpiDashboardPage() {
                   cx="50%"
                   cy="50%"
                   labelLine={false}
-                  label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                  label={({ name, percent }) => `${name}: ${((percent ?? 0) * 100).toFixed(0)}%`}
                   outerRadius={80}
                   fill="#8884d8"
                   dataKey="value"

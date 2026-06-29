@@ -45,4 +45,4 @@ Panduan/
 .aider*
 server.log
 assistant-memory/
-supabase/.temp/
+storage/uploads/

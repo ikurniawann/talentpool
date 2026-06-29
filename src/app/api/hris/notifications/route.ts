@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { createServerPgClient } from "@/lib/pg/create-client";
 
 /**
  * GET /api/hris/notifications
@@ -7,7 +7,7 @@ import { createClient } from '@/lib/supabase/server';
  */
 export async function GET(request: NextRequest) {
   try {
-    const supabase = await createClient();
+    const db = await createServerPgClient();
     
     // Get query params
     const searchParams = request.nextUrl.searchParams;
@@ -15,7 +15,7 @@ export async function GET(request: NextRequest) {
     const unreadOnly = searchParams.get('unread') === 'true';
 
     // Check authentication
-    const { data: { user } } = await supabase.auth.getUser();
+    const { data: { user } } = await db.auth.getUser();
     if (!user) {
       return NextResponse.json(
         { error: 'Unauthorized' },
@@ -24,7 +24,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Build query
-    let query = supabase
+    let query = db
       .from('notifications')
       .select('*', { count: 'exact' })
       .eq('user_id', user.id)
@@ -68,11 +68,11 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createClient();
+    const db = await createServerPgClient();
     const body = await request.json();
 
     // Check authentication
-    const { data: { user } } = await supabase.auth.getUser();
+    const { data: { user } } = await db.auth.getUser();
     if (!user) {
       return NextResponse.json(
         { error: 'Unauthorized' },
@@ -83,7 +83,7 @@ export async function POST(request: NextRequest) {
     const { notification_id, mark_all } = body;
 
     if (mark_all) {
-      const { error } = await supabase
+      const { error } = await db
         .from('notifications')
         .update({ is_read: true, read_at: new Date().toISOString() })
         .eq('user_id', user.id)
@@ -100,7 +100,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ message: 'All notifications marked as read' });
 
     } else if (notification_id) {
-      const { error } = await supabase
+      const { error } = await db
         .from('notifications')
         .update({ is_read: true, read_at: new Date().toISOString() })
         .eq('id', notification_id)

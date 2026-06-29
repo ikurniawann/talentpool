@@ -10,7 +10,7 @@ POS module for Arkiv OS restaurant app with cashier UI, product management, cust
 - TypeScript
 - Tailwind CSS 4
 - @base-ui/react components
-- Supabase (database)
+- PostgreSQL (database)
 - Vercel (deployment)
 
 ---

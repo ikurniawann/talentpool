@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createServiceClient } from '@/lib/supabase/service-client';
+import { createPgClient } from "@/lib/pg/create-client";
 
 /** PATCH /api/pos/orders/{id}/status
  *  Body: { status: string, reason?: string }
@@ -23,9 +23,9 @@ export async function PATCH(
     return NextResponse.json({ success: false, error: 'Invalid status' }, { status: 400 });
   }
 
-  const supabase = createServiceClient();
+  const db = createPgClient();
 
-  const { data: currentOrder, error: fetchError } = await supabase
+  const { data: currentOrder, error: fetchError } = await db
     .from('pos_orders')
     .select('status')
     .eq('id', orderId)
@@ -41,7 +41,7 @@ export async function PATCH(
   if (status === 'ready') updateData.completed_at = now;
   if (status === 'served' || status === 'completed') updateData.served_at = now;
 
-  let { error: updateError } = await supabase
+  let { error: updateError } = await db
     .from('pos_orders')
     .update(updateData)
     .eq('id', orderId);
@@ -50,7 +50,7 @@ export async function PATCH(
     const legacyUpdate = { ...updateData };
     delete legacyUpdate.served_at;
 
-    const legacyResult = await supabase
+    const legacyResult = await db
       .from('pos_orders')
       .update(legacyUpdate)
       .eq('id', orderId);
@@ -84,7 +84,7 @@ export async function PATCH(
     if (status === 'ready') itemUpdate.kitchen_ready_at = now;
     if (status === 'served' || status === 'completed') itemUpdate.served_at = now;
 
-    const { error: itemStatusError } = await supabase
+    const { error: itemStatusError } = await db
       .from('pos_order_items')
       .update(itemUpdate)
       .eq('order_id', orderId);
@@ -94,7 +94,7 @@ export async function PATCH(
     }
   }
 
-  await supabase.from('pos_order_status_history').insert({
+  await db.from('pos_order_status_history').insert({
     order_id: orderId,
     from_status: currentOrder.status,
     to_status: status,

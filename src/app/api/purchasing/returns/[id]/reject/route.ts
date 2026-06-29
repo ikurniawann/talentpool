@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { createServerPgClient } from "@/lib/pg/create-client";
+import { ApiError, requireApiRole } from "@/lib/api/auth";
 
 // PATCH /api/purchasing/returns/[id]/reject
 // Reject a purchase return
@@ -8,10 +9,11 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const supabase = await createClient();
+    const user = await requireApiRole(["purchasing_admin", "purchasing_manager", "purchasing_staff", "super_admin"]);
+    const db = await createServerPgClient();
     const returnId = (await params).id;
     const body = await request.json();
-    const { rejection_reason, rejected_by } = body;
+    const { rejection_reason } = body;
 
     if (!rejection_reason) {
       return NextResponse.json(
@@ -21,7 +23,7 @@ export async function PATCH(
     }
 
     // Get current return data
-    const { data: currentReturn, error: fetchError } = await supabase
+    const { data: currentReturn, error: fetchError } = await db
       .from("purchase_returns")
       .select("*")
       .eq("id", returnId)
@@ -42,12 +44,12 @@ export async function PATCH(
     }
 
     // Update return status to rejected
-    const { data: updatedReturn, error: updateError } = await supabase
+    const { data: updatedReturn, error: updateError } = await db
       .from("purchase_returns")
       .update({
         status: "rejected",
         rejection_reason,
-        approved_by: rejected_by,
+        approved_by: user.id,
         approved_at: new Date().toISOString(),
       })
       .eq("id", returnId)
@@ -62,6 +64,7 @@ export async function PATCH(
       message: "Return ditolak",
     });
   } catch (error: any) {
+    if (error instanceof ApiError) return error.toResponse();
     console.error("Error rejecting return:", error);
     return NextResponse.json(
       { success: false, message: error.message || "Gagal menolak return" },
