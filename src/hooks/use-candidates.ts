@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { createClient } from "@/lib/supabase/client";
+import { createBrowserClient } from "@/lib/pg/browser-client";
 import type { Candidate, CandidateStatus } from "@/types";
 
 // Types untuk filter dan pagination

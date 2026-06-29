@@ -1,7 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { createClient } from "@/lib/supabase/client";
+import { useState } from "react";
 import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -54,6 +53,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { PromoteCandidateButton } from "@/components/hris/PromoteCandidateButton";
+import { useCandidateDetail } from "../queries";
+import { useUpdateCandidateStatus, useAddCandidateNote } from "../mutations";
+import type { CandidateView, CandidateActivity as Activity, CandidateNote as Note } from "../types";
 
 const STATUS_LABELS: Record<string, string> = {
   new: "Baru",
@@ -90,210 +92,50 @@ const SOURCE_LABELS: Record<string, string> = {
   other: "Lainnya",
 };
 
-interface CandidateView {
-  id: string;
-  full_name: string;
-  email: string;
-  phone: string;
-  domicile: string;
-  date_of_birth?: string;
-  gender?: string;
-  brand_id?: string;
-  position_id?: string;
-  status: string;
-  source: string;
-  notes?: string;
-  cv_url?: string;
-  created_at: string;
-  updated_at: string;
-  brands?: { name: string };
-  positions?: { title: string };
-  promoted_to_employee_id?: string | null;
-}
-
-interface Activity {
-  id: string;
-  candidate_id: string;
-  activity_type: string;
-  description: string;
-  created_by?: string;
-  created_at: string;
-}
-
-interface Note {
-  id: string;
-  candidate_id: string;
-  content: string;
-  created_by?: string;
-  created_at: string;
-}
-
-export default function CandidateDetailPage() {
+export function CandidateDetailPage() {
   const router = useRouter();
   const params = useParams();
-  const supabase = createClient();
   const candidateId = params?.id as string;
-  
-  const [loading, setLoading] = useState(true);
-  const [candidate, setCandidate] = useState<CandidateView | null>(null);
-  const [activities, setActivities] = useState<Activity[]>([]);
-  const [notes, setNotes] = useState<Note[]>([]);
+
+  const detailQuery = useCandidateDetail(candidateId);
+  const loading = detailQuery.isLoading;
+  const candidate = detailQuery.data?.candidate ?? null;
+  const activities: Activity[] = detailQuery.data?.activities ?? [];
+  const notes: Note[] = detailQuery.data?.notes ?? [];
+
+  const updateStatusMutation = useUpdateCandidateStatus();
+  const addNoteMutation = useAddCandidateNote();
+  const statusUpdating = updateStatusMutation.isPending;
+
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [showNoteDialog, setShowNoteDialog] = useState(false);
   const [newNote, setNewNote] = useState("");
-  const [statusUpdating, setStatusUpdating] = useState(false);
 
-  useEffect(() => {
-    if (candidateId) {
-      fetchCandidateDetail();
-    }
-  }, [candidateId]);
-
-  const fetchCandidateDetail = async () => {
-    if (!candidateId) return;
-    
-    setLoading(true);
-    try {
-      // First, get basic candidate data
-      const { data: candidateData, error: candidateError } = await supabase
-        .from("candidates")
-        .select("*")
-        .eq("id", candidateId)
-        .single();
-
-      if (candidateError) {
-        console.error("Error fetching candidate:", candidateError);
-        throw candidateError;
-      }
-
-      if (!candidateData) {
-        setCandidate(null);
-        setLoading(false);
-        return;
-      }
-
-      // Get related brand and position data separately
-      let brandData = null;
-      let positionData = null;
-
-      if (candidateData.brand_id) {
-        const { data: brand } = await supabase
-          .from("brands")
-          .select("name")
-          .eq("id", candidateData.brand_id)
-          .single();
-        brandData = brand;
-      }
-
-      if (candidateData.position_id) {
-        const { data: position } = await supabase
-          .from("positions")
-          .select("title")
-          .eq("id", candidateData.position_id)
-          .single();
-        positionData = position;
-      }
-
-      // Combine data
-      const candidate = {
-        ...candidateData,
-        brands: brandData ? { name: brandData.name } : null,
-        positions: positionData ? { title: positionData.title } : null,
-      };
-
-      setCandidate(candidate as CandidateView);
-
-      // Fetch activities (ignore errors if table doesn't exist yet)
-      try {
-        const { data: activitiesData } = await supabase
-          .from("candidate_activities")
-          .select("*")
-          .eq("candidate_id", candidateId)
-          .order("created_at", { ascending: false });
-
-        if (activitiesData) setActivities(activitiesData);
-      } catch (err) {
-        console.log("Activities table not available yet");
-        setActivities([]);
-      }
-
-      // Fetch notes (ignore errors if table doesn't exist yet)
-      try {
-        const { data: notesData } = await supabase
-          .from("candidate_notes")
-          .select("*")
-          .eq("candidate_id", candidateId)
-          .order("created_at", { ascending: false });
-
-        if (notesData) setNotes(notesData);
-      } catch (err) {
-        console.log("Notes table not available yet");
-        setNotes([]);
-      }
-    } catch (error: any) {
-      console.error("Error fetching candidate:", error);
-      toast.error("Gagal memuat data kandidat: " + (error.message || "Unknown error"));
-      setCandidate(null);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const fetchCandidateDetail = () => detailQuery.refetch();
 
   const handleStatusChange = async (newStatus: string) => {
     if (!candidate) return;
-    setStatusUpdating(true);
     try {
-      const { error } = await supabase
-        .from("candidates")
-        .update({ status: newStatus })
-        .eq("id", candidate.id);
-
-      if (error) throw error;
-
-      // Log activity
-      await supabase.from("candidate_activities").insert({
-        candidate_id: candidate.id,
-        activity_type: "status_change",
+      await updateStatusMutation.mutateAsync({
+        id: candidate.id,
+        status: newStatus,
         description: `Status diubah dari ${STATUS_LABELS[candidate.status]} ke ${STATUS_LABELS[newStatus]}`,
       });
-
-      setCandidate({ ...candidate, status: newStatus });
       toast.success("Status berhasil diupdate");
-    } catch (error: any) {
+    } catch (error) {
       console.error("Error updating status:", error);
       toast.error("Gagal update status");
-    } finally {
-      setStatusUpdating(false);
     }
   };
 
   const handleAddNote = async () => {
     if (!candidate || !newNote.trim()) return;
-
     try {
-      const { data, error } = await supabase
-        .from("candidate_notes")
-        .insert({
-          candidate_id: candidate.id,
-          content: newNote,
-        })
-        .select()
-        .single();
-
-      if (error) throw error;
-
-      setNotes([data, ...notes]);
+      await addNoteMutation.mutateAsync({ id: candidate.id, content: newNote });
       setNewNote("");
       setShowNoteDialog(false);
       toast.success("Catatan berhasil ditambahkan");
-
-      // Log activity
-      await supabase.from("candidate_activities").insert({
-        candidate_id: candidate.id,
-        activity_type: "note_added",
-        description: "Catatan internal ditambahkan",
-      });
-    } catch (error: any) {
+    } catch (error) {
       console.error("Error adding note:", error);
       toast.error("Gagal menambahkan catatan");
     }
@@ -384,7 +226,7 @@ export default function CandidateDetailPage() {
             Edit
           </Button>
           <DropdownMenu>
-            <DropdownMenuTrigger>
+            <DropdownMenuTrigger asChild>
               <Button variant="outline" size="icon">
                 <MoreVertical className="w-4 h-4" />
               </Button>

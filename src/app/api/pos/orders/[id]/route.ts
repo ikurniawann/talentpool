@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createServiceClient } from '@/lib/supabase/service-client';
+import { createPgClient } from "@/lib/pg/create-client";
 import { awardCrmXpForPosOrder } from '@/lib/crm/loyalty-engine';
 
 type OrderPatchBody = {
@@ -20,7 +20,7 @@ function getErrorMessage(error: unknown) {
 // PATCH /api/pos/orders/:id - Update order status and payment
 export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const supabase = createServiceClient();
+    const db = createPgClient();
     const { id: orderId } = await params;
     const body = (await request.json()) as OrderPatchBody;
     const { status, payment_status, payment_method, amount_paid, ark_coins_used, notes } = body;
@@ -48,7 +48,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     // failed/insufficient deduction never leaves a paid order without the
     // matching coin debit (previously the failure was swallowed).
     if (numericArkUsed > 0) {
-      const { data: existing, error: fetchErr } = await supabase
+      const { data: existing, error: fetchErr } = await db
         .from('pos_orders')
         .select('customer_id')
         .eq('id', orderId)
@@ -59,7 +59,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       }
 
       if (existing.customer_id) {
-        const { error: coinError } = await supabase.rpc('update_ark_coin_balance', {
+        const { error: coinError } = await db.rpc('update_ark_coin_balance', {
           p_customer_id: existing.customer_id,
           p_amount: -numericArkUsed,
           p_type: 'payment',
@@ -76,7 +76,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       }
     }
 
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from('pos_orders')
       .update(updateData)
       .eq('id', orderId)
@@ -87,7 +87,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 
     // Log status change
     if (status) {
-      await supabase.from('pos_order_status_history').insert({
+      await db.from('pos_order_status_history').insert({
         order_id: orderId,
         from_status: null, // Should fetch previous status
         to_status: status,
@@ -98,12 +98,12 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 
     let crmXp = null;
     if (data.customer_id && (status === 'completed' || payment_status === 'paid')) {
-      const { data: orderItems } = await supabase
+      const { data: orderItems } = await db
         .from('pos_order_items')
         .select('product_id, quantity, unit_price, subtotal, total_amount')
         .eq('order_id', orderId);
 
-      crmXp = await awardCrmXpForPosOrder(supabase, {
+      crmXp = await awardCrmXpForPosOrder(db, {
         orderId,
         customerId: data.customer_id,
         totalAmount: Number(data.total_amount || 0),
@@ -125,10 +125,10 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 // GET /api/pos/orders/:id - Get single order details
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const supabase = createServiceClient();
+    const db = createPgClient();
     const { id: orderId } = await params;
 
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from('pos_orders')
       .select(`
         *,

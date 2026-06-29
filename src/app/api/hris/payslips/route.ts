@@ -4,7 +4,7 @@
 // ============================================================
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { createServerPgClient } from "@/lib/pg/create-client";
 import { ApiError, requireApiRole } from '@/lib/api/auth';
 
 // Payslips are sensitive financial PII — restrict listing to HR/finance.
@@ -17,14 +17,14 @@ const PAYSLIP_VIEW_ROLES = ['super_admin', 'hrd', 'finance_staff'] as const;
 export async function GET(request: NextRequest) {
   try {
     await requireApiRole([...PAYSLIP_VIEW_ROLES]);
-    const supabase = await createClient();
+    const db = await createServerPgClient();
     const { searchParams } = new URL(request.url);
     const employeeId = searchParams.get('employee_id');
     const payrollRunId = searchParams.get('payroll_run_id');
     const year = searchParams.get('year');
     const month = searchParams.get('month');
 
-    let query = supabase
+    let query = db
       .from('payroll_details')
       .select(`
         *,

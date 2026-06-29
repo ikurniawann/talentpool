@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getPosSession } from "@/lib/api/auth";
-import { createServiceClient } from "@/lib/supabase/service-client";
+import { createPgClient } from "@/lib/pg/create-client";
 import { apiErrorResponse, isMissingCrmSchema, validationErrorResponse } from "@/lib/crm/server";
 
 const xpRuleSchema = z.object({
@@ -35,10 +35,10 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const supabase = createServiceClient();
+    const db = createPgClient();
     const sourceChannel = request.nextUrl.searchParams.get("source_channel");
 
-    let query = supabase
+    let query = db
       .from("crm_xp_rules")
       .select("*")
       .order("priority", { ascending: true })
@@ -69,8 +69,8 @@ export async function POST(request: NextRequest) {
 
   try {
     const payload = xpRuleSchema.parse(await request.json());
-    const supabase = createServiceClient();
-    const { data, error } = await supabase
+    const db = createPgClient();
+    const { data, error } = await db
       .from("crm_xp_rules")
       .upsert(payload, { onConflict: "code" })
       .select()

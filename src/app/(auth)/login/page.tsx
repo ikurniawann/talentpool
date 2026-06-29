@@ -3,16 +3,21 @@
 export const dynamic = 'force-dynamic';
 
 import { useEffect, useMemo, useState } from "react";
-import { createClient } from "@/lib/supabase/client";
+import { createBrowserClient } from "@/lib/pg/browser-client";
 import { useRouter } from "next/navigation";
 import { Eye, EyeOff, Lock, Mail } from "lucide-react";
 
+const DEMO_LOGIN = {
+  email: "super@arkivworld.com",
+  password: "Arkiv2026*#",
+};
+
 export default function LoginPage() {
   const router = useRouter();
-  const supabase = createClient();
+  const db = createBrowserClient();
 
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [email, setEmail] = useState(DEMO_LOGIN.email);
+  const [password, setPassword] = useState(DEMO_LOGIN.password);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -57,7 +62,7 @@ export default function LoginPage() {
     setLoading(true);
     setError("");
 
-    const { data: authData, error } = await supabase.auth.signInWithPassword({
+    const { data: authData, error } = await db.auth.signInWithPassword({
       email,
       password,
     });
@@ -66,7 +71,7 @@ export default function LoginPage() {
       setError(error.message);
       setLoading(false);
     } else {
-      const { data: profile } = await supabase
+      const { data: profile } = await db
         .from("users")
         .select("role")
         .eq("id", authData.user.id)

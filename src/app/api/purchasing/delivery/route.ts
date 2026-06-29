@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server";
+import { createServerPgClient } from "@/lib/pg/create-client";
 import { NextRequest } from "next/server";
 import { z } from "zod";
 import {
@@ -8,198 +8,141 @@ import {
   paginatedResponse,
 } from "@/lib/api/auth";
 import {
-  generateDeliveryNumber,
-  validatePOCanDelivery,
-} from "@/lib/purchasing/delivery";
+  getApiUserScope,
+  companyScopeOr,
+  branchScopeOr,
+  effectiveCompanyId,
+  effectiveBranchId,
+} from "@/lib/api/scope";
 
-// ============================================================
-// Schemas
-// ============================================================
+// ========================
+// ZOD SCHEMAS
+// ========================
+
+const deliveryQueryParamsSchema = z.object({
+  search: z.string().optional(),
+  status: z.string().optional(),
+  supplier_id: z.string().optional(),
+  po_id: z.string().optional(),
+  page: z.coerce.number().min(1).default(1),
+  limit: z.coerce.number().min(1).max(100).default(20),
+  sort_by: z.enum(["tanggal_kirim", "created_at", "status"]).default("created_at"),
+  sort_dir: z.enum(["ASC", "DESC"]).default("DESC"),
+});
 
 const createDeliverySchema = z.object({
-  po_id: z.string().uuid("PO ID tidak valid"),
-  no_surat_jalan: z.string().min(1, "No. Surat Jalan wajib diisi"),
-  ekspedisi: z.string().optional(),
+  po_id: z.string().uuid("PO ID harus valid"),
+  supplier_id: z.string().uuid("Supplier ID harus valid"),
+  tanggal_kirim: z.string().optional(),
+  no_surat_jalan: z.string().optional(),
   no_resi: z.string().optional(),
-  tanggal_kirim: z.string().optional(), // YYYY-MM-DD
-  tanggal_estimasi_tiba: z.string().optional(), // YYYY-MM-DD
+  kurir: z.string().optional(),
+  tanggal_estimasi_tiba: z.string().optional(),
   catatan: z.string().optional(),
 });
 
-const queryParamsSchema = z.object({
-  page: z.coerce.number().min(1).default(1),
-  limit: z.coerce.number().min(1).max(100).default(20),
-  search: z.string().optional(),
-  status: z.enum(["pending", "shipped", "in_transit", "delivered", "cancelled"]).optional(),
-  po_id: z.string().uuid().optional(),
-  supplier_id: z.string().uuid().optional(),
-  date_from: z.string().optional(),
-  date_to: z.string().optional(),
-});
-
-type DeliveryRecord = {
-  id: string;
-  nomor_resi: string | null;
-  no_resi: string | null;
-  purchase_order_id: string | null;
-  no_surat_jalan: string | null;
-  kurir: string | null;
-  tanggal_kirim: string | null;
-  tanggal_estimasi_tiba: string | null;
-  tanggal_aktual_tiba: string | null;
-  status: string;
-  created_at: string | null;
-};
-
-type PurchaseOrderRecord = {
-  id: string;
-  nomor_po: string;
-};
-
-// ============================================================
+// ========================
 // GET /api/purchasing/delivery - List deliveries
-// ============================================================
+// ==========================
 
 export async function GET(request: NextRequest) {
   try {
-    await requireApiRole(["purchasing_admin", "purchasing_staff"]);
-    const supabase = await createClient();
+    await requireApiRole(["purchasing_admin", "purchasing_staff", "purchasing_manager", "super_admin"]);
+    const db = await createServerPgClient();
 
     const { searchParams } = new URL(request.url);
-    const params = queryParamsSchema.parse(Object.fromEntries(searchParams));
-    const { page, limit, search, status, po_id, supplier_id, date_from, date_to } = params;
+    const params = deliveryQueryParamsSchema.parse(Object.fromEntries(searchParams));
+    const { page, limit, search, status, supplier_id, po_id, sort_by, sort_dir } = params;
     const offset = (page - 1) * limit;
 
-    let query = supabase
+    let query = db
       .from("deliveries")
       .select("*", { count: "exact" })
-      .eq("is_active", true)
-      .order("created_at", { ascending: false })
-      .range(offset, offset + limit - 1);
+      .eq("is_active", true);
 
-    if (status) query = query.eq("status", status);
-    if (po_id) query = query.eq("purchase_order_id", po_id);
-    if (supplier_id) query = query.eq("supplier_id", supplier_id);
-    if (date_from) query = query.gte("tanggal_kirim", date_from);
-    if (date_to) query = query.lte("tanggal_kirim", date_to);
+    const scope = await getApiUserScope();
+    const companyOr = companyScopeOr(scope);
+    if (companyOr) query = query.or(companyOr);
+    const branchOr = branchScopeOr(scope);
+    if (branchOr) query = query.or(branchOr);
+
     if (search) {
-      query = query.or(`no_surat_jalan.ilike.%${search}%,nomor_resi.ilike.%${search}%,no_resi.ilike.%${search}%,kurir.ilike.%${search}%`);
+      query = query.or(`no_surat_jalan.ilike.%${search}%,no_resi.ilike.%${search}%`);
     }
+    if (status) query = query.eq("status", status);
+    if (supplier_id) query = query.eq("supplier_id", supplier_id);
+    if (po_id) query = query.eq("purchase_order_id", po_id);
 
-    const { data, error, count } = await query;
+    const sortColumn = sort_by === "tanggal_kirim" ? "tanggal_kirim" : sort_by;
+    const { data, count, error } = await query
+      .order(sortColumn, { ascending: sort_dir === "ASC" })
+      .range(offset, offset + limit - 1);
 
     if (error) throw error;
 
-    // Fetch PO numbers for all deliveries
-    const deliveries = (data || []) as DeliveryRecord[];
-    const poIds = [...new Set(deliveries.map((delivery) => delivery.purchase_order_id).filter(Boolean))];
-    let poMap = new Map<string, string>();
-    
-    if (poIds.length > 0) {
-      const { data: poData, error: poError } = await supabase
-        .from("purchase_orders")
-        .select("id, nomor_po")
-        .in("id", poIds);
-      
-      if (!poError && poData) {
-        poMap = new Map((poData as PurchaseOrderRecord[]).map((po) => [po.id, po.nomor_po]));
-      }
-    }
-
-    // Transform data to match frontend interface
-    const transformedData = deliveries.map((delivery) => ({
-      id: delivery.id,
-      delivery_number: delivery.nomor_resi,
-      po_id: delivery.purchase_order_id,
-      po_number: poMap.get(delivery.purchase_order_id || "") || delivery.purchase_order_id,
-      no_surat_jalan: delivery.no_surat_jalan,
-      ekspedisi: delivery.kurir,
-      no_resi: delivery.no_resi || delivery.nomor_resi, // Prioritaskan no_resi dari user
-      tanggal_kirim: delivery.tanggal_kirim,
-      tanggal_estimasi_tiba: delivery.tanggal_estimasi_tiba,
-      tanggal_aktual_tiba: delivery.tanggal_aktual_tiba,
-      status: delivery.status,
-      created_at: delivery.created_at,
-    }));
-
-    return paginatedResponse(
-      transformedData,
-      {
-        page,
-        limit,
-        total: count || 0,
-        totalPages: Math.ceil((count || 0) / limit),
-      },
-      "Delivery list retrieved"
-    );
+    return paginatedResponse(data ?? [], {
+      page,
+      limit,
+      total: count ?? 0,
+      totalPages: Math.ceil((count ?? 0) / limit),
+    });
   } catch (error) {
     if (error instanceof ApiError) return error.toResponse();
     if (error instanceof z.ZodError) {
-      return ApiError.badRequest("Validation failed", error.issues).toResponse();
+      return ApiError.badRequest("Parameter tidak valid", error.issues).toResponse();
     }
     console.error("Error fetching deliveries:", error);
-    return ApiError.server("Failed to fetch deliveries").toResponse();
+    return ApiError.server("Gagal memuat data delivery").toResponse();
   }
 }
 
-// ============================================================
+// ========================
 // POST /api/purchasing/delivery - Create delivery
-// ============================================================
+// ==========================
 
 export async function POST(request: NextRequest) {
   try {
-    const user = await requireApiRole(["purchasing_admin", "purchasing_staff"]);
-    const supabase = await createClient();
+    const user = await requireApiRole(["purchasing_admin", "purchasing_staff", "purchasing_manager", "super_admin"]);
+    const db = await createServerPgClient();
 
     const body = await request.json();
-    console.log("=== CREATE DELIVERY ===");
-    console.log("Body:", JSON.stringify(body, null, 2));
+
     const validated = createDeliverySchema.parse(body);
-    console.log("Validated po_id:", validated.po_id);
 
-    // Validate PO can have delivery
-    const { valid, errors, po } = await validatePOCanDelivery(supabase, validated.po_id);
-    console.log("PO validation result:", { valid, errors, po });
-    if (!valid) {
-      throw ApiError.badRequest(errors.join("; "));
-    }
+    const companyId = effectiveCompanyId(await getApiUserScope());
+    const branchId = effectiveBranchId(await getApiUserScope());
 
-    // Generate delivery number
-    const deliveryNumber = await generateDeliveryNumber(supabase);
-
-    // Create delivery record
-    const insertData = {
-      nomor_resi: deliveryNumber,
-      no_resi: validated.no_resi || null,
-      purchase_order_id: validated.po_id,
-      supplier_id: po.supplier_id,
-      tanggal_kirim: validated.tanggal_kirim || new Date().toISOString().split("T")[0],
-      tanggal_estimasi_tiba: validated.tanggal_estimasi_tiba || null,
-      kurir: validated.ekspedisi || null,
-      no_surat_jalan: validated.no_surat_jalan,
-      status: "pending",
-      catatan: validated.catatan || null,
-      created_by: user.id,
-    };
-
-    const { data: delivery, error } = await supabase
+    const { data: delivery, error: deliveryError } = await db
       .from("deliveries")
-      .insert(insertData)
+      .insert({
+        purchase_order_id: validated.po_id,
+        supplier_id: validated.supplier_id,
+        tanggal_kirim: validated.tanggal_kirim || new Date().toISOString().split("T")[0],
+        no_surat_jalan: validated.no_surat_jalan,
+        no_resi: validated.no_resi,
+        kurir: validated.kurir,
+        tanggal_estimasi_tiba: validated.tanggal_estimasi_tiba,
+        status: "pending",
+        catatan: validated.catatan,
+        company_id: companyId,
+        branch_id: branchId,
+        created_by: user.id,
+      })
       .select()
       .single();
 
-    if (error) {
-      console.error("Supabase insert error:", error);
-      throw error;
+    if (deliveryError || !delivery) {
+      console.error("Error creating delivery:", deliveryError);
+      return ApiError.server("Gagal membuat delivery").toResponse();
     }
 
-    return createdResponse(delivery, `Delivery ${deliveryNumber} berhasil dibuat`);
+    return createdResponse(delivery, "Delivery berhasil dibuat");
   } catch (error) {
     if (error instanceof ApiError) return error.toResponse();
     if (error instanceof z.ZodError) {
-      return ApiError.badRequest("Validation failed", error.issues).toResponse();
+      return ApiError.badRequest("Validasi gagal", error.issues).toResponse();
     }
     console.error("Error creating delivery:", error);
-    return ApiError.server("Failed to create delivery").toResponse();
+    return ApiError.server("Gagal membuat delivery").toResponse();
   }
 }

@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createAdminClient } from '@/lib/supabase/admin';
-import { createClient } from '@/lib/supabase/server';
+import { createPgClient } from "@/lib/pg/create-client";
+import { createServerPgClient } from "@/lib/pg/create-client";
 
 export async function GET(request: NextRequest) {
   try {
-    const supabase = createAdminClient();
+    const db = createPgClient();
     const searchParams = request.nextUrl.searchParams;
     const cycleId = searchParams.get('cycle_id');
     const employeeId = searchParams.get('employee_id');
@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '50');
 
-    let query = supabase
+    let query = db
       .from('feedback_assignments')
       .select(`
         *,
@@ -48,17 +48,17 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const authClient = await createClient();
+    const authClient = await createServerPgClient();
     const { data: { user } } = await authClient.auth.getUser();
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const supabase = createAdminClient();
+    const db = createPgClient();
     const body = await request.json();
 
     // Support bulk insert for assigning multiple reviewers
     const insertData = Array.isArray(body) ? body : [body];
 
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from('feedback_assignments')
       .insert(insertData)
       .select(`

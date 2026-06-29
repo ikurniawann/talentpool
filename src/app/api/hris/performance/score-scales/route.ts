@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { createPgClient } from "@/lib/pg/create-client";
 
 export async function GET(request: NextRequest) {
   try {
-    const supabase = await createAdminClient();
-    const { data, error } = await supabase
+    const db = await createPgClient();
+    const { data, error } = await db
       .from("score_scales")
       .select("*")
       .eq("is_active", true)

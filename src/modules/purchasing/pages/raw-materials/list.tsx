@@ -221,7 +221,7 @@ export default function RawMaterialsListPage() {
             <h1 className="text-2xl font-bold text-gray-900">Bahan Baku</h1>
             <p className="text-sm text-gray-500">Master data bahan baku</p>
           </div>
-          <Link href="/dashboard/purchasing/raw-materials/new">
+          <Link href="/dashboard/items/raw-materials/insert">
             <Button>
               <Plus className="w-4 h-4 mr-1.5" />
               Tambah Bahan
@@ -363,14 +363,14 @@ export default function RawMaterialsListPage() {
                         <TableCell className="text-right">
                           <div className="flex justify-end gap-1.5">
                             <Link
-                              href={`/dashboard/purchasing/raw-materials/${item.id}`}
+                              href={`/dashboard/items/raw-materials/${item.id}`}
                             >
                               <Button variant="ghost" size="sm">
                                 Detail
                               </Button>
                             </Link>
                             <Link
-                              href={`/dashboard/purchasing/raw-materials/${item.id}/edit`}
+                              href={`/dashboard/items/raw-materials/edit/${item.id}`}
                             >
                               <Button variant="outline" size="sm">
                                 Edit

@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server";
+import { createServerPgClient } from "@/lib/pg/create-client";
 import { NextResponse } from "next/server";
 import { getApiUser } from "@/lib/api/auth";
 import { sendWhatsApp } from "@/lib/fonnte";
@@ -59,13 +59,13 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Insufficient permissions" }, { status: 403 });
   }
 
-  const supabase = await createClient();
+  const db = await createServerPgClient();
   const body: SendNotificationBody = await request.json();
 
   const { candidate_id, channel = "whatsapp", template, message } = body;
 
   // Fetch candidate
-  const { data: candidate } = await supabase
+  const { data: candidate } = await db
     .from("candidates")
     .select("full_name, email, phone, status")
     .eq("id", candidate_id)
@@ -125,7 +125,7 @@ export async function POST(request: Request) {
   }
 
   // Log notification
-  await supabase.from("notifications_log").insert({
+  await db.from("notifications_log").insert({
     candidate_id,
     channel,
     message: notificationMessage || "Notifikasi",

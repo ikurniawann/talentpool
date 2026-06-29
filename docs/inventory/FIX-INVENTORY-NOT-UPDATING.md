@@ -89,7 +89,7 @@ if (!hasRejects) {
   // Auto-create QC inspection as passed
   for (const item of validated.items) {
     if (item.qty_diterima > 0) {
-      await supabase.from("qc_inspections").insert({
+      await db.from("qc_inspections").insert({
         goods_receipt_id: grn.id,
         bahan_baku_id: item.raw_material_id,
         jumlah_diperiksa: item.qty_diterima,
@@ -105,7 +105,7 @@ if (!hasRejects) {
       const poItem = poItemByBahanBaku.get(item.raw_material_id);
       const unitPrice = poItem?.unit_price || 0;
       
-      await addStockFromQC(supabase, {
+      await addStockFromQC(db, {
         grnId: grn.id,
         grnItemId: grnItem.id,
         bahanBakuId: item.raw_material_id,
@@ -162,7 +162,7 @@ if (!hasRejects) {
 
 ### **Step 1: Find GRN ID**
 ```sql
--- Run in Supabase SQL Editor
+-- Run in psql atau SQL client
 SELECT id, nomor_grn, status, created_at 
 FROM goods_receipts 
 ORDER BY created_at DESC 

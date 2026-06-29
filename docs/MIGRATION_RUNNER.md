@@ -1,36 +1,25 @@
-# 🗄️ Arkiv OS — Automated Database Migration Runner
+# Migration Runner
 
-## Quick Start
+Runner utama: `database/scripts/apply-migrations.js`
 
-### 1. Get your database connection string
-1. Open [Supabase Dashboard](https://app.supabase.io)
-2. Go to your project → **Database** → **Connection Pooling**
-3. Copy **Session mode** connection string (port `6543`)
-4. Add to your `.env.local`:
-```
-DATABASE_URL=postgresql://postgres.********:********@aws-0-******.pooler.supabase.com:6543/postgres
-```
+## Commands
 
-### 2. Dry-run (preview which migrations will run)
 ```bash
-cd ~/Desktop/talentpool
-node scripts/apply-migrations.js
+npm run db:migrate          # dry-run (list pending)
+npm run db:migrate:apply    # apply pending to MIGRATE_DATABASE_URL
+npm run db:pull             # regenerate baseline from SOURCE_DATABASE_URL / DATABASE_URL
 ```
 
-### 3. Apply migrations
-```bash
-node scripts/apply-migrations.js --apply
-```
+Requires `MIGRATE_DATABASE_URL` (local) in `.env.local` for apply. Preview/read uses the same URL.
 
-## Safety Features
-- ✅ **Dry-run by default** — must pass `--apply` to actually execute
-- ✅ **Transaction per migration** — if one fails, it rolls back
-- ✅ **Danger-guard** — skips `TRUNCATE` / `DELETE` unless `--force` is passed
-- ✅ **Idempotent tracking** — only runs migrations not yet in `schema_migrations` table
+## Behaviour
 
-## What I applied just now
-| File | Status |
-|------|--------|
-| `20260518_000001_ai_assistant_memory.sql` | ✅ AI Assistant sessions & messages table |
+- Discovers all `*.sql` under `database/migrations/` recursively
+- Sorts by 14-digit filename prefix
+- Records applied files in `schema_migrations`
+- Sets `search_path` per `database/schema-map.js` before each session
 
-> **Note:** If you don't want to set up `DATABASE_URL`, you can still apply migrations manually by copy-pasting each `.sql` file into Supabase Dashboard → SQL Editor.
+## IAM modular migrations (legacy)
+
+Older modular IAM migrations under `scripts/iam/` may still exist for reference. New work goes in
+`database/migrations/` as incremental SQL files.

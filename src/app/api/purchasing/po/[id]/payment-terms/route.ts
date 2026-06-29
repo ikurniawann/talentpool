@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { createServiceClient } from "@/lib/supabase/service-client";
+import { createPgClient } from "@/lib/pg/create-client";
 import { z } from "zod";
 
 const termSchema = z.object({
@@ -20,16 +20,16 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
-    const supabase = createServiceClient();
+    const db = createPgClient();
 
     const [{ data: terms, error: termsError }, { data: payments, error: paymentsError }] = await Promise.all([
-      supabase
+      db
         .from("purchase_order_payment_terms")
         .select("*")
         .eq("purchase_order_id", id)
         .eq("is_active", true)
         .order("term_no", { ascending: true }),
-      supabase
+      db
         .from("vendor_payments")
         .select("*")
         .eq("purchase_order_id", id)
@@ -56,11 +56,11 @@ export async function POST(
 ) {
   try {
     const { id } = await params;
-    const supabase = createServiceClient();
+    const db = createPgClient();
     const body = await request.json();
     const validated = termSchema.parse(body);
 
-    const { data: po, error: poError } = await supabase
+    const { data: po, error: poError } = await db
       .from("purchase_orders")
       .select("id, supplier_id")
       .eq("id", id)
@@ -70,7 +70,7 @@ export async function POST(
       return Response.json({ success: false, message: "PO tidak ditemukan" }, { status: 404 });
     }
 
-    const { data: latestTerm, error: latestError } = await supabase
+    const { data: latestTerm, error: latestError } = await db
       .from("purchase_order_payment_terms")
       .select("term_no")
       .eq("purchase_order_id", id)
@@ -82,7 +82,7 @@ export async function POST(
     if (latestError) throw latestError;
 
     const termNo = validated.term_no || Number(latestTerm?.term_no || 0) + 1;
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from("purchase_order_payment_terms")
       .insert({
         purchase_order_id: id,

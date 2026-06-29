@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { createServerPgClient } from "@/lib/pg/create-client";
 
 interface RouteParams {
   params: Promise<{ employee_id: string }>;
@@ -11,7 +11,7 @@ interface RouteParams {
  */
 export async function GET(request: NextRequest, { params }: RouteParams) {
   try {
-    const supabase = await createClient();
+    const db = await createServerPgClient();
     const { employee_id } = await params;
     
     // Get query params
@@ -19,7 +19,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     const year = parseInt(searchParams.get('year') || new Date().getFullYear().toString());
 
     // Check authentication
-    const { data: { user } } = await supabase.auth.getUser();
+    const { data: { user } } = await db.auth.getUser();
     if (!user) {
       return NextResponse.json(
         { error: 'Unauthorized' },
@@ -28,9 +28,9 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     }
 
     // Check permissions
-    const isOwner = employee_id === await getCurrentEmployeeId(supabase, user.id);
-    const isHRD = await checkIsHRD(supabase, user.id);
-    const isManager = await checkIsManager(supabase, user.id);
+    const isOwner = employee_id === await getCurrentEmployeeId(db, user.id);
+    const isHRD = await checkIsHRD(db, user.id);
+    const isManager = await checkIsManager(db, user.id);
 
     if (!isOwner && !isHRD && !isManager) {
       return NextResponse.json(
@@ -40,7 +40,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     }
 
     // Get leave balance
-    let query = supabase
+    let query = db
       .from('leave_balances')
       .select(`
         *,
@@ -67,7 +67,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       // No balance record found, might need to initialize
       if (error?.code === 'PGRST116') {
         // Record doesn't exist, create default one
-        const initialized = await initializeLeaveBalance(supabase, employee_id, year);
+        const initialized = await initializeLeaveBalance(db, employee_id, year);
         return NextResponse.json({ data: initialized });
       }
 
@@ -93,12 +93,12 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
  */
 export async function PUT(request: NextRequest, { params }: RouteParams) {
   try {
-    const supabase = await createClient();
+    const db = await createServerPgClient();
     const { employee_id } = await params;
     const body = await request.json();
 
     // Check authentication
-    const { data: { user } } = await supabase.auth.getUser();
+    const { data: { user } } = await db.auth.getUser();
     if (!user) {
       return NextResponse.json(
         { error: 'Unauthorized' },
@@ -107,7 +107,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     }
 
     // Check if HRD
-    const isHRD = await checkIsHRD(supabase, user.id);
+    const isHRD = await checkIsHRD(db, user.id);
     if (!isHRD) {
       return NextResponse.json(
         { error: 'Forbidden: Only HRD can update leave balances' },
@@ -139,7 +139,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     }
 
     // Get or create balance record
-    let { data: balance } = await supabase
+    let { data: balance } = await db
       .from('leave_balances')
       .select('id')
       .eq('employee_id', employee_id)
@@ -150,7 +150,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     
     if (balance) {
       // Update existing
-      const { data, error } = await supabase
+      const { data, error } = await db
         .from('leave_balances')
         .update(updateData)
         .eq('id', balance.id)
@@ -164,7 +164,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
       result = data;
     } else {
       // Create new with defaults + updates
-      const { data, error } = await supabase
+      const { data, error } = await db
         .from('leave_balances')
         .insert({
           employee_id,
@@ -196,9 +196,9 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
 }
 
 // Helper function to initialize leave balance
-async function initializeLeaveBalance(supabase: any, employeeId: string, year: number) {
+async function initializeLeaveBalance(db: any, employeeId: string, year: number) {
   // Get employee join date to calculate pro-rated quota if needed
-  const { data: employee } = await supabase
+  const { data: employee } = await db
     .from('employees')
     .select('join_date, employment_status')
     .eq('id', employeeId)
@@ -220,7 +220,7 @@ async function initializeLeaveBalance(supabase: any, employeeId: string, year: n
   }
 
   // Create balance record
-  const { data, error } = await supabase
+  const { data, error } = await db
     .from('leave_balances')
     .insert({
       employee_id: employeeId,
@@ -249,8 +249,8 @@ async function initializeLeaveBalance(supabase: any, employeeId: string, year: n
 }
 
 // Helper functions
-async function getCurrentEmployeeId(supabase: any, userId: string) {
-  const { data } = await supabase
+async function getCurrentEmployeeId(db: any, userId: string) {
+  const { data } = await db
     .from('employees')
     .select('id')
     .eq('user_id', userId)
@@ -259,8 +259,8 @@ async function getCurrentEmployeeId(supabase: any, userId: string) {
   return data?.id || null;
 }
 
-async function checkIsHRD(supabase: any, userId: string): Promise<boolean> {
-  const { data } = await supabase
+async function checkIsHRD(db: any, userId: string): Promise<boolean> {
+  const { data } = await db
     .from('users')
     .select('role')
     .eq('id', userId)
@@ -269,8 +269,8 @@ async function checkIsHRD(supabase: any, userId: string): Promise<boolean> {
   return data?.role === 'hrd' || false;
 }
 
-async function checkIsManager(supabase: any, userId: string): Promise<boolean> {
-  const { data } = await supabase
+async function checkIsManager(db: any, userId: string): Promise<boolean> {
+  const { data } = await db
     .from('users')
     .select('role')
     .eq('id', userId)

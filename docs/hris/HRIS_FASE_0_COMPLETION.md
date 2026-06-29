@@ -104,7 +104,7 @@
 
 ---
 
-### 5. Helper Functions (`lib/supabase/hris.ts`)
+### 5. Helper Functions (`@/lib/hris/client-api.ts`)
 
 ```typescript
 - getEmployees(filters) - Fetch employees dengan filter
@@ -146,7 +146,7 @@ src/
 │       ├── EmployeeTable.tsx        ✅
 │       └── PromoteCandidateButton.tsx ✅
 └── lib/
-    └── supabase/
+    └── @/lib/pg/
         └── hris.ts                  ✅ Helper functions
 
 types/
@@ -211,7 +211,7 @@ import { PromoteCandidateButton } from '@/components/hris/PromoteCandidateButton
 
 ### Fetch Employees
 ```typescript
-import { getEmployees } from '@/lib/supabase/hris';
+import { getEmployees } from '@/@/lib/hris/client-api';
 
 const { data, total, page, per_page } = await getEmployees({
   search: 'John',
@@ -229,7 +229,7 @@ const { data, total, page, per_page } = await getEmployees({
 - **Soft Delete**: Set `is_active = false` instead of hard delete
 - **RLS**: HRD full access, Manager read-only, Employee read self
 - **Employment Status**: probation, contract, permanent, internship, resigned, terminated, suspended
-- **Migration File**: `supabase/migrations/007_hris_foundation_v2.sql`
+- **Migration File**: `database/migrations/007_hris_foundation_v2.sql`
 
 ---
 

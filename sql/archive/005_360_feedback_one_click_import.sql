@@ -1,6 +1,6 @@
 -- ============================================================
 -- 360° FEEDBACK SYSTEM - ONE CLICK IMPORT
--- Copy paste semua isi file ini ke Supabase SQL Editor
+-- Copy paste semua isi file ini ke psql atau SQL client
 -- ============================================================
 
 -- ============================================================

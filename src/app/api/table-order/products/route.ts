@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createServiceClient } from "@/lib/supabase/service-client";
+import { createPgClient } from "@/lib/pg/create-client";
 
 type ProductRow = {
   id: string;
@@ -76,7 +76,7 @@ function normalizeProduct(product: ProductRow) {
 
 export async function GET(request: NextRequest) {
   try {
-    const supabase = createServiceClient();
+    const db = createPgClient();
     const search = request.nextUrl.searchParams.get("search");
 
     const selectWithStation = `
@@ -103,7 +103,7 @@ export async function GET(request: NextRequest) {
         variants:pos_product_variants(id, name, price_adjustment, is_active)
       `;
 
-    let query = supabase
+    let query = db
       .from("pos_products")
       .select(selectWithStation)
       .eq("is_active", true)
@@ -116,7 +116,7 @@ export async function GET(request: NextRequest) {
     let data = stationResult.data as unknown as ProductRow[] | null;
     let error = stationResult.error;
     if (error?.code === "42703") {
-      let legacyQuery = supabase
+      let legacyQuery = db
         .from("pos_products")
         .select(selectLegacy)
         .eq("is_active", true)

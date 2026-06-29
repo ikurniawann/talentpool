@@ -45,11 +45,11 @@ Progress terakhir berfokus pada penyambungan Purchasing/Production ke POS, WIP e
   - `gross_margin_pct`
 
 ### Migration Sudah Di-Apply User
-- `supabase/migrations/20260524165939_pos_order_item_cost_snapshot.sql`
-- `supabase/migrations/20260524170835_fix_pos_order_item_cost_price_backfill.sql`
+- `database/migrations/20260524165939_pos_order_item_cost_snapshot.sql`
+- `database/migrations/20260524170835_fix_pos_order_item_cost_price_backfill.sql`
 
 ### QA Terakhir
-- Supabase check setelah backfill:
+- PostgreSQL check setelah backfill:
   - `zero_cost_with_cost_total: 0`
   - sample POS item sudah punya cost/profit/margin benar.
 - Endpoint sync Purchasing ke POS berhasil untuk `QA Burger POS`.
@@ -84,8 +84,8 @@ Progress terakhir berfokus pada penyambungan Purchasing/Production ke POS, WIP e
 - `src/app/dashboard/(dashboard)/purchasing/production/page.tsx`
 - `src/app/dashboard/(dashboard)/purchasing/reports/stock-card/page.tsx`
 - `src/app/dashboard/pos/products/page.tsx`
-- `supabase/migrations/20260524165939_pos_order_item_cost_snapshot.sql`
-- `supabase/migrations/20260524170835_fix_pos_order_item_cost_price_backfill.sql`
+- `database/migrations/20260524165939_pos_order_item_cost_snapshot.sql`
+- `database/migrations/20260524170835_fix_pos_order_item_cost_price_backfill.sql`
 
 ## Current Git Status
 

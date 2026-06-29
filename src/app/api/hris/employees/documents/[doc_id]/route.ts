@@ -5,7 +5,7 @@
 // ============================================================
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { createServerPgClient } from "@/lib/pg/create-client";
 
 interface RouteParams {
   params: Promise<{ doc_id: string }>;
@@ -13,10 +13,10 @@ interface RouteParams {
 
 export async function DELETE(request: NextRequest, { params }: RouteParams) {
   try {
-    const supabase = await createClient();
+    const db = await createServerPgClient();
     const { doc_id } = await params;
 
-    const { error } = await supabase
+    const { error } = await db
       .from('employee_documents')
       .delete()
       .eq('id', doc_id);
@@ -35,11 +35,11 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
 
 export async function PATCH(request: NextRequest, { params }: RouteParams) {
   try {
-    const supabase = await createClient();
+    const db = await createServerPgClient();
     const { doc_id } = await params;
     const body = await request.json();
 
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from('employee_documents')
       .update({ ...body, updated_at: new Date().toISOString() })
       .eq('id', doc_id)

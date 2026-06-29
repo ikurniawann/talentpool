@@ -5,8 +5,7 @@
 // ============================================================
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
-import { createAdminClient } from '@/lib/supabase/admin';
+import { createPgClient } from "@/lib/pg/create-client";
 import { Employee, EmployeeCreateData, ApiResponse, PaginatedResponse } from '@/types/hris';
 
 // ============================================================
@@ -16,7 +15,7 @@ import { Employee, EmployeeCreateData, ApiResponse, PaginatedResponse } from '@/
 
 export async function GET(request: NextRequest) {
   try {
-    const supabase = createAdminClient();
+    const db = createPgClient();
 
     // Parse query params
     const searchParams = request.nextUrl.searchParams;
@@ -31,7 +30,7 @@ export async function GET(request: NextRequest) {
     const sort_order = searchParams.get('sort_order') || 'asc';
 
     // Build query
-    let query = supabase
+    let query = db
       .from('employees')
       .select(`
         *,
@@ -124,7 +123,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = createAdminClient();
+    const db = createPgClient();
     const body: EmployeeCreateData = await request.json();
 
     // Validate required fields
@@ -137,7 +136,7 @@ export async function POST(request: NextRequest) {
 
     // Check if NIP already exists (if provided manually)
     if (body.nip && body.nip.trim() !== '') {
-      const { data: existing } = await supabase
+      const { data: existing } = await db
         .from('employees')
         .select('id')
         .eq('nip', body.nip)
@@ -160,7 +159,7 @@ export async function POST(request: NextRequest) {
 
       while (exists) {
         nip = `EMP-${year}-${String(seq).padStart(5, '0')}`;
-        const { data: existing } = await supabase
+        const { data: existing } = await db
           .from('employees')
           .select('id')
           .eq('nip', nip)
@@ -178,7 +177,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if email already exists
-    const { data: existingEmail } = await supabase
+    const { data: existingEmail } = await db
       .from('employees')
       .select('id')
       .eq('email', body.email)
@@ -197,7 +196,7 @@ export async function POST(request: NextRequest) {
     const maxRetries = 3;
 
     while (retryCount < maxRetries) {
-      insertResult = await supabase
+      insertResult = await db
         .from('employees')
         .insert({
           nip: body.nip,

@@ -3,7 +3,7 @@
 // ============================================
 
 import { NextRequest } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { createServerPgClient } from "@/lib/pg/create-client";
 import { z } from "zod";
 
 const bomSchema = z.object({
@@ -35,14 +35,14 @@ export async function PUT(
 ) {
   try {
     const { id } = await params;
-    const supabase = await createClient();
+    const db = await createServerPgClient();
     const body = await request.json();
 
     // Validasi input
     const validated = bomSchema.parse(body);
 
     // Cek apakah BOM item ada
-    const { data: existingItem, error: findError } = await supabase
+    const { data: existingItem, error: findError } = await db
       .from("bom_items")
       .select("*")
       .eq("id", id)
@@ -56,7 +56,7 @@ export async function PUT(
     }
 
     // Update data
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from("bom_items")
       .update({
         ...validated,
@@ -101,10 +101,10 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params;
-    const supabase = await createClient();
+    const db = await createServerPgClient();
 
     // Soft delete dengan set is_active = false
-    const { error } = await supabase
+    const { error } = await db
       .from("bom_items")
       .update({ is_active: false })
       .eq("id", id);

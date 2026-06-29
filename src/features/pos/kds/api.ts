@@ -1,0 +1,33 @@
+import type { KDSOrder, KdsListParams } from "./types";
+
+export type * from "./types";
+
+export async function listKdsOrders(params: KdsListParams = {}): Promise<KDSOrder[]> {
+  const sp = new URLSearchParams();
+  sp.set("status", (params.status ?? ["pending", "confirmed", "preparing", "ready"]).join(","));
+  if (params.station) sp.set("station", params.station);
+  if (params.branchId) sp.set("branch_id", params.branchId);
+  if (params.dateFrom) sp.set("date_from", params.dateFrom);
+  if (params.dateTo) sp.set("date_to", params.dateTo);
+  sp.set("limit", String(params.limit ?? 50));
+
+  const res = await fetch(`/api/pos/kds?${sp.toString()}`, { cache: "no-store" });
+  const data = await res.json();
+  if (!data.success) {
+    throw new Error(data.error || "Gagal fetch KDS");
+  }
+  return (data.data ?? []) as KDSOrder[];
+}
+
+export async function updateKdsOrderStatus(
+  orderId: string,
+  status: string,
+  reason?: string
+): Promise<{ success: boolean; error?: string }> {
+  const res = await fetch(`/api/pos/orders/${orderId}/status`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ status, reason }),
+  });
+  return res.json();
+}

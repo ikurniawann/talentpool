@@ -1,11 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { CheckCircle, Loader2, XCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { prQueryKeys } from "@/features/purchasing/pr/query-keys";
 import {
   Dialog,
   DialogClose,
@@ -23,7 +24,7 @@ type PRApprovalActionsProps = {
 };
 
 export function PRApprovalActions({ prId }: PRApprovalActionsProps) {
-  const router = useRouter();
+  const queryClient = useQueryClient();
   const [action, setAction] = useState<ApprovalAction | null>(null);
   const [reason, setReason] = useState("");
   const [loading, setLoading] = useState(false);
@@ -55,7 +56,8 @@ export function PRApprovalActions({ prId }: PRApprovalActionsProps) {
       toast.success(action === "approve" ? "PR berhasil diapprove" : "PR berhasil ditolak");
       setAction(null);
       setReason("");
-      router.refresh();
+      await queryClient.invalidateQueries({ queryKey: prQueryKeys.detail(prId) });
+      await queryClient.invalidateQueries({ queryKey: prQueryKeys.all });
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Gagal memproses approval PR");
     } finally {

@@ -1,4 +1,5 @@
-import { SupabaseClient } from "@supabase/supabase-js";
+import type { DbClient } from "@/lib/pg/types";
+import { toQty } from "@/lib/purchasing/utils";
 
 // ============================================================
 // PO State Machine
@@ -35,14 +36,14 @@ export function validateTransition(from: POStatus, to: POStatus): void {
 // Format: PO-{YYYY}{MM}{DD}-{SEQ:4}
 // ============================================================
 
-export async function generatePONumber(supabase: SupabaseClient): Promise<string> {
+export async function generatePONumber(db: DbClient): Promise<string> {
   const now = new Date();
   const year = now.getFullYear();
   const month = String(now.getMonth() + 1).padStart(2, "0");
   const day = String(now.getDate()).padStart(2, "0");
   const prefix = `PO-${year}${month}${day}`;
 
-  const { data } = await supabase
+  const { data } = await db
     .from("purchase_orders")
     .select("nomor_po")
     .ilike("nomor_po", `${prefix}-%`)
@@ -92,13 +93,13 @@ export interface POCreateInput {
  * - minimum_qty must be met
  */
 export async function validatePOCreate(
-  supabase: SupabaseClient,
+  db: DbClient,
   input: POCreateInput
 ): Promise<{ valid: boolean; errors: string[] }> {
   const errors: string[] = [];
 
   // Validate supplier
-  const { data: supplier } = await supabase
+  const { data: supplier } = await db
     .from("suppliers")
     .select("id, nama, status, is_active")
     .eq("id", input.supplier_id)
@@ -122,7 +123,7 @@ export async function validatePOCreate(
     }
 
     // Check bahan_baku exists and active
-    const { data: bahanBaku } = await supabase
+    const { data: bahanBaku } = await db
       .from("bahan_baku")
       .select("id, nama, is_active")
       .eq("id", item.bahan_baku_id)
@@ -138,7 +139,7 @@ export async function validatePOCreate(
     if (!item.satuan_id) {
       errors.push(`Item ${i + 1}: Satuan wajib diisi`);
     } else {
-      const { data: satuan } = await supabase
+      const { data: satuan } = await db
         .from("satuan")
         .select("id, nama")
         .eq("id", item.satuan_id)
@@ -151,7 +152,7 @@ export async function validatePOCreate(
     }
 
     // Check supplier price exists
-    const { data: price } = await supabase
+    const { data: price } = await db
       .from("supplier_price_lists")
       .select("id, harga, minimum_qty, berlaku_sampai")
       .eq("supplier_id", input.supplier_id)
@@ -218,7 +219,7 @@ export function calculatePO(input: {
 // ============================================================
 
 export async function updateInventoryOnOrder(
-  supabase: SupabaseClient,
+  db: DbClient,
   items: POItemInput[],
   increment: boolean = true
 ): Promise<void> {
@@ -226,7 +227,7 @@ export async function updateInventoryOnOrder(
     if (!item.bahan_baku_id) continue;
 
     // Get current qty_on_order
-    const { data: current } = await supabase
+    const { data: current } = await db
       .from("inventory")
       .select("qty_on_order")
       .eq("bahan_baku_id", item.bahan_baku_id)
@@ -236,13 +237,13 @@ export async function updateInventoryOnOrder(
     const newQty = (current?.qty_on_order || 0) + delta;
 
     if (current) {
-      await supabase
+      await db
         .from("inventory")
         .update({ qty_on_order: Math.max(0, newQty) })
         .eq("bahan_baku_id", item.bahan_baku_id);
     } else {
       // Create inventory record if doesn't exist
-      await supabase.from("inventory").insert({
+      await db.from("inventory").insert({
         bahan_baku_id: item.bahan_baku_id,
         qty_on_order: Math.max(0, item.qty),
         qty_in_stock: 0,
@@ -272,12 +273,12 @@ type ReceivablePOItem = {
 };
 
 export async function receivePOItems(
-  supabase: SupabaseClient,
+  db: DbClient,
   input: POReceiveInput,
   userId: string
 ): Promise<{ success: boolean; newStatus: POStatus }> {
   // Get PO with items
-  const { data: po } = await supabase
+  const { data: po } = await db
     .from("purchase_orders")
     .select("id, status, items:po_items(*)")
     .eq("id", input.po_id)
@@ -296,13 +297,13 @@ export async function receivePOItems(
     );
     if (!poItem) throw new Error(`PO item ${inputItem.po_item_id} tidak ditemukan`);
 
-    const newQtyReceived = (poItem.qty_received || 0) + inputItem.qty_received;
+    const newQtyReceived = toQty(poItem.qty_received) + toQty(inputItem.qty_received);
     const isFullyReceived = newQtyReceived >= poItem.qty;
 
     if (!isFullyReceived) allFullyReceived = false;
 
     // Update po_item
-    await supabase
+    await db
       .from("po_items")
       .update({ qty_received: newQtyReceived })
       .eq("id", inputItem.po_item_id);
@@ -310,14 +311,14 @@ export async function receivePOItems(
     receivedItems.push({ po_item_id: inputItem.po_item_id, qty: inputItem.qty_received });
 
     // Update inventory stock
-    const { data: inventory } = await supabase
+    const { data: inventory } = await db
       .from("inventory")
       .select("qty_in_stock, qty_on_order")
       .eq("bahan_baku_id", poItem.bahan_baku_id)
       .single();
 
     if (inventory) {
-      await supabase
+      await db
         .from("inventory")
         .update({
           qty_in_stock: (inventory.qty_in_stock || 0) + inputItem.qty_received,
@@ -331,7 +332,7 @@ export async function receivePOItems(
   const newStatus: POStatus = allFullyReceived ? "received" : "partial";
 
   // Update PO status
-  await supabase
+  await db
     .from("purchase_orders")
     .update({
       status: newStatus,

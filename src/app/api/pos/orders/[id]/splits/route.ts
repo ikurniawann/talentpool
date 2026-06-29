@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createServiceClient } from '@/lib/supabase/service-client';
+import { createPgClient } from "@/lib/pg/create-client";
 import { getPosSession } from '@/lib/api/auth';
 
 type SplitPayload = {
@@ -37,8 +37,8 @@ export async function GET(
 
   try {
     const { id } = await params;
-    const supabase = createServiceClient();
-    const { data, error } = await supabase.rpc('pos_get_order_splits', { p_order_id: id });
+    const db = createPgClient();
+    const { data, error } = await db.rpc('pos_get_order_splits', { p_order_id: id });
 
     if (error) {
       console.error('Error fetching splits:', error);
@@ -72,9 +72,9 @@ export async function POST(
       return NextResponse.json({ success: false, error: 'Minimal 2 split diperlukan' }, { status: 400 });
     }
 
-    const supabase = createServiceClient();
+    const db = createPgClient();
 
-    const { data: order, error: orderError } = await supabase
+    const { data: order, error: orderError } = await db
       .from('pos_orders')
       .select('id, order_number, status, payment_status, total_amount')
       .eq('id', id)
@@ -92,7 +92,7 @@ export async function POST(
       return NextResponse.json({ success: false, error: 'Order sudah lunas' }, { status: 400 });
     }
 
-    const { count: existingSplitCount, error: existingError } = await supabase
+    const { count: existingSplitCount, error: existingError } = await db
       .from('pos_order_splits')
       .select('id', { count: 'exact', head: true })
       .eq('order_id', id)
@@ -106,7 +106,7 @@ export async function POST(
       return NextResponse.json({ success: false, error: 'Order ini sudah memiliki split bill' }, { status: 400 });
     }
 
-    const { data: orderItems, error: itemsError } = await supabase
+    const { data: orderItems, error: itemsError } = await db
       .from('pos_order_items')
       .select('id, quantity, unit_price')
       .eq('order_id', id)
@@ -130,7 +130,7 @@ export async function POST(
 
     for (let index = 0; index < splits.length; index += 1) {
       const split = splits[index];
-      const { data: insertedSplit, error: splitError } = await supabase
+      const { data: insertedSplit, error: splitError } = await db
         .from('pos_order_splits')
         .insert({
           order_id: id,
@@ -171,7 +171,7 @@ export async function POST(
           .filter(Boolean);
 
         if (splitItems.length > 0) {
-          const { error: splitItemsError } = await supabase
+          const { error: splitItemsError } = await db
             .from('pos_order_split_items')
             .insert(splitItems);
 
@@ -182,7 +182,7 @@ export async function POST(
       }
     }
 
-    await supabase.from('pos_order_status_history').insert({
+    await db.from('pos_order_status_history').insert({
       order_id: id,
       status: order.status || 'pending',
       reason: `Split bill dibuat: ${splits.length} bill(s)`,

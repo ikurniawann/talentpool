@@ -34,7 +34,7 @@ Modul Purchasing untuk ERP Aapex Technology - mengelola Purchase Request (PR), P
 
 ## 🚧 Phase 2: Core Features (Next)
 
-### 2.1 Database Schema (Supabase)
+### 2.1 Database Schema (PostgreSQL)
 **Priority: HIGH**
 
 ```sql
@@ -268,7 +268,7 @@ CREATE TABLE po_items (
 
 ## 🎯 Next Steps (Prioritas)
 
-1. **Hari ini:** Setup database schema di Supabase
+1. **Hari ini:** Setup database schema di PostgreSQL
 2. **Besok:** Implement PR list page dan fix PR submit workflow
 3. **Lusa:** PO creation dari PR approved
 4. **Next week:** Master data (vendors) dan polish

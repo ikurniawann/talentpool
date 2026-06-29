@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireRole } from "@/lib/supabase/auth";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { requireRole } from "@/lib/auth/require-user";
+import { createPgClient } from "@/lib/pg/create-client";
 
 function slugify(value: string) {
   return value
@@ -46,14 +46,14 @@ export async function PATCH(
 ) {
   await requireRole(["hrd"]);
   const { id } = await params;
-  const supabase = createAdminClient();
+  const db = createPgClient();
   const payload = normalizePayload(await request.json() as Record<string, unknown>);
 
   if (!payload.title) {
     return NextResponse.json({ error: "Judul lowongan wajib diisi" }, { status: 400 });
   }
 
-  const { data, error } = await supabase
+  const { data, error } = await db
     .from("job_openings")
     .update(payload)
     .eq("id", id)
@@ -73,9 +73,9 @@ export async function DELETE(
 ) {
   await requireRole(["hrd"]);
   const { id } = await params;
-  const supabase = createAdminClient();
+  const db = createPgClient();
 
-  const { error } = await supabase.from("job_openings").delete().eq("id", id);
+  const { error } = await db.from("job_openings").delete().eq("id", id);
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });

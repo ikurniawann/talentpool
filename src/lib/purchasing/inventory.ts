@@ -1,4 +1,4 @@
-import { SupabaseClient } from "@supabase/supabase-js";
+import type { DbClient } from "@/lib/pg/types";
 
 // ============================================================
 // Inventory Movement Types
@@ -35,10 +35,10 @@ export interface MovementRecord {
 // ============================================================
 
 export async function recordMovement(
-  supabase: SupabaseClient,
+  db: DbClient,
   movement: MovementRecord
 ): Promise<void> {
-  await supabase.from("inventory_movements").insert({
+  await db.from("inventory_movements").insert({
     inventory_id: movement.inventory_id,
     bahan_baku_id: movement.bahan_baku_id,
     tipe: movement.tipe,
@@ -61,10 +61,10 @@ export async function recordMovement(
 // ============================================================
 
 export async function getOrCreateInventory(
-  supabase: SupabaseClient,
+  db: DbClient,
   bahanBakuId: string
 ): Promise<{ id: string; qty_in_stock: number; avg_cost: number }> {
-  const { data: existing } = await supabase
+  const { data: existing } = await db
     .from("inventory")
     .select("id, qty_in_stock, avg_cost")
     .eq("bahan_baku_id", bahanBakuId)
@@ -75,7 +75,7 @@ export async function getOrCreateInventory(
   }
 
   // Create if doesn't exist
-  const { data: newInv, error } = await supabase
+  const { data: newInv, error } = await db
     .from("inventory")
     .insert({ bahan_baku_id: bahanBakuId, qty_in_stock: 0, avg_cost: 0 })
     .select("id, qty_in_stock, avg_cost")
@@ -112,7 +112,7 @@ export function calculateWeightedAverage(
 // ============================================================
 
 export async function addStockFromQC(
-  supabase: SupabaseClient,
+  db: DbClient,
   params: {
     grnId: string;
     grnItemId: string;
@@ -127,7 +127,7 @@ export async function addStockFromQC(
   if (qtyAccepted <= 0) return;
 
   // Get or create inventory
-  const inventory = await getOrCreateInventory(supabase, bahanBakuId);
+  const inventory = await getOrCreateInventory(db, bahanBakuId);
 
   const sebelum = inventory.qty_in_stock || 0;
   const sesudah = sebelum + qtyAccepted;
@@ -141,7 +141,7 @@ export async function addStockFromQC(
   );
 
   // Update inventory
-  const { error: invError } = await supabase
+  const { error: invError } = await db
     .from("inventory")
     .update({
       qty_in_stock: sesudah,
@@ -152,7 +152,7 @@ export async function addStockFromQC(
   if (invError) throw new Error(`Failed to update inventory: ${invError.message}`);
 
   // Record movement
-  await recordMovement(supabase, {
+  await recordMovement(db, {
     inventory_id: inventory.id,
     bahan_baku_id: bahanBakuId,
     tipe: "in",
@@ -173,7 +173,7 @@ export async function addStockFromQC(
 // ============================================================
 
 export async function reduceStockOnReturn(
-  supabase: SupabaseClient,
+  db: DbClient,
   params: {
     returnId: string;
     bahanBakuId: string;
@@ -186,18 +186,18 @@ export async function reduceStockOnReturn(
 
   if (qtyReturned <= 0) return;
 
-  const inventory = await getOrCreateInventory(supabase, bahanBakuId);
+  const inventory = await getOrCreateInventory(db, bahanBakuId);
   const sebelum = inventory.qty_in_stock || 0;
   const sesudah = Math.max(0, sebelum - qtyReturned);
 
   // Update inventory
-  await supabase
+  await db
     .from("inventory")
     .update({ qty_in_stock: sesudah })
     .eq("id", inventory.id);
 
   // Record movement
-  await recordMovement(supabase, {
+  await recordMovement(db, {
     inventory_id: inventory.id,
     bahan_baku_id: bahanBakuId,
     tipe: "out",

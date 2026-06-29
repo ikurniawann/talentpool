@@ -2,7 +2,7 @@
 -- STEP 3: Submit Test Feedback - SIMPLE VERSION (FIXED)
 -- =====================================================
 -- Menggunakan EMP013 yang ada di database
--- Copy paste SEMUA isi file ini ke Supabase SQL Editor
+-- Copy paste SEMUA isi file ini ke psql atau SQL client
 -- Lalu klik RUN sekali saja
 -- =====================================================
 

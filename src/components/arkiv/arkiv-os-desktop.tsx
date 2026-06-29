@@ -48,7 +48,7 @@ import {
   Wifi,
   X,
 } from "lucide-react";
-import { createClient } from "@/lib/supabase/client";
+import { createBrowserClient } from "@/lib/pg/browser-client";
 import {
   AI_ASSISTANT_MODELS,
   AI_ASSISTANT_SCOPES,
@@ -435,15 +435,15 @@ export default function ArkivOsDesktop() {
   }, []);
 
   useEffect(() => {
-    const supabase = createClient();
+    const db = createBrowserClient();
 
-    supabase.auth.getUser().then(async ({ data }) => {
+    db.auth.getUser().then(async ({ data }) => {
       if (!data.user) {
         setUserAccount(null);
         return;
       }
 
-      const { data: profile } = await supabase
+      const { data: profile } = await db
         .from("users")
         .select("full_name, role")
         .eq("id", data.user.id)
@@ -1498,7 +1498,7 @@ function FileExplorer({ onClose, isLoggedIn }: { onClose: () => void; isLoggedIn
             ))}
           </div>
           <div className="mt-5 rounded-3xl border border-white/10 bg-white/8 p-4 text-sm leading-6 text-white/55">
-            Next phase: connect this explorer to Supabase Storage / generated module exports for real download, preview, and permissions.
+            Next phase: connect this explorer to object storage / generated module exports for real download, preview, and permissions.
           </div>
         </section>
       </div>
@@ -1967,8 +1967,8 @@ function OsAccountPopup({
   const isLoggedIn = Boolean(account);
 
   const handleLogout = async () => {
-    const supabase = createClient();
-    await supabase.auth.signOut();
+    const db = createBrowserClient();
+    await db.auth.signOut();
     window.location.reload();
   };
 

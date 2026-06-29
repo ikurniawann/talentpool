@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { createServerPgClient } from "@/lib/pg/create-client";
 import { z } from 'zod';
 
 // Validation schema for resignation
@@ -20,11 +20,11 @@ interface RouteParams {
  */
 export async function GET(request: NextRequest, { params }: RouteParams) {
   try {
-    const supabase = await createClient();
+    const db = await createServerPgClient();
     const { employee_id } = await params;
 
     // Get offboarding checklist
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from('offboarding_checklists')
       .select(`
         *,
@@ -75,12 +75,12 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
  */
 export async function POST(request: NextRequest, { params }: RouteParams) {
   try {
-    const supabase = await createClient();
+    const db = await createServerPgClient();
     const { employee_id } = await params;
     const body = await request.json();
 
     // Check authentication
-    const { data: { user } } = await supabase.auth.getUser();
+    const { data: { user } } = await db.auth.getUser();
     if (!user) {
       return NextResponse.json(
         { error: 'Unauthorized' },
@@ -92,9 +92,9 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     const validated = resignationSchema.parse(body);
 
     // Check permissions (HRD, Manager, or self)
-    const isHRD = await checkIsHRD(supabase, user.id);
-    const isManager = await checkIsManager(supabase, user.id);
-    const isOwner = employee_id === await getCurrentEmployeeId(supabase, user.id);
+    const isHRD = await checkIsHRD(db, user.id);
+    const isManager = await checkIsManager(db, user.id);
+    const isOwner = employee_id === await getCurrentEmployeeId(db, user.id);
 
     // Self-resignation only allowed for voluntary
     if (isOwner && validated.resignation_type !== 'voluntary') {
@@ -112,7 +112,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     }
 
     // Verify employee exists and is active
-    const { data: employee } = await supabase
+    const { data: employee } = await db
       .from('employees')
       .select('id, full_name, employment_status, is_active')
       .eq('id', employee_id)
@@ -126,7 +126,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     }
 
     // Check if already has offboarding
-    const { data: existing } = await supabase
+    const { data: existing } = await db
       .from('offboarding_checklists')
       .select('id')
       .eq('employee_id', employee_id)
@@ -141,7 +141,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     }
 
     // Create offboarding checklist
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from('offboarding_checklists')
       .insert({
         employee_id,
@@ -200,12 +200,12 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
  */
 export async function PUT(request: NextRequest, { params }: RouteParams) {
   try {
-    const supabase = await createClient();
+    const db = await createServerPgClient();
     const { employee_id } = await params;
     const body = await request.json();
 
     // Check authentication
-    const { data: { user } } = await supabase.auth.getUser();
+    const { data: { user } } = await db.auth.getUser();
     if (!user) {
       return NextResponse.json(
         { error: 'Unauthorized' },
@@ -214,8 +214,8 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     }
 
     // Check if HRD or Manager
-    const isHRD = await checkIsHRD(supabase, user.id);
-    const isManager = await checkIsManager(supabase, user.id);
+    const isHRD = await checkIsHRD(db, user.id);
+    const isManager = await checkIsManager(db, user.id);
 
     if (!isHRD && !isManager) {
       return NextResponse.json(
@@ -225,7 +225,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     }
 
     // Get offboarding record
-    const { data: offboarding } = await supabase
+    const { data: offboarding } = await db
       .from('offboarding_checklists')
       .select('*')
       .eq('employee_id', employee_id)
@@ -303,7 +303,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     }
 
     // Update offboarding
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from('offboarding_checklists')
       .update(updateData)
       .eq('id', offboarding.id)
@@ -335,8 +335,8 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
 }
 
 // Helper functions
-async function getCurrentEmployeeId(supabase: any, userId: string) {
-  const { data } = await supabase
+async function getCurrentEmployeeId(db: any, userId: string) {
+  const { data } = await db
     .from('employees')
     .select('id')
     .eq('user_id', userId)
@@ -345,8 +345,8 @@ async function getCurrentEmployeeId(supabase: any, userId: string) {
   return data?.id || null;
 }
 
-async function checkIsHRD(supabase: any, userId: string): Promise<boolean> {
-  const { data } = await supabase
+async function checkIsHRD(db: any, userId: string): Promise<boolean> {
+  const { data } = await db
     .from('users')
     .select('role')
     .eq('id', userId)
@@ -355,8 +355,8 @@ async function checkIsHRD(supabase: any, userId: string): Promise<boolean> {
   return data?.role === 'hrd' || false;
 }
 
-async function checkIsManager(supabase: any, userId: string): Promise<boolean> {
-  const { data } = await supabase
+async function checkIsManager(db: any, userId: string): Promise<boolean> {
+  const { data } = await db
     .from('users')
     .select('role')
     .eq('id', userId)

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -25,68 +25,33 @@ import { toast } from "sonner";
 import { BreadcrumbNav } from "@/modules/purchasing/components/breadcrumb/BreadcrumbNav";
 import { ImportExcelDialog, type ParsedTemplateData } from "@/components/import-excel-dialog";
 import { Upload } from "lucide-react";
+import { useKpiTemplates } from "../queries";
+import { useCreateKpiTemplate, useDeleteKpiTemplate } from "../mutations";
 
-interface KpiTemplate {
-  id: string;
-  template_name: string;
-  department?: { name: string };
-  position?: { title: string };
-  applicable_period: string;
-  status: string;
-  total_weight?: number;
-  created_at: string;
-  kpi_template_items?: { count: number };
-}
-
-export default function KpiTemplatesPage() {
-  const [templates, setTemplates] = useState<KpiTemplate[]>([]);
-  const [loading, setLoading] = useState(true);
+export function KpiTemplatesPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [importDialogOpen, setImportDialogOpen] = useState(false);
 
-  useEffect(() => {
-    loadTemplates();
-  }, []);
+  const templatesQuery = useKpiTemplates();
+  const templates = templatesQuery.data ?? [];
+  const loading = templatesQuery.isLoading;
 
-  const loadTemplates = async () => {
-    try {
-      const res = await fetch("/api/hris/kpi-templates");
-      const json = await res.json();
-      if (res.ok) {
-        setTemplates(json.data || []);
-      } else {
-        toast.error(json.error || "Gagal memuat data");
-      }
-    } catch (error) {
-      console.error("Error loading templates:", error);
-      toast.error("Gagal memuat data template");
-    } finally {
-      setLoading(false);
-    }
-  };
+  const createMutation = useCreateKpiTemplate();
+  const deleteMutation = useDeleteKpiTemplate();
 
   const handleDelete = async (id: string) => {
     if (!confirm("Yakin ingin menghapus template ini?")) return;
-    
     try {
-      const res = await fetch(`/api/hris/kpi-templates/${id}`, { method: "DELETE" });
-      if (res.ok) {
-        toast.success("Template berhasil dihapus");
-        loadTemplates();
-      } else {
-        const json = await res.json();
-        toast.error(json.error || "Gagal menghapus");
-      }
-    } catch {
-      toast.error("Terjadi kesalahan");
+      await deleteMutation.mutateAsync(id);
+      toast.success("Template berhasil dihapus");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Gagal menghapus");
     }
   };
 
   const handleImportSuccess = async (importData: ParsedTemplateData) => {
     try {
-      console.log("Import data:", importData);
-      
-      const payload = {
+      await createMutation.mutateAsync({
         template_name: importData.template_name,
         position_id: null,
         department_id: null,
@@ -99,27 +64,9 @@ export default function KpiTemplatesPage() {
         total_weight: importData.total_weight,
         items: importData.kpi_items,
         behavioral_items: importData.behavioral_items,
-      };
-
-      console.log("Sending payload:", payload);
-
-      const res = await fetch("/api/hris/kpi-templates", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
       });
-
-      const json = await res.json();
-      console.log("Response:", json);
-
-      if (!res.ok) {
-        throw new Error(json.error || "Gagal menyimpan template");
-      }
-
       toast.success("Template berhasil diimport!");
-      loadTemplates();
     } catch (error: unknown) {
-      console.error("Import error:", error);
       toast.error(error instanceof Error ? error.message : "Terjadi kesalahan");
     }
   };
@@ -164,7 +111,7 @@ export default function KpiTemplatesPage() {
             <Upload className="w-4 h-4 mr-2" />
             Import Excel
           </Button>
-          <Link href="/dashboard/hris/kpi-templates/new">
+          <Link href="/dashboard/hris/kpi-templates/insert">
             <Button>
               <Plus className="w-4 h-4 mr-2" />
               Buat Template
@@ -239,7 +186,7 @@ export default function KpiTemplatesPage() {
                               </Link>
                             </DropdownMenuItem>
                             <DropdownMenuItem>
-                              <Link href={`/dashboard/hris/kpi-templates/${template.id}/edit`} className="flex w-full items-center">
+                              <Link href={`/dashboard/hris/kpi-templates/edit/${template.id}`} className="flex w-full items-center">
                                 <Edit className="w-4 h-4 mr-2" />
                                 Edit Template
                               </Link>

@@ -1,6 +1,6 @@
 -- ============================================
 -- MANUAL FIX: Update receive_count for existing GRNs
--- Run this in Supabase SQL Editor
+-- Run this in psql atau SQL client
 -- Date: 2026-04-23
 -- ============================================
 

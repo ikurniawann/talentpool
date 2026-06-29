@@ -5,7 +5,7 @@
 // ============================================================
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { createServerPgClient } from "@/lib/pg/create-client";
 import { Employee, PromotionRequest, ApiResponse } from '@/types/hris';
 
 // ============================================================
@@ -15,7 +15,7 @@ import { Employee, PromotionRequest, ApiResponse } from '@/types/hris';
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createClient();
+    const db = await createServerPgClient();
     const body: PromotionRequest = await request.json();
 
     // Validate required fields
@@ -27,7 +27,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Get candidate data first to verify status
-    const { data: candidate, error: candidateError } = await supabase
+    const { data: candidate, error: candidateError } = await db
       .from('candidates')
       .select(`
         *,
@@ -67,7 +67,7 @@ export async function POST(request: NextRequest) {
     let employeeId: string | null = null;
     
     try {
-      const { data, error: rpcError } = await supabase.rpc('promote_candidate_to_employee', {
+      const { data, error: rpcError } = await db.rpc('promote_candidate_to_employee', {
         p_candidate_id: body.candidate_id,
         p_join_date: body.join_date || new Date().toISOString().split('T')[0],
         p_employment_status: body.employment_status || 'probation',
@@ -94,7 +94,7 @@ export async function POST(request: NextRequest) {
       
       while (exists && seq < 99999) {
         nip = `EMP-${year}-${String(seq).padStart(5, '0')}`;
-        const { data: existing } = await supabase
+        const { data: existing } = await db
           .from('employees')
           .select('id')
           .eq('nip', nip)
@@ -104,7 +104,7 @@ export async function POST(request: NextRequest) {
       }
       
       // Insert employee manually
-      const { data: newEmployee, error: insertError } = await supabase
+      const { data: newEmployee, error: insertError } = await db
         .from('employees')
         .insert({
           nip,
@@ -133,13 +133,13 @@ export async function POST(request: NextRequest) {
       
       // Update candidate
       if (employeeId) {
-        await supabase
+        await db
           .from('candidates')
           .update({ promoted_to_employee_id: employeeId })
           .eq('id', candidate.id);
       }
     }
-    const { data: employee, error: employeeError } = await supabase
+    const { data: employee, error: employeeError } = await db
       .from('employees')
       .select(`
         *,

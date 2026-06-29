@@ -1,6 +1,6 @@
 import { ComingSoonPage } from "@/components/dashboard/coming-soon-page";
 
-export default function AccountingPage() {
+export function AccountingPage() {
   return (
     <ComingSoonPage
       title="Accounting"

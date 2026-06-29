@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { createServiceClient } from "@/lib/supabase/service-client";
+import { createPgClient } from "@/lib/pg/create-client";
 
 const lookupSchema = z.object({
   phone: z.string().trim().min(6).max(40),
@@ -30,9 +30,9 @@ function normalizeCustomer(customer: Record<string, unknown>) {
 export async function POST(request: NextRequest) {
   try {
     const payload = lookupSchema.parse(await request.json());
-    const supabase = createServiceClient();
+    const db = createPgClient();
 
-    const { data: existing, error: lookupError } = await supabase
+    const { data: existing, error: lookupError } = await db
       .from("pos_customers")
       .select("id, name, phone, email, membership_tier, ark_coin_balance, total_xp, current_xp, visit_count, is_active")
       .eq("phone", payload.phone)
@@ -44,7 +44,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: true, data: normalizeCustomer(existing), created: false });
     }
 
-    const { data: created, error: createError } = await supabase
+    const { data: created, error: createError } = await db
       .from("pos_customers")
       .insert({
         phone: payload.phone,

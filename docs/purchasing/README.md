@@ -40,13 +40,13 @@ npm install
 Jalankan migration untuk schema Purchasing module:
 
 ```bash
-# Menggunakan Supabase CLI
-supabase db push
+# Menggunakan npm run db:migrate:apply
+npm run db:migrate:apply
 
 # Atau手动 run file migration:
-# supabase/migrations/20250419_purchasing_module.sql
-# supabase/migrations/20250419_002_create_supplier_table.sql
-# supabase/migrations/20250420_add_supplier_fields.sql
+# database/migrations/20250419_purchasing_module.sql
+# database/migrations/20250419_002_create_supplier_table.sql
+# database/migrations/20250420_add_supplier_fields.sql
 ```
 
 ### 3. Environment Variables
@@ -61,9 +61,8 @@ Variable yang dibutuhkan:
 
 | Variable | Description | Example |
 |---|---|---|
-| `NEXT_PUBLIC_SUPABASE_URL` | Supabase project URL | `https://xxxx.supabase.co` |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase anon key | `eyJ...` |
-| `SUPABASE_SERVICE_ROLE_KEY` | Supabase service role key | `eyJ...` |
+| `DATABASE_URL` | Koneksi PostgreSQL (server) | `postgresql://postgres:postgres@localhost:5432/arkiv` |
+| `MIGRATE_DATABASE_URL` | Target lokal untuk `db:migrate:apply` | `postgresql://postgres:postgres@localhost:5432/arkiv` |
 | `NEXT_PUBLIC_BASE_URL` | Base URL untuk API docs | `http://localhost:3000` |
 | `PO_APPROVAL_HEAD_THRESHOLD` | Threshold Head approve (default: 5000000) | `5000000` |
 | `PO_APPROVAL_FINANCE_THRESHOLD` | Threshold Finance (default: 25000000) | `25000000` |
@@ -84,7 +83,7 @@ Buka:
 
 ```
 Development: http://localhost:3000/api/purchasing
-Production:  https://ornjixodzontnanhfyhd.supabase.co/api/purchasing
+Production:  https://your-domain.com/api/purchasing
 ```
 
 ### Authentication
@@ -95,7 +94,7 @@ Semua endpoint membutuhkan Bearer JWT token:
 Authorization: Bearer <access_token>
 ```
 
-Token diperoleh dari Supabase Auth. Login via `/api/auth/login`.
+Token diperoleh dari app auth (cookie session). Login via `/api/auth/login`.
 
 ### User Roles
 
@@ -192,7 +191,7 @@ docs/purchasing/postman/ArkivOS-Purchasing.postman_collection.json
 docs/purchasing/postman/ArkivOS-Purchasing.postman_environment.json
 ```
 
-Set `{{baseUrl}}` ke URL Supabase Edge Function atau localhost.
+Set `{{baseUrl}}` ke URL Next.js API route atau localhost.
 Set `{{access_token}}` setelah login.
 
 ## Database Schema

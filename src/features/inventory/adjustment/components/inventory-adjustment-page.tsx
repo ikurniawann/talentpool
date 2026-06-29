@@ -1,6 +1,6 @@
 import { ComingSoonPage } from "@/components/dashboard/coming-soon-page";
 
-export default function InventoryAdjustmentPage() {
+export function InventoryAdjustmentPage() {
   return (
     <ComingSoonPage
       title="Inventory Adjustment"

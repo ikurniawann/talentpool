@@ -1,5 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createServiceClient } from "@/lib/supabase/service-client";
+import { createPgClient } from "@/lib/pg/create-client";
+import {
+  getApiUserScope,
+  companyScopeOr,
+  branchScopeOr,
+} from "@/lib/api/scope";
 
 function getErrorMessage(error: unknown, fallback: string) {
   return error instanceof Error ? error.message : fallback;
@@ -7,15 +12,21 @@ function getErrorMessage(error: unknown, fallback: string) {
 
 export async function GET(request: NextRequest) {
   try {
-    const supabase = createServiceClient();
+    const db = createPgClient();
     const { searchParams } = new URL(request.url);
     const status = searchParams.get("status");
     const search = searchParams.get("search");
 
-    let query = supabase
+    let query = db
       .from("v_purchase_order_payments")
       .select("*")
       .order("next_due_date", { ascending: true, nullsFirst: false });
+
+    const scope = await getApiUserScope();
+    const companyOr = companyScopeOr(scope);
+    if (companyOr) query = query.or(companyOr);
+    const branchOr = branchScopeOr(scope);
+    if (branchOr) query = query.or(branchOr);
 
     if (status && status !== "all") query = query.eq("payment_status", status);
     if (search) query = query.or(`nomor_po.ilike.%${search}%,nama_supplier.ilike.%${search}%`);

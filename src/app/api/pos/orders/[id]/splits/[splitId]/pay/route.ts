@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createServiceClient } from '@/lib/supabase/service-client';
+import { createPgClient } from "@/lib/pg/create-client";
 import { getPosSession } from '@/lib/api/auth';
 import { awardCrmXpForSplitPayment } from '@/lib/crm/loyalty-engine';
 
@@ -31,10 +31,10 @@ export async function POST(
       return NextResponse.json({ success: false, error: 'payment_method and amount_paid required' }, { status: 400 });
     }
 
-    const supabase = createServiceClient();
+    const db = createPgClient();
     const cashierId = await resolveCashierId();
 
-    const { data: split, error: splitError } = await supabase
+    const { data: split, error: splitError } = await db
       .from('pos_order_splits')
       .select('*')
       .eq('id', splitId)
@@ -70,7 +70,7 @@ export async function POST(
       // Atomic deduct via RPC: locks the customer row (FOR UPDATE), rejects an
       // insufficient balance inside the same transaction, and logs the wallet
       // transaction — eliminates the read-then-write race / double-spend.
-      const { error: arkError } = await supabase.rpc('update_ark_coin_balance', {
+      const { error: arkError } = await db.rpc('update_ark_coin_balance', {
         p_customer_id: split.customer_id,
         p_amount: -arkUsed,
         p_type: 'payment',
@@ -87,7 +87,7 @@ export async function POST(
       }
     }
 
-    const { error: paymentError } = await supabase.from('pos_split_payments').insert({
+    const { error: paymentError } = await db.from('pos_split_payments').insert({
       split_id: splitId,
       order_id: orderId,
       amount: amountPaid,
@@ -101,7 +101,7 @@ export async function POST(
       return NextResponse.json({ success: false, error: paymentError.message }, { status: 500 });
     }
 
-    const { error: splitUpdateError } = await supabase
+    const { error: splitUpdateError } = await db
       .from('pos_order_splits')
       .update({
         status: 'paid',
@@ -117,12 +117,12 @@ export async function POST(
       return NextResponse.json({ success: false, error: splitUpdateError.message }, { status: 500 });
     }
 
-    const { count: totalSplits } = await supabase
+    const { count: totalSplits } = await db
       .from('pos_order_splits')
       .select('id', { count: 'exact', head: true })
       .eq('order_id', orderId);
 
-    const { count: paidSplits } = await supabase
+    const { count: paidSplits } = await db
       .from('pos_order_splits')
       .select('id', { count: 'exact', head: true })
       .eq('order_id', orderId)
@@ -131,7 +131,7 @@ export async function POST(
     const allPaid = (totalSplits || 0) > 0 && totalSplits === paidSplits;
     const paymentStatus = allPaid ? 'paid' : 'partial';
 
-    const { error: orderUpdateError } = await supabase
+    const { error: orderUpdateError } = await db
       .from('pos_orders')
       .update({
         payment_status: paymentStatus,
@@ -143,7 +143,7 @@ export async function POST(
       return NextResponse.json({ success: false, error: orderUpdateError.message }, { status: 500 });
     }
 
-    await supabase.from('pos_order_status_history').insert({
+    await db.from('pos_order_status_history').insert({
       order_id: orderId,
       from_status: null,
       to_status: null,
@@ -151,7 +151,7 @@ export async function POST(
       changed_at: new Date().toISOString(),
     });
 
-    const crmXp = await awardCrmXpForSplitPayment(supabase, {
+    const crmXp = await awardCrmXpForSplitPayment(db, {
       orderId,
       splitId,
       customerId: split.customer_id || null,

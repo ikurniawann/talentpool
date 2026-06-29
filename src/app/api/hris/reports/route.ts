@@ -5,11 +5,11 @@
 // ============================================================
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { createServerPgClient } from "@/lib/pg/create-client";
 
 export async function GET(request: NextRequest) {
   try {
-    const supabase = await createClient();
+    const db = await createServerPgClient();
     const searchParams = request.nextUrl.searchParams;
     const now = new Date();
     const month = parseInt(searchParams.get('month') || String(now.getMonth() + 1));
@@ -22,7 +22,7 @@ export async function GET(request: NextRequest) {
     const endDate = `${endYear}-${String(endMonth).padStart(2, '0')}-01`;
 
     // ── 1. HEADCOUNT ──────────────────────────────────────────
-    const { data: allEmployees } = await supabase
+    const { data: allEmployees } = await db
       .from('employees')
       .select('id, employment_status, is_active, department_id, join_date, end_date')
       .order('full_name');
@@ -52,7 +52,7 @@ export async function GET(request: NextRequest) {
     const turnoverRate = totalActive > 0 ? ((turnoverCount / (totalActive + turnoverCount)) * 100).toFixed(1) : '0.0';
 
     // ── 2. HEADCOUNT BY DEPARTMENT ───────────────────────────
-    const { data: departments } = await supabase
+    const { data: departments } = await db
       .from('departments')
       .select('id, name')
       .eq('is_active', true)
@@ -64,7 +64,7 @@ export async function GET(request: NextRequest) {
     })).filter(d => d.count > 0);
 
     // ── 3. ATTENDANCE STATS (selected month) ─────────────────
-    const { data: attendanceData } = await supabase
+    const { data: attendanceData } = await db
       .from('attendance')
       .select('status, is_late, work_hours, employee_id, date')
       .gte('date', startDate)
@@ -100,7 +100,7 @@ export async function GET(request: NextRequest) {
       }));
 
     // ── 4. LEAVE STATS (selected month) ──────────────────────
-    const { data: leavesData } = await supabase
+    const { data: leavesData } = await db
       .from('leaves')
       .select('leave_type, status, total_days, employee_id')
       .gte('start_date', startDate)

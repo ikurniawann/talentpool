@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createServiceClient } from "@/lib/supabase/service-client";
+import { createPgClient } from "@/lib/pg/create-client";
 
 function isUuid(value: string) {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
@@ -17,10 +17,10 @@ export async function GET(
   }
 
   try {
-    const supabase = createServiceClient();
+    const db = createPgClient();
     let table: { id: string; table_number?: string | null; qr_code?: string | null; status?: string | null } | null = null;
 
-    const query = supabase
+    const query = db
       .from("pos_tables")
       .select("id, table_number, qr_code, status")
       .limit(1);

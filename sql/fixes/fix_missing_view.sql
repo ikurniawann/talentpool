@@ -1,6 +1,6 @@
 -- ============================================
 -- FIX: Create v_raw_materials_stock view
--- Run this in Supabase Dashboard → SQL Editor
+-- Run this in admin database → SQL Editor
 -- ============================================
 
 -- Ensure function exists first

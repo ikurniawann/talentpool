@@ -1,5 +1,5 @@
-import { createClient } from "@/lib/supabase/server";
-import { requireUser } from "@/lib/supabase/auth";
+import { createServerPgClient } from "@/lib/pg/create-client";
+import { requireUser } from "@/lib/auth/require-user";
 import { NextRequest, NextResponse } from "next/server";
 
 type PRSubmitUpdate = {
@@ -14,11 +14,11 @@ export async function POST(
 ) {
   try {
     const { id } = await params;
-    const supabase = await createClient();
+    const db = await createServerPgClient();
     const user = await requireUser();
 
     // Fetch PR
-    const { data: pr, error: prError } = await supabase
+    const { data: pr, error: prError } = await db
       .from("purchase_requests")
       .select("*")
       .eq("id", id)
@@ -53,7 +53,7 @@ export async function POST(
       updated_at: new Date().toISOString(),
     };
 
-    const { data: updatedPR, error: updateError } = await supabase
+    const { data: updatedPR, error: updateError } = await db
       .from("purchase_requests")
       .update(updates)
       .eq("id", id)

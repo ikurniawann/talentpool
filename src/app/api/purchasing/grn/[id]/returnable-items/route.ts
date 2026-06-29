@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { createServerPgClient } from "@/lib/pg/create-client";
 
 // GET /api/purchasing/grn/[id]/returnable-items
 // Get items from GRN that can be returned
@@ -8,11 +8,11 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const supabase = await createClient();
+    const db = await createServerPgClient();
     const grnId = (await params).id;
 
     // Get returnable items from view
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from("v_returnable_items")
       .select("*")
       .eq("grn_id", grnId)

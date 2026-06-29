@@ -3,8 +3,13 @@
 // ============================================
 
 import { NextRequest } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { createServerPgClient } from "@/lib/pg/create-client";
 import { z } from "zod";
+import {
+  getApiUserScope,
+  companyScopeOr,
+  effectiveCompanyId,
+} from "@/lib/api/scope";
 
 // Validation schema
 const unitSchema = z.object({
@@ -27,7 +32,8 @@ function getValidationMessage(error: z.ZodError) {
 // GET /api/purchasing/units
 export async function GET(request: NextRequest) {
   try {
-    const supabase = await createClient();
+    const db = await createServerPgClient();
+    const scope = await getApiUserScope();
     const { searchParams } = new URL(request.url);
     
     const search = searchParams.get("search");
@@ -35,11 +41,17 @@ export async function GET(request: NextRequest) {
     const page = parseInt(searchParams.get("page") || "1");
     const limit = parseInt(searchParams.get("limit") || "20");
     
-    let query = supabase
+    let query = db
       .from("units")
       .select("*", { count: "exact" })
       .is("deleted_at", null)
       .order("nama", { ascending: true });
+
+    // Business scope: company user lihat data company-nya + template global
+    const scopeOr = companyScopeOr(scope);
+    if (scopeOr) {
+      query = query.or(scopeOr);
+    }
     
     // Search filter
     if (search) {
@@ -79,19 +91,24 @@ export async function GET(request: NextRequest) {
 // POST /api/purchasing/units
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createClient();
+    const db = await createServerPgClient();
+    const scope = await getApiUserScope();
+    const companyId = effectiveCompanyId(scope);
     const body = await request.json();
     
     // Validasi input
     const validated = unitSchema.parse(body);
     
-    // Cek kode unik
-    const { data: existing } = await supabase
+    // Cek kode unik dalam scope (company user vs global)
+    let existingQuery = db
       .from("units")
       .select("id")
       .eq("kode", validated.kode)
-      .is("deleted_at", null)
-      .single();
+      .is("deleted_at", null);
+    existingQuery = companyId
+      ? existingQuery.eq("company_id", companyId)
+      : existingQuery.is("company_id", null);
+    const { data: existing } = await existingQuery.maybeSingle();
     
     if (existing) {
       return Response.json(
@@ -101,10 +118,11 @@ export async function POST(request: NextRequest) {
     }
     
     // Insert data
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from("units")
       .insert({
         ...validated,
+        company_id: companyId,
         is_active: true,
       })
       .select()

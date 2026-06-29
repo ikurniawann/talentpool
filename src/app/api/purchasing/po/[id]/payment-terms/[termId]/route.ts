@@ -1,4 +1,4 @@
-import { createServiceClient } from "@/lib/supabase/service-client";
+import { createPgClient } from "@/lib/pg/create-client";
 
 function getErrorMessage(error: unknown, fallback: string) {
   return error instanceof Error ? error.message : fallback;
@@ -10,9 +10,9 @@ export async function DELETE(
 ) {
   try {
     const { id, termId } = await params;
-    const supabase = createServiceClient();
+    const db = createPgClient();
 
-    const { data: term, error: termError } = await supabase
+    const { data: term, error: termError } = await db
       .from("purchase_order_payment_terms")
       .select("id, purchase_order_id, paid_amount, status, is_active")
       .eq("id", termId)
@@ -34,7 +34,7 @@ export async function DELETE(
       );
     }
 
-    const { count, error: paymentError } = await supabase
+    const { count, error: paymentError } = await db
       .from("vendor_payments")
       .select("id", { count: "exact", head: true })
       .eq("payment_term_id", termId)
@@ -48,7 +48,7 @@ export async function DELETE(
       );
     }
 
-    const { error: updateError } = await supabase
+    const { error: updateError } = await db
       .from("purchase_order_payment_terms")
       .update({
         is_active: false,

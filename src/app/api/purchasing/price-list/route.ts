@@ -3,8 +3,15 @@
 // ============================================
 
 import { NextRequest } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { createServerPgClient } from "@/lib/pg/create-client";
 import { z } from "zod";
+import {
+  getApiUserScope,
+  companyScopeOr,
+  branchScopeOr,
+  effectiveCompanyId,
+  effectiveBranchId,
+} from "@/lib/api/scope";
 
 const priceListSchema = z.object({
   supplier_id: z.string().uuid("Supplier wajib dipilih"),
@@ -26,7 +33,7 @@ function getErrorMessage(error: unknown, fallback: string) {
 // GET /api/purchasing/price-list
 export async function GET(request: NextRequest) {
   try {
-    const supabase = await createClient();
+    const db = await createServerPgClient();
     const { searchParams } = new URL(request.url);
 
     const id = searchParams.get("id");
@@ -34,21 +41,21 @@ export async function GET(request: NextRequest) {
     const bahanBakuId = searchParams.get("bahan_baku_id") || searchParams.get("raw_material_id");
     const isActive = searchParams.get("is_active");
 
-    let query = supabase
+    let query = db
       .from("supplier_price_lists")
       .select(`
         *,
-        supplier:supplier_id (
+        supplier:suppliers!supplier_id (
           id,
           kode,
           nama_supplier
         ),
-        bahan_baku:bahan_baku_id (
+        bahan_baku:raw_materials!bahan_baku_id (
           id,
           kode,
           nama
         ),
-        satuan:satuan_id (
+        satuan:units!satuan_id (
           id,
           kode,
           nama
@@ -76,6 +83,12 @@ export async function GET(request: NextRequest) {
       .order("is_preferred", { ascending: false })
       .order("created_at", { ascending: false });
 
+    const scope = await getApiUserScope();
+    const companyOr = companyScopeOr(scope);
+    if (companyOr) query = query.or(companyOr);
+    const branchOr = branchScopeOr(scope);
+    if (branchOr) query = query.or(branchOr);
+
     if (supplierId) {
       query = query.eq("supplier_id", supplierId);
     }
@@ -100,11 +113,14 @@ export async function GET(request: NextRequest) {
 // POST /api/purchasing/price-list
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createClient();
+    const db = await createServerPgClient();
     const body = await request.json();
 
     // Validasi input
     const validated = priceListSchema.parse(body);
+    const scope = await getApiUserScope();
+    const companyId = effectiveCompanyId(scope);
+    const branchId = effectiveBranchId(scope);
 
     // Set default berlaku_dari to today if not provided
     if (!validated.berlaku_dari) {
@@ -112,7 +128,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (validated.satuan_id) {
-      const { data: conversion, error: conversionError } = await supabase
+      const { data: conversion, error: conversionError } = await db
         .from("raw_material_unit_conversions")
         .select("id")
         .eq("raw_material_id", validated.bahan_baku_id)
@@ -130,10 +146,12 @@ export async function POST(request: NextRequest) {
     }
 
     // Insert new price list
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from("supplier_price_lists")
       .insert({
         ...validated,
+        company_id: companyId,
+        branch_id: branchId,
         is_active: true,
       })
       .select()

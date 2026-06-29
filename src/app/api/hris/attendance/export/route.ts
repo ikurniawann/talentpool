@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { createServerPgClient } from "@/lib/pg/create-client";
 import { ApiError, requireApiRole } from '@/lib/api/auth';
 
 // Bulk attendance export is HR-only.
@@ -12,7 +12,7 @@ const HR_EXPORT_ROLES = ['super_admin', 'hrd'] as const;
 export async function GET(request: NextRequest) {
   try {
     await requireApiRole([...HR_EXPORT_ROLES]);
-    const supabase = await createClient();
+    const db = await createServerPgClient();
     
     // Get query params
     const searchParams = request.nextUrl.searchParams;
@@ -23,7 +23,7 @@ export async function GET(request: NextRequest) {
     const format = searchParams.get('format') || 'csv';
 
     // Build query
-    let query = supabase
+    let query = db
       .from('attendance')
       .select(`
         id,

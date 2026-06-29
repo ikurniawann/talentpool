@@ -3,8 +3,15 @@
 // ============================================
 
 import { NextRequest } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { createServerPgClient } from "@/lib/pg/create-client";
 import { z } from "zod";
+import {
+  getApiUserScope,
+  companyScopeOr,
+  branchScopeOr,
+  effectiveCompanyId,
+  effectiveBranchId,
+} from "@/lib/api/scope";
 
 const productSchema = z.object({
   kode: z.string().max(20).optional(),
@@ -24,7 +31,8 @@ function getErrorMessage(error: unknown, fallback: string) {
 // GET /api/purchasing/products
 export async function GET(request: NextRequest) {
   try {
-    const supabase = await createClient();
+    const db = await createServerPgClient();
+    const scope = await getApiUserScope();
     const { searchParams } = new URL(request.url);
 
     const search = searchParams.get("search");
@@ -32,10 +40,16 @@ export async function GET(request: NextRequest) {
     const page = parseInt(searchParams.get("page") || "1");
     const limit = parseInt(searchParams.get("limit") || "20");
 
-    let query = supabase
+    let query = db
       .from("v_products_cogs")
       .select("*", { count: "exact" })
       .is("deleted_at", null);
+
+    // Business scope: company + branch (produk level branch)
+    const companyOr = companyScopeOr(scope);
+    if (companyOr) query = query.or(companyOr);
+    const branchOr = branchScopeOr(scope);
+    if (branchOr) query = query.or(branchOr);
 
     if (search) {
       query = query.or(`nama.ilike.%${search}%,kode.ilike.%${search}%`);
@@ -75,7 +89,10 @@ export async function GET(request: NextRequest) {
 // POST /api/purchasing/products
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createClient();
+    const db = await createServerPgClient();
+    const scope = await getApiUserScope();
+    const companyId = effectiveCompanyId(scope);
+    const branchId = effectiveBranchId(scope);
     const body = await request.json();
 
     const validated = productSchema.parse(body);
@@ -87,7 +104,7 @@ export async function POST(request: NextRequest) {
       const date = new Date().toISOString().slice(0, 10).replace(/-/g, '');
       
       // Get last product code for today
-      const { data: productsToday } = await supabase
+      const { data: productsToday } = await db
         .from("products")
         .select("kode")
         .like("kode", `PRD-${date}-%`)
@@ -103,13 +120,19 @@ export async function POST(request: NextRequest) {
       
       kode = `PRD-${date}-${String(seqNum).padStart(3, '0')}`;
     } else {
-      // Cek kode unik jika disediakan manual
-      const { data: existing } = await supabase
+      // Cek kode unik dalam scope (company + branch)
+      let existingQuery = db
         .from("products")
         .select("id")
         .eq("kode", kode)
-        .is("deleted_at", null)
-        .single();
+        .is("deleted_at", null);
+      existingQuery = companyId
+        ? existingQuery.eq("company_id", companyId)
+        : existingQuery.is("company_id", null);
+      existingQuery = branchId
+        ? existingQuery.eq("branch_id", branchId)
+        : existingQuery.is("branch_id", null);
+      const { data: existing } = await existingQuery.maybeSingle();
 
       if (existing) {
         return Response.json(
@@ -119,11 +142,13 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from("products")
       .insert({
         ...validated,
         kode,
+        company_id: companyId,
+        branch_id: branchId,
         is_active: true,
       })
       .select()

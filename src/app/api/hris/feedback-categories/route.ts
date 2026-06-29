@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createAdminClient } from '@/lib/supabase/admin';
+import { createPgClient } from "@/lib/pg/create-client";
 
 export async function GET() {
   try {
-    const supabase = createAdminClient();
+    const db = createPgClient();
 
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from('feedback_categories')
       .select(`
         *,
@@ -25,10 +25,10 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = createAdminClient();
+    const db = createPgClient();
     const body = await request.json();
 
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from('feedback_categories')
       .insert(body)
       .select()

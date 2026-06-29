@@ -178,7 +178,7 @@ export function EmployeeTable({ initialData }: EmployeeTableProps) {
                   </TableCell>
                   <TableCell className="text-right">
                     <Button variant="ghost" size="sm" asChild>
-                      <a href={`/dashboard/hris/employees/${employee.id}`}>
+                      <a href={`/dashboard/employees/${employee.id}`}>
                         Detail
                       </a>
                     </Button>

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getPosSession } from "@/lib/api/auth";
-import { createServiceClient } from "@/lib/supabase/service-client";
+import { createPgClient } from "@/lib/pg/create-client";
 import { apiErrorResponse, isMissingCrmSchema, toNumber, validationErrorResponse } from "@/lib/crm/server";
 
 const redemptionSchema = z.object({
@@ -80,12 +80,12 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const supabase = createServiceClient();
+    const db = createPgClient();
     const memberId = request.nextUrl.searchParams.get("member_id");
     const customerId = request.nextUrl.searchParams.get("customer_id");
     const status = request.nextUrl.searchParams.get("status");
 
-    let query = supabase
+    let query = db
       .from("crm_redemptions")
       .select("*, reward:crm_rewards(id, code, name, reward_type, xp_cost), member:crm_member_profiles(id, member_code, customer_id)")
       .order("requested_at", { ascending: false })
@@ -118,9 +118,9 @@ export async function POST(request: NextRequest) {
 
   try {
     const payload = redemptionSchema.parse(await request.json());
-    const supabase = createServiceClient();
+    const db = createPgClient();
 
-    let memberQuery = supabase
+    let memberQuery = db
       .from("crm_member_profiles")
       .select("id, customer_id, tier_id, current_xp, lifetime_xp, spent_xp, tier:crm_membership_tiers(id, code, name, rank)")
       .eq("status", "active");
@@ -148,7 +148,7 @@ export async function POST(request: NextRequest) {
     }
 
     const member = normalizeMemberRow(memberData as unknown as MemberQueryRow);
-    const { data: rewardData, error: rewardError } = await supabase
+    const { data: rewardData, error: rewardError } = await db
       .from("crm_rewards")
       .select("*, required_tier:crm_membership_tiers(id, code, name, rank)")
       .eq("id", payload.reward_id)
@@ -194,7 +194,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (maxPerMember) {
-      const { count, error: countError } = await supabase
+      const { count, error: countError } = await db
         .from("crm_redemptions")
         .select("id", { count: "exact", head: true })
         .eq("member_id", member.id)
@@ -208,7 +208,7 @@ export async function POST(request: NextRequest) {
     }
 
     const voucherCode = shouldGenerateVoucher(reward.reward_type) ? makeVoucherCode(reward.code) : null;
-    const { data: redemption, error: redemptionError } = await supabase
+    const { data: redemption, error: redemptionError } = await db
       .from("crm_redemptions")
       .insert({
         member_id: member.id,
@@ -229,7 +229,7 @@ export async function POST(request: NextRequest) {
     if (redemptionError) throw redemptionError;
 
     const balanceAfter = currentXp - xpCost;
-    const { data: ledger, error: ledgerError } = await supabase
+    const { data: ledger, error: ledgerError } = await db
       .from("crm_xp_ledger")
       .insert({
         member_id: member.id,
@@ -257,7 +257,7 @@ export async function POST(request: NextRequest) {
 
     if (ledgerError) throw ledgerError;
 
-    const { error: memberUpdateError } = await supabase
+    const { error: memberUpdateError } = await db
       .from("crm_member_profiles")
       .update({
         current_xp: balanceAfter,
@@ -269,7 +269,7 @@ export async function POST(request: NextRequest) {
     if (memberUpdateError) throw memberUpdateError;
 
     if (member.customer_id) {
-      const { error: customerUpdateError } = await supabase
+      const { error: customerUpdateError } = await db
         .from("pos_customers")
         .update({ current_xp: balanceAfter })
         .eq("id", member.customer_id);
@@ -278,7 +278,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (stockTotal !== null) {
-      const { error: rewardUpdateError } = await supabase
+      const { error: rewardUpdateError } = await db
         .from("crm_rewards")
         .update({ stock_redeemed: stockRedeemed + 1 })
         .eq("id", reward.id);
@@ -286,7 +286,7 @@ export async function POST(request: NextRequest) {
       if (rewardUpdateError) throw rewardUpdateError;
     }
 
-    const { data: approvedRedemption, error: approveError } = await supabase
+    const { data: approvedRedemption, error: approveError } = await db
       .from("crm_redemptions")
       .update({
         status: "approved",

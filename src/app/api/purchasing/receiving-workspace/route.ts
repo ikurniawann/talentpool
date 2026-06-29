@@ -1,4 +1,4 @@
-import { createServiceClient } from "@/lib/supabase/service-client";
+import { createPgClient } from "@/lib/pg/create-client";
 
 function getErrorMessage(error: unknown, fallback: string) {
   return error instanceof Error ? error.message : fallback;
@@ -6,21 +6,21 @@ function getErrorMessage(error: unknown, fallback: string) {
 
 export async function GET() {
   try {
-    const supabase = createServiceClient();
+    const db = createPgClient();
 
     const [poResult, deliveryResult, grnResult] = await Promise.all([
-      supabase
+      db
         .from("v_purchase_orders")
         .select("*")
         .order("created_at", { ascending: false })
         .limit(200),
-      supabase
+      db
         .from("deliveries")
         .select("*")
         .eq("is_active", true)
         .order("created_at", { ascending: false })
         .limit(200),
-      supabase
+      db
         .from("grn")
         .select("*")
         .eq("is_active", true)
@@ -49,10 +49,10 @@ export async function GET() {
 
     const [deliveryPoResult, supplierResult] = await Promise.all([
       poIds.length > 0
-        ? supabase.from("purchase_orders").select("id, nomor_po").in("id", poIds)
+        ? db.from("purchase_orders").select("id, nomor_po").in("id", poIds)
         : Promise.resolve({ data: [], error: null }),
       supplierIds.length > 0
-        ? supabase.from("suppliers").select("id, nama_supplier").in("id", supplierIds)
+        ? db.from("suppliers").select("id, nama_supplier").in("id", supplierIds)
         : Promise.resolve({ data: [], error: null }),
     ]);
 

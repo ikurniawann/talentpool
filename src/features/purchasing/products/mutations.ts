@@ -1,0 +1,91 @@
+"use client";
+
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import type {
+  ProductFormData,
+  BOMItemFormData,
+} from "@/types/purchasing";
+import {
+  createProduct,
+  updateProduct,
+  updateProductStatus,
+  deleteProduct,
+  createBOMItem,
+  updateBOMItem,
+  deleteBOMItem,
+} from "./api";
+import { productsQueryKeys } from "./query-keys";
+
+export const useCreateProduct = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: ProductFormData) => createProduct(payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: productsQueryKeys.all });
+    },
+  });
+};
+
+export const useUpdateProduct = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, payload }: { id: string; payload: Partial<ProductFormData> }) =>
+      updateProduct(id, payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: productsQueryKeys.all });
+    },
+  });
+};
+
+export const useUpdateProductStatus = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, isActive }: { id: string; isActive: boolean }) =>
+      updateProductStatus(id, isActive),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: productsQueryKeys.all });
+    },
+  });
+};
+
+export const useDeleteProduct = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => deleteProduct(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: productsQueryKeys.all });
+    },
+  });
+};
+
+export const useCreateBOMItem = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ productId, payload }: { productId: string; payload: BOMItemFormData }) =>
+      createBOMItem(productId, payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: productsQueryKeys.all });
+    },
+  });
+};
+
+export const useUpdateBOMItem = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, payload }: { id: string; payload: Partial<BOMItemFormData> }) =>
+      updateBOMItem(id, payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: productsQueryKeys.all });
+    },
+  });
+};
+
+export const useDeleteBOMItem = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => deleteBOMItem(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: productsQueryKeys.all });
+    },
+  });
+};

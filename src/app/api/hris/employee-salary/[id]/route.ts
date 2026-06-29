@@ -6,7 +6,7 @@
 // ============================================================
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { createServerPgClient } from "@/lib/pg/create-client";
 import { ApiError, requireApiRole } from '@/lib/api/auth';
 
 // Salary is sensitive financial PII — restrict to HR/finance roles only.
@@ -23,10 +23,10 @@ interface RouteParams {
 export async function GET(request: NextRequest, { params }: RouteParams) {
   try {
     await requireApiRole([...SALARY_ROLES]);
-    const supabase = await createClient();
+    const db = await createServerPgClient();
     const { id } = await params;
 
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from('employee_salary')
       .select(`
         *,
@@ -82,7 +82,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 export async function PUT(request: NextRequest, { params }: RouteParams) {
   try {
     await requireApiRole([...SALARY_ROLES]);
-    const supabase = await createClient();
+    const db = await createServerPgClient();
     const { id } = await params;
     const body = await request.json();
 
@@ -116,7 +116,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
       }
     }
 
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from('employee_salary')
       .update(updateData)
       .eq('id', id)
@@ -161,11 +161,11 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
 export async function DELETE(request: NextRequest, { params }: RouteParams) {
   try {
     await requireApiRole([...SALARY_ROLES]);
-    const supabase = await createClient();
+    const db = await createServerPgClient();
     const { id } = await params;
 
     // Soft delete by setting is_active = false
-    const { error } = await supabase
+    const { error } = await db
       .from('employee_salary')
       .update({ 
         is_active: false,

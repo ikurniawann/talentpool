@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getPosSession } from "@/lib/api/auth";
-import { createServiceClient } from "@/lib/supabase/service-client";
+import { createPgClient } from "@/lib/pg/create-client";
 import { apiErrorResponse, isMissingCrmSchema, toNumber, validationErrorResponse } from "@/lib/crm/server";
 
 const POS_CUSTOMER_COLUMNS = "id, name, phone, email, membership_tier, ark_coin_balance, total_xp, current_xp, total_spent, visit_count, is_active";
@@ -156,15 +156,15 @@ export async function GET(
   }
 
   try {
-    const supabase = createServiceClient();
+    const db = createPgClient();
     const { id } = await params;
     const customerFallbackId = id.startsWith("pos-") ? id.replace("pos-", "") : id;
 
     if (!isUuid(id)) {
-      return getSyntheticCustomerDetail(supabase, customerFallbackId);
+      return getSyntheticCustomerDetail(db, customerFallbackId);
     }
 
-    const { data: profile, error: profileError } = await supabase
+    const { data: profile, error: profileError } = await db
       .from("crm_member_profiles")
       .select("*, tier:crm_membership_tiers(id, code, name, rank, xp_multiplier, discount_percent, min_lifetime_xp, min_total_spend)")
       .or(`id.eq.${id},customer_id.eq.${id}`)
@@ -181,17 +181,17 @@ export async function GET(
     }
 
     if (!profile) {
-      return getSyntheticCustomerDetail(supabase, customerFallbackId);
+      return getSyntheticCustomerDetail(db, customerFallbackId);
     }
 
     const profileRow = profile as MemberProfileRow;
-    const { data: customer } = await supabase
+    const { data: customer } = await db
       .from("pos_customers")
       .select(POS_CUSTOMER_COLUMNS)
       .eq("id", profileRow.customer_id)
       .maybeSingle();
 
-    const { data: ledgerRows, error: ledgerError } = await supabase
+    const { data: ledgerRows, error: ledgerError } = await db
       .from("crm_xp_ledger")
       .select("id, direction, source_channel, source_type, source_id, xp_delta, balance_after, description, reference_table, reference_id, created_at")
       .eq("member_id", profileRow.id)
@@ -200,7 +200,7 @@ export async function GET(
 
     if (ledgerError) throw ledgerError;
 
-    const { data: orders } = await supabase
+    const { data: orders } = await db
       .from("pos_orders")
       .select("id, order_number, total_amount, payment_status, status, ordered_at")
       .eq("customer_id", profileRow.customer_id)
@@ -233,13 +233,13 @@ export async function PATCH(
 
   try {
     const payload = updateMemberSchema.parse(await request.json());
-    const supabase = createServiceClient();
+    const db = createPgClient();
     const { id } = await params;
     const customerFallbackId = id.startsWith("pos-") ? id.replace("pos-", "") : id;
 
     let profile: MemberProfileRow | null = null;
     if (isUuid(id)) {
-      const { data: profileData, error: profileError } = await supabase
+      const { data: profileData, error: profileError } = await db
         .from("crm_member_profiles")
         .select("*, tier:crm_membership_tiers(id, code, name, rank, xp_multiplier, discount_percent, min_lifetime_xp, min_total_spend)")
         .or(`id.eq.${id},customer_id.eq.${id}`)
@@ -265,7 +265,7 @@ export async function PATCH(
         email: payload.customer.email === "" ? null : payload.customer.email,
       };
 
-      const { error: customerUpdateError } = await supabase
+      const { error: customerUpdateError } = await db
         .from("pos_customers")
         .update(customerUpdate)
         .eq("id", customerId);
@@ -279,7 +279,7 @@ export async function PATCH(
         last_activity_at: new Date().toISOString(),
       };
 
-      const { error: memberUpdateError } = await supabase
+      const { error: memberUpdateError } = await db
         .from("crm_member_profiles")
         .update(memberUpdate)
         .eq("id", profile.id);
@@ -288,14 +288,14 @@ export async function PATCH(
     }
 
     if (payload.member?.tier_id) {
-      const { data: tier } = await supabase
+      const { data: tier } = await db
         .from("crm_membership_tiers")
         .select("code")
         .eq("id", payload.member.tier_id)
         .maybeSingle();
 
       if ((tier as { code?: string } | null)?.code) {
-        await supabase
+        await db
           .from("pos_customers")
           .update({ membership_tier: (tier as { code: string }).code })
           .eq("id", customerId);
@@ -303,7 +303,7 @@ export async function PATCH(
     }
 
     const detailId = profile?.id ?? (id.startsWith("pos-") ? id : customerId);
-    return getMemberDetail(supabase, detailId);
+    return getMemberDetail(db, detailId);
   } catch (error) {
     const validation = validationErrorResponse(error);
     if (validation) return validation;
@@ -314,26 +314,26 @@ export async function PATCH(
 }
 
 async function getMemberDetail(
-  supabase: ReturnType<typeof createServiceClient>,
+  db: import("@/lib/pg/types").DbClient,
   id: string
 ) {
   const customerFallbackId = id.startsWith("pos-") ? id.replace("pos-", "") : id;
 
   if (!isUuid(id)) {
-    return getSyntheticCustomerDetail(supabase, customerFallbackId);
+    return getSyntheticCustomerDetail(db, customerFallbackId);
   }
 
-  const { data: profile, error: profileError } = await supabase
+  const { data: profile, error: profileError } = await db
     .from("crm_member_profiles")
     .select("*, tier:crm_membership_tiers(id, code, name, rank, xp_multiplier, discount_percent, min_lifetime_xp, min_total_spend)")
     .or(`id.eq.${id},customer_id.eq.${id}`)
     .maybeSingle();
 
   if (profileError) throw profileError;
-  if (!profile) return getSyntheticCustomerDetail(supabase, customerFallbackId);
+  if (!profile) return getSyntheticCustomerDetail(db, customerFallbackId);
 
   const profileRow = profile as MemberProfileRow;
-  const { data: customer } = await supabase
+  const { data: customer } = await db
     .from("pos_customers")
     .select(POS_CUSTOMER_COLUMNS)
     .eq("id", profileRow.customer_id)
@@ -349,10 +349,10 @@ async function getMemberDetail(
 }
 
 async function getSyntheticCustomerDetail(
-  supabase: ReturnType<typeof createServiceClient>,
+  db: import("@/lib/pg/types").DbClient,
   customerId: string
 ) {
-  const { data: customer, error: customerError } = await supabase
+  const { data: customer, error: customerError } = await db
     .from("pos_customers")
     .select(POS_CUSTOMER_COLUMNS)
     .eq("id", customerId)
@@ -363,7 +363,7 @@ async function getSyntheticCustomerDetail(
     return NextResponse.json({ success: false, error: "Member tidak ditemukan" }, { status: 404 });
   }
 
-  const { data: orders } = await supabase
+  const { data: orders } = await db
     .from("pos_orders")
     .select("id, order_number, total_amount, payment_status, status, ordered_at")
     .eq("customer_id", customerId)

@@ -30,10 +30,10 @@ Import data dari `KPI_360_Combined_Dummy.xlsx` ke database 360° Feedback System
 
 ## Import Steps
 
-### Option 1: Supabase Dashboard (Recommended)
+### Option 1: admin database (Recommended)
 
 ```
-1. Buka https://app.supabase.com
+1. Buka PostgreSQL admin
 2. Pilih project "talentpool"
 3. SQL Editor
 4. Copy semua isi file: migrations/006_import_80_employees_with_feedback.sql
@@ -187,7 +187,7 @@ VALUES ('7b8c9563-60e3-4e11-9233-5ef98fec9dc8', 'Q1 2026 Performance Review', 'Q
 ## Support
 
 If you encounter issues:
-1. Check Supabase logs
+1. Check PostgreSQL / app logs
 2. Verify table schema matches migration 003
 3. Ensure cycle exists before importing summaries
 4. Contact: Bang Ilham

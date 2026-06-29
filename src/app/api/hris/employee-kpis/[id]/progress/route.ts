@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { createServerPgClient } from "@/lib/pg/create-client";
 
 /**
  * GET /api/hris/employee-kpis/:id/progress
@@ -10,10 +10,10 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const supabase = await createClient();
+    const db = await createServerPgClient();
     
     // Check authentication
-    const { data: { user } } = await supabase.auth.getUser();
+    const { data: { user } } = await db.auth.getUser();
     if (!user) {
       return NextResponse.json(
         { error: 'Unauthorized' },
@@ -24,7 +24,7 @@ export async function GET(
     const { id: employeeKpiId } = await params;
 
     // Get progress updates with updater info
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from('kpi_progress_updates')
       .select(`
         *,
@@ -62,10 +62,10 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const supabase = await createClient();
+    const db = await createServerPgClient();
     
     // Check authentication
-    const { data: { user } } = await supabase.auth.getUser();
+    const { data: { user } } = await db.auth.getUser();
     if (!user) {
       return NextResponse.json(
         { error: 'Unauthorized' },
@@ -86,14 +86,14 @@ export async function POST(
     }
 
     // Get current employee ID
-    const { data: currentEmployee } = await supabase
+    const { data: currentEmployee } = await db
       .from('employees')
       .select('id')
       .eq('user_id', user.id)
       .single();
 
     // Insert progress update
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from('kpi_progress_updates')
       .insert({
         employee_kpi_id: employeeKpiId,
@@ -114,7 +114,7 @@ export async function POST(
     }
 
     // Update employee_kpis with latest actual_value and calculate achievement
-    const { data: kpiData } = await supabase
+    const { data: kpiData } = await db
       .from('employee_kpis')
       .select('target, unit')
       .eq('id', employeeKpiId)
@@ -123,7 +123,7 @@ export async function POST(
     if (kpiData && kpiData.target) {
       const achievement_percentage = (actual_value / kpiData.target) * 100;
       
-      await supabase
+      await db
         .from('employee_kpis')
         .update({
           actual_value,

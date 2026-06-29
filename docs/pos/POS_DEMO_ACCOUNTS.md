@@ -32,13 +32,13 @@ Setelah login, akses POS di:
 
 ## Setup
 
-Untuk membuat account ini di Supabase, jalankan seed script:
+Untuk membuat account ini di PostgreSQL, jalankan seed script:
 
 ```bash
 npm run seed:pos-admin
 ```
 
-Atau manual via Supabase Dashboard:
+Atau manual via admin database:
 1. Go to Authentication → Users
 2. Add user dengan email & password di atas
 3. Set user metadata: `{"role": "pos_admin"}`

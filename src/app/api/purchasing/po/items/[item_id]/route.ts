@@ -3,7 +3,7 @@
 // ============================================
 
 import { NextRequest } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { createServerPgClient } from "@/lib/pg/create-client";
 import { z } from "zod";
 
 const poItemSchema = z.object({
@@ -25,14 +25,14 @@ export async function PUT(
 ) {
   try {
     const { item_id } = await params;
-    const supabase = await createClient();
+    const db = await createServerPgClient();
     const body = await request.json();
 
     // Validasi input
     const validated = poItemSchema.parse(body);
 
     // Get item dengan info PO
-    const { data: item, error: findError } = await supabase
+    const { data: item, error: findError } = await db
       .from("purchase_order_items")
       .select(`
         *,
@@ -57,7 +57,7 @@ export async function PUT(
     }
 
     // Update item
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from("purchase_order_items")
       .update({
         ...validated,
@@ -102,10 +102,10 @@ export async function DELETE(
 ) {
   try {
     const { item_id } = await params;
-    const supabase = await createClient();
+    const db = await createServerPgClient();
 
     // Get item dengan info PO
-    const { data: item, error: findError } = await supabase
+    const { data: item, error: findError } = await db
       .from("purchase_order_items")
       .select(`
         *,
@@ -130,7 +130,7 @@ export async function DELETE(
     }
 
     // Soft delete
-    const { error } = await supabase
+    const { error } = await db
       .from("purchase_order_items")
       .update({ is_active: false })
       .eq("id", item_id);

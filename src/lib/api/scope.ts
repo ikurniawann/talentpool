@@ -1,0 +1,195 @@
+import { queryOne } from "@/lib/db";
+import { createServerPgClient } from "@/lib/pg/create-client";
+import type { BusinessScopeLevel } from "@/lib/configuration/business-scope";
+
+export interface UserScope {
+  userId: string;
+  role: string | null;
+  businessScope: BusinessScopeLevel | null;
+  holdingId: string | null;
+  companyId: string | null;
+  branchId: string | null;
+  /** true bila user tidak dibatasi scope (super_admin atau tanpa scope). */
+  isUnscoped: boolean;
+}
+
+/**
+ * Resolusi scope bisnis (holding/company/branch) untuk user yang sedang login.
+ * Dipakai di API route untuk memfilter & mengisi data master/operasional.
+ */
+export async function getApiUserScope(): Promise<UserScope | null> {
+  const db = await createServerPgClient();
+  const {
+    data: { user },
+  } = await db.auth.getUser();
+  if (!user) return null;
+
+  const profile = await queryOne<{
+    role: string | null;
+    business_scope: BusinessScopeLevel | null;
+    holding_id: string | null;
+    company_id: string | null;
+    branch_id: string | null;
+  }>(
+    `SELECT role, business_scope, holding_id, company_id, branch_id
+     FROM configuration.users
+     WHERE id = $1`,
+    [user.id]
+  );
+
+  const role = profile?.role ?? null;
+  const businessScope = profile?.business_scope ?? null;
+  const companyId = profile?.company_id ?? null;
+  const branchId = profile?.branch_id ?? null;
+
+  const isUnscoped = role === "super_admin" || !businessScope;
+
+  return {
+    userId: user.id,
+    role,
+    businessScope,
+    holdingId: profile?.holding_id ?? null,
+    companyId,
+    branchId,
+    isUnscoped,
+  };
+}
+
+/**
+ * company_id efektif untuk menyimpan data master level company.
+ * - User bercope company/branch → company miliknya.
+ * - User unscoped → null (template global).
+ */
+export function effectiveCompanyId(scope: UserScope | null): string | null {
+  if (!scope || scope.isUnscoped) return null;
+  return scope.companyId;
+}
+
+/**
+ * branch_id efektif untuk data master/operasional level branch.
+ * - User branch → branch miliknya.
+ * - selain itu → null.
+ */
+export function effectiveBranchId(scope: UserScope | null): string | null {
+  if (!scope || scope.isUnscoped) return null;
+  if (scope.businessScope === "branch") return scope.branchId;
+  return null;
+}
+
+/**
+ * Ekspresi `.or()` untuk membaca data master level company:
+ * tampilkan baris milik company user + baris global (company_id IS NULL).
+ * Mengembalikan null bila user unscoped (lihat semua, tanpa filter).
+ */
+export function companyScopeOr(scope: UserScope | null): string | null {
+  const companyId = effectiveCompanyId(scope);
+  if (!companyId) return null;
+  return `company_id.eq.${companyId},company_id.is.null`;
+}
+
+/**
+ * Ekspresi `.or()` untuk membaca data master level branch:
+ * tampilkan baris milik branch user + baris tanpa branch (branch_id IS NULL).
+ * Hanya berlaku untuk user bercope branch; selain itu null.
+ */
+export function branchScopeOr(scope: UserScope | null): string | null {
+  const branchId = effectiveBranchId(scope);
+  if (!branchId) return null;
+  return `branch_id.eq.${branchId},branch_id.is.null`;
+}
+
+export async function resolveBusinessScopeFromWarehouse(
+  warehouseId: string
+): Promise<{ company_id: string; branch_id: string } | null> {
+  return queryOne<{ company_id: string; branch_id: string }>(
+    `SELECT c.id AS company_id, b.id AS branch_id
+     FROM configuration.warehouses w
+     JOIN configuration.branches b ON b.id = w.branch_id
+     JOIN configuration.companies c ON c.id = b.company_id
+     WHERE w.id = $1
+       AND w.is_active = true
+       AND b.is_active = true
+       AND c.is_active = true`,
+    [warehouseId]
+  );
+}
+
+export async function resolveBusinessScopeByCodes(
+  companyCode: string,
+  branchCode: string
+): Promise<{ company_id: string; branch_id: string } | null> {
+  return queryOne<{ company_id: string; branch_id: string }>(
+    `SELECT c.id AS company_id, b.id AS branch_id
+     FROM configuration.companies c
+     JOIN configuration.branches b ON b.company_id = c.id
+     WHERE c.code = $1
+       AND b.code = $2
+       AND c.is_active = true
+       AND b.is_active = true`,
+    [companyCode, branchCode]
+  );
+}
+
+/**
+ * Branch filter untuk daftar/validasi gudang penerimaan:
+ * - User bercope branch → selalu branch milik user (abaikan context transaksi).
+ * - User unscoped (super_admin, dll.) → branch dari delivery/PO bila ada; null = semua gudang aktif.
+ */
+export function resolveWarehouseBranchFilter(
+  scope: UserScope | null,
+  contextBranchId?: string | null
+): string | null {
+  if (scope && !scope.isUnscoped && scope.businessScope === "branch" && scope.branchId) {
+    return scope.branchId;
+  }
+  return contextBranchId ?? null;
+}
+
+export type WarehouseReceivingScopeError =
+  | "not_found"
+  | "inactive"
+  | "branch_mismatch";
+
+export async function validateWarehouseForReceivingScope(
+  warehouseId: string,
+  scope: UserScope | null,
+  contextBranchId?: string | null
+): Promise<{ branch_id: string } | { error: WarehouseReceivingScopeError }> {
+  const expectedBranchId = resolveWarehouseBranchFilter(scope, contextBranchId);
+
+  const warehouse = await queryOne<{
+    id: string;
+    branch_id: string;
+    is_active: boolean;
+  }>(
+    `SELECT id, branch_id, is_active
+     FROM configuration.warehouses
+     WHERE id = $1`,
+    [warehouseId]
+  );
+
+  if (!warehouse) return { error: "not_found" };
+  if (!warehouse.is_active) return { error: "inactive" };
+  if (expectedBranchId && warehouse.branch_id !== expectedBranchId) {
+    return { error: "branch_mismatch" };
+  }
+
+  return { branch_id: warehouse.branch_id };
+}
+
+/**
+ * Cari warehouse default untuk sebuah branch (is_default, fallback yang aktif).
+ */
+export async function resolveDefaultWarehouseId(
+  branchId: string | null
+): Promise<string | null> {
+  if (!branchId) return null;
+  const row = await queryOne<{ id: string }>(
+    `SELECT id FROM configuration.warehouses
+     WHERE branch_id = $1 AND is_active = true
+     ORDER BY is_default DESC, created_at ASC
+     LIMIT 1`,
+    [branchId]
+  );
+  return row?.id ?? null;
+}

@@ -1,76 +1,76 @@
-import { createClient } from "@supabase/supabase-js";
+import fs from "fs/promises";
+import path from "path";
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+const UPLOAD_ROOT = path.join(process.cwd(), "storage", "uploads");
+
+async function ensureDir(dir: string) {
+  await fs.mkdir(dir, { recursive: true });
+}
 
 /**
- * Upload file to Supabase Storage
- * Uses service role key (server-side only)
+ * Upload file ke storage lokal (filesystem / object storage).
+ * File disimpan di storage/uploads/{bucket}/...
  */
 export async function uploadFile(
   bucket: string,
   file: File | Buffer,
   folder: string = ""
 ): Promise<{ url: string; error: string | null }> {
-  const supabase = createClient(supabaseUrl, supabaseServiceKey);
+  try {
+    const fileBuffer = file instanceof File ? Buffer.from(await file.arrayBuffer()) : file;
+    const timestamp = Date.now();
+    const random = Math.random().toString(36).substring(2, 8);
+    const ext = file instanceof File ? file.name.split(".").pop() ?? "bin" : "bin";
+    const fileName = folder
+      ? `${folder}/${timestamp}-${random}.${ext}`
+      : `${timestamp}-${random}.${ext}`;
 
-  const fileBuffer = file instanceof File ? Buffer.from(await file.arrayBuffer()) : file;
-  const timestamp = Date.now();
-  const random = Math.random().toString(36).substring(2, 8);
-  const ext = file instanceof File ? file.name.split(".").pop() ?? "bin" : "bin";
-  const fileName = folder
-    ? `${folder}/${timestamp}-${random}.${ext}`
-    : `${timestamp}-${random}.${ext}`;
+    const dir = path.join(UPLOAD_ROOT, bucket);
+    await ensureDir(dir);
+    const absPath = path.join(dir, fileName);
+    await fs.writeFile(absPath, fileBuffer);
 
-  const { data, error } = await supabase.storage
-    .from(bucket)
-    .upload(fileName, fileBuffer, {
-      contentType: file instanceof File ? file.type : "application/octet-stream",
-      upsert: false,
-    });
-
-  if (error) {
-    return { url: "", error: error.message };
+    const url = `/api/files/${bucket}/${fileName.split("/").map(encodeURIComponent).join("/")}`;
+    return { url, error: null };
+  } catch (err: any) {
+    return { url: "", error: err.message };
   }
-
-  // Get public URL
-  const { data: urlData } = supabase.storage.from(bucket).getPublicUrl(fileName);
-
-  return { url: urlData.publicUrl, error: null };
 }
 
-/**
- * Delete file from Supabase Storage
- */
 export async function deleteFile(bucket: string, fileUrl: string): Promise<{ error: string | null }> {
-  const supabase = createClient(supabaseUrl, supabaseServiceKey);
-
-  // Extract path from URL
-  const urlObj = new URL(fileUrl);
-  const pathParts = urlObj.pathname.split(`/storage/v1/object/${bucket}/`);
-  if (pathParts.length < 2) return { error: "Invalid file URL" };
-
-  const filePath = decodeURIComponent(pathParts[1]);
-
-  const { error } = await supabase.storage.from(bucket).remove([filePath]);
-
-  return { error: error?.message ?? null };
+  try {
+    const prefix = `/api/files/${bucket}/`;
+    const idx = fileUrl.indexOf(prefix);
+    if (idx === -1) return { error: "Invalid file URL" };
+    const rel = decodeURIComponent(fileUrl.slice(idx + prefix.length));
+    const absPath = path.join(UPLOAD_ROOT, bucket, rel);
+    await fs.unlink(absPath);
+    return { error: null };
+  } catch (err: any) {
+    return { error: err.message ?? null };
+  }
 }
 
-/**
- * Validate file type and size
- */
-export function validateFile(
-  file: File,
-  allowedMimeTypes: string[],
-  maxSizeBytes: number
-): string | null {
-  if (!allowedMimeTypes.includes(file.type)) {
-    return `Tipe file tidak valid. Allowed: ${allowedMimeTypes.join(", ")}`;
+export function getPublicUrl(bucket: string, filePath: string): string {
+  return `/api/files/${bucket}/${filePath.split("/").map(encodeURIComponent).join("/")}`;
+}
+
+const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
+const ALLOWED_TYPES = [
+  "application/pdf",
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "application/msword",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+];
+
+export function validateFile(file: File): { valid: boolean; error?: string } {
+  if (file.size > MAX_FILE_SIZE) {
+    return { valid: false, error: "Ukuran file maksimal 10 MB" };
   }
-  if (file.size > maxSizeBytes) {
-    const maxMB = Math.round(maxSizeBytes / 1024 / 1024);
-    return `Ukuran file terlalu besar. Maksimal ${maxMB}MB`;
+  if (!ALLOWED_TYPES.includes(file.type)) {
+    return { valid: false, error: "Tipe file tidak didukung" };
   }
-  return null;
+  return { valid: true };
 }

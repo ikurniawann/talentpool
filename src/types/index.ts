@@ -254,7 +254,7 @@ export interface ApiResponse<T> {
   message?: string;
 }
 
-// --- Supabase Database Row types (for Supabase JS returns) ---
+// --- Database row types (query builder returns) ---
 
 export type BrandRow = Brand;
 export type PositionRow = Position;

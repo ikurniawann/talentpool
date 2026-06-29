@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import {
   ArrowLeft,
   CheckCircle2,
@@ -17,52 +17,9 @@ import {
   Trash2,
   X,
 } from "lucide-react";
-
-type Tier = {
-  id: string;
-  code: string;
-  name: string;
-  rank: number;
-};
-
-type Avatar = {
-  id: string;
-  code: string;
-  name: string;
-  rarity: "common" | "rare" | "epic" | "legendary" | "limited";
-  image_url: string;
-  thumbnail_url: string | null;
-  required_tier_id: string | null;
-  required_tier?: Pick<Tier, "code" | "name" | "rank"> | null;
-  xp_cost: number;
-  stock_total: number | null;
-  stock_redeemed: number;
-  is_active: boolean;
-  created_at: string;
-};
-
-type AvatarsState = {
-  loading: boolean;
-  saving: boolean;
-  error: string | null;
-  message: string | null;
-  avatars: Avatar[];
-  tiers: Tier[];
-};
-
-type AvatarForm = {
-  id: string;
-  code: string;
-  name: string;
-  rarity: Avatar["rarity"];
-  image_url: string;
-  thumbnail_url: string;
-  required_tier_id: string;
-  xp_cost: number;
-  stock_total: string;
-  stock_redeemed: number;
-  is_active: boolean;
-};
+import type { Avatar, AvatarForm } from "../types";
+import { useAvatarsList } from "../queries";
+import { useDeleteAvatar, useSaveAvatar, useToggleAvatar } from "../mutations";
 
 const numberFormat = new Intl.NumberFormat("id-ID");
 
@@ -95,116 +52,67 @@ function rarityTone(rarity: Avatar["rarity"]) {
   return tones[rarity];
 }
 
-export default function CrmAvatarsPage() {
+export function CrmAvatarsPage() {
   const [search, setSearch] = useState("");
   const [rarityFilter, setRarityFilter] = useState("all");
   const [form, setForm] = useState<AvatarForm>(defaultForm);
-  const [deletingId, setDeletingId] = useState<string | null>(null);
-  const [togglingId, setTogglingId] = useState<string | null>(null);
-  const [state, setState] = useState<AvatarsState>({
-    loading: true,
-    saving: false,
+  const [feedback, setFeedback] = useState<{ error: string | null; message: string | null }>({
     error: null,
     message: null,
-    avatars: [],
-    tiers: [],
   });
 
-  const loadAvatars = useCallback(async () => {
-    setState((current) => ({ ...current, loading: true, error: null, message: null }));
+  const { data, isLoading, isFetching, error, refetch } = useAvatarsList({ rarity: rarityFilter });
+  const saveMutation = useSaveAvatar();
+  const toggleMutation = useToggleAvatar();
+  const deleteMutation = useDeleteAvatar();
 
-    try {
-      const params = new URLSearchParams();
-      if (rarityFilter !== "all") params.set("rarity", rarityFilter);
-
-      const [avatarsResponse, tiersResponse] = await Promise.all([
-        fetch(`/api/crm/avatars${params.toString() ? `?${params.toString()}` : ""}`, { cache: "no-store" }),
-        fetch("/api/crm/tiers", { cache: "no-store" }),
-      ]);
-      const [avatarsJson, tiersJson] = await Promise.all([
-        avatarsResponse.json(),
-        tiersResponse.json(),
-      ]);
-
-      if (!avatarsResponse.ok || !avatarsJson.success) {
-        throw new Error(avatarsJson.error || "Gagal memuat avatar");
-      }
-      if (!tiersResponse.ok || !tiersJson.success) {
-        throw new Error(tiersJson.error || "Gagal memuat tier");
-      }
-
-      setState((current) => ({
-        ...current,
-        loading: false,
-        avatars: avatarsJson.data ?? [],
-        tiers: tiersJson.data ?? [],
-      }));
-    } catch (error) {
-      setState((current) => ({
-        ...current,
-        loading: false,
-        error: error instanceof Error ? error.message : "Gagal memuat avatar",
-      }));
-    }
-  }, [rarityFilter]);
-
-  useEffect(() => {
-    void loadAvatars();
-  }, [loadAvatars]);
+  const avatars = data?.avatars ?? [];
+  const tiers = data?.tiers ?? [];
+  const loading = isLoading || isFetching;
+  const queryError = error instanceof Error ? error.message : null;
 
   const filteredAvatars = useMemo(() => {
     const term = search.trim().toLowerCase();
-    if (!term) return state.avatars;
+    if (!term) return avatars;
 
-    return state.avatars.filter((avatar) =>
+    return avatars.filter((avatar) =>
       `${avatar.code} ${avatar.name} ${avatar.rarity}`.toLowerCase().includes(term)
     );
-  }, [search, state.avatars]);
+  }, [search, avatars]);
 
   const summary = useMemo(() => ({
-    active: state.avatars.filter((avatar) => avatar.is_active).length,
-    stock: state.avatars.reduce((sum, avatar) => sum + (avatar.stock_total ?? 0), 0),
-    redeemed: state.avatars.reduce((sum, avatar) => sum + Number(avatar.stock_redeemed ?? 0), 0),
-  }), [state.avatars]);
+    active: avatars.filter((avatar) => avatar.is_active).length,
+    stock: avatars.reduce((sum, avatar) => sum + (avatar.stock_total ?? 0), 0),
+    redeemed: avatars.reduce((sum, avatar) => sum + Number(avatar.stock_redeemed ?? 0), 0),
+  }), [avatars]);
 
   async function saveAvatar() {
-    setState((current) => ({ ...current, saving: true, error: null, message: null }));
+    setFeedback({ error: null, message: null });
 
     try {
-      const response = await fetch("/api/crm/avatars", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          code: form.code,
-          name: form.name,
-          rarity: form.rarity,
-          image_url: form.image_url,
-          thumbnail_url: form.thumbnail_url || null,
-          required_tier_id: form.required_tier_id || null,
-          xp_cost: Math.max(0, Number(form.xp_cost) || 0),
-          stock_total: form.stock_total === "" ? null : Math.max(0, Number(form.stock_total) || 0),
-          stock_redeemed: Math.max(0, Number(form.stock_redeemed) || 0),
-          starts_at: null,
-          ends_at: null,
-          is_active: form.is_active,
-          metadata: {},
-        }),
+      await saveMutation.mutateAsync({
+        code: form.code,
+        name: form.name,
+        rarity: form.rarity,
+        image_url: form.image_url,
+        thumbnail_url: form.thumbnail_url || null,
+        required_tier_id: form.required_tier_id || null,
+        xp_cost: Math.max(0, Number(form.xp_cost) || 0),
+        stock_total: form.stock_total === "" ? null : Math.max(0, Number(form.stock_total) || 0),
+        stock_redeemed: Math.max(0, Number(form.stock_redeemed) || 0),
+        starts_at: null,
+        ends_at: null,
+        is_active: form.is_active,
+        metadata: {},
       });
-      const json = await response.json();
-
-      if (!response.ok || !json.success) {
-        throw new Error(json.error || "Gagal menyimpan avatar");
-      }
 
       setForm(defaultForm);
-      await loadAvatars();
-      setState((current) => ({ ...current, saving: false, message: "Avatar berhasil disimpan." }));
-    } catch (error) {
-      setState((current) => ({
-        ...current,
-        saving: false,
-        error: error instanceof Error ? error.message : "Gagal menyimpan avatar",
-      }));
+      setFeedback({ error: null, message: "Avatar berhasil disimpan." });
+    } catch (err) {
+      setFeedback({
+        error: err instanceof Error ? err.message : "Gagal menyimpan avatar",
+        message: null,
+      });
     }
   }
 
@@ -241,58 +149,37 @@ export default function CrmAvatarsPage() {
   }
 
   async function toggleAvatarActive(avatar: Avatar) {
-    setTogglingId(avatar.id);
-    setState((current) => ({ ...current, error: null, message: null }));
+    setFeedback({ error: null, message: null });
 
     try {
-      const response = await fetch("/api/crm/avatars", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(avatarPayloadFromAvatar(avatar, { is_active: !avatar.is_active })),
-      });
-      const json = await response.json();
-
-      if (!response.ok || !json.success) {
-        throw new Error(json.error || "Gagal update status avatar");
-      }
-
+      await toggleMutation.mutateAsync(avatar);
       if (form.id === avatar.id) {
         setForm((current) => ({ ...current, is_active: !avatar.is_active }));
       }
-      await loadAvatars();
-      setState((current) => ({ ...current, message: `Avatar ${avatar.name} ${avatar.is_active ? "dinonaktifkan" : "diaktifkan"}.` }));
-    } catch (error) {
-      setState((current) => ({
-        ...current,
-        error: error instanceof Error ? error.message : "Gagal update status avatar",
-      }));
-    } finally {
-      setTogglingId(null);
+      setFeedback({
+        error: null,
+        message: `Avatar ${avatar.name} ${avatar.is_active ? "dinonaktifkan" : "diaktifkan"}.`,
+      });
+    } catch (err) {
+      setFeedback({
+        error: err instanceof Error ? err.message : "Gagal update status avatar",
+        message: null,
+      });
     }
   }
 
-  async function deleteAvatar(avatar: Avatar) {
-    setDeletingId(avatar.id);
-    setState((current) => ({ ...current, error: null, message: null }));
+  async function deleteAvatarHandler(avatar: Avatar) {
+    setFeedback({ error: null, message: null });
 
     try {
-      const response = await fetch(`/api/crm/avatars?id=${avatar.id}`, { method: "DELETE" });
-      const json = await response.json();
-
-      if (!response.ok || !json.success) {
-        throw new Error(json.error || "Gagal hapus avatar");
-      }
-
+      await deleteMutation.mutateAsync(avatar.id);
       if (form.id === avatar.id) setForm(defaultForm);
-      await loadAvatars();
-      setState((current) => ({ ...current, message: `Avatar ${avatar.name} berhasil dihapus.` }));
-    } catch (error) {
-      setState((current) => ({
-        ...current,
-        error: error instanceof Error ? error.message : "Gagal hapus avatar",
-      }));
-    } finally {
-      setDeletingId(null);
+      setFeedback({ error: null, message: `Avatar ${avatar.name} berhasil dihapus.` });
+    } catch (err) {
+      setFeedback({
+        error: err instanceof Error ? err.message : "Gagal hapus avatar",
+        message: null,
+      });
     }
   }
 
@@ -309,25 +196,25 @@ export default function CrmAvatarsPage() {
           </div>
           <button
             type="button"
-            onClick={() => void loadAvatars()}
-            disabled={state.loading}
+            onClick={() => void refetch()}
+            disabled={loading}
             className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-slate-300 bg-white px-3 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-100 disabled:opacity-60"
           >
-            <RefreshCw className={`size-4 ${state.loading ? "animate-spin" : ""}`} />
+            <RefreshCw className={`size-4 ${loading ? "animate-spin" : ""}`} />
             Refresh
           </button>
         </div>
 
-        {(state.error || state.message) && (
+        {(queryError || feedback.error || feedback.message) && (
           <div className={`rounded-md border px-4 py-3 text-sm ${
-            state.error ? "border-red-200 bg-red-50 text-red-700" : "border-emerald-200 bg-emerald-50 text-emerald-700"
+            queryError || feedback.error ? "border-red-200 bg-red-50 text-red-700" : "border-emerald-200 bg-emerald-50 text-emerald-700"
           }`}>
-            {state.error || state.message}
+            {queryError || feedback.error || feedback.message}
           </div>
         )}
 
         <section className="grid gap-3 md:grid-cols-4">
-          <MetricCard icon={ImageIcon} label="Avatars" value={formatNumber(state.avatars.length)} />
+          <MetricCard icon={ImageIcon} label="Avatars" value={formatNumber(avatars.length)} />
           <MetricCard icon={Sparkles} label="Active" value={formatNumber(summary.active)} />
           <MetricCard icon={ImageIcon} label="Stock" value={formatNumber(summary.stock)} />
           <MetricCard icon={CheckCircle2} label="Redeemed" value={formatNumber(summary.redeemed)} />
@@ -389,7 +276,7 @@ export default function CrmAvatarsPage() {
                   className="h-10 w-full rounded-md border border-slate-300 bg-white px-3 text-sm text-slate-900 outline-none transition focus:border-slate-500 focus:ring-2 focus:ring-slate-100"
                 >
                   <option value="">Semua tier</option>
-                  {state.tiers.map((tier) => (
+                  {tiers.map((tier) => (
                     <option key={tier.id} value={tier.id}>{tier.name}</option>
                   ))}
                 </select>
@@ -422,7 +309,7 @@ export default function CrmAvatarsPage() {
                 <button
                   type="button"
                   onClick={() => void saveAvatar()}
-                  disabled={state.saving || !form.code || !form.name || !form.image_url}
+                  disabled={saveMutation.isPending || !form.code || !form.name || !form.image_url}
                   className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-slate-950 px-3 text-sm font-medium text-white transition hover:bg-slate-800 disabled:opacity-60"
                 >
                   <Save className="size-4" />
@@ -457,7 +344,7 @@ export default function CrmAvatarsPage() {
               </select>
             </div>
 
-            {state.loading ? (
+            {loading ? (
               <div className="px-4 py-12 text-center text-sm text-slate-500">Memuat avatar...</div>
             ) : filteredAvatars.length === 0 ? (
               <div className="px-4 py-12 text-center text-sm text-slate-500">Belum ada collectible avatar.</div>
@@ -509,7 +396,7 @@ export default function CrmAvatarsPage() {
                         <button
                           type="button"
                           onClick={() => void toggleAvatarActive(avatar)}
-                          disabled={togglingId === avatar.id}
+                          disabled={toggleMutation.isPending && toggleMutation.variables?.id === avatar.id}
                           className="inline-flex h-8 items-center justify-center gap-1.5 rounded-md border border-slate-300 bg-white px-3 text-xs font-medium text-slate-700 transition hover:bg-slate-100 disabled:opacity-50"
                         >
                           {avatar.is_active ? <EyeOff className="size-3.5" /> : <CheckCircle2 className="size-3.5" />}
@@ -517,8 +404,8 @@ export default function CrmAvatarsPage() {
                         </button>
                         <button
                           type="button"
-                          onClick={() => void deleteAvatar(avatar)}
-                          disabled={deletingId === avatar.id}
+                          onClick={() => void deleteAvatarHandler(avatar)}
+                          disabled={deleteMutation.isPending && deleteMutation.variables === avatar.id}
                           className="inline-flex h-8 items-center justify-center gap-1.5 rounded-md border border-red-200 bg-white px-3 text-xs font-medium text-red-700 transition hover:bg-red-50 disabled:opacity-50"
                         >
                           <Trash2 className="size-3.5" />
@@ -535,25 +422,6 @@ export default function CrmAvatarsPage() {
       </div>
     </div>
   );
-}
-
-function avatarPayloadFromAvatar(avatar: Avatar, overrides: Partial<Avatar> = {}) {
-  const next = { ...avatar, ...overrides };
-  return {
-    code: next.code,
-    name: next.name,
-    rarity: next.rarity,
-    image_url: next.image_url,
-    thumbnail_url: next.thumbnail_url || null,
-    required_tier_id: next.required_tier_id || null,
-    xp_cost: Math.max(0, Number(next.xp_cost) || 0),
-    stock_total: next.stock_total == null ? null : Math.max(0, Number(next.stock_total) || 0),
-    stock_redeemed: Math.max(0, Number(next.stock_redeemed) || 0),
-    starts_at: null,
-    ends_at: null,
-    is_active: next.is_active,
-    metadata: {},
-  };
 }
 
 function MetricCard({

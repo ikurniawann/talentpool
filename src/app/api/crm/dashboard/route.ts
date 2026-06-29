@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getPosSession } from "@/lib/api/auth";
-import { createServiceClient } from "@/lib/supabase/service-client";
+import { createPgClient } from "@/lib/pg/create-client";
 import { apiErrorResponse, isMissingCrmSchema, toNumber } from "@/lib/crm/server";
 
 const POS_CUSTOMER_COLUMNS = "id, name, phone, email, membership_tier, ark_coin_balance, total_xp, current_xp, total_spent, visit_count, is_active";
@@ -40,8 +40,8 @@ function normalizeCustomer(customer: CustomerRow) {
   };
 }
 
-async function countTable(supabase: ReturnType<typeof createServiceClient>, table: string) {
-  const { count, error } = await supabase
+async function countTable(db: import("@/lib/pg/types").DbClient, table: string) {
+  const { count, error } = await db
     .from(table)
     .select("id", { count: "exact", head: true });
 
@@ -60,9 +60,9 @@ export async function GET() {
   }
 
   try {
-    const supabase = createServiceClient();
+    const db = createPgClient();
 
-    const { count: totalCustomers, error: customerCountError } = await supabase
+    const { count: totalCustomers, error: customerCountError } = await db
       .from("pos_customers")
       .select("id", { count: "exact", head: true })
       .eq("is_active", true);
@@ -78,13 +78,13 @@ export async function GET() {
       redemptionCount,
       eventCount,
     ] = await Promise.all([
-      countTable(supabase, "crm_member_profiles"),
-      countTable(supabase, "crm_membership_tiers"),
-      countTable(supabase, "crm_xp_rules"),
-      countTable(supabase, "crm_rewards"),
-      countTable(supabase, "crm_collectible_avatars"),
-      countTable(supabase, "crm_redemptions"),
-      countTable(supabase, "crm_external_events"),
+      countTable(db, "crm_member_profiles"),
+      countTable(db, "crm_membership_tiers"),
+      countTable(db, "crm_xp_rules"),
+      countTable(db, "crm_rewards"),
+      countTable(db, "crm_collectible_avatars"),
+      countTable(db, "crm_redemptions"),
+      countTable(db, "crm_external_events"),
     ]);
 
     const schemaReady = [
@@ -97,7 +97,7 @@ export async function GET() {
       eventCount,
     ].every((item) => item.ready);
 
-    const { data: loyalCustomers, error: loyalError } = await supabase
+    const { data: loyalCustomers, error: loyalError } = await db
       .from("pos_customers")
       .select(POS_CUSTOMER_COLUMNS)
       .eq("is_active", true)
@@ -106,7 +106,7 @@ export async function GET() {
 
     if (loyalError) throw loyalError;
 
-    const { data: topTransactionCustomers, error: spenderError } = await supabase
+    const { data: topTransactionCustomers, error: spenderError } = await db
       .from("pos_customers")
       .select(POS_CUSTOMER_COLUMNS)
       .eq("is_active", true)
@@ -115,7 +115,7 @@ export async function GET() {
 
     if (spenderError) throw spenderError;
 
-    const { data: arkOrders, error: arkOrderError } = await supabase
+    const { data: arkOrders, error: arkOrderError } = await db
       .from("pos_orders")
       .select("customer_id, ark_coins_used")
       .not("customer_id", "is", null)
@@ -137,7 +137,7 @@ export async function GET() {
 
     const topArkCustomersById = new Map<string, CustomerRow>();
     if (topArkCustomerIds.length > 0) {
-      const { data: topArkCustomers } = await supabase
+      const { data: topArkCustomers } = await db
         .from("pos_customers")
         .select(POS_CUSTOMER_COLUMNS)
         .in("id", topArkCustomerIds);
@@ -145,7 +145,7 @@ export async function GET() {
       ((topArkCustomers ?? []) as CustomerRow[]).forEach((customer) => topArkCustomersById.set(customer.id, customer));
     }
 
-    const { count: posMemberFallbackCount, error: posMemberFallbackError } = await supabase
+    const { count: posMemberFallbackCount, error: posMemberFallbackError } = await db
       .from("pos_customers")
       .select("id", { count: "exact", head: true })
       .eq("is_active", true)
@@ -153,7 +153,7 @@ export async function GET() {
 
     let recentXpActivity: unknown[] = [];
     if (schemaReady) {
-      const { data: ledgerRows, error: ledgerError } = await supabase
+      const { data: ledgerRows, error: ledgerError } = await db
         .from("crm_xp_ledger")
         .select("id, direction, source_channel, source_type, xp_delta, balance_after, description, created_at, member:crm_member_profiles(member_code, customer_id)")
         .order("created_at", { ascending: false })

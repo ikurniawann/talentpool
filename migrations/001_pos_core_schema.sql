@@ -508,15 +508,14 @@ CREATE TRIGGER update_pos_tables_updated_at
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 -- ============================================================
--- REALTIME CHANNELS (Supabase Realtime)
+-- REALTIME (legacy — tidak dipakai di Postgres native)
 -- ============================================================
 
--- Enable realtime for critical tables
-ALTER PUBLICATION supabase_realtime ADD TABLE pos_orders;
-ALTER PUBLICATION supabase_realtime ADD TABLE pos_order_items;
-ALTER PUBLICATION supabase_realtime ADD TABLE pos_kds_orders;
-ALTER PUBLICATION supabase_realtime ADD TABLE pos_tables;
-ALTER PUBLICATION supabase_realtime ADD TABLE pos_inventory_settings;
+-- ALTER PUBLICATION legacy_realtime ADD TABLE pos_orders;
+-- ALTER PUBLICATION legacy_realtime ADD TABLE pos_order_items;
+-- ALTER PUBLICATION legacy_realtime ADD TABLE pos_kds_orders;
+-- ALTER PUBLICATION legacy_realtime ADD TABLE pos_tables;
+-- ALTER PUBLICATION legacy_realtime ADD TABLE pos_inventory_settings;
 
 -- ============================================================
 -- COMMENTS FOR DOCUMENTATION

@@ -154,11 +154,11 @@ QC Reject → Status: rejected → Inventory: DECREASED (reverse)
 **Current Logic:**
 ```typescript
 export async function updatePOItemReceivedQty(
-  supabase: SupabaseClient,
+  db: PgClient,
   poItemId: string,
   qtyReceived: number  // ⚠️ This is TOTAL, not delta!
 ): Promise<void> {
-  await supabase
+  await db
     .from("purchase_order_items")
     .update({ qty_received: qtyReceived })
     .eq("id", poItemId);
@@ -192,7 +192,7 @@ for (const item of validated.items) {
   const poItem = effectivePoItems.find(i => i.raw_material_id === item.raw_material_id);
   if (poItem) {
     const newReceived = (poItem.qty_received || 0) + (item.qty_diterima || 0);
-    await updatePOItemReceivedQty(adminSupabase, poItem.id, newReceived);
+    await updatePOItemReceivedQty(adminPostgreSQL, poItem.id, newReceived);
   }
 }
 ```

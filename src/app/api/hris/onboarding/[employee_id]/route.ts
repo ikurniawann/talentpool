@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { createServerPgClient } from "@/lib/pg/create-client";
 
 interface RouteParams {
   params: Promise<{ employee_id: string }>;
@@ -11,7 +11,7 @@ interface RouteParams {
  */
 export async function GET(request: NextRequest, { params }: RouteParams) {
   try {
-    const supabase = await createClient();
+    const db = await createServerPgClient();
     const { employee_id } = await params;
     
     // Get query params
@@ -20,7 +20,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     const completed = searchParams.get('completed'); // 'true', 'false', or 'all'
 
     // Build query
-    let query = supabase
+    let query = db
       .from('onboarding_checklists')
       .select(`
         *,
@@ -101,12 +101,12 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
  */
 export async function POST(request: NextRequest, { params }: RouteParams) {
   try {
-    const supabase = await createClient();
+    const db = await createServerPgClient();
     const { employee_id } = await params;
     const body = await request.json();
 
     // Check authentication
-    const { data: { user } } = await supabase.auth.getUser();
+    const { data: { user } } = await db.auth.getUser();
     if (!user) {
       return NextResponse.json(
         { error: 'Unauthorized' },
@@ -115,9 +115,9 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     }
 
     // Check permissions
-    const isHRD = await checkIsHRD(supabase, user.id);
-    const isManager = await checkIsManager(supabase, user.id);
-    const isOwner = employee_id === await getCurrentEmployeeId(supabase, user.id);
+    const isHRD = await checkIsHRD(db, user.id);
+    const isManager = await checkIsManager(db, user.id);
+    const isOwner = employee_id === await getCurrentEmployeeId(db, user.id);
 
     if (!isHRD && !isManager && !isOwner) {
       return NextResponse.json(
@@ -131,7 +131,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       // Only HRD, Manager, or Assignee can mark as complete
       if (!isHRD && !isManager) {
         // Check if user is the assignee
-        const { data: task } = await supabase
+        const { data: task } = await db
           .from('onboarding_checklists')
           .select('assigned_to')
           .eq('id', body.task_id)
@@ -146,7 +146,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       }
 
       // Mark task as complete
-      const { data, error } = await supabase
+      const { data, error } = await db
         .from('onboarding_checklists')
         .update({
           completed: true,
@@ -174,7 +174,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
     // If action is to add a new task (HRD/Manager only)
     if (body.action === 'add' && (isHRD || isManager)) {
-      const { data, error } = await supabase
+      const { data, error } = await db
         .from('onboarding_checklists')
         .insert({
           employee_id,
@@ -221,12 +221,12 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
  */
 export async function PUT(request: NextRequest, { params }: RouteParams) {
   try {
-    const supabase = await createClient();
+    const db = await createServerPgClient();
     const { employee_id } = await params;
     const body = await request.json();
 
     // Check authentication
-    const { data: { user } } = await supabase.auth.getUser();
+    const { data: { user } } = await db.auth.getUser();
     if (!user) {
       return NextResponse.json(
         { error: 'Unauthorized' },
@@ -235,8 +235,8 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     }
 
     // Check if HRD or Manager
-    const isHRD = await checkIsHRD(supabase, user.id);
-    const isManager = await checkIsManager(supabase, user.id);
+    const isHRD = await checkIsHRD(db, user.id);
+    const isManager = await checkIsManager(db, user.id);
 
     if (!isHRD && !isManager) {
       return NextResponse.json(
@@ -256,7 +256,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
       if (body.assigned_to !== undefined) updateData.assigned_to = body.assigned_to;
       if (body.category !== undefined) updateData.category = body.category;
 
-      const { data, error } = await supabase
+      const { data, error } = await db
         .from('onboarding_checklists')
         .update(updateData)
         .eq('id', body.task_id)
@@ -292,8 +292,8 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
 }
 
 // Helper functions
-async function getCurrentEmployeeId(supabase: any, userId: string) {
-  const { data } = await supabase
+async function getCurrentEmployeeId(db: any, userId: string) {
+  const { data } = await db
     .from('employees')
     .select('id')
     .eq('user_id', userId)
@@ -302,8 +302,8 @@ async function getCurrentEmployeeId(supabase: any, userId: string) {
   return data?.id || null;
 }
 
-async function checkIsHRD(supabase: any, userId: string): Promise<boolean> {
-  const { data } = await supabase
+async function checkIsHRD(db: any, userId: string): Promise<boolean> {
+  const { data } = await db
     .from('users')
     .select('role')
     .eq('id', userId)
@@ -312,8 +312,8 @@ async function checkIsHRD(supabase: any, userId: string): Promise<boolean> {
   return data?.role === 'hrd' || false;
 }
 
-async function checkIsManager(supabase: any, userId: string): Promise<boolean> {
-  const { data } = await supabase
+async function checkIsManager(db: any, userId: string): Promise<boolean> {
+  const { data } = await db
     .from('users')
     .select('role')
     .eq('id', userId)

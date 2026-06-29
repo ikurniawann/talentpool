@@ -84,12 +84,12 @@ export const ROUTES: RouteDefinition[] = [
   },
   {
     route: "suppliers.new",
-    path: "/dashboard/purchasing/suppliers/new",
+    path: "/dashboard/purchasing/suppliers/insert",
     meta: { label: "Tambah Supplier", icon: "BuildingOfficeIcon" },
   },
   {
     route: "suppliers.edit",
-    path: "/dashboard/purchasing/suppliers/[id]/edit",
+    path: "/dashboard/purchasing/suppliers/edit/[id]",
     meta: { label: "Edit Supplier", icon: "BuildingOfficeIcon" },
   },
   {
@@ -101,49 +101,49 @@ export const ROUTES: RouteDefinition[] = [
   // ── Raw Materials ─────────────────────────────────────────
   {
     route: "raw-materials.list",
-    path: "/dashboard/purchasing/raw-materials",
+    path: "/dashboard/items/raw-materials",
     meta: { label: "Bahan Baku", icon: "CubeIcon" },
   },
   {
     route: "raw-materials.new",
-    path: "/dashboard/purchasing/raw-materials/new",
+    path: "/dashboard/items/raw-materials/insert",
     meta: { label: "Tambah Bahan", icon: "CubeIcon" },
   },
   {
     route: "raw-materials.edit",
-    path: "/dashboard/purchasing/raw-materials/[id]/edit",
+    path: "/dashboard/items/raw-materials/edit/[id]",
     meta: { label: "Edit Bahan", icon: "CubeIcon" },
   },
   {
     route: "raw-materials.detail",
-    path: "/dashboard/purchasing/raw-materials/[id]",
+    path: "/dashboard/items/raw-materials/[id]",
     meta: { label: "Detail Bahan", icon: "CubeIcon" },
   },
 
   // ── Products ──────────────────────────────────────────────
   {
     route: "products.list",
-    path: "/dashboard/purchasing/products",
+    path: "/dashboard/items/products",
     meta: { label: "Produk", icon: "CubeTransparentIcon" },
   },
   {
     route: "products.new",
-    path: "/dashboard/purchasing/products/new",
+    path: "/dashboard/items/products/insert",
     meta: { label: "Tambah Produk", icon: "CubeTransparentIcon" },
   },
   {
     route: "products.edit",
-    path: "/dashboard/purchasing/products/[id]/edit",
+    path: "/dashboard/items/products/edit/[id]",
     meta: { label: "Edit Produk", icon: "CubeTransparentIcon" },
   },
   {
     route: "products.detail",
-    path: "/dashboard/purchasing/products/[id]",
+    path: "/dashboard/items/products/[id]",
     meta: { label: "Detail Produk", icon: "CubeTransparentIcon" },
   },
   {
     route: "products.bom",
-    path: "/dashboard/purchasing/products/[id]/bom",
+    path: "/dashboard/items/products/bom/[id]",
     meta: { label: "BOM Editor", icon: "CubeTransparentIcon" },
   },
 
@@ -155,12 +155,12 @@ export const ROUTES: RouteDefinition[] = [
   },
   {
     route: "purchase-orders.new",
-    path: "/dashboard/purchasing/purchase-orders/new",
+    path: "/dashboard/purchasing/purchase-orders/insert",
     meta: { label: "Buat PO", icon: "ClipboardDocumentListIcon" },
   },
   {
     route: "purchase-orders.edit",
-    path: "/dashboard/purchasing/purchase-orders/[id]/edit",
+    path: "/dashboard/purchasing/purchase-orders/edit/[id]",
     meta: { label: "Edit PO", icon: "ClipboardDocumentListIcon" },
   },
   {
@@ -189,17 +189,17 @@ export const ROUTES: RouteDefinition[] = [
   // ── Receiving / GRN ────────────────────────────────────────
   {
     route: "receiving.list",
-    path: "/dashboard/purchasing/receiving",
-    meta: { label: "Barang Masuk", icon: "ArrowDownCircleIcon" },
+    path: "/dashboard/purchasing/grn",
+    meta: { label: "Receive", icon: "ArrowDownCircleIcon" },
   },
   {
     route: "receiving.grn-new",
-    path: "/dashboard/purchasing/receiving/new",
+    path: "/dashboard/purchasing/grn/insert",
     meta: { label: "Terima Barang", icon: "ArrowDownCircleIcon" },
   },
   {
     route: "receiving.grn-detail",
-    path: "/dashboard/purchasing/receiving/[id]",
+    path: "/dashboard/purchasing/grn/[id]",
     meta: { label: "Detail GRN", icon: "ArrowDownCircleIcon" },
   },
 
@@ -223,7 +223,7 @@ export const ROUTES: RouteDefinition[] = [
   },
   {
     route: "returns.new",
-    path: "/dashboard/purchasing/returns/new",
+    path: "/dashboard/purchasing/returns/insert",
     meta: { label: "Buat Retur", icon: "ArrowUturnLeftIcon" },
   },
   {

@@ -1,7 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef, useMemo } from "react";
-import { createClient } from "@/lib/supabase/client";
+import { useState, useEffect, useRef, useMemo } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -33,7 +32,10 @@ import {
 } from "@/components/ui/sheet";
 import { useForm, Controller } from "react-hook-form";
 import { Loader2, Plus, Download, Search, User, Trash2, Upload, FileText, Menu, X } from "lucide-react";
-import type { Candidate, CandidateStatus, Brand } from "@/types";
+import type { Candidate, CandidateStatus } from "@/types";
+import { useCandidateList, useCandidateBrands } from "../queries";
+import { useCreateCandidate, useDeleteCandidate } from "../mutations";
+import { fetchCandidatesForExport } from "../api";
 
 const STATUS_LABELS: Record<CandidateStatus, string> = {
   new: "Baru",
@@ -70,12 +72,7 @@ const STATUS_COLORS: Record<CandidateStatus, string> = {
   archived: "bg-gray-100 text-gray-700",
 };
 
-export default function CandidatesPage() {
-  const supabase = useMemo(() => createClient(), []);
-  const [candidates, setCandidates] = useState<Candidate[]>([]);
-  const [brands, setBrands] = useState<Brand[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [totalCount, setTotalCount] = useState(0);
+export function CandidatesPage() {
   const [filter, setFilter] = useState<{
     status: string;
     brand_id: string;
@@ -96,10 +93,25 @@ export default function CandidatesPage() {
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [deleteCandidate, setDeleteCandidate] = useState<Candidate | null>(null);
   const [cvFile, setCvFile] = useState<File | null>(null);
-  const [uploadingCv, setUploadingCv] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const cvFileRef = useRef<HTMLInputElement>(null);
   const perPage = 20;
+
+  const listParams = useMemo(
+    () => ({ ...filter, page, perPage }),
+    [filter, page]
+  );
+  const listQuery = useCandidateList(listParams);
+  const brandsQuery = useCandidateBrands();
+
+  const candidates = listQuery.data?.data ?? [];
+  const totalCount = listQuery.data?.count ?? 0;
+  const loading = listQuery.isLoading;
+  const brands = brandsQuery.data ?? [];
+
+  const createMutation = useCreateCandidate();
+  const deleteMutation = useDeleteCandidate();
+  const uploadingCv = createMutation.isPending;
 
   // New candidate form
   type AddFormValues = {
@@ -131,96 +143,36 @@ export default function CandidatesPage() {
     return () => clearTimeout(t);
   }, [searchInput]);
 
-  const fetchCandidates = useCallback(async () => {
-    setLoading(true);
-    let query = supabase
-      .from("candidates")
-      .select("id, full_name, email, phone, domicile, status, source, created_at, updated_at, brand_id, position_id, brands(name), positions(title)", { count: "exact" })
-      .order("created_at", { ascending: false })
-      .range((page - 1) * perPage, page * perPage - 1);
-
-    if (filter.status) query = query.eq("status", filter.status);
-    if (filter.brand_id) query = query.eq("brand_id", filter.brand_id);
-    if (filter.position_id) query = query.eq("position_id", filter.position_id);
-    if (filter.date_from) query = query.gte("created_at", filter.date_from);
-    if (filter.date_to) query = query.lte("created_at", filter.date_to + "T23:59:59");
-    if (filter.search) {
-      query = query.or(
-        `full_name.ilike.%${filter.search}%,email.ilike.%${filter.search}%,phone.ilike.%${filter.search}%`
-      );
-    }
-
-    const { data, count } = await query;
-    setCandidates((data as unknown as Candidate[]) ?? []);
-    setTotalCount(count ?? 0);
-    setLoading(false);
-  }, [filter, page]);
-
-  useEffect(() => {
-    fetchCandidates();
-  }, [fetchCandidates]);
-
-  useEffect(() => {
-    supabase.from("brands").select("*").eq("is_active", true).then(({ data }) => {
-      if (data) setBrands(data);
-    });
-  }, []);
-
   const handleAddCandidate = async (values: AddFormValues) => {
-    // Normalize source value to match database constraint
     const normalizedSource = values.source || 'walk_in';
-    
-    console.log('Submitting candidate with source:', normalizedSource);
-    
-    // First insert the candidate
-    const { data: newCandidate, error } = await supabase.from("candidates").insert({
-      full_name: values.full_name,
-      email: values.email,
-      phone: values.phone,
-      domicile: values.domicile,
-      source: normalizedSource,
-      brand_id: values.brand_id || null,
-      position_id: values.position_id || null,
-      status: values.status,
-      notes: values.notes || null,
-      // New fields
-      last_experience: values.last_experience || null,
-      last_education: values.last_education || null,
-      availability: values.availability || null,
-      expected_salary: values.expected_salary ? parseInt(values.expected_salary, 10) : null,
-    }).select().single();
 
-    if (error) {
-      console.error('Insert error:', error);
-      alert(`Gagal menyimpan: ${error.message}`);
+    try {
+      await createMutation.mutateAsync({
+        payload: {
+          full_name: values.full_name,
+          email: values.email,
+          phone: values.phone,
+          domicile: values.domicile,
+          source: normalizedSource,
+          brand_id: values.brand_id || null,
+          position_id: values.position_id || null,
+          status: values.status,
+          notes: values.notes || null,
+          last_experience: values.last_experience || null,
+          last_education: values.last_education || null,
+          availability: values.availability || null,
+          expected_salary: values.expected_salary ? parseInt(values.expected_salary, 10) : null,
+        },
+        cvFile,
+      });
+    } catch (error) {
+      alert(`Gagal menyimpan: ${error instanceof Error ? error.message : "Unknown error"}`);
       return;
-    }
-
-    // If there's a CV file, upload it
-    if (cvFile && newCandidate) {
-      setUploadingCv(true);
-      try {
-        const formData = new FormData();
-        formData.append("file", cvFile);
-        const res = await fetch(`/api/candidates/${newCandidate.id}/cv-upload`, {
-          method: "POST",
-          body: formData,
-        });
-        const result = await res.json();
-        if (!res.ok) {
-          console.error("CV upload failed:", result.error);
-        }
-      } catch (err) {
-        console.error("CV upload error:", err);
-      } finally {
-        setUploadingCv(false);
-      }
     }
 
     setCvFile(null);
     setShowAddDialog(false);
     addForm.reset({ status: "new", source: "walk_in" });
-    fetchCandidates();
   };
 
   const handleCvFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -230,20 +182,11 @@ export default function CandidatesPage() {
   };
 
   const handleExportCSV = async () => {
-    let query = supabase
-      .from("candidates")
-      .select("*, brands(name), positions(title)")
-      .order("created_at", { ascending: false });
-
-    if (filter.status) query = query.eq("status", filter.status);
-    if (filter.brand_id) query = query.eq("brand_id", filter.brand_id);
-    if (filter.search) {
-      query = query.or(
-        `full_name.ilike.%${filter.search}%,email.ilike.%${filter.search}%,phone.ilike.%${filter.search}%`
-      );
-    }
-
-    const { data } = await query;
+    const data = await fetchCandidatesForExport({
+      status: filter.status,
+      brand_id: filter.brand_id,
+      search: filter.search,
+    });
     if (!data || data.length === 0) return;
 
     const headers = ["Nama", "Email", "Telepon", "Domisili", "Posisi", "Brand", "Status", "Sumber", "Tanggal"];
@@ -274,10 +217,11 @@ export default function CandidatesPage() {
 
   const handleDeleteCandidate = async () => {
     if (!deleteCandidate) return;
-    const { error } = await supabase.from("candidates").delete().eq("id", deleteCandidate.id);
-    if (!error) {
+    try {
+      await deleteMutation.mutateAsync(deleteCandidate.id);
       setDeleteCandidate(null);
-      fetchCandidates();
+    } catch {
+      // keep dialog open on failure
     }
   };
 
@@ -324,7 +268,7 @@ export default function CandidatesPage() {
                     ⭐ Talent Pool
                   </Link>
                   <Link
-                    href="/dashboard/hris/employees"
+                    href="/dashboard/employees"
                     className="block px-4 py-2 text-sm font-medium rounded-lg hover:bg-gray-50"
                     onClick={() => setMobileMenuOpen(false)}
                   >
@@ -345,7 +289,7 @@ export default function CandidatesPage() {
                     📄 Cuti & Izin
                   </Link>
                   <Link
-                    href="/dashboard/hris/employees"
+                    href="/dashboard/employees"
                     className="block px-4 py-2 text-sm font-medium rounded-lg hover:bg-gray-50"
                     onClick={() => setMobileMenuOpen(false)}
                   >

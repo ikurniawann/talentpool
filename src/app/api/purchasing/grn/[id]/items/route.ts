@@ -1,14 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { createServerPgClient } from "@/lib/pg/create-client";
 
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const supabase = await createClient();
+    const db = await createServerPgClient();
     const { id } = await params;
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from("goods_receipt_items")
       .select(`
         *,
@@ -36,12 +36,12 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const supabase = await createClient();
+    const db = await createServerPgClient();
     const { id } = await params;
     const body = await request.json();
 
     // Validate GRN status
-    const { data: grn } = await supabase
+    const { data: grn } = await db
       .from("goods_receipts")
       .select("status")
       .eq("id", id)
@@ -54,7 +54,7 @@ export async function POST(
       );
     }
 
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from("goods_receipt_items")
       .insert({
         ...body,

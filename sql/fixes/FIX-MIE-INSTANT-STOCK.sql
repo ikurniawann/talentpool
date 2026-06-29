@@ -1,6 +1,6 @@
 -- ============================================
 -- FIX: Calculate & Update Mie Instant Stock
--- Run in Supabase SQL Editor
+-- Run in psql atau SQL client
 -- ============================================
 
 -- Step 1: Check total received for Mie Instant from all GRNs

@@ -3,7 +3,7 @@
  * Indonesia 2026 Compliance (PPh 21 ETR, BPJS, THR, Tapera)
  */
 
-import { createClient } from '@/lib/supabase/server';
+import { createServerPgClient } from "@/lib/pg/create-client";
 
 // ============================================================
 // TYPES
@@ -456,10 +456,10 @@ export async function calculatePayrollForEmployee(
   periodMonth: number,
   periodYear: number
 ): Promise<PayrollResult | null> {
-  const supabase = await createClient();
+  const db = await createServerPgClient();
   
   // Fetch employee data
-  const { data: employee } = await supabase
+  const { data: employee } = await db
     .from('employees')
     .select('*')
     .eq('id', employeeId)
@@ -468,7 +468,7 @@ export async function calculatePayrollForEmployee(
   if (!employee) return null;
   
   // Fetch salary data
-  const { data: salary } = await supabase
+  const { data: salary } = await db
     .from('employee_salary')
     .select('*')
     .eq('employee_id', employeeId)
@@ -480,7 +480,7 @@ export async function calculatePayrollForEmployee(
   if (!salary) return null;
   
   // Fetch attendance for the period
-  const { data: attendance } = await supabase
+  const { data: attendance } = await db
     .from('attendance')
     .select('date, work_hours, status')
     .gte('date', `${periodYear}-${String(periodMonth).padStart(2, '0')}-01`)
@@ -493,7 +493,7 @@ export async function calculatePayrollForEmployee(
   const lateDays = attendance?.filter(d => d.status === 'late').length || 0;
   
   // Fetch unpaid leave
-  const { data: leaves } = await supabase
+  const { data: leaves } = await db
     .from('leaves')
     .select('start_date, end_date')
     .eq('employee_id', employeeId)

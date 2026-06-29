@@ -1,5 +1,5 @@
 -- Disable NIP trigger yang menyebabkan duplicate
--- Run ini di Supabase Dashboard > SQL Editor
+-- Run ini di admin database > SQL Editor
 
 -- Drop trigger yang overwrite NIP
 DROP TRIGGER IF EXISTS employees_set_nip_before_insert ON employees;

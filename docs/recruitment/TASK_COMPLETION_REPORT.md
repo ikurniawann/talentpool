@@ -12,7 +12,7 @@
 Dashboard KPI cards di `/dashboard/purchasing` masih menggunakan **hardcoded mock data** instead of real database values.
 
 ### Solution
-Created new API endpoint and updated hook to fetch real-time data from Supabase.
+Created new API endpoint and updated hook to fetch real-time data from PostgreSQL.
 
 ### Files Changed
 
@@ -159,6 +159,6 @@ Complete refactor to use server-side search:
 1. Implement HPP trends calculation with actual product cost data
 2. Add supplier performance metrics (on-time rate, QC pass rate) from delivery data
 3. Add export to CSV functionality for dashboard data
-4. Implement real-time updates using Supabase subscriptions
+4. Implement real-time updates using polling / SSE
 5. Add quick select buttons for common date ranges (Today, This Week, This Month)
 6. Add YoY (Year-over-Year) comparison option

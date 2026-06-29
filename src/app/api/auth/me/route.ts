@@ -1,10 +1,10 @@
-import { createClient } from "@/lib/supabase/server";
+import { createServerPgClient } from "@/lib/pg/create-client";
 import { NextResponse } from "next/server";
 
 export async function GET() {
   try {
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
+    const db = await createServerPgClient();
+    const { data: { user } } = await db.auth.getUser();
     
     if (!user) {
       return NextResponse.json(
@@ -13,7 +13,7 @@ export async function GET() {
       );
     }
 
-    const { data: profile } = await supabase
+    const { data: profile } = await db
       .from("users")
       .select("id, full_name, email, role, brand_id")
       .eq("id", user.id)

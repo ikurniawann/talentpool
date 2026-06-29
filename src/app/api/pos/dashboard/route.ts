@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createServiceClient } from '@/lib/supabase/service-client';
+import { createPgClient } from "@/lib/pg/create-client";
 import { getPosSession } from '@/lib/api/auth';
 
 // GET /api/pos/dashboard/stats - Get dashboard statistics
@@ -10,7 +10,7 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const supabase = createServiceClient();
+    const db = createPgClient();
     const searchParams = request.nextUrl.searchParams;
     const period = searchParams.get('period') || 'today';
 
@@ -31,7 +31,7 @@ export async function GET(request: NextRequest) {
     const endDate = new Date();
 
     // Get revenue stats
-    const { data: revenueData } = await supabase
+    const { data: revenueData } = await db
       .from('pos_orders')
       .select('total_amount')
       .eq('status', 'completed')
@@ -41,7 +41,7 @@ export async function GET(request: NextRequest) {
     const todayRevenue = revenueData?.reduce((sum, order) => sum + Number(order.total_amount), 0) || 0;
 
     // Get order count
-    const { count: todayOrders } = await supabase
+    const { count: todayOrders } = await db
       .from('pos_orders')
       .select('*', { count: 'exact', head: true })
       .eq('status', 'completed')
@@ -52,7 +52,7 @@ export async function GET(request: NextRequest) {
     const averageOrderValue = todayOrders && todayOrders > 0 ? todayRevenue / todayOrders : 0;
 
     // Get active cashiers (cashiers with orders today)
-    const { data: cashierData } = await supabase
+    const { data: cashierData } = await db
       .from('pos_orders')
       .select('cashier_id')
       .gte('ordered_at', startDate.toISOString())
@@ -66,7 +66,7 @@ export async function GET(request: NextRequest) {
     const prevEnd = new Date(startDate.getTime() - 1);
 
     // Previous period revenue
-    const { data: prevRevenueData } = await supabase
+    const { data: prevRevenueData } = await db
       .from('pos_orders')
       .select('total_amount')
       .eq('status', 'completed')
@@ -77,7 +77,7 @@ export async function GET(request: NextRequest) {
     const revenueChange = prevRevenue > 0 ? ((todayRevenue - prevRevenue) / prevRevenue) * 100 : 0;
 
     // Previous period orders
-    const { count: prevOrders } = await supabase
+    const { count: prevOrders } = await db
       .from('pos_orders')
       .select('*', { count: 'exact', head: true })
       .eq('status', 'completed')
@@ -88,7 +88,7 @@ export async function GET(request: NextRequest) {
     const ordersChange = prevOrdersCount > 0 ? (((todayOrders || 0) - prevOrdersCount) / prevOrdersCount) * 100 : 0;
 
     // Get top products (aggregate by product_id)
-    const { data: topProductsRaw } = await supabase
+    const { data: topProductsRaw } = await db
       .from('pos_order_items')
       .select('product_id, product_name, quantity, total_amount')
       .gte('created_at', startDate.toISOString())
@@ -115,7 +115,7 @@ export async function GET(request: NextRequest) {
       .slice(0, 5);
 
     // Get low stock products (using inventory_quantity if available, fallback to null stock)
-    const { data: lowStockRaw } = await supabase
+    const { data: lowStockRaw } = await db
       .from('pos_products')
       .select('id, name, inventory_quantity, inventory_min_stock')
       .eq('is_active', true)
@@ -133,7 +133,7 @@ export async function GET(request: NextRequest) {
       .slice(0, 3);
 
     // Get recent orders
-    const { data: recentOrdersRaw } = await supabase
+    const { data: recentOrdersRaw } = await db
       .from('pos_orders')
       .select(`
         id,

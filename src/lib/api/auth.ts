@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server";
+import { createServerPgClient } from "@/lib/pg/create-client";
 import { NextRequest, NextResponse } from "next/server";
 import { UserRole } from "@/types";
 import { z } from "zod";
@@ -15,12 +15,12 @@ export interface ApiUser {
  * Used in API route handlers (not pages)
  */
 export async function getApiUser(): Promise<ApiUser | null> {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const db = await createServerPgClient();
+  const { data: { user } } = await db.auth.getUser();
   
   if (!user) return null;
 
-  const { data: profile } = await supabase
+  const { data: profile } = await db
     .from("users")
     .select("full_name, role, brand_id")
     .eq("id", user.id)
@@ -41,8 +41,8 @@ export async function getApiUser(): Promise<ApiUser | null> {
  * Only verifies JWT is valid — does not require a users table record.
  */
 export async function getPosSession(): Promise<string | null> {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const db = await createServerPgClient();
+  const { data: { user } } = await db.auth.getUser();
   return user?.id ?? null;
 }
 

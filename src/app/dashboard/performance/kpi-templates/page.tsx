@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
 
 export default function Redirect() {
-  redirect("/dashboard/hris/performance/kpi-templates");
+  redirect("/dashboard/hris/kpi-templates");
 }

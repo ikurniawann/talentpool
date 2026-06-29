@@ -25,11 +25,10 @@ const FINANCE_FEATURES: Record<string, string> = {
 };
 
 type FinanceFeaturePageProps = {
-  params: Promise<{ feature: string }>;
+  feature: string;
 };
 
-export default async function FinanceFeaturePage({ params }: FinanceFeaturePageProps) {
-  const { feature } = await params;
+export function FinanceFeaturePage({ feature }: FinanceFeaturePageProps) {
   const title = FINANCE_FEATURES[feature] ?? "Finance";
 
   return (

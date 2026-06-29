@@ -1,8 +1,6 @@
 "use client";
 
-/* eslint-disable react-hooks/set-state-in-effect */
-
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import {
   Briefcase,
@@ -17,51 +15,13 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-
-type JobStatus = "draft" | "published" | "closed";
-
-interface BrandOption {
-  id: string;
-  name: string;
-}
-
-interface PositionOption {
-  id: string;
-  title: string;
-  department: string | null;
-  level: string | null;
-}
-
-interface DepartmentOption {
-  id: string;
-  name: string;
-  code: string;
-  is_active: boolean;
-}
-
-interface JobOpening {
-  id: string;
-  position_id: string | null;
-  brand_id: string | null;
-  department_id: string | null;
-  title: string;
-  slug: string;
-  department: string;
-  location: string;
-  employment_type: string;
-  work_mode: string;
-  headcount: number;
-  description: string | null;
-  requirements: string | null;
-  benefits: string | null;
-  status: JobStatus;
-  closing_date: string | null;
-  created_at: string;
-  updated_at: string;
-  brand?: BrandOption | null;
-  position?: PositionOption | null;
-  department_ref?: DepartmentOption | null;
-}
+import type {
+  JobStatus,
+  JobPositionOption as PositionOption,
+  JobOpening,
+} from "../types";
+import { useJobOpenings, useJobBrands, useJobPositions, useJobDepartments } from "../queries";
+import { useSaveJobOpening, useDeleteJobOpening } from "../mutations";
 
 type JobForm = {
   id?: string;
@@ -114,50 +74,26 @@ function slugify(value: string) {
     .replace(/^-+|-+$/g, "");
 }
 
-export default function JobPortalPage() {
-  const [jobs, setJobs] = useState<JobOpening[]>([]);
-  const [brands, setBrands] = useState<BrandOption[]>([]);
-  const [positions, setPositions] = useState<PositionOption[]>([]);
-  const [departments, setDepartments] = useState<DepartmentOption[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
+export function JobPortalPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [form, setForm] = useState<JobForm>(emptyForm);
   const [error, setError] = useState<string | null>(null);
   const [filterStatus, setFilterStatus] = useState<JobStatus | "all">("all");
 
-  const fetchJobs = useCallback(async () => {
-    setLoading(true);
-    const res = await fetch("/api/hris/job-openings");
-    const json = await res.json();
-    if (!res.ok) {
-      setError(json.error || "Gagal memuat lowongan");
-      setJobs([]);
-    } else {
-      setJobs(json.data || []);
-      setError(null);
-    }
-    setLoading(false);
-  }, []);
+  const jobsQuery = useJobOpenings();
+  const brandsQuery = useJobBrands();
+  const positionsQuery = useJobPositions();
+  const departmentsQuery = useJobDepartments();
 
-  useEffect(() => {
-    fetchJobs();
+  const jobs = jobsQuery.data ?? [];
+  const brands = brandsQuery.data ?? [];
+  const positions = positionsQuery.data ?? [];
+  const departments = departmentsQuery.data ?? [];
+  const loading = jobsQuery.isLoading;
 
-    fetch("/api/brands")
-      .then((res) => res.json())
-      .then((json) => setBrands(json.data || []))
-      .catch(() => setBrands([]));
-
-    fetch("/api/master/positions")
-      .then((res) => res.json())
-      .then((json) => setPositions(json.data || []))
-      .catch(() => setPositions([]));
-
-    fetch("/api/master/departments")
-      .then((res) => res.json())
-      .then((json) => setDepartments((json.data || []).filter((department: DepartmentOption) => department.is_active)))
-      .catch(() => setDepartments([]));
-  }, [fetchJobs]);
+  const saveMutation = useSaveJobOpening();
+  const deleteMutation = useDeleteJobOpening();
+  const saving = saveMutation.isPending;
 
   const filteredJobs = useMemo(() => {
     if (filterStatus === "all") return jobs;
@@ -216,11 +152,11 @@ export default function JobPortalPage() {
   }
 
   async function handleSave() {
-    setSaving(true);
     setError(null);
 
+    const { id, ...rest } = form;
     const payload = {
-      ...form,
+      ...rest,
       slug: form.slug || slugify(form.title),
       position_id: form.position_id || null,
       brand_id: form.brand_id || null,
@@ -228,35 +164,23 @@ export default function JobPortalPage() {
       closing_date: form.closing_date || null,
     };
 
-    const res = await fetch(form.id ? `/api/hris/job-openings/${form.id}` : "/api/hris/job-openings", {
-      method: form.id ? "PATCH" : "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-
-    const json = await res.json();
-    setSaving(false);
-
-    if (!res.ok) {
-      setError(json.error || "Gagal menyimpan lowongan");
-      return;
+    try {
+      await saveMutation.mutateAsync({ payload, id });
+      setDialogOpen(false);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Gagal menyimpan lowongan");
     }
-
-    setDialogOpen(false);
-    await fetchJobs();
   }
 
   async function handleDelete(job: JobOpening) {
     const confirmed = window.confirm(`Hapus lowongan "${job.title}"?`);
     if (!confirmed) return;
 
-    const res = await fetch(`/api/hris/job-openings/${job.id}`, { method: "DELETE" });
-    if (!res.ok) {
-      const json = await res.json().catch(() => ({}));
-      setError(json.error || "Gagal menghapus lowongan");
-      return;
+    try {
+      await deleteMutation.mutateAsync(job.id);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Gagal menghapus lowongan");
     }
-    await fetchJobs();
   }
 
   return (

@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server";
+import { createServerPgClient } from "@/lib/pg/create-client";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import {
@@ -37,10 +37,10 @@ export async function GET(
 ) {
   try {
     await requireApiRole(["purchasing_admin", "purchasing_staff"]);
-    const supabase = await createClient();
+    const db = await createServerPgClient();
     const { id } = await params;
 
-    const { data: ret, error } = await supabase
+    const { data: ret, error } = await db
       .from("returns")
       .select(
         `
@@ -83,14 +83,14 @@ export async function PUT(
 ) {
   try {
     const user = await requireApiRole(["purchasing_admin", "purchasing_staff"]);
-    const supabase = await createClient();
+    const db = await createServerPgClient();
     const { id } = await params;
 
     const body = await request.json();
     const validated = updateReturnSchema.parse(body);
 
     // Get current return
-    const { data: existing, error: fetchError } = await supabase
+    const { data: existing, error: fetchError } = await db
       .from("returns")
       .select("*, inventory:inventory(qty_in_stock, avg_cost)")
       .eq("id", id)
@@ -112,7 +112,7 @@ export async function PUT(
       const targetStatus = validated.status || "approved";
 
       // Reduce stock when return is approved (barang belum keluar gudang)
-      await reduceStockOnReturn(supabase, {
+      await reduceStockOnReturn(db, {
         returnId: existing.id,
         bahanBakuId: existing.bahan_baku_id,
         qtyReturned: existing.jumlah,
@@ -126,16 +126,16 @@ export async function PUT(
       // If stock was already reduced (approved or later), restore it
       const alreadyReduced = fromStatus !== "pending";
       if (alreadyReduced) {
-        const inv = await getOrCreateInventory(supabase, existing.bahan_baku_id);
+        const inv = await getOrCreateInventory(db, existing.bahan_baku_id);
         const sebelum = inv.qty_in_stock || 0;
         const sesudah = sebelum + Number(existing.jumlah);
 
-        await supabase
+        await db
           .from("inventory")
           .update({ qty_in_stock: sesudah })
           .eq("id", inv.id);
 
-        await recordMovement(supabase, {
+        await recordMovement(db, {
           inventory_id: inv.id,
           bahan_baku_id: existing.bahan_baku_id,
           tipe: "return",
@@ -172,7 +172,7 @@ export async function PUT(
       updateData.approved_at = new Date().toISOString();
     }
 
-    const { data: updated, error: updateError } = await supabase
+    const { data: updated, error: updateError } = await db
       .from("returns")
       .update(updateData)
       .eq("id", id)
@@ -211,10 +211,10 @@ export async function DELETE(
 ) {
   try {
     const user = await requireApiRole(["purchasing_admin"]);
-    const supabase = await createClient();
+    const db = await createServerPgClient();
     const { id } = await params;
 
-    const { data: existing, error: fetchError } = await supabase
+    const { data: existing, error: fetchError } = await db
       .from("returns")
       .select("id, status")
       .eq("id", id)
@@ -230,7 +230,7 @@ export async function DELETE(
       );
     }
 
-    await supabase
+    await db
       .from("returns")
       .update({ is_active: false, updated_by: user.id })
       .eq("id", id);

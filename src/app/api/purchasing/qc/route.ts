@@ -1,6 +1,6 @@
-import { createClient } from "@/lib/supabase/server";
+import { createServerPgClient } from "@/lib/pg/create-client";
 import { NextRequest, NextResponse } from "next/server";
-import { SupabaseClient } from "@supabase/supabase-js";
+import type { DbClient } from "@/lib/pg/types";
 import { z } from "zod";
 import {
   requireApiRole,
@@ -11,6 +11,11 @@ import { addStockFromQC, reduceStockOnReturn } from "@/lib/purchasing/inventory"
 import { updateGRNStatusFromQC } from "@/lib/purchasing/delivery";
 import { recordMovement } from "@/lib/purchasing/inventory";
 import { getOrCreateInventory } from "@/lib/purchasing/inventory";
+import {
+  getApiUserScope,
+  companyScopeOr,
+  branchScopeOr,
+} from "@/lib/api/scope";
 
 // ============================================================
 // Schemas
@@ -48,8 +53,8 @@ const createQCSchema = z.object({
 
 export async function GET(request: NextRequest) {
   try {
-    await requireApiRole(["purchasing_admin", "purchasing_staff", "warehouse_staff"]);
-    const supabase = await createClient();
+    await requireApiRole(["purchasing_admin", "purchasing_staff", "warehouse_staff", "purchasing_manager", "super_admin"]);
+    const db = await createServerPgClient();
 
     const url = new URL(request.url);
     const pathname = url.pathname;
@@ -60,12 +65,12 @@ export async function GET(request: NextRequest) {
 
     if (qcId && qcId !== "qc") {
       // Detail request
-      const { data, error } = await supabase
+      const { data, error } = await db
         .from("qc_inspections")
         .select(
           `
           *,
-          bahan_baku:bahan_baku_id(id, kode, nama),
+          bahan_baku:bahan_bakus!bahan_baku_id(id, kode, nama),
           inspector:inspector_id(id, name, email),
           goods_receipt:goods_receipt_id(nomor_grn)
         `
@@ -106,17 +111,23 @@ export async function GET(request: NextRequest) {
     const search = url.searchParams.get("search") || "";
     const offset = (page - 1) * limit;
 
-    let query = supabase
+    let query = db
       .from("qc_inspections")
       .select(
         `
         *,
-        bahan_baku:bahan_baku_id(id, kode, nama),
+        bahan_baku:bahan_bakus!bahan_baku_id(id, kode, nama),
         goods_receipt:goods_receipt_id(nomor_grn)
       `,
         { count: "exact" }
       )
       .order("tanggal_inspeksi", { ascending: false });
+
+    const scope = await getApiUserScope();
+    const companyOr = companyScopeOr(scope);
+    if (companyOr) query = query.or(companyOr);
+    const branchOr = branchScopeOr(scope);
+    if (branchOr) query = query.or(branchOr);
 
     if (search) {
       query = query.or(
@@ -138,14 +149,14 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const user = await requireApiRole(["purchasing_admin", "purchasing_staff", "warehouse_staff"]);
-    const supabase = await createClient();
+    const user = await requireApiRole(["purchasing_admin", "purchasing_staff", "warehouse_staff", "purchasing_manager", "super_admin"]);
+    const db = await createServerPgClient();
 
     const body = await request.json();
     const validated = createQCSchema.parse(body);
 
     // Get GRN with PO items to get unit prices
-    const { data: grn, error: grnError } = await supabase
+    const { data: grn, error: grnError } = await db
       .from("goods_receipts")
       .select(
         `
@@ -187,10 +198,12 @@ export async function POST(request: NextRequest) {
       }
 
       // Insert QC inspection record
-      const { data: qcRecord, error: qcError } = await supabase
+      const { data: qcRecord, error: qcError } = await db
         .from("qc_inspections")
         .insert({
           goods_receipt_id: validated.grn_id,
+          company_id: (grn as any).company_id ?? null,
+          branch_id: (grn as any).branch_id ?? null,
           bahan_baku_id: item.bahan_baku_id,
           jumlah_diperiksa: item.jumlah_diperiksa,
           jumlah_diterima: item.jumlah_diterima,
@@ -205,7 +218,7 @@ export async function POST(request: NextRequest) {
         .select(
           `
           *,
-          bahan_baku:bahan_baku_id(id, kode, nama)
+          bahan_baku:bahan_bakus!bahan_baku_id(id, kode, nama)
         `
         )
         .single();
@@ -219,7 +232,7 @@ export async function POST(request: NextRequest) {
 
       // ── ACCEPTED: Add to inventory with weighted average cost ──
       if (item.jumlah_diterima > 0) {
-        await addStockFromQC(supabase, {
+        await addStockFromQC(db, {
           grnId: validated.grn_id,
           grnItemId: item.grn_item_id || "",
           bahanBakuId: item.bahan_baku_id,
@@ -231,11 +244,13 @@ export async function POST(request: NextRequest) {
 
       // ── REJECTED: Auto-create draft Return ──
       if (item.jumlah_ditolak > 0) {
-        const { data: returnRecord, error: returnError } = await supabase
+        const { data: returnRecord, error: returnError } = await db
           .from("returns")
           .insert({
             goods_receipt_id: validated.grn_id,
             supplier_id: (grn.purchase_order as any)?.supplier_id || grn.purchase_order?.supplier_id,
+            company_id: (grn as any).company_id ?? null,
+            branch_id: (grn as any).branch_id ?? null,
             bahan_baku_id: item.bahan_baku_id,
             jumlah: item.jumlah_ditolak,
             satuan_id: poItem?.satuan_id || "", // might be missing
@@ -245,7 +260,7 @@ export async function POST(request: NextRequest) {
             catatan: `Auto-return dari QC GRN ${(grn as any).nomor_gr} — alasan: ${item.alasan || "tidak memenuhi standar"}`,
             created_by: user.id,
           })
-          .select(`*, bahan_baku:bahan_baku_id(id, kode, nama)`)
+          .select(`*, bahan_baku:bahan_bakus!bahan_baku_id(id, kode, nama)`)
           .single();
 
         if (returnError) {
@@ -261,7 +276,7 @@ export async function POST(request: NextRequest) {
     const totalDiterima = validated.items.reduce((sum, i) => sum + i.jumlah_diterima, 0);
     const totalDitolak = validated.items.reduce((sum, i) => sum + i.jumlah_ditolak, 0);
 
-    await supabase
+    await db
       .from("goods_receipts")
       .update({
         total_item: totalDiperiksa,
@@ -271,10 +286,10 @@ export async function POST(request: NextRequest) {
       .eq("id", validated.grn_id);
 
     // Auto-update GRN status based on QC completion
-    const { newStatus, isComplete } = await updateGRNStatusFromQC(supabase, validated.grn_id);
+    const { newStatus, isComplete } = await updateGRNStatusFromQC(db, validated.grn_id);
 
     // Update PO status based on what was received vs ordered
-    await updatePOStatusFromReceipt(supabase, (grn.purchase_order as any).id, validated.grn_id);
+    await updatePOStatusFromReceipt(db, (grn.purchase_order as any).id, validated.grn_id);
 
     return successResponse(
       {
@@ -303,19 +318,19 @@ export async function POST(request: NextRequest) {
 // ============================================================
 
 async function updatePOStatusFromReceipt(
-  supabase: SupabaseClient,
+  db: DbClient,
   poId: string,
   grnId: string
 ) {
   // Get all GRNs for this PO
-  const { data: grns } = await supabase
+  const { data: grns } = await db
     .from("goods_receipts")
     .select("id, status, total_diterima")
     .eq("purchase_order_id", poId)
     .eq("is_active", true);
 
   // Get PO items
-  const { data: poItems } = await supabase
+  const { data: poItems } = await db
     .from("po_items")
     .select("id, bahan_baku_id, qty, qty_received")
     .eq("purchase_order_id", poId);
@@ -331,7 +346,7 @@ async function updatePOStatusFromReceipt(
     newStatus = "received";
   }
 
-  await supabase
+  await db
     .from("purchase_orders")
     .update({ status: newStatus })
     .eq("id", poId);

@@ -1,4 +1,4 @@
-import { createAdminClient } from "@/lib/supabase/admin";
+import { createPgClient } from "@/lib/pg/create-client";
 import { NextRequest } from "next/server";
 import { z } from "zod";
 import {
@@ -13,7 +13,50 @@ import {
   updatePOStatusAfterGrn,
   GrnStatus,
 } from "@/lib/purchasing/grn";
+import { toQty } from "@/lib/purchasing/utils";
 import { removeInventoryFromGrn, addInventoryFromGrn } from "@/lib/inventory";
+import type { UserRole } from "@/types";
+
+const GRN_VIEW_ROLES: UserRole[] = [
+  "warehouse_staff",
+  "warehouse_admin",
+  "purchasing_admin",
+  "purchasing_staff",
+  "qc_staff",
+  "admin",
+  "super_admin",
+];
+
+const GRN_ITEM_DETAIL_SELECT = `
+  id,
+  grn_id,
+  delivery_id,
+  purchase_order_item_id,
+  raw_material_id,
+  qty_diterima,
+  qty_ditolak,
+  kondisi,
+  catatan,
+  satuan_id,
+  is_active,
+  created_at,
+  updated_at,
+  raw_material:raw_materials!raw_material_id(
+    id,
+    nama,
+    kode,
+    satuan_besar:units!satuan_besar_id(id, nama, kode)
+  ),
+  satuan:units!satuan_id(id, nama, kode),
+  purchase_order_item:purchase_order_items!purchase_order_item_id(
+    id,
+    qty_ordered,
+    qty_received,
+    harga_satuan,
+    subtotal,
+    satuan:units!satuan_id(id, nama, kode)
+  )
+`;
 
 const grnItemUpdateSchema = z.object({
   id: z.string().uuid().optional(),
@@ -62,19 +105,12 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    await requireApiRole([
-      "warehouse_staff",
-      "warehouse_admin",
-      "purchasing_admin",
-      "purchasing_staff",
-      "qc_staff",
-      "admin",
-    ]);
-    const supabase = createAdminClient(); // bypass RLS
+    await requireApiRole(GRN_VIEW_ROLES);
+    const db = createPgClient(); // bypass RLS
     const { id } = await params;
 
     // Get GRN with items
-    const { data: grn, error: grnError } = await supabase
+    const { data: grn, error: grnError } = await db
       .from("grn")
       .select("*")
       .eq("id", id)
@@ -86,53 +122,24 @@ export async function GET(
     }
 
     // Get GRN items with raw material details
-    const { data: items, error: itemsError } = await supabase
+    const { data: items, error: itemsError } = await db
       .from("grn_items")
-      .select(`
-        id,
-        grn_id,
-        delivery_id,
-        purchase_order_item_id,
-        raw_material_id,
-        qty_diterima,
-        qty_ditolak,
-        kondisi,
-        catatan,
-        satuan_id,
-        is_active,
-        created_at,
-        updated_at,
-        raw_material:raw_material_id(
-          id,
-          nama,
-          kode,
-          satuan_besar:satuan_besar_id(id,nama,kode)
-        ),
-        satuan:satuan_id(id, nama, kode),
-        purchase_order_item:purchase_order_item_id(
-          id,
-          qty_ordered,
-          qty_received,
-          harga_satuan,
-          subtotal,
-          satuan:satuan_id(id,nama,kode)
-        )
-      `)
+      .select(GRN_ITEM_DETAIL_SELECT)
       .eq("grn_id", id)
       .eq("is_active", true);
 
     if (itemsError) {
       console.error(`[GRN/${id}] Error fetching items:`, itemsError);
-      throw itemsError;
+      return ApiError.server(itemsError.message || "Gagal memuat item penerimaan").toResponse();
     }
 
     // Get related data
     const [{ data: delivery }, { data: po }, { data: supplier }] = await Promise.all([
       grn.delivery_id
-        ? supabase.from("deliveries").select("*").eq("id", grn.delivery_id).maybeSingle()
+        ? db.from("deliveries").select("*").eq("id", grn.delivery_id).maybeSingle()
         : Promise.resolve({ data: null }),
-      supabase.from("purchase_orders").select("id, nomor_po, status, tanggal_po, total").eq("id", grn.purchase_order_id).maybeSingle(),
-      supabase.from("suppliers").select("id, nama_supplier, kode, email, telepon").eq("id", grn.supplier_id).maybeSingle(),
+      db.from("purchase_orders").select("id, nomor_po, status, tanggal_po, total").eq("id", grn.purchase_order_id).maybeSingle(),
+      db.from("suppliers").select("id, nama_supplier, kode, email, telepon").eq("id", grn.supplier_id).maybeSingle(),
     ]);
 
     return successResponse(
@@ -164,15 +171,8 @@ export async function PATCH(
   const { id } = await params; // Extract id at function scope
   
   try {
-    const user = await requireApiRole([
-      "warehouse_staff",
-      "warehouse_admin",
-      "purchasing_admin",
-      "purchasing_staff",
-      "qc_staff",
-      "admin",
-    ]);
-    const supabase = createAdminClient(); // bypass RLS
+    const user = await requireApiRole(GRN_VIEW_ROLES);
+    const db = createPgClient(); // bypass RLS
 
     console.log(`\n=== [PATCH GRN/${id}] START ===`);
 
@@ -183,7 +183,7 @@ export async function PATCH(
     console.log(`[PATCH GRN/${id}] Validated:`, JSON.stringify(validated, null, 2));
 
     // Get current GRN
-    const { data: currentGrn, error: fetchError } = await supabase
+    const { data: currentGrn, error: fetchError } = await db
       .from("grn")
       .select("*")
       .eq("id", id)
@@ -200,7 +200,7 @@ export async function PATCH(
     }
 
     // Get existing GRN items
-    const { data: existingItems } = await supabase
+    const { data: existingItems } = await db
       .from("grn_items")
       .select("*")
       .eq("grn_id", id)
@@ -247,14 +247,14 @@ export async function PATCH(
         .map((item) => item.purchase_order_item_id)
         .filter((itemId): itemId is string => Boolean(itemId));
 
-      const { data: poItemsForValidation, error: poValidationError } = await supabase
+      const { data: poItemsForValidation, error: poValidationError } = await db
         .from("purchase_order_items")
         .select(`
           id,
           raw_material_id,
           qty_ordered,
           qty_received,
-          raw_material:raw_material_id(nama)
+          raw_material:raw_materials!raw_material_id(nama)
         `)
         .eq("purchase_order_id", currentGrn.purchase_order_id)
         .eq("is_active", true);
@@ -334,7 +334,7 @@ export async function PATCH(
       updateData.total_item_ditolak = totalDitolak;
 
       // Auto-calculate status based on PO completion
-      const { data: poItems } = await supabase
+      const { data: poItems } = await db
         .from("purchase_order_items")
         .select("qty_ordered, qty_received")
         .eq("purchase_order_id", currentGrn.purchase_order_id)
@@ -357,7 +357,7 @@ export async function PATCH(
       }
     }
 
-    const { data: grn, error } = await supabase
+    const { data: grn, error } = await db
       .from("grn")
       .update(updateData)
       .eq("id", id)
@@ -376,7 +376,7 @@ export async function PATCH(
       console.log(`[PATCH GRN/${id}] Updating ${validated.items.length} items...`);
       
       // Delete existing items
-      const { error: deleteError } = await supabase.from("grn_items").update({ is_active: false }).eq("grn_id", id);
+      const { error: deleteError } = await db.from("grn_items").update({ is_active: false }).eq("grn_id", id);
       if (deleteError) {
         console.error(`[PATCH GRN/${id}] Delete items error:`, deleteError);
         throw deleteError;
@@ -397,7 +397,7 @@ export async function PATCH(
       
       console.log(`[PATCH GRN/${id}] Inserting items:`, JSON.stringify(grnItems, null, 2));
 
-      const { error: itemsError } = await supabase.from("grn_items").insert(grnItems);
+      const { error: itemsError } = await db.from("grn_items").insert(grnItems);
       if (itemsError) {
         console.error(`[PATCH GRN/${id}] Insert items error:`, itemsError);
         throw itemsError;
@@ -409,7 +409,7 @@ export async function PATCH(
       for (const change of qtyChanges) {
         if (change.purchase_order_item_id && change.diff !== 0) {
           console.log(`[PATCH GRN/${id}] Updating PO item ${change.purchase_order_item_id}, diff: ${change.diff}`);
-          const { data: poItem, error: poError } = await supabase
+          const { data: poItem, error: poError } = await db
             .from("purchase_order_items")
             .select("qty_received")
             .eq("id", change.purchase_order_item_id)
@@ -421,9 +421,9 @@ export async function PATCH(
           }
 
           if (poItem) {
-            const newQty = Math.max(0, (poItem.qty_received || 0) + change.diff);
+            const newQty = Math.max(0, toQty(poItem.qty_received) + toQty(change.diff));
             console.log(`[PATCH GRN/${id}] Setting qty_received to ${newQty}`);
-            await updatePOItemReceivedQty(supabase, change.purchase_order_item_id, newQty);
+            await updatePOItemReceivedQty(db, change.purchase_order_item_id, newQty);
           }
         }
       }
@@ -444,7 +444,7 @@ export async function PATCH(
             if (oldQty > 0) {
               console.log(`[PATCH GRN/${id}]   Removing old qty: ${oldQty}`);
               await removeInventoryFromGrn(
-                supabase,
+                db,
                 change.raw_material_id,
                 oldQty,
                 id,
@@ -457,7 +457,7 @@ export async function PATCH(
             if (newQty > 0) {
               console.log(`[PATCH GRN/${id}]   Adding new qty: ${newQty}`);
               await addInventoryFromGrn(
-                supabase,
+                db,
                 change.raw_material_id,
                 newQty,
                 0, // unit cost - would need to fetch from PO
@@ -476,13 +476,13 @@ export async function PATCH(
 
     // Update delivery status if GRN status changed
     if (updateData.status && currentGrn.delivery_id) {
-      await updateDeliveryStatusAfterGrn(supabase, currentGrn.delivery_id, updateData.status as GrnStatus);
+      await updateDeliveryStatusAfterGrn(db, currentGrn.delivery_id, updateData.status as GrnStatus);
     }
 
     // Update PO status based on received quantities
     if (currentGrn.purchase_order_id) {
       console.log(`[PATCH GRN/${id}] Updating PO status...`);
-      await updatePOStatusAfterGrn(supabase, currentGrn.purchase_order_id);
+      await updatePOStatusAfterGrn(db, currentGrn.purchase_order_id);
       console.log(`[PATCH GRN/${id}] PO status updated`);
     }
 
@@ -522,12 +522,13 @@ export async function DELETE(
       "warehouse_admin",
       "purchasing_admin",
       "admin",
+      "super_admin",
     ]);
-    const supabase = createAdminClient(); // bypass RLS
+    const db = createPgClient(); // bypass RLS
     const { id } = await params;
 
     // 1. Ambil GRN + items sebelum dihapus
-    const { data: grn, error: grnError } = await supabase
+    const { data: grn, error: grnError } = await db
       .from("grn")
       .select("*")
       .eq("id", id)
@@ -538,7 +539,7 @@ export async function DELETE(
       return ApiError.notFound("GRN tidak ditemukan").toResponse();
     }
 
-    const { data: grnItems } = await supabase
+    const { data: grnItems } = await db
       .from("grn_items")
       .select("purchase_order_item_id, raw_material_id, qty_diterima")
       .eq("grn_id", id)
@@ -548,22 +549,22 @@ export async function DELETE(
     if (grnItems && grnItems.length > 0) {
       for (const item of grnItems) {
         if (item.purchase_order_item_id) {
-          const { data: poItem } = await supabase
+          const { data: poItem } = await db
             .from("purchase_order_items")
             .select("qty_received")
             .eq("id", item.purchase_order_item_id)
             .single();
           if (poItem) {
             const newQty = Math.max(0, (poItem.qty_received || 0) - (item.qty_diterima || 0));
-            await updatePOItemReceivedQty(supabase, item.purchase_order_item_id, newQty);
+            await updatePOItemReceivedQty(db, item.purchase_order_item_id, newQty);
           }
         }
       }
     }
 
     // 3. Soft delete GRN dan items
-    await supabase.from("grn_items").update({ is_active: false }).eq("grn_id", id);
-    const { data: deletedGrn, error } = await supabase
+    await db.from("grn_items").update({ is_active: false }).eq("grn_id", id);
+    const { data: deletedGrn, error } = await db
       .from("grn")
       .update({ is_active: false, updated_by: user.id })
       .eq("id", id)
@@ -574,7 +575,7 @@ export async function DELETE(
 
     // 4. Update PO status
     if (grn.purchase_order_id) {
-      await updatePOStatusAfterGrn(supabase, grn.purchase_order_id);
+      await updatePOStatusAfterGrn(db, grn.purchase_order_id);
     }
 
     // 5. Kurangi inventory
@@ -583,7 +584,7 @@ export async function DELETE(
         if (item.qty_diterima > 0 && item.raw_material_id) {
           try {
             await removeInventoryFromGrn(
-              supabase,
+              db,
               item.raw_material_id,
               item.qty_diterima,
               id,

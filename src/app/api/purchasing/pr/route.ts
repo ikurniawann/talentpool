@@ -1,8 +1,15 @@
-import { createClient } from "@/lib/supabase/server";
+import { createServerPgClient } from "@/lib/pg/create-client";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { generatePRNumber } from "@/lib/purchasing/utils";
-import { requireUser } from "@/lib/supabase/auth";
+import { requireUser } from "@/lib/auth/require-user";
+import {
+  getApiUserScope,
+  companyScopeOr,
+  branchScopeOr,
+  effectiveCompanyId,
+  effectiveBranchId,
+} from "@/lib/api/scope";
 
 const prItemSchema = z.object({
   product_id: z.string().optional(),
@@ -20,11 +27,12 @@ const prSchema = z.object({
   required_date: z.string().optional(),
   notes: z.string().optional(),
   items: z.array(prItemSchema).min(1, "Minimal 1 item"),
+  action: z.enum(["draft", "submit"]).optional().default("draft"),
 });
 
 export async function GET(request: NextRequest) {
   try {
-    const supabase = await createClient();
+    const db = await createServerPgClient();
     const user = await requireUser();
 
     const { searchParams } = new URL(request.url);
@@ -34,20 +42,23 @@ export async function GET(request: NextRequest) {
     const page = parseInt(searchParams.get("page") || "1");
     const limit = parseInt(searchParams.get("limit") || "20");
 
-    let query = supabase
+    let query = db
       .from("purchase_requests")
       .select(
         `
         *,
-        items:pr_items(
-          *,
-          raw_material:raw_material_id(id, kode, nama),
-          satuan:satuan_id(id, nama)
-        )
+        items:pr_items(*)
       `,
         { count: "exact" }
       )
       .order("created_at", { ascending: false });
+
+    // Business scope: branch
+    const scope = await getApiUserScope();
+    const companyOr = companyScopeOr(scope);
+    if (companyOr) query = query.or(companyOr);
+    const branchOr = branchScopeOr(scope);
+    if (branchOr) query = query.or(branchOr);
 
     // Apply filters
     if (status && status !== "all") {
@@ -80,7 +91,7 @@ export async function GET(request: NextRequest) {
       ...new Set((prs || []).map((pr) => pr.requester_id).filter(Boolean)),
     ];
     const { data: requesters } = requesterIds.length
-      ? await supabase
+      ? await db
           .from("users")
           .select("id, full_name")
           .in("id", requesterIds)
@@ -92,7 +103,7 @@ export async function GET(request: NextRequest) {
       ...new Set((prs || []).map((pr) => pr.department_id).filter(Boolean)),
     ];
     const { data: departments } = departmentIds.length
-      ? await supabase
+      ? await db
           .from("departments")
           .select("id, name")
           .in("id", departmentIds)
@@ -127,7 +138,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createClient();
+    const db = await createServerPgClient();
     const user = await requireUser();
     
     // Check authorization
@@ -149,29 +160,36 @@ export async function POST(request: NextRequest) {
     
     const body = await request.json();
     const validated = prSchema.parse(body);
+    const scope = await getApiUserScope();
+    const companyId = effectiveCompanyId(scope);
+    const branchId = effectiveBranchId(scope);
     
     // Generate PR number
-    const prNumber = await generatePRNumber(supabase);
+    const prNumber = await generatePRNumber(db);
     
     // Calculate total
     const totalAmount = validated.items.reduce(
       (sum, item) => sum + item.qty * item.estimated_price,
       0
     );
+
+    const nextStatus = validated.action === "submit" ? "pending_head" : "draft";
     
     // Start transaction
-    const { data: pr, error: prError } = await supabase
+    const { data: pr, error: prError } = await db
       .from("purchase_requests")
       .insert({
         pr_number: prNumber,
         requester_id: user.id,
+        company_id: companyId,
+        branch_id: branchId,
         department_id: validated.department_id,
-        status: "draft",
+        status: nextStatus,
         total_amount: totalAmount,
         priority: validated.priority,
         notes: validated.notes || null,
         required_date: validated.required_date || null,
-        current_approval_level: null,
+        current_approval_level: nextStatus === "pending_head" ? "head_dept" : null,
       })
       .select()
       .single();
@@ -191,7 +209,7 @@ export async function POST(request: NextRequest) {
       total: item.qty * item.estimated_price,
     }));
     
-    const { error: itemsError } = await supabase
+    const { error: itemsError } = await db
       .from("pr_items")
       .insert(itemsWithTotal);
     

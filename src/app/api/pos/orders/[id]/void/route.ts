@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server';
-import { createServiceClient } from '@/lib/supabase/service-client';
+import { createPgClient } from "@/lib/pg/create-client";
 import { getPosSession } from '@/lib/api/auth';
 
 export async function POST(
@@ -20,10 +20,10 @@ export async function POST(
       return Response.json({ success: false, error: 'Reason and supervisor PIN required' }, { status: 400 });
     }
 
-    const supabase = createServiceClient();
+    const db = createPgClient();
 
     // 1. Validate supervisor PIN
-    const { data: supervisor } = await supabase
+    const { data: supervisor } = await db
       .from('users')
       .select('id, full_name, role')
       .eq('role', 'pos_supervisor')
@@ -35,7 +35,7 @@ export async function POST(
     }
 
     // 2. Fetch order
-    const { data: order, error: orderErr } = await supabase
+    const { data: order, error: orderErr } = await db
       .from('pos_orders')
       .select('id, status')
       .eq('id', orderId)
@@ -56,7 +56,7 @@ export async function POST(
     }
 
     // 3. Void the order
-    const { error: updErr } = await supabase
+    const { error: updErr } = await db
       .from('pos_orders')
       .update({
         status: 'voided',
@@ -70,7 +70,7 @@ export async function POST(
     if (updErr) throw updErr;
 
     // 4. Cancel any pending splits
-    await supabase
+    await db
       .from('pos_order_splits')
       .update({ status: 'cancelled', updated_at: new Date().toISOString() })
       .eq('order_id', orderId)

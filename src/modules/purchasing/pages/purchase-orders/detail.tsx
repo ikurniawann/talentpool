@@ -31,7 +31,7 @@ export default function PODetailPage({ params }: { params: { id: string } }) {
             <p className="text-sm text-gray-500">ID: {params.id}</p>
           </div>
           <div className="flex gap-2">
-            <Link href={`/dashboard/purchasing/purchase-orders/${params.id}/edit`}>
+            <Link href={`/dashboard/purchasing/purchase-orders/edit/${params.id}`}>
               <Button variant="outline">Edit</Button>
             </Link>
             <Link href="/dashboard/purchasing/purchase-orders">

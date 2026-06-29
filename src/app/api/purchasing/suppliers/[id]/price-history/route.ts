@@ -3,7 +3,7 @@
 // ============================================
 
 import { NextRequest } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { createServerPgClient } from "@/lib/pg/create-client";
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -15,7 +15,7 @@ export async function GET(
   { params }: RouteParams
 ) {
   try {
-    const supabase = await createClient();
+    const db = await createServerPgClient();
     const { id: supplierId } = await params;
     const { searchParams } = new URL(request.url);
 
@@ -31,7 +31,7 @@ export async function GET(
     startDate.setMonth(startDate.getMonth() - months);
 
     // Build query for price history
-    let query = supabase
+    let query = db
       .from("v_supplier_price_history")
       .select("*", { count: "exact" })
       .eq("supplier_id", supplierId)
@@ -80,7 +80,7 @@ export async function POST(
   { params }: RouteParams
 ) {
   try {
-    const supabase = await createClient();
+    const db = await createServerPgClient();
     const { id: supplierId } = await params;
     const body = await request.json();
 
@@ -108,7 +108,7 @@ export async function POST(
     }
 
     // Check if there's an existing active price for this supplier-material
-    const { data: existingPrice } = await supabase
+    const { data: existingPrice } = await db
       .from("supplier_price_lists")
       .select("id, berlaku_dari")
       .eq("supplier_id", supplierId)
@@ -121,7 +121,7 @@ export async function POST(
       const yesterday = new Date(berlaku_dari || new Date());
       yesterday.setDate(yesterday.getDate() - 1);
 
-      await supabase
+      await db
         .from("supplier_price_lists")
         .update({
           is_active: false,
@@ -132,7 +132,7 @@ export async function POST(
     }
 
     // Insert new price record
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from("supplier_price_lists")
       .insert({
         supplier_id: supplierId,

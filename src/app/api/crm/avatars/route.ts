@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getPosSession } from "@/lib/api/auth";
-import { createServiceClient } from "@/lib/supabase/service-client";
+import { createPgClient } from "@/lib/pg/create-client";
 import { apiErrorResponse, isMissingCrmSchema, validationErrorResponse } from "@/lib/crm/server";
 
 const avatarSchema = z.object({
@@ -27,10 +27,10 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const supabase = createServiceClient();
+    const db = createPgClient();
     const rarity = request.nextUrl.searchParams.get("rarity");
 
-    let query = supabase
+    let query = db
       .from("crm_collectible_avatars")
       .select("*, required_tier:crm_membership_tiers(code, name, rank)")
       .order("created_at", { ascending: false });
@@ -60,8 +60,8 @@ export async function POST(request: NextRequest) {
 
   try {
     const payload = avatarSchema.parse(await request.json());
-    const supabase = createServiceClient();
-    const { data, error } = await supabase
+    const db = createPgClient();
+    const { data, error } = await db
       .from("crm_collectible_avatars")
       .upsert(payload, { onConflict: "code" })
       .select()
@@ -99,8 +99,8 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ success: false, error: "Avatar id wajib diisi" }, { status: 400 });
     }
 
-    const supabase = createServiceClient();
-    const { error } = await supabase
+    const db = createPgClient();
+    const { error } = await db
       .from("crm_collectible_avatars")
       .delete()
       .eq("id", avatarId);

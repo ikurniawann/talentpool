@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { createClient } from '@/lib/supabase/server';
+import { createServerPgClient } from "@/lib/pg/create-client";
 
-// Import auth helpers - these don't call Supabase directly in test context
+// Auth helpers — no live database in unit test context
 import {
   ApiError,
   paginatedResponse,
@@ -115,8 +115,8 @@ describe('Auth Middleware - requireApiUser', () => {
   it('should be callable and handle auth flow', async () => {
     // The actual requireApiUser calls createClient which is mocked
     // This tests that the mock is set up correctly
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
+    const db = await createServerPgClient();
+    const { data: { user } } = await db.auth.getUser();
     
     expect(user).toBeDefined();
     expect(user.id).toBe('test-user-id');

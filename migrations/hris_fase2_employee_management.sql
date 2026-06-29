@@ -117,7 +117,7 @@ CREATE TRIGGER trg_record_employee_hire
   FOR EACH ROW EXECUTE FUNCTION fn_record_employee_hire();
 
 -- ============================================================
--- 4. STORAGE BUCKET (run in Supabase dashboard if needed)
+-- 4. STORAGE BUCKET (configure object storage separately if needed)
 -- ============================================================
 -- INSERT INTO storage.buckets (id, name, public) VALUES ('employee-documents', 'employee-documents', false)
 -- ON CONFLICT (id) DO NOTHING;

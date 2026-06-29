@@ -11,7 +11,7 @@
 ## Ringkasan Project
 
 - **Nama**: Arkiv OS
-- **Stack**: Next.js 16.2.3, React 19, Supabase, Tailwind v4, TypeScript
+- **Stack**: Next.js 16.2.3, React 19, PostgreSQL, Tailwind v4, TypeScript
 - **Scope**: ERP Terintegrasi (HRIS, Purchasing, Inventory, POS)
 - **Repo**: `/Users/ilham/Desktop/talentpool`
 
@@ -51,7 +51,7 @@
 - [ ] **3.3**.1 Ganti inline component jadi import dari `components/ui/`
 
 ### Fase 4: Performance & Architecture 🟢 P3
-- [ ] **4.1**.1 Refactor POS order jadi atomic transaction (Supabase RPC)
+- [ ] **4.1**.1 Refactor POS order jadi atomic transaction (PostgreSQL RPC)
 - [ ] **4.2**.1 Fix NIP generation race condition (pakai sequence DB)
 - [ ] **4.3**.1 Dashboard summary jadi 1 query (bukan 6 endpoint)
 - [ ] **4.4**.1 Perluas middleware untuk auth protection
@@ -178,7 +178,7 @@ Build berhasil tanpa error TypeScript!
 
 - **Jangan push ke production** sebelum Fase 1 selesai semua
 - Fase 1 menyangkut keamanan dan stabilitas, ini prioritas tertinggi
-- Banyak query Supabase di API pakai select join (`department:departments(name)`), sehingga data yang datang punya field nested. Tipe `Employee` dasar tidak punya field ini. Selalu pakai `EmployeeWithRelations` untuk data hasil join.
+- Banyak query PostgreSQL di API pakai select join (`department:departments(name)`), sehingga data yang datang punya field nested. Tipe `Employee` dasar tidak punya field ini. Selalu pakai `EmployeeWithRelations` untuk data hasil join.
 - Folder `pos-ui-backup/` masih ada di `src/app/dashboard/` — perlu dihapus saat Fase 3.
 
 ---

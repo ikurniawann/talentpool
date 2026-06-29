@@ -3,7 +3,7 @@
 // ============================================
 
 import { NextRequest } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { createServerPgClient } from "@/lib/pg/create-client";
 import { ApiError, requireApiRole } from "@/lib/api/auth";
 import { z } from "zod";
 
@@ -25,14 +25,14 @@ export async function POST(
   try {
     await requireApiRole([...CANCEL_ROLES]);
     const { id } = await params;
-    const supabase = await createClient();
+    const db = await createServerPgClient();
     const body = await request.json();
 
     // Validasi input
     const { reason } = cancelSchema.parse(body);
 
     // Cek PO ada
-    const { data: po, error: findError } = await supabase
+    const { data: po, error: findError } = await db
       .from("purchase_orders")
       .select("*")
       .eq("id", id)
@@ -61,7 +61,7 @@ export async function POST(
     }
 
     // Update status ke cancelled
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from("purchase_orders")
       .update({
         status: "cancelled",

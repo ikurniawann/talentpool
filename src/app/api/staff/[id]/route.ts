@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server";
+import { createServerPgClient } from "@/lib/pg/create-client";
 import { NextResponse } from "next/server";
 
 // GET /api/staff/[id]
@@ -6,10 +6,10 @@ export async function GET(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const supabase = await createClient();
+  const db = await createServerPgClient();
   const { id } = await params;
 
-  const { data, error } = await supabase
+  const { data, error } = await db
     .from("staff")
     .select("*, brands(name), positions(title), staff_sections(section_id, sections(name, color))")
     .eq("id", id)
@@ -27,11 +27,11 @@ export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const supabase = await createClient();
+  const db = await createServerPgClient();
   const { id } = await params;
   const body = await request.json();
 
-  const { data, error } = await supabase
+  const { data, error } = await db
     .from("staff")
     .update({
       full_name: body.full_name,
@@ -60,10 +60,10 @@ export async function DELETE(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const supabase = await createClient();
+  const db = await createServerPgClient();
   const { id } = await params;
 
-  const { error } = await supabase.from("staff").delete().eq("id", id);
+  const { error } = await db.from("staff").delete().eq("id", id);
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 400 });

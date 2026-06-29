@@ -28,7 +28,7 @@ export default function ProductDetailPage({ params }: { params: { id: string } }
             <Link href={`/dashboard/purchasing/products/${params.id}/bom`}>
               <Button variant="outline">BOM</Button>
             </Link>
-            <Link href={`/dashboard/purchasing/products/${params.id}/edit`}>
+            <Link href={`/dashboard/purchasing/products/edit/${params.id}`}>
               <Button variant="outline">Edit</Button>
             </Link>
             <Link href="/dashboard/purchasing/products">

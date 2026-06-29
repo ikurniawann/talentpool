@@ -1,9 +1,9 @@
-import { createClient } from "@/lib/supabase/server";
+import { createServerPgClient } from "@/lib/pg/create-client";
 import { NextResponse } from "next/server";
 
 // GET /api/dashboard/sources - Get source distribution for pie chart
 export async function GET(request: Request) {
-  const supabase = await createClient();
+  const db = await createServerPgClient();
   const { searchParams } = new URL(request.url);
 
   const brand_id = searchParams.get("brand_id");
@@ -30,7 +30,7 @@ export async function GET(request: Request) {
       startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
   }
 
-  let query = supabase
+  let query = db
     .from("candidates")
     .select("source", { count: "exact", head: true })
     .gte("created_at", startDate.toISOString());
@@ -46,7 +46,7 @@ export async function GET(request: Request) {
   }
 
   // Get all candidates within period to count by source
-  let countQuery = supabase
+  let countQuery = db
     .from("candidates")
     .select("source")
     .gte("created_at", startDate.toISOString());

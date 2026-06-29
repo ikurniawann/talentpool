@@ -14,7 +14,7 @@ export const phase3Complete = {
     "✅ Auto-convert PR status ke 'converted'",
   ],
   files: {
-    migration: "supabase/migrations/20250419_purchase_order.sql",
+    migration: "database/migrations/20250419_purchase_order.sql",
     poForm: "src/components/purchasing/po-form.tsx",
     poList: "src/app/(dashboard)/dashboard/purchasing/po/page.tsx",
     poNew: "src/app/(dashboard)/dashboard/purchasing/po/new/page.tsx",
@@ -22,7 +22,7 @@ export const phase3Complete = {
   },
   nextPhase: "Phase 4: PO Detail + Print + Goods Receipt",
   readyFor: [
-    "1. Jalankan SQL migration PO di Supabase",
+    "1. Jalankan SQL migration PO via `npm run db:migrate:apply`",
     "2. Test create PO dari PR yang approved",
     "3. Lanjut PO Detail page dan Print page",
   ],

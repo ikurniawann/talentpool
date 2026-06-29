@@ -1,12 +1,12 @@
 import ArkivOsDesktop from "@/components/arkiv/arkiv-os-desktop";
-import { createClient } from "@/lib/supabase/server";
+import { createServerPgClient } from "@/lib/pg/create-client";
 import { redirect } from "next/navigation";
 
 export default async function HomePage() {
-  const supabase = await createClient();
+  const db = await createServerPgClient();
   const {
     data: { user },
-  } = await supabase.auth.getUser();
+  } = await db.auth.getUser();
 
   if (!user) {
     redirect("/login");

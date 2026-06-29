@@ -184,7 +184,7 @@ Fitur:
 
 ### Step 1: Run Core Schema
 ```bash
-# In Supabase SQL Editor or via CLI
+# In psql atau SQL client or via CLI
 psql -h <host> -U postgres -d talentpool -f migrations/003_360_feedback_system.sql
 ```
 

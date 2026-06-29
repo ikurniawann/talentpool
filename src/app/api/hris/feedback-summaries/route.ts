@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createAdminClient } from '@/lib/supabase/admin';
-import { createClient } from '@/lib/supabase/server';
+import { createPgClient } from "@/lib/pg/create-client";
+import { createServerPgClient } from "@/lib/pg/create-client";
 
 export async function GET(request: NextRequest) {
   try {
-    const supabase = createAdminClient();
+    const db = createPgClient();
     const searchParams = request.nextUrl.searchParams;
     const cycleId = searchParams.get('cycle_id');
     const employeeId = searchParams.get('employee_id');
@@ -13,7 +13,7 @@ export async function GET(request: NextRequest) {
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '50');
 
-    let query = supabase
+    let query = db
       .from('feedback_summaries')
       .select(`
         *,
@@ -41,7 +41,7 @@ export async function GET(request: NextRequest) {
     const { data, error, count } = await query;
     
     if (error) {
-      console.error('Supabase error:', error);
+      console.error('Database error:', error);
       return NextResponse.json({ error: error.message, details: error }, { status: 500 });
     }
 
@@ -60,16 +60,16 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const authClient = await createClient();
+    const authClient = await createServerPgClient();
     const { data: { user } } = await authClient.auth.getUser();
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const supabase = createAdminClient();
+    const db = createPgClient();
     const body = await request.json();
 
     // Calculate final score if KPI and 360 scores are provided
     if (body.kpi_score !== undefined && body.overall_360_score !== undefined) {
-      const cycle = await supabase
+      const cycle = await db
         .from('feedback_cycles')
         .select('kpi_weight, feedback_weight')
         .eq('id', body.cycle_id)
@@ -88,7 +88,7 @@ export async function POST(request: NextRequest) {
       else body.final_grade = 'E';
     }
 
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from('feedback_summaries')
       .insert(body)
       .select()

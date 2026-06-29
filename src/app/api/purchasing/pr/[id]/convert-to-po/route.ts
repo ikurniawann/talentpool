@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { createPgClient } from "@/lib/pg/create-client";
 import { ApiError, requireApiRole } from "@/lib/api/auth";
 import { generatePONumber } from "@/lib/purchasing/utils";
 
@@ -80,9 +80,9 @@ export async function POST(
     ]);
     const body = await request.json();
     const payload = convertSchema.parse(body);
-    const supabase = createAdminClient();
+    const db = createPgClient();
 
-    const { data: pr, error: prError } = await supabase
+    const { data: pr, error: prError } = await db
       .from("purchase_requests")
       .select("id,status,converted_po_id")
       .eq("id", id)
@@ -92,7 +92,7 @@ export async function POST(
     if (pr.status !== "approved") throw ApiError.badRequest("PR harus approved sebelum dibuatkan PO");
     if (pr.converted_po_id) throw ApiError.badRequest("PR sudah dibuatkan PO");
 
-    const { data: prItems, error: prItemsError } = await supabase
+    const { data: prItems, error: prItemsError } = await db
       .from("pr_items")
       .select("id,raw_material_id,satuan_id,qty,estimated_price,description")
       .eq("pr_id", id);
@@ -103,13 +103,13 @@ export async function POST(
     const materialIds = [...new Set((prItems as PRItemRow[]).map((item) => item.raw_material_id).filter(Boolean))] as string[];
 
     const [{ data: prices, error: pricesError }, { data: conversions, error: conversionsError }] = await Promise.all([
-      supabase
+      db
         .from("supplier_price_lists")
         .select("bahan_baku_id,satuan_id,harga,is_preferred")
         .eq("supplier_id", payload.supplier_id)
         .in("bahan_baku_id", materialIds)
         .eq("is_active", true),
-      supabase
+      db
         .from("raw_material_unit_conversions")
         .select("raw_material_id,satuan_id,qty_in_base_unit")
         .in("raw_material_id", materialIds)
@@ -119,8 +119,8 @@ export async function POST(
     if (pricesError) throw pricesError;
     if (conversionsError) throw conversionsError;
 
-    const poNumber = await generatePONumber(supabase);
-    const { data: insertedPo, error: poInsertError } = await supabase
+    const poNumber = await generatePONumber(db);
+    const { data: insertedPo, error: poInsertError } = await db
       .from("purchase_orders")
       .insert({
         nomor_po: poNumber,
@@ -174,7 +174,7 @@ export async function POST(
       };
     });
 
-    const { error: itemInsertError } = await supabase
+    const { error: itemInsertError } = await db
       .from("purchase_order_items")
       .insert(poItems);
 
@@ -185,7 +185,7 @@ export async function POST(
     const ppn = Math.max(0, subtotal - discount) * payload.ppn_persen / 100;
     const total = Math.max(0, subtotal - discount) + ppn;
 
-    const { error: updatePoError } = await supabase
+    const { error: updatePoError } = await db
       .from("purchase_orders")
       .update({
         subtotal,
@@ -198,7 +198,7 @@ export async function POST(
 
     if (updatePoError) throw updatePoError;
 
-    const { error: updatePrError } = await supabase
+    const { error: updatePrError } = await db
       .from("purchase_requests")
       .update({
         status: "converted",
@@ -210,7 +210,7 @@ export async function POST(
     if (updatePrError) throw updatePrError;
     conversionFinalized = true;
 
-    const { data: po, error: poError } = await supabase
+    const { data: po, error: poError } = await db
       .from("v_purchase_orders")
       .select("*")
       .eq("id", insertedPo.id)
@@ -233,8 +233,8 @@ export async function POST(
   } catch (error) {
     if (insertedPoId && !conversionFinalized) {
       try {
-        const supabase = createAdminClient();
-        await supabase.from("purchase_orders").delete().eq("id", insertedPoId);
+        const db = createPgClient();
+        await db.from("purchase_orders").delete().eq("id", insertedPoId);
       } catch (cleanupError) {
         console.error("Error cleaning up failed PO conversion:", cleanupError);
       }

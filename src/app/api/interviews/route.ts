@@ -1,12 +1,12 @@
-import { createClient } from "@/lib/supabase/server";
+import { createServerPgClient } from "@/lib/pg/create-client";
 import { NextResponse } from "next/server";
 
 // GET /api/interviews
 export async function GET(request: Request) {
-  const supabase = await createClient();
+  const db = await createServerPgClient();
   const { searchParams } = new URL(request.url);
 
-  let query = supabase
+  let query = db
     .from("interviews")
     .select("*, candidates(full_name, status), users(full_name)", { count: "exact" })
     .order("interview_date", { ascending: false });
@@ -25,11 +25,11 @@ export async function GET(request: Request) {
 
 // POST /api/interviews
 export async function POST(request: Request) {
-  const supabase = await createClient();
+  const db = await createServerPgClient();
   const body = await request.json();
-  const { data: userData } = await supabase.auth.getUser();
+  const { data: userData } = await db.auth.getUser();
 
-  const { data, error } = await supabase
+  const { data, error } = await db
     .from("interviews")
     .insert({
       candidate_id: body.candidate_id,
@@ -59,7 +59,7 @@ export async function POST(request: Request) {
     }
 
     if (newStatus) {
-      await supabase
+      await db
         .from("candidates")
         .update({ status: newStatus })
         .eq("id", body.candidate_id);

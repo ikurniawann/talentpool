@@ -541,11 +541,11 @@ X-Arkiv-Timestamp
 ### Implementation Status
 
 - 2026-05-22: Phase 1 foundation mulai dikerjakan.
-- Migration dibuat: `supabase/migrations/20260522063106_crm_membership_loyalty_foundation.sql`.
+- Migration dibuat: `database/migrations/20260522063106_crm_membership_loyalty_foundation.sql`.
 - API dasar dibuat untuk CRM dashboard, members, tiers, XP rules, dan rewards.
 - Halaman awal CRM dibuat di `/dashboard/crm` dan launcher CRM di Arkiv OS sudah aktif.
 - 2026-05-22: Phase 2 POS integration mulai dikerjakan.
-- Migration POS XP dibuat: `supabase/migrations/20260522064730_crm_pos_xp_integration.sql`.
+- Migration POS XP dibuat: `database/migrations/20260522064730_crm_pos_xp_integration.sql`.
 - Loyalty engine dibuat di `src/lib/crm/loyalty-engine.ts` untuk award XP, idempotency ledger, sync customer XP, dan tier upgrade.
 - POS single-payment, open bill payment, dan split payment sudah memanggil CRM XP engine.
 - API produk POS sudah menerima field `xp` sebagai alias untuk `xp_points` dan tetap backward-compatible jika database aktif belum punya kolom tersebut.

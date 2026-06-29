@@ -1,7 +1,7 @@
-import type { SupabaseClient } from "@supabase/supabase-js";
+import type { DbClient } from "@/lib/pg/types";
 import { isMissingCrmSchema, toNumber } from "@/lib/crm/server";
 
-type DbClient = SupabaseClient;
+type DbClient = DbClient;
 
 type PosOrderItemInput = {
   product_id?: string | null;
@@ -91,7 +91,7 @@ type PostXpEventInput = {
 };
 
 export async function awardCrmXpForPosOrder(
-  supabase: DbClient,
+  db: DbClient,
   payload: {
     orderId: string;
     customerId?: string | null;
@@ -105,13 +105,13 @@ export async function awardCrmXpForPosOrder(
   }
 
   try {
-    const rules = await loadPosXpRules(supabase);
+    const rules = await loadPosXpRules(db);
     if (!rules.ready) return rules.result;
 
     const productIds = payload.items
       .map((item) => item.product_id ?? item.productId ?? null)
       .filter((value): value is string => Boolean(value));
-    const productXp = await loadProductXpMap(supabase, productIds);
+    const productXp = await loadProductXpMap(db, productIds);
 
     const ledgerIds: string[] = [];
     let xpAwarded = 0;
@@ -144,7 +144,7 @@ export async function awardCrmXpForPosOrder(
       if (xp <= 0) continue;
 
       productXpPosted = true;
-      const posted = await postXpEvent(supabase, {
+      const posted = await postXpEvent(db, {
         customerId: payload.customerId,
         sourceType: "product",
         sourceId: productId,
@@ -173,7 +173,7 @@ export async function awardCrmXpForPosOrder(
 
       if (orderRule) {
         const xp = calculateXp(orderRule, { amount: payload.totalAmount, quantity: 1 });
-        const posted = await postXpEvent(supabase, {
+        const posted = await postXpEvent(db, {
           customerId: payload.customerId,
           sourceType: "order_amount",
           sourceId: null,
@@ -194,8 +194,8 @@ export async function awardCrmXpForPosOrder(
     }
 
     if (xpAwarded > 0) {
-      await syncPosCustomerAfterEarn(supabase, payload.customerId, xpAwarded, payload.totalAmount);
-      await syncTierAfterEarn(supabase, payload.customerId);
+      await syncPosCustomerAfterEarn(db, payload.customerId, xpAwarded, payload.totalAmount);
+      await syncTierAfterEarn(db, payload.customerId);
       return { status: "posted", xpAwarded, ledgerIds };
     }
 
@@ -219,7 +219,7 @@ export async function awardCrmXpForPosOrder(
 }
 
 export async function awardCrmXpForSplitPayment(
-  supabase: DbClient,
+  db: DbClient,
   payload: {
     orderId: string;
     splitId: string;
@@ -233,7 +233,7 @@ export async function awardCrmXpForSplitPayment(
   }
 
   try {
-    const rules = await loadPosXpRules(supabase);
+    const rules = await loadPosXpRules(db);
     if (!rules.ready) return rules.result;
 
     const orderRule = findBestRule(rules.data, {
@@ -248,7 +248,7 @@ export async function awardCrmXpForSplitPayment(
     }
 
     const xp = calculateXp(orderRule, { amount: payload.totalAmount, quantity: 1 });
-    const posted = await postXpEvent(supabase, {
+    const posted = await postXpEvent(db, {
       customerId: payload.customerId,
       sourceType: "split_payment",
       sourceId: payload.splitId,
@@ -263,8 +263,8 @@ export async function awardCrmXpForSplitPayment(
     });
 
     if (posted.xpAwarded > 0) {
-      await syncPosCustomerAfterEarn(supabase, payload.customerId, posted.xpAwarded, payload.totalAmount);
-      await syncTierAfterEarn(supabase, payload.customerId);
+      await syncPosCustomerAfterEarn(db, payload.customerId, posted.xpAwarded, payload.totalAmount);
+      await syncTierAfterEarn(db, payload.customerId);
     }
 
     return posted;
@@ -282,11 +282,11 @@ export async function awardCrmXpForSplitPayment(
   }
 }
 
-async function loadPosXpRules(supabase: DbClient): Promise<
+async function loadPosXpRules(db: DbClient): Promise<
   | { ready: true; data: CrmXpRule[] }
   | { ready: false; result: CrmXpAwardResult }
 > {
-  const { data, error } = await supabase
+  const { data, error } = await db
     .from("crm_xp_rules")
     .select("*")
     .eq("source_channel", "pos")
@@ -303,11 +303,11 @@ async function loadPosXpRules(supabase: DbClient): Promise<
   return { ready: true, data: (data ?? []) as CrmXpRule[] };
 }
 
-async function loadProductXpMap(supabase: DbClient, productIds: string[]) {
+async function loadProductXpMap(db: DbClient, productIds: string[]) {
   const map = new Map<string, number>();
   if (productIds.length === 0) return map;
 
-  let { data, error } = await supabase
+  let { data, error } = await db
     .from("pos_products")
     .select("id, xp_points")
     .in("id", Array.from(new Set(productIds)));
@@ -315,7 +315,7 @@ async function loadProductXpMap(supabase: DbClient, productIds: string[]) {
   if (error) {
     if (error.code !== "42703") throw error;
 
-    const fallback = await supabase
+    const fallback = await db
       .from("pos_products")
       .select("id, xp")
       .in("id", Array.from(new Set(productIds)));
@@ -368,12 +368,12 @@ function calculateXp(rule: CrmXpRule, input: { amount: number; quantity: number 
   return Math.max(0, Math.floor(capped));
 }
 
-async function postXpEvent(supabase: DbClient, input: PostXpEventInput): Promise<CrmXpAwardResult> {
+async function postXpEvent(db: DbClient, input: PostXpEventInput): Promise<CrmXpAwardResult> {
   if (input.xpAmount <= 0) {
     return { status: "skipped", xpAwarded: 0, reason: "zero_xp" };
   }
 
-  const existing = await supabase
+  const existing = await db
     .from("crm_xp_ledger")
     .select("id, xp_delta")
     .eq("idempotency_key", input.idempotencyKey)
@@ -384,10 +384,10 @@ async function postXpEvent(supabase: DbClient, input: PostXpEventInput): Promise
     return { status: "duplicate", xpAwarded: 0, ledgerIds: [existing.data.id] };
   }
 
-  const member = await ensureMemberProfile(supabase, input.customerId);
+  const member = await ensureMemberProfile(db, input.customerId);
   if (!member) return { status: "skipped", xpAwarded: 0, reason: "member_profile_unavailable" };
 
-  const tierMultiplier = input.ruleId ? await getTierMultiplierForRule(supabase, input.ruleId, member) : toNumber(member.tier?.xp_multiplier) || 1;
+  const tierMultiplier = input.ruleId ? await getTierMultiplierForRule(db, input.ruleId, member) : toNumber(member.tier?.xp_multiplier) || 1;
   const xpDelta = Math.max(0, Math.floor(input.xpAmount * tierMultiplier));
   if (xpDelta <= 0) return { status: "skipped", xpAwarded: 0, reason: "zero_xp" };
 
@@ -396,7 +396,7 @@ async function postXpEvent(supabase: DbClient, input: PostXpEventInput): Promise
   const balanceAfter = balanceBefore + xpDelta;
   const lifetimeAfter = lifetimeBefore + xpDelta;
 
-  const { data: ledger, error: ledgerError } = await supabase
+  const { data: ledger, error: ledgerError } = await db
     .from("crm_xp_ledger")
     .insert({
       member_id: member.id,
@@ -426,7 +426,7 @@ async function postXpEvent(supabase: DbClient, input: PostXpEventInput): Promise
     throw ledgerError;
   }
 
-  const { error: profileError } = await supabase
+  const { error: profileError } = await db
     .from("crm_member_profiles")
     .update({
       current_xp: balanceAfter,
@@ -441,8 +441,8 @@ async function postXpEvent(supabase: DbClient, input: PostXpEventInput): Promise
   return { status: "posted", xpAwarded: xpDelta, ledgerIds: ledger?.id ? [ledger.id] : [] };
 }
 
-async function ensureMemberProfile(supabase: DbClient, customerId: string): Promise<CrmMemberProfile | null> {
-  const existing = await supabase
+async function ensureMemberProfile(db: DbClient, customerId: string): Promise<CrmMemberProfile | null> {
+  const existing = await db
     .from("crm_member_profiles")
     .select("*, tier:crm_membership_tiers(id, code, name, rank, xp_multiplier)")
     .eq("customer_id", customerId)
@@ -451,7 +451,7 @@ async function ensureMemberProfile(supabase: DbClient, customerId: string): Prom
   if (existing.error && !isMissingCrmSchema(existing.error)) throw existing.error;
   if (existing.data) return existing.data as CrmMemberProfile;
 
-  const { data: customer, error: customerError } = await supabase
+  const { data: customer, error: customerError } = await db
     .from("pos_customers")
     .select("id, phone, membership_tier, total_xp, current_xp, total_spent")
     .eq("id", customerId)
@@ -462,8 +462,8 @@ async function ensureMemberProfile(supabase: DbClient, customerId: string): Prom
 
   const customerRow = customer as PosCustomerLoyaltyRow;
   const tierCode = String(customerRow.membership_tier || "bronze").toLowerCase();
-  let tier = await findTierByCode(supabase, tierCode);
-  if (!tier) tier = await findTierByCode(supabase, "bronze");
+  let tier = await findTierByCode(db, tierCode);
+  if (!tier) tier = await findTierByCode(db, "bronze");
   if (!tier) return null;
 
   const memberPayload: Record<string, unknown> = {
@@ -480,7 +480,7 @@ async function ensureMemberProfile(supabase: DbClient, customerId: string): Prom
     memberPayload.member_code = `ARK-${String(customerRow.phone).replace(/\D/g, "").slice(-10)}`;
   }
 
-  const { data: inserted, error: insertError } = await supabase
+  const { data: inserted, error: insertError } = await db
     .from("crm_member_profiles")
     .insert(memberPayload)
     .select("*, tier:crm_membership_tiers(id, code, name, rank, xp_multiplier)")
@@ -488,7 +488,7 @@ async function ensureMemberProfile(supabase: DbClient, customerId: string): Prom
 
   if (insertError) {
     if (insertError.code === "23505") {
-      const retry = await supabase
+      const retry = await db
         .from("crm_member_profiles")
         .select("*, tier:crm_membership_tiers(id, code, name, rank, xp_multiplier)")
         .eq("customer_id", customerId)
@@ -502,8 +502,8 @@ async function ensureMemberProfile(supabase: DbClient, customerId: string): Prom
   return inserted as CrmMemberProfile;
 }
 
-async function findTierByCode(supabase: DbClient, code: string): Promise<CrmTier | null> {
-  const { data, error } = await supabase
+async function findTierByCode(db: DbClient, code: string): Promise<CrmTier | null> {
+  const { data, error } = await db
     .from("crm_membership_tiers")
     .select("*")
     .eq("code", code)
@@ -514,8 +514,8 @@ async function findTierByCode(supabase: DbClient, code: string): Promise<CrmTier
   return (data as CrmTier | null) ?? null;
 }
 
-async function getTierMultiplierForRule(supabase: DbClient, ruleId: string, member: CrmMemberProfile) {
-  const { data: rule } = await supabase
+async function getTierMultiplierForRule(db: DbClient, ruleId: string, member: CrmMemberProfile) {
+  const { data: rule } = await db
     .from("crm_xp_rules")
     .select("tier_multiplier_enabled")
     .eq("id", ruleId)
@@ -525,8 +525,8 @@ async function getTierMultiplierForRule(supabase: DbClient, ruleId: string, memb
   return toNumber(member.tier?.xp_multiplier) || 1;
 }
 
-async function syncPosCustomerAfterEarn(supabase: DbClient, customerId: string, xpAwarded: number, amount: number) {
-  const { data: customer, error } = await supabase
+async function syncPosCustomerAfterEarn(db: DbClient, customerId: string, xpAwarded: number, amount: number) {
+  const { data: customer, error } = await db
     .from("pos_customers")
     .select("total_xp, current_xp, total_spent, visit_count")
     .eq("id", customerId)
@@ -534,7 +534,7 @@ async function syncPosCustomerAfterEarn(supabase: DbClient, customerId: string, 
 
   if (error || !customer) return;
 
-  await supabase
+  await db
     .from("pos_customers")
     .update({
       total_xp: toNumber((customer as PosCustomerLoyaltyRow).total_xp) + xpAwarded,
@@ -547,8 +547,8 @@ async function syncPosCustomerAfterEarn(supabase: DbClient, customerId: string, 
     .eq("id", customerId);
 }
 
-async function syncTierAfterEarn(supabase: DbClient, customerId: string) {
-  const { data: profile, error: profileError } = await supabase
+async function syncTierAfterEarn(db: DbClient, customerId: string) {
+  const { data: profile, error: profileError } = await db
     .from("crm_member_profiles")
     .select("id, tier_id, lifetime_xp")
     .eq("customer_id", customerId)
@@ -556,13 +556,13 @@ async function syncTierAfterEarn(supabase: DbClient, customerId: string) {
 
   if (profileError || !profile) return;
 
-  const { data: customer } = await supabase
+  const { data: customer } = await db
     .from("pos_customers")
     .select("total_spent")
     .eq("id", customerId)
     .maybeSingle();
 
-  const { data: tiers, error: tiersError } = await supabase
+  const { data: tiers, error: tiersError } = await db
     .from("crm_membership_tiers")
     .select("*")
     .eq("is_active", true)
@@ -579,12 +579,12 @@ async function syncTierAfterEarn(supabase: DbClient, customerId: string) {
   );
 
   if (nextTier && nextTier.id !== profileRow.tier_id) {
-    await supabase
+    await db
       .from("crm_member_profiles")
       .update({ tier_id: nextTier.id })
       .eq("id", profileRow.id);
 
-    await supabase
+    await db
       .from("pos_customers")
       .update({ membership_tier: nextTier.code, updated_at: new Date().toISOString() })
       .eq("id", customerId);

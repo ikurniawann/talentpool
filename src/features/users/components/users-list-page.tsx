@@ -1,0 +1,396 @@
+"use client";
+
+import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
+import {
+  BuildingOfficeIcon,
+  PlusIcon,
+  UserGroupIcon,
+} from "@heroicons/react/24/outline";
+import { Filter, Search, Users, X } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Combobox } from "@/components/ui/combobox";
+import { Input } from "@/components/ui/input";
+import { ToastContainer, useToast } from "@/components/ui/toast";
+import { filterComboboxClassName } from "@/components/layout/form-field";
+import { useDepartmentList } from "@/features/master-data/departments";
+import { PurchasingListSection } from "@/modules/purchasing/components/list/PurchasingListSection";
+import { PurchasingTablePagination } from "@/modules/purchasing/components/pagination/PurchasingTablePagination";
+import { useResetUserPassword } from "../mutations";
+import { useUserDirectoryStats, useUserList } from "../queries";
+import {
+  ADMIN_USER_ROLES,
+  EMPLOYEES_ROUTES,
+  ROLE_LABELS,
+  STATUS_LABELS,
+} from "../constants";
+import { UsersTable } from "./users-table";
+import type { UserEmployeeItem } from "@/lib/users/user-mapper";
+
+export function UsersListPage({ showAppActions = false }: { showAppActions?: boolean }) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const { toasts, showToast, removeToast } = useToast();
+  const resetPasswordMutation = useResetUserPassword();
+
+  const [searchQuery, setSearchQuery] = useState("");
+  const [search, setSearch] = useState("");
+  const [departmentFilter, setDepartmentFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [activeFilter, setActiveFilter] = useState("all");
+  const [accessFilter, setAccessFilter] = useState("all");
+  const [roleFilter, setRoleFilter] = useState("");
+  const [filterOpen, setFilterOpen] = useState(false);
+  const [page, setPage] = useState(1);
+
+  const perPage = 15;
+
+  const listParams = useMemo(
+    () => ({
+      search: search.trim() || undefined,
+      department_id: departmentFilter !== "all" ? departmentFilter : undefined,
+      employment_status: statusFilter !== "all" ? statusFilter : undefined,
+      is_active: activeFilter !== "all" ? activeFilter : undefined,
+      is_access_app: accessFilter !== "all" ? accessFilter : undefined,
+      role: roleFilter || undefined,
+      page,
+      limit: perPage,
+      sort_by: "full_name",
+      sort_order: "asc" as const,
+    }),
+    [search, departmentFilter, statusFilter, activeFilter, accessFilter, roleFilter, page]
+  );
+
+  const { data, isLoading, isError } = useUserList(listParams);
+  const { data: departments = [] } = useDepartmentList();
+  const { data: stats = { total: 0, active: 0, withAccess: 0 } } = useUserDirectoryStats();
+  const rows = data?.data ?? [];
+  const total = data?.total ?? 0;
+  const totalPages = Math.max(1, Math.ceil(total / perPage));
+
+  const activeFilterCount = [
+    departmentFilter !== "all",
+    statusFilter !== "all",
+    activeFilter !== "all",
+    accessFilter !== "all",
+    !!roleFilter,
+  ].filter(Boolean).length;
+
+  const isFilterActive = activeFilterCount > 0;
+
+  const departmentFilterOptions = useMemo(
+    () => [
+      { value: "all", label: "Semua Departemen" },
+      ...departments.map((d) => ({ value: d.id, label: d.name })),
+    ],
+    [departments]
+  );
+  const statusFilterOptions = useMemo(
+    () => [
+      { value: "all", label: "Semua Status" },
+      ...Object.entries(STATUS_LABELS).map(([value, label]) => ({ value, label })),
+    ],
+    []
+  );
+  const activeFilterOptions = useMemo(
+    () => [
+      { value: "all", label: "Semua" },
+      { value: "true", label: "Aktif" },
+      { value: "false", label: "Nonaktif" },
+    ],
+    []
+  );
+  const accessFilterOptions = useMemo(
+    () => [
+      { value: "all", label: "Semua Akses" },
+      { value: "true", label: "Punya Akses App" },
+      { value: "false", label: "Tanpa Akses App" },
+    ],
+    []
+  );
+  const roleFilterOptions = useMemo(
+    () => [
+      { value: "all", label: "Semua Role" },
+      ...ADMIN_USER_ROLES.map((role) => ({ value: role, label: ROLE_LABELS[role] })),
+    ],
+    []
+  );
+
+  useEffect(() => {
+    const timeout = window.setTimeout(() => {
+      setSearch(searchQuery.trim());
+      setPage(1);
+    }, 300);
+    return () => window.clearTimeout(timeout);
+  }, [searchQuery]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [departmentFilter, statusFilter, activeFilter, accessFilter, roleFilter]);
+
+  function handleResetFilters() {
+    setSearchQuery("");
+    setSearch("");
+    setDepartmentFilter("all");
+    setStatusFilter("all");
+    setActiveFilter("all");
+    setAccessFilter("all");
+    setRoleFilter("");
+    setPage(1);
+  }
+
+  async function handleResetPassword(row: UserEmployeeItem) {
+    if (resetPasswordMutation.isPending) return;
+    try {
+      const res = await resetPasswordMutation.mutateAsync(row.id);
+      showToast(
+        res.tempPassword
+          ? `${res.message}. Password sementara: ${res.tempPassword}`
+          : res.message,
+        "success"
+      );
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : "Gagal reset password", "error");
+    }
+  }
+
+  return (
+    <div className="space-y-6">
+      <ToastContainer toasts={toasts} removeToast={removeToast} />
+
+      <div className="flex flex-col items-start justify-between gap-4 border-b border-gray-200/70 pb-4 sm:flex-row sm:items-center">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Karyawan & User</h1>
+          <p className="text-sm text-gray-500">
+            Direktori karyawan HRIS dengan pengaturan akses aplikasi — {total} total
+          </p>
+        </div>
+        <Link href={EMPLOYEES_ROUTES.insert}>
+          <Button className="h-10 w-full gap-2 rounded-lg bg-pink-600 px-3 text-sm font-semibold text-white shadow-sm hover:bg-pink-700 sm:w-auto">
+            <PlusIcon className="h-4 w-4" />
+            Tambah Karyawan
+          </Button>
+        </Link>
+      </div>
+
+      <div className="border-b border-gray-200/70">
+        <nav className="-mb-px flex space-x-6 overflow-x-auto">
+          {[
+            { href: EMPLOYEES_ROUTES.list, label: "Semua Karyawan" },
+            { href: "/dashboard/hris/schedules", label: "Schedules" },
+            { href: "/dashboard/hris/sections", label: "Sections" },
+          ].map((tab) => (
+            <button
+              key={tab.href}
+              type="button"
+              onClick={() => router.push(tab.href)}
+              className={`whitespace-nowrap border-b-2 px-1 py-4 text-sm font-medium transition-colors ${
+                pathname === tab.href
+                  ? "border-pink-500 text-pink-600"
+                  : "border-transparent text-gray-500 hover:border-gray-200 hover:text-gray-700"
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </nav>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        {[
+          { label: "Total Karyawan", value: stats.total, icon: UserGroupIcon },
+          { label: "Aktif", value: stats.active, icon: UserGroupIcon },
+          { label: "Akses App", value: stats.withAccess, icon: UserGroupIcon },
+          { label: "Departemen", value: departments.length, icon: BuildingOfficeIcon },
+        ].map((item) => (
+          <div
+            key={item.label}
+            className="rounded-xl border border-gray-200/70 bg-white px-4 py-3 shadow-sm"
+          >
+            <div className="flex items-center gap-2 text-xs font-medium text-gray-500">
+              <item.icon className="h-3.5 w-3.5 text-pink-500" />
+              {item.label}
+            </div>
+            <p className="mt-1 text-2xl font-bold text-gray-900">{item.value}</p>
+          </div>
+        ))}
+      </div>
+
+      <PurchasingListSection
+        icon={Users}
+        title="Daftar Karyawan"
+        description="Pantau data karyawan, status kepegawaian, dan akses aplikasi."
+        toolbar={
+          <div className="flex w-full flex-col gap-3 sm:w-auto md:flex-row md:items-center">
+            <label className="relative w-full md:w-80">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+              <Input
+                placeholder="Cari nama, NIP, email..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="h-10 bg-white pl-10 pr-10 text-sm focus:border-pink-400 focus:ring-2 focus:ring-pink-100"
+              />
+              {searchQuery ? (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery("")}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 transition-colors hover:text-gray-700"
+                  aria-label="Hapus pencarian"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              ) : null}
+            </label>
+
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setFilterOpen((open) => !open)}
+              className={
+                isFilterActive
+                  ? "h-10 gap-2 rounded-lg border-pink-600 bg-pink-600 px-3 text-sm font-semibold !text-white shadow-sm hover:!border-pink-700 hover:!bg-pink-700 hover:!text-white [&_*]:!text-white [&_svg]:!text-white"
+                  : "h-10 gap-2 rounded-lg border-gray-200 bg-white px-3 text-sm font-medium text-gray-700 shadow-sm hover:!border-pink-200 hover:!bg-pink-50 hover:!text-pink-700"
+              }
+            >
+              <Filter className="h-4 w-4" />
+              Filter
+              {isFilterActive ? (
+                <span className="ml-1 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-white/20 px-1.5 text-xs text-white">
+                  {activeFilterCount}
+                </span>
+              ) : null}
+            </Button>
+
+            {(search || isFilterActive || page > 1) && (
+              <Button
+                variant="outline"
+                onClick={handleResetFilters}
+                className="h-10 flex-shrink-0 rounded-lg border-gray-200/80"
+              >
+                Reset
+              </Button>
+            )}
+          </div>
+        }
+      >
+        {filterOpen ? (
+          <div className="border-b border-gray-100 bg-gray-50/70 px-5 py-4">
+            <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+              <div className="space-y-1.5">
+                <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                  Departemen
+                </p>
+                <Combobox
+                  options={departmentFilterOptions}
+                  value={departmentFilter}
+                  onChange={setDepartmentFilter}
+                  placeholder="Departemen"
+                  searchPlaceholder="Cari departemen..."
+                  emptyMessage="Departemen tidak ditemukan"
+                  className={filterComboboxClassName}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Status</p>
+                <Combobox
+                  options={statusFilterOptions}
+                  value={statusFilter}
+                  onChange={setStatusFilter}
+                  placeholder="Status"
+                  searchPlaceholder="Cari status..."
+                  emptyMessage="Status tidak ditemukan"
+                  className={filterComboboxClassName}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                  Keaktifan
+                </p>
+                <Combobox
+                  options={activeFilterOptions}
+                  value={activeFilter}
+                  onChange={setActiveFilter}
+                  placeholder="Aktif"
+                  searchPlaceholder="Cari..."
+                  emptyMessage="Tidak ditemukan"
+                  className={filterComboboxClassName}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                  Akses App
+                </p>
+                <Combobox
+                  options={accessFilterOptions}
+                  value={accessFilter}
+                  onChange={setAccessFilter}
+                  placeholder="Akses App"
+                  searchPlaceholder="Cari..."
+                  emptyMessage="Tidak ditemukan"
+                  className={filterComboboxClassName}
+                />
+              </div>
+              {showAppActions ? (
+                <div className="space-y-1.5">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Role</p>
+                  <Combobox
+                    options={roleFilterOptions}
+                    value={roleFilter || "all"}
+                    onChange={(value) => setRoleFilter(value === "all" ? "" : value)}
+                    placeholder="Role"
+                    searchPlaceholder="Cari role..."
+                    emptyMessage="Role tidak ditemukan"
+                    className={filterComboboxClassName}
+                  />
+                </div>
+              ) : null}
+            </div>
+          </div>
+        ) : null}
+
+        {isLoading ? (
+          <div className="py-14 text-center">
+            <div className="mx-auto h-8 w-8 animate-spin rounded-full border-2 border-gray-200 border-t-pink-500" />
+            <p className="mt-2 text-sm text-gray-500">Memuat data karyawan...</p>
+          </div>
+        ) : isError ? (
+          <p className="py-14 text-center text-sm text-gray-500">Gagal memuat data karyawan</p>
+        ) : rows.length === 0 ? (
+          <div className="py-14 text-center">
+            <Users className="mx-auto mb-4 h-12 w-12 text-gray-300" />
+            <p className="text-gray-500">Tidak ada karyawan ditemukan</p>
+            <Link href={EMPLOYEES_ROUTES.insert}>
+              <Button
+                variant="outline"
+                className="mt-4 h-10 gap-2 rounded-lg border-pink-200 bg-white px-3 text-sm font-medium text-pink-700 shadow-sm hover:border-pink-200 hover:bg-pink-50 hover:text-pink-700"
+              >
+                <PlusIcon className="h-4 w-4" />
+                Tambah Karyawan Pertama
+              </Button>
+            </Link>
+          </div>
+        ) : (
+          <>
+            <div className="px-4">
+              <UsersTable
+                rows={rows}
+                onView={(id) => router.push(EMPLOYEES_ROUTES.detail(id))}
+                onEdit={(id) => router.push(EMPLOYEES_ROUTES.edit(id))}
+                onResetPassword={showAppActions ? handleResetPassword : undefined}
+                showAppActions={showAppActions}
+              />
+            </div>
+            <PurchasingTablePagination
+              page={page}
+              totalPages={totalPages}
+              totalItems={total}
+              pageSize={perPage}
+              onPageChange={setPage}
+            />
+          </>
+        )}
+      </PurchasingListSection>
+    </div>
+  );
+}

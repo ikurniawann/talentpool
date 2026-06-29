@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server";
+import { createServerPgClient } from "@/lib/pg/create-client";
 import { NextRequest } from "next/server";
 import { z } from "zod";
 import {
@@ -37,13 +37,13 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    await requireApiRole(["purchasing_admin", "purchasing_staff", "purchasing_manager"]);
+    await requireApiRole(["purchasing_admin", "purchasing_staff", "purchasing_manager", "super_admin"]);
 
     const { id } = await params;
-    const supabase = await createClient();
+    const db = await createServerPgClient();
 
     // Fetch supplier
-    const { data: supplier, error: supplierError } = await supabase
+    const { data: supplier, error: supplierError } = await db
       .from("suppliers")
       .select("*")
       .eq("id", id)
@@ -56,14 +56,14 @@ export async function GET(
 
     // ---- Analytics: PO Aktif ----
     // Count PO with status DRAFT, APPROVED, SENT, PARTIAL (not RECEIVED, CLOSED, CANCELLED)
-    const { count: poAktifCount } = await supabase
+    const { count: poAktifCount } = await db
       .from("purchase_orders")
       .select("*", { count: "exact", head: true })
       .eq("vendor_id", id)
       .in("status", ["draft", "sent", "partial"]);
 
     // Total nilai PO aktif
-    const { data: poAktifData } = await supabase
+    const { data: poAktifData } = await db
       .from("purchase_orders")
       .select("total")
       .eq("vendor_id", id)
@@ -75,7 +75,7 @@ export async function GET(
     const twelveMonthsAgo = new Date();
     twelveMonthsAgo.setMonth(twelveMonthsAgo.getMonth() - 12);
 
-    const { data: transaksi12Bulan } = await supabase
+    const { data: transaksi12Bulan } = await db
       .from("purchase_orders")
       .select("id, total, status")
       .eq("vendor_id", id)
@@ -88,7 +88,7 @@ export async function GET(
 
     // ---- Analytics: On-time delivery rate ----
     // On-time = actual_delivery <= expected_delivery (for received POs)
-    const { data: deliveredPOs } = await supabase
+    const { data: deliveredPOs } = await db
       .from("purchase_orders")
       .select("id, expected_delivery, actual_delivery")
       .eq("vendor_id", id)
@@ -113,7 +113,7 @@ export async function GET(
       totalDelivered > 0 ? Math.round((onTimeCount / totalDelivered) * 100 * 10) / 10 : 0;
 
     // Simpler: get distinct descriptions from PO items for this vendor's POs
-    const { data: topBahan } = await supabase
+    const { data: topBahan } = await db
       .from("purchase_orders")
       .select(`
         id,
@@ -162,16 +162,16 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const user = await requireApiRole(["purchasing_admin", "purchasing_staff"]);
+    const user = await requireApiRole(["purchasing_admin", "purchasing_staff", "purchasing_manager", "super_admin"]);
 
     const { id } = await params;
     const body = await request.json();
     const validated = updateSupplierSchema.parse(body);
 
-    const supabase = await createClient();
+    const db = await createServerPgClient();
 
     // Check if supplier exists
-    const { data: existing } = await supabase
+    const { data: existing } = await db
       .from("suppliers")
       .select("id, kode")
       .eq("id", id)
@@ -187,7 +187,7 @@ export async function PUT(
       throw ApiError.badRequest("Format NPWP tidak valid. Gunakan format: XX.XXX.XXX.X-XXX.XXX");
     }
 
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from("suppliers")
       .update({
         ...validated,
@@ -219,13 +219,13 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const user = await requireApiRole(["purchasing_admin"]);
+    const user = await requireApiRole(["purchasing_admin", "purchasing_manager", "purchasing_staff", "super_admin"]);
 
     const { id } = await params;
-    const supabase = await createClient();
+    const db = await createServerPgClient();
 
     // Check if supplier exists
-    const { data: existing } = await supabase
+    const { data: existing } = await db
       .from("suppliers")
       .select("id")
       .eq("id", id)
@@ -237,7 +237,7 @@ export async function DELETE(
     }
 
     // Check: jika ada PO dengan status DRAFT/APPROVED/SENT → tolak delete
-    const { count: activePOCount } = await supabase
+    const { count: activePOCount } = await db
       .from("purchase_orders")
       .select("*", { count: "exact", head: true })
       .eq("vendor_id", id)
@@ -256,7 +256,7 @@ export async function DELETE(
       deleted_at: new Date().toISOString(),
       updated_by: user.id,
     };
-    const { error } = await supabase
+    const { error } = await db
       .from("suppliers")
       .update(softDeletePayload)
       .eq("id", id)

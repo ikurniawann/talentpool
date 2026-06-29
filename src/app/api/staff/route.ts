@@ -1,12 +1,12 @@
-import { createClient } from "@/lib/supabase/server";
+import { createServerPgClient } from "@/lib/pg/create-client";
 import { NextResponse } from "next/server";
 
 // GET /api/staff - List staff
 export async function GET(request: Request) {
-  const supabase = await createClient();
+  const db = await createServerPgClient();
   const { searchParams } = new URL(request.url);
 
-  let query = supabase
+  let query = db
     .from("staff")
     .select("*, brands(name), positions(title), staff_sections(section_id, sections(name, color))", { count: "exact" })
     .order("created_at", { ascending: false });
@@ -34,11 +34,11 @@ export async function GET(request: Request) {
 
 // POST /api/staff - Create staff
 export async function POST(request: Request) {
-  const supabase = await createClient();
+  const db = await createServerPgClient();
 
   const body = await request.json();
 
-  const { data, error } = await supabase
+  const { data, error } = await db
     .from("staff")
     .insert({
       full_name: body.full_name,

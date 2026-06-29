@@ -21,8 +21,8 @@ import {
 
 const MODULE_STATS = [
   { label: "Supplier", href: "/dashboard/purchasing/suppliers", icon: BuildingOfficeIcon, color: "bg-blue-100 text-blue-600", desc: "Kelola data vendor & supplier" },
-  { label: "Bahan Baku", href: "/dashboard/purchasing/raw-materials", icon: CubeIcon, color: "bg-purple-100 text-purple-600", desc: "Master bahan &amp; satuan" },
-  { label: "Produk", href: "/dashboard/purchasing/products", icon: CubeIcon, color: "bg-indigo-100 text-indigo-600", desc: "BOM &amp; struktur produk" },
+  { label: "Bahan Baku", href: "/dashboard/items/raw-materials", icon: CubeIcon, color: "bg-purple-100 text-purple-600", desc: "Master bahan &amp; satuan" },
+  { label: "Produk", href: "/dashboard/items/products", icon: CubeIcon, color: "bg-indigo-100 text-indigo-600", desc: "BOM &amp; struktur produk" },
   { label: "Purchase Order", href: "/dashboard/purchasing/purchase-orders", icon: ClipboardDocumentListIcon, color: "bg-green-100 text-green-600", desc: "Kelola PO ke vendor" },
   { label: "Barang Masuk", href: "/dashboard/purchasing/grn", icon: ArrowDownCircleIcon, color: "bg-teal-100 text-teal-600", desc: "Delivery, GRN &amp; status barang masuk" },
   { label: "Quality Control", href: "/dashboard/purchasing/qc", icon: CheckBadgeIcon, color: "bg-yellow-100 text-yellow-600", desc: "Inspeksi &amp; QC barang" },
@@ -46,7 +46,7 @@ export default function PurchasingModulePage() {
           <Link href="/dashboard/purchasing/reports">
             <Button variant="outline">Lihat Laporan</Button>
           </Link>
-          <Link href="/dashboard/purchasing/purchase-orders/new">
+          <Link href="/dashboard/purchasing/purchase-orders/insert">
             <Button>
               <Plus className="w-4 h-4 mr-2" />
               Buat PO Baru

@@ -1,15 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createAdminClient } from '@/lib/supabase/admin';
-import { createClient } from '@/lib/supabase/server';
+import { createPgClient } from "@/lib/pg/create-client";
+import { createServerPgClient } from "@/lib/pg/create-client";
 
 // POST /api/hris/feedback-approvals/approve
 export async function POST(request: NextRequest) {
   try {
-    const authClient = await createClient();
+    const authClient = await createServerPgClient();
     const { data: { user } } = await authClient.auth.getUser();
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const supabase = createAdminClient();
+    const db = createPgClient();
     const body = await request.json();
     const { assignment_id, manager_comments } = body;
 
@@ -22,7 +22,7 @@ export async function POST(request: NextRequest) {
     
     // Try to match by email first
     if (user.email) {
-      const { data: employeeByEmail } = await supabase
+      const { data: employeeByEmail } = await db
         .from('employees')
         .select('id')
         .eq('email', user.email)
@@ -34,7 +34,7 @@ export async function POST(request: NextRequest) {
     // If not found by email, use the first employee as fallback (for testing)
     if (!currentUser) {
       console.log('User email not found in employees, using fallback');
-      const { data: firstEmployee } = await supabase
+      const { data: firstEmployee } = await db
         .from('employees')
         .select('id')
         .order('created_at')
@@ -49,7 +49,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Update assignment status to approved
-    const { data: assignment, error: updateError } = await supabase
+    const { data: assignment, error: updateError } = await db
       .from('feedback_assignments')
       .update({
         status: 'approved',

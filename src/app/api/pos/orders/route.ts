@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createServiceClient } from '@/lib/supabase/service-client';
+import { createPgClient } from "@/lib/pg/create-client";
 import { getPosSession } from '@/lib/api/auth';
 import { awardCrmXpForPosOrder } from '@/lib/crm/loyalty-engine';
 import { buildCostSnapshot, loadPosProductCostMap } from '@/lib/pos/purchasing-sync';
@@ -76,7 +76,7 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const supabase = createServiceClient();
+    const db = createPgClient();
     const searchParams = request.nextUrl.searchParams;
     const status = searchParams.get('status');
     const customerId = searchParams.get('customer_id');
@@ -85,7 +85,7 @@ export async function GET(request: NextRequest) {
     const activeOnly = searchParams.get('active_only') === 'true';
     const limit = parseInt(searchParams.get('limit') || '50');
 
-    let query = supabase
+    let query = db
       .from('pos_orders')
       .select(`
         *,
@@ -114,7 +114,7 @@ export async function GET(request: NextRequest) {
     );
     let tableById = new Map<string, { table_number?: string | null; qr_code?: string | null }>();
     if (tableIds.length > 0) {
-      const { data: tables, error: tableError } = await supabase
+      const { data: tables, error: tableError } = await db
         .from('pos_tables')
         .select('id, table_number, qr_code')
         .in('id', tableIds);
@@ -177,7 +177,7 @@ export async function POST(request: NextRequest) {
     const effectiveCashierId = cashier_id || await resolveCashierId();
     const splits = Array.isArray(body.splits) ? body.splits : [];
 
-    const supabase = createServiceClient();
+    const db = createPgClient();
 
     // Split bill mode
     if (splits && splits.length > 0) {
@@ -200,7 +200,7 @@ export async function POST(request: NextRequest) {
         p_branch_id: body.branch_id || null,
       };
 
-      const { data: rpcResult, error: rpcError } = await supabase.rpc(
+      const { data: rpcResult, error: rpcError } = await db.rpc(
         'pos_create_split_order_transaction',
         rpcPayload
       );
@@ -215,11 +215,11 @@ export async function POST(request: NextRequest) {
 
       // Link shift if provided
       if (body.shift_id) {
-        await supabase.from('pos_orders').update({ shift_id: body.shift_id }).eq('id', result.order_id);
+        await db.from('pos_orders').update({ shift_id: body.shift_id }).eq('id', result.order_id);
       }
 
       // Fetch complete order with relations
-      const { data: completeOrder } = await supabase
+      const { data: completeOrder } = await db
         .from('pos_orders')
         .select(`*, customer:pos_customers(name, phone), items:pos_order_items(*), splits:pos_order_splits(*)`)
         .eq('id', result.order_id)
@@ -234,7 +234,7 @@ export async function POST(request: NextRequest) {
     // Single-payment flow
     // Avoid the old DB RPC because some deployed databases still have p_order_type TEXT
     // inserted into pos_order_type enum without casting.
-    const { data: orderNumData, error: orderNumErr } = await supabase.rpc('generate_order_number');
+    const { data: orderNumData, error: orderNumErr } = await db.rpc('generate_order_number');
     if (orderNumErr) {
       return NextResponse.json({ success: false, error: orderNumErr.message }, { status: 500 });
     }
@@ -258,7 +258,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'Payment insufficient' }, { status: 400 });
     }
 
-    const { data: orderData, error: orderErr } = await supabase
+    const { data: orderData, error: orderErr } = await db
       .from('pos_orders')
       .insert({
         order_number: orderNumber,
@@ -294,7 +294,7 @@ export async function POST(request: NextRequest) {
     }
 
     const productCostMap = await loadPosProductCostMap(
-      supabase,
+      db,
       items.map((item) => String(item.product_id || '')).filter(Boolean)
     );
 
@@ -331,7 +331,7 @@ export async function POST(request: NextRequest) {
       };
     });
 
-    let { error: itemsErr } = await supabase.from('pos_order_items').insert(orderItems);
+    let { error: itemsErr } = await db.from('pos_order_items').insert(orderItems);
     if (itemsErr?.code === '42703' || itemsErr?.code === 'PGRST204') {
       const legacyItems = orderItems.map((item) => {
         const legacyItem = { ...item } as Partial<typeof item>;
@@ -343,7 +343,7 @@ export async function POST(request: NextRequest) {
         delete legacyItem.gross_margin_pct;
         return legacyItem;
       });
-      const legacyResult = await supabase.from('pos_order_items').insert(legacyItems);
+      const legacyResult = await db.from('pos_order_items').insert(legacyItems);
       itemsErr = legacyResult.error;
     }
     if (itemsErr) {
@@ -351,7 +351,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: itemsErr.message }, { status: 500 });
     }
 
-    await supabase.from('pos_order_status_history').insert({
+    await db.from('pos_order_status_history').insert({
       order_id: orderData.id,
       from_status: null,
       to_status: 'completed',
@@ -359,7 +359,7 @@ export async function POST(request: NextRequest) {
       notes: 'Order created and paid from cashier',
     });
 
-    const crmXp = await awardCrmXpForPosOrder(supabase, {
+    const crmXp = await awardCrmXpForPosOrder(db, {
       orderId: orderData.id,
       customerId: customer_id || null,
       totalAmount: serverTotal,
@@ -367,7 +367,7 @@ export async function POST(request: NextRequest) {
       outletId: body.branch_id || null,
     });
 
-    const { data: completeOrder } = await supabase
+    const { data: completeOrder } = await db
       .from('pos_orders')
       .select(`*, customer:pos_customers(name, phone), items:pos_order_items(*)`)
       .eq('id', orderData.id)

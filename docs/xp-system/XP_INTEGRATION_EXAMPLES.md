@@ -12,13 +12,13 @@ Contoh implementasi XP system di API routes dan components yang sudah ada di Tal
 
 ```typescript
 import { xpService, XP_RULES } from "@/lib/xp";
-import { createClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/pg/create-client";
 
 export async function POST(req: Request) {
-  const supabase = createClient();
+  const db = await createServerPgClient();
   
   // Get current user
-  const { data: { user } } = await supabase.auth.getUser();
+  const { data: { user } } = await db.auth.getUser();
   if (!user) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
@@ -27,7 +27,7 @@ export async function POST(req: Request) {
     const body = await req.json();
     
     // Create candidate (existing logic)
-    const { data: candidate, error } = await supabase
+    const { data: candidate, error } = await db
       .from('candidates')
       .insert({
         ...body,
@@ -75,22 +75,22 @@ export async function POST(req: Request) {
 import { xpService, XP_RULES } from "@/lib/xp";
 
 export async function PATCH(req: Request, { params }: { params: { id: string } }) {
-  const supabase = createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const db = await createServerPgClient();
+  const { data: { user } } = await db.auth.getUser();
   
   try {
     const body = await req.json();
     const candidateId = params.id;
 
     // Get current candidate status
-    const { data: currentCandidate } = await supabase
+    const { data: currentCandidate } = await db
       .from('candidates')
       .select('status')
       .eq('id', candidateId)
       .single();
 
     // Update candidate (existing logic)
-    const { data: updatedCandidate, error } = await supabase
+    const { data: updatedCandidate, error } = await db
       .from('candidates')
       .update({
         ...body,
@@ -162,14 +162,14 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
 import { xpService, XP_RULES } from "@/lib/xp";
 
 export async function POST(req: Request) {
-  const supabase = createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const db = await createServerPgClient();
+  const { data: { user } } = await db.auth.getUser();
   
   try {
     const body = await req.json();
 
     // Create/complete interview (existing logic)
-    const { data: interview, error } = await supabase
+    const { data: interview, error } = await db
       .from('interviews')
       .insert({
         ...body,
@@ -231,20 +231,20 @@ export async function POST(req: Request) {
 "use client";
 
 import { useEffect } from "react";
-import { createClient } from "@/lib/supabase/client";
+import { createClient } from "@/lib/pg/browser-client";
 import { xpService } from "@/lib/xp";
 import { useUser } from "@/hooks/useUser";
 
 export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { user } = useUser();
-  const supabase = createClient();
+  const db = await createServerPgClient();
 
   useEffect(() => {
     if (!user) return;
 
     const checkDailyLogin = async () => {
       // Get user's last login
-      const { data: stats } = await supabase
+      const { data: stats } = await db
         .from('user_xp_stats')
         .select('last_login')
         .eq('user_id', user.id)
@@ -272,7 +272,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
         }
 
         // Update last_login
-        await supabase
+        await db
           .from('user_xp_stats')
           .update({ last_login: today })
           .eq('user_id', user.id);
@@ -280,7 +280,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
     };
 
     checkDailyLogin();
-  }, [user, supabase]);
+  }, [user, db]);
 
   return (
     <div className="dashboard-layout">
@@ -669,15 +669,15 @@ export type XPLevelTitle =
 ### 1. Run Migration
 ```bash
 cd /Users/ilham/Desktop/talentpool
-# Apply migration to Supabase
-npx supabase db push --db-url "your-supabase-url"
-# OR run SQL directly in Supabase dashboard
+# Apply migration to PostgreSQL
+npm run db:migrate:apply --db-url "your-database-url"
+# OR run SQL directly in database admin
 ```
 
 ### 2. Add Types
 ```bash
-# Regenerate Supabase types if using supabase-js
-npx supabase gen types typescript --project-id "your-project-id" > src/types/supabase.ts
+# Generate types from schema if needed
+# generate types from schema manually typescript --project-id "your-project-id" > src/types/database.ts
 ```
 
 ### 3. Test XP Earning

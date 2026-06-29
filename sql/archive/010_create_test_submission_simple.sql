@@ -1,7 +1,7 @@
 -- =====================================================
 -- FORCE CREATE TEST SUBMISSION - SIMPLE & FIXED
 -- =====================================================
--- Copy paste SELURUH isi ini ke Supabase SQL Editor
+-- Copy paste SELURUH isi ini ke psql atau SQL client
 -- Klik RUN sekali saja
 -- =====================================================
 

@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { ChefHat, CheckCircle2, ArrowRight, Utensils, Flame } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
-import type { KDSOrder } from '@/hooks/use-pos-kds';
+import type { KDSOrder } from "@/features/pos/kds/types";
 
 interface KDSOrderCardProps {
   order: KDSOrder;

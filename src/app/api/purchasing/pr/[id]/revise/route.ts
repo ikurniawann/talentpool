@@ -1,5 +1,5 @@
-import { createClient } from "@/lib/supabase/server";
-import { requireUser } from "@/lib/supabase/auth";
+import { createServerPgClient } from "@/lib/pg/create-client";
+import { requireUser } from "@/lib/auth/require-user";
 import { NextResponse } from "next/server";
 import { generatePRNumber } from "@/lib/purchasing/utils";
 
@@ -20,10 +20,10 @@ type PRItemRow = {
 export async function POST(_request: Request, { params }: RouteParams) {
   try {
     const { id } = await params;
-    const supabase = await createClient();
+    const db = await createServerPgClient();
     const user = await requireUser();
 
-    const { data: pr, error: prError } = await supabase
+    const { data: pr, error: prError } = await db
       .from("purchase_requests")
       .select(`
         *,
@@ -48,9 +48,9 @@ export async function POST(_request: Request, { params }: RouteParams) {
       return NextResponse.json({ error: "Anda tidak memiliki akses membuat revisi PR ini" }, { status: 403 });
     }
 
-    const prNumber = await generatePRNumber(supabase);
+    const prNumber = await generatePRNumber(db);
 
-    const { data: revisedPR, error: insertError } = await supabase
+    const { data: revisedPR, error: insertError } = await db
       .from("purchase_requests")
       .insert({
         pr_number: prNumber,
@@ -80,7 +80,7 @@ export async function POST(_request: Request, { params }: RouteParams) {
     }));
 
     if (items.length > 0) {
-      const { error: itemsError } = await supabase.from("pr_items").insert(items);
+      const { error: itemsError } = await db.from("pr_items").insert(items);
       if (itemsError) throw itemsError;
     }
 

@@ -1,7 +1,14 @@
-import { createClient } from "@/lib/supabase/server";
+import { createServerPgClient } from "@/lib/pg/create-client";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { requireApiRole, ApiError } from "@/lib/api/auth";
+import {
+  getApiUserScope,
+  companyScopeOr,
+  branchScopeOr,
+  effectiveCompanyId,
+  effectiveBranchId,
+} from "@/lib/api/scope";
 
 // ========================
 // ZOD SCHEMAS
@@ -47,10 +54,10 @@ const queryParamsSchema = z.object({
 // HELPER: Generate supplier code
 // ========================
 async function generateSupplierCode(
-  supabase: Awaited<ReturnType<typeof createClient>>
+  db: Awaited<ReturnType<typeof createServerPgClient>>
 ): Promise<string> {
   const year = new Date().getFullYear();
-  const { data } = await supabase
+  const { data } = await db
     .from("suppliers")
     .select("kode")
     .ilike("kode", `SUP-${year}-%`)
@@ -70,7 +77,7 @@ async function generateSupplierCode(
 // ========================
 export async function GET(request: NextRequest) {
   try {
-    await requireApiRole(["purchasing_admin", "purchasing_staff", "purchasing_manager"]);
+    await requireApiRole(["purchasing_admin", "purchasing_staff", "purchasing_manager", "super_admin"]);
 
     const url = new URL(request.url);
     const rawParams = Object.fromEntries(url.searchParams);
@@ -78,7 +85,7 @@ export async function GET(request: NextRequest) {
     const { page, limit, search, is_active, status, payment_terms, sort_by, sort_dir } = params;
     const offset = (page - 1) * limit;
 
-    const supabase = await createClient();
+    const db = await createServerPgClient();
 
     const sortColumnMap: Record<string, string> = {
       nama_supplier: "nama_supplier",
@@ -88,10 +95,17 @@ export async function GET(request: NextRequest) {
     };
     const sortColumn = sortColumnMap[sort_by] ?? "nama_supplier";
 
-    let query = supabase
+    let query = db
       .from("suppliers")
       .select("*", { count: "exact" })
       .is("deleted_at", null);
+
+    // Business scope: branch (master purchasing level branch)
+    const scope = await getApiUserScope();
+    const companyOr = companyScopeOr(scope);
+    if (companyOr) query = query.or(companyOr);
+    const branchOr = branchScopeOr(scope);
+    if (branchOr) query = query.or(branchOr);
 
     // Filter by status if provided (for draft support)
     if (status) {
@@ -156,34 +170,45 @@ export async function GET(request: NextRequest) {
 // ========================
 export async function POST(request: NextRequest) {
   try {
-    const user = await requireApiRole(["purchasing_admin", "purchasing_staff"]);
+    const user = await requireApiRole(["purchasing_admin", "purchasing_staff", "purchasing_manager", "super_admin"]);
     const body = await request.json();
     const validated = createSupplierSchema.parse(body);
 
-    const supabase = await createClient();
+    const db = await createServerPgClient();
+    const scope = await getApiUserScope();
+    const companyId = effectiveCompanyId(scope);
+    const branchId = effectiveBranchId(scope);
 
     // Auto-generate kode if not provided, placeholder, or empty
     let kodeSupplier = validated.kode_supplier;
     if (!kodeSupplier || kodeSupplier.trim() === "" || kodeSupplier.includes("XXXX")) {
-      kodeSupplier = await generateSupplierCode(supabase);
+      kodeSupplier = await generateSupplierCode(db);
     }
 
-    // Check if kode_supplier already exists
-    const { data: existing } = await supabase
+    // Check if kode_supplier already exists dalam scope
+    let existingQuery = db
       .from("suppliers")
       .select("id")
       .eq("kode", kodeSupplier)
-      .is("deleted_at", null)
-      .single();
+      .is("deleted_at", null);
+    existingQuery = companyId
+      ? existingQuery.eq("company_id", companyId)
+      : existingQuery.is("company_id", null);
+    existingQuery = branchId
+      ? existingQuery.eq("branch_id", branchId)
+      : existingQuery.is("branch_id", null);
+    const { data: existing } = await existingQuery.maybeSingle();
 
     if (existing) {
       throw ApiError.conflict("Kode supplier sudah digunakan");
     }
 
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from("suppliers")
       .insert({
         kode: kodeSupplier,
+        company_id: companyId,
+        branch_id: branchId,
         nama_supplier: validated.nama_supplier,
         pic_name: validated.pic_name,
         pic_phone: validated.pic_phone,

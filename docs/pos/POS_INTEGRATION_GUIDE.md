@@ -26,7 +26,7 @@ This document describes how ARK POS integrates with existing Arkiv OS modules (H
 │         │ FK: created_by      │                    │        │  │
 │         ▼                     ▼                    │        │  │
 │  ┌─────────────────────────────────────────────────┴────┐   │  │
-│  │              SHARED DATABASE (Supabase)              │   │  │
+│  │              SHARED DATABASE (PostgreSQL)              │   │  │
 │  │                                                      │   │  │
 │  │  hrd.employees ◄─── pos_orders.cashier_id           │   │  │
 │  │  hrd.employees ◄─── pos_orders.server_id            │   │  │

@@ -1,17 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createAdminClient } from '@/lib/supabase/admin';
-import { createClient } from '@/lib/supabase/server';
+import { createPgClient } from "@/lib/pg/create-client";
+import { createServerPgClient } from "@/lib/pg/create-client";
 
 export async function GET(request: NextRequest) {
   try {
-    const supabase = createAdminClient();
+    const db = createPgClient();
     const searchParams = request.nextUrl.searchParams;
     const assignmentId = searchParams.get('assignment_id');
     const criteriaId = searchParams.get('criteria_id');
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '100');
 
-    let query = supabase
+    let query = db
       .from('feedback_responses')
       .select(`
         *,
@@ -51,17 +51,17 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const authClient = await createClient();
+    const authClient = await createServerPgClient();
     const { data: { user } } = await authClient.auth.getUser();
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const supabase = createAdminClient();
+    const db = createPgClient();
     const body = await request.json();
 
     // Support bulk insert for submitting multiple responses at once
     const insertData = Array.isArray(body) ? body : [body];
 
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from('feedback_responses')
       .insert(insertData)
       .select(`
@@ -74,17 +74,17 @@ export async function POST(request: NextRequest) {
     // Update assignment status to submitted if all responses are complete
     if (!Array.isArray(body) && body.assignment_id) {
       // Check if all criteria have been answered
-      const { data: allCriteria } = await supabase
+      const { data: allCriteria } = await db
         .from('feedback_criteria')
         .select('id', { count: 'exact' });
 
-      const { data: existingResponses } = await supabase
+      const { data: existingResponses } = await db
         .from('feedback_responses')
         .select('criteria_id')
         .eq('assignment_id', body.assignment_id);
 
       if (allCriteria && existingResponses && existingResponses.length >= allCriteria.length) {
-        await supabase
+        await db
           .from('feedback_assignments')
           .update({ status: 'submitted', submitted_at: new Date().toISOString() })
           .eq('id', body.assignment_id);

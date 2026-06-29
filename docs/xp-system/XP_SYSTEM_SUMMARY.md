@@ -2,7 +2,7 @@
 
 ## ✅ What's Been Created
 
-### 1. **Database Schema** (`supabase/migrations/006_add_xp_system.sql`)
+### 1. **Database Schema** (`database/migrations/006_add_xp_system.sql`)
 - ✅ 8 new tables for XP system
 - ✅ Auto level calculation function
 - ✅ Badge unlock system
@@ -21,7 +21,7 @@
 ### 3. **XP Service Library** (`src/lib/xp.ts`)
 - ✅ XP rules configuration
 - ✅ Level calculation utilities
-- ✅ XPService class with all Supabase RPC calls
+- ✅ XPService class with all PostgreSQL RPC calls
 - ✅ Methods: addXP, getUserStats, getBadges, getChallenges, redeemReward, etc.
 
 ### 4. **Documentation**
@@ -144,12 +144,12 @@ Badges: 🎯 Candidate Hunter, 🎤 Interview Pro
 
 ### Phase 1: Database Setup (TODAY)
 1. ✅ Migration file created
-2. ⏳ Run migration in Supabase:
+2. ⏳ Run migration via npm run db:migrate:apply:
    ```bash
-   # Option A: Via Supabase CLI
-   npx supabase db push
+   # Option A: Via npm run db:migrate:apply
+   npm run db:migrate:apply
    
-   # Option B: Via Supabase Dashboard
+   # Option B: Via admin database
    # Copy paste 006_add_xp_system.sql to SQL Editor
    ```
 
@@ -250,7 +250,7 @@ Track these after launch:
 ### Level not updating?
 - Check level calculation formula in function
 - Verify `total_xp_earned` is accumulating
-- Test in Supabase SQL editor: `SELECT add_xp_to_user(...)`
+- Test in psql: `SELECT add_xp_to_user(...)`
 
 ### Badge not unlocking?
 - Check `check_badge_unlocks` function
@@ -269,11 +269,11 @@ Track these after launch:
 For questions or issues:
 - Check `XP_SYSTEM_INTEGRATION.md` for full schema
 - Check `XP_INTEGRATION_EXAMPLES.md` for code examples
-- Review Supabase logs for RPC function errors
-- Test functions in Supabase SQL editor first
+- Review app / PostgreSQL logs for RPC function errors
+- Test functions in psql first
 
 ---
 
 **Created:** 2026-05-02  
 **Status:** ✅ Ready for Phase 1 (Database Migration)  
-**Next:** Run migration in Supabase, then integrate API routes
+**Next:** Run migration via npm run db:migrate:apply, then integrate API routes

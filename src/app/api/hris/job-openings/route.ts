@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireRole } from "@/lib/supabase/auth";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { requireRole } from "@/lib/auth/require-user";
+import { createPgClient } from "@/lib/pg/create-client";
 
 function slugify(value: string) {
   return value
@@ -42,9 +42,9 @@ function normalizePayload(body: Record<string, unknown>) {
 
 export async function GET() {
   await requireRole(["hrd"]);
-  const supabase = createAdminClient();
+  const db = createPgClient();
 
-  const { data, error } = await supabase
+  const { data, error } = await db
     .from("job_openings")
     .select("*, brand:brands(id, name), position:positions(id, title, department, level), department_ref:departments(id, name, code)")
     .order("created_at", { ascending: false });
@@ -58,7 +58,7 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   await requireRole(["hrd"]);
-  const supabase = createAdminClient();
+  const db = createPgClient();
   const payload = normalizePayload(await request.json() as Record<string, unknown>);
 
   if (!payload.title) {
@@ -73,7 +73,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Status lowongan tidak valid" }, { status: 400 });
   }
 
-  const { data, error } = await supabase
+  const { data, error } = await db
     .from("job_openings")
     .insert(payload)
     .select("*, brand:brands(id, name), position:positions(id, title, department, level), department_ref:departments(id, name, code)")

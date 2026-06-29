@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { createServerPgClient } from "@/lib/pg/create-client";
 
 // GET /api/purchasing/returns
 // List purchase returns with filtering and pagination
 export async function GET(request: NextRequest) {
   try {
-    const supabase = await createClient();
+    const db = await createServerPgClient();
     const { searchParams } = new URL(request.url);
 
     const page = parseInt(searchParams.get("page") || "1");
@@ -20,7 +20,7 @@ export async function GET(request: NextRequest) {
     const sort_order = searchParams.get("sort_order") || "DESC";
 
     // Build query
-    let query = supabase
+    let query = db
       .from("purchase_returns")
       .select(`
         *,
@@ -93,7 +93,7 @@ export async function GET(request: NextRequest) {
 // Create a new purchase return
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createClient();
+    const db = await createServerPgClient();
     const body = await request.json();
 
     const {
@@ -121,7 +121,7 @@ export async function POST(request: NextRequest) {
     );
 
     // Start transaction
-    const { data: returnData, error: returnError } = await supabase
+    const { data: returnData, error: returnError } = await db
       .from("purchase_returns")
       .insert({
         grn_id: grn_id || null,
@@ -152,18 +152,18 @@ export async function POST(request: NextRequest) {
       qc_status: item.qc_status || "rejected",
     }));
 
-    const { error: itemsError } = await supabase
+    const { error: itemsError } = await db
       .from("purchase_return_items")
       .insert(returnItems);
 
     if (itemsError) {
       // Rollback: delete the return if items insert fails
-      await supabase.from("purchase_returns").delete().eq("id", returnData.id);
+      await db.from("purchase_returns").delete().eq("id", returnData.id);
       throw itemsError;
     }
 
     // Fetch complete return data
-    const { data: completeReturn } = await supabase
+    const { data: completeReturn } = await db
       .from("purchase_returns")
       .select(`
         *,

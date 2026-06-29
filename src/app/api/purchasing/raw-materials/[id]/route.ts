@@ -3,20 +3,27 @@
 // ============================================
 
 import { NextRequest } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { createServerPgClient } from "@/lib/pg/create-client";
 import { z } from "zod";
+import {
+  getErrorMessage,
+  throwIfDbError,
+  UNIT_CONVERSION_SELECT,
+  prepareMaterialBody,
+} from "../_helpers";
 
 const materialSchema = z.object({
   nama: z.string().min(1).max(100).optional(),
-  kategori: z.enum(["BAHAN_PANGAN", "BAHAN_NON_PANGAN", "KEMASAN", "BAHAN_BAKAR", "LAINNYA"]).optional(),
+  kategori: z.string().min(1).max(30).optional(),
   deskripsi: z.string().optional(),
   satuan_besar_id: z.string().uuid().optional().nullable(),
   satuan_kecil_id: z.string().uuid().optional().nullable(),
+  harga_beli: z.number().min(0).optional(),
   konversi_factor: z.number().min(0).optional(),
   stok_minimum: z.number().min(0).optional(),
   stok_maximum: z.number().min(0).optional(),
   shelf_life_days: z.number().min(0).optional().nullable(),
-  storage_condition: z.enum(["SUHU_RUANG", "DINGIN", "BEKU", "KHUSUS"]).optional().nullable(),
+  storage_condition: z.string().max(20).optional().nullable(),
   is_active: z.boolean().optional(),
   unit_conversions: z.array(z.object({
     satuan_id: z.string().uuid(),
@@ -25,10 +32,6 @@ const materialSchema = z.object({
   })).optional(),
 });
 
-function getErrorMessage(error: unknown, fallback: string) {
-  return error instanceof Error ? error.message : fallback;
-}
-
 // GET /api/purchasing/raw-materials/:id
 export async function GET(
   request: NextRequest,
@@ -36,10 +39,10 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
-    const supabase = await createClient();
+    const db = await createServerPgClient();
 
     // Get material dengan stok info
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from("v_raw_materials_stock")
       .select("*")
       .eq("id", id)
@@ -52,61 +55,58 @@ export async function GET(
           { status: 404 }
         );
       }
-      throw error;
+      throwIfDbError(error);
     }
 
     // Get suppliers dengan harga
-    const { data: suppliers, error: suppliersError } = await supabase
+    const { data: suppliers, error: suppliersError } = await db
       .from("supplier_price_lists")
       .select(`
         *,
-        supplier:supplier_id (
+        supplier:suppliers!supplier_id (
           id,
           kode,
           nama_supplier
         ),
-        satuan:satuan_id (*)
+        satuan:units!satuan_id (*)
       `)
       .eq("bahan_baku_id", id)
       .eq("is_active", true)
       .order("is_preferred", { ascending: false });
 
-    if (suppliersError) throw suppliersError;
+    if (suppliersError) throwIfDbError(suppliersError);
 
     // Get inventory movements terakhir
-    const { data: movements, error: movementsError } = await supabase
+    const { data: movements, error: movementsError } = await db
       .from("inventory_movements")
       .select("*")
       .eq("raw_material_id", id)
       .order("created_at", { ascending: false })
       .limit(10);
 
-    if (movementsError) throw movementsError;
+    if (movementsError) throwIfDbError(movementsError);
 
     // Get products yang menggunakan bahan ini
-    const { data: products, error: productsError } = await supabase
+    const { data: products, error: productsError } = await db
       .from("bom_items")
       .select(`
         *,
-        product:product_id (*)
+        product:products!product_id (*)
       `)
       .eq("raw_material_id", id)
       .eq("is_active", true);
 
-    if (productsError) throw productsError;
+    if (productsError) throwIfDbError(productsError);
 
-    const { data: unitConversions, error: conversionsError } = await supabase
+    const { data: unitConversions, error: conversionsError } = await db
       .from("raw_material_unit_conversions")
-      .select(`
-        *,
-        satuan:satuan_id (*)
-      `)
+      .select(UNIT_CONVERSION_SELECT)
       .eq("raw_material_id", id)
       .eq("is_active", true)
       .order("is_base", { ascending: false })
       .order("qty_in_base_unit", { ascending: true });
 
-    if (conversionsError) throw conversionsError;
+    if (conversionsError) throwIfDbError(conversionsError);
 
     return Response.json({
       success: true,
@@ -134,14 +134,12 @@ export async function PUT(
 ) {
   try {
     const { id } = await params;
-    const supabase = await createClient();
-    const body = await request.json();
-
-    // Validasi input
+    const db = await createServerPgClient();
+    const body = prepareMaterialBody(await request.json());
     const validated = materialSchema.parse(body);
 
     // Cek apakah material ada
-    const { data: existingMaterial, error: findError } = await supabase
+    const { data: existingMaterial, error: findError } = await db
       .from("raw_materials")
       .select("*")
       .eq("id", id)
@@ -158,7 +156,7 @@ export async function PUT(
     // Warning jika konversi_factor berubah dan ada di BOM
     if (validated.konversi_factor !== undefined &&
         validated.konversi_factor !== existingMaterial.konversi_factor) {
-      const { data: bomItems } = await supabase
+      const { data: bomItems } = await db
         .from("bom_items")
         .select("id")
         .eq("raw_material_id", id)
@@ -173,7 +171,7 @@ export async function PUT(
     const { unit_conversions, ...materialPayload } = validated;
 
     // Update data
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from("raw_materials")
       .update({
         ...materialPayload,
@@ -184,7 +182,7 @@ export async function PUT(
       .select()
       .single();
 
-    if (error) throw error;
+    if (error) throwIfDbError(error);
 
     if (unit_conversions) {
       const conversions = [
@@ -204,12 +202,12 @@ export async function PUT(
       }
       const uniqueConversions = Array.from(conversionsByUnit.values());
 
-      const { data: existingConversions, error: existingError } = await supabase
+      const { data: existingConversions, error: existingError } = await db
         .from("raw_material_unit_conversions")
         .select("id,satuan_id")
         .eq("raw_material_id", id);
 
-      if (existingError) throw existingError;
+      if (existingError) throwIfDbError(existingError);
 
       const nextUnitIds = new Set(uniqueConversions.map((conversion) => conversion.satuan_id));
       const inactiveIds = (existingConversions || [])
@@ -217,16 +215,16 @@ export async function PUT(
         .map((conversion) => conversion.id);
 
       if (inactiveIds.length > 0) {
-        const { error: inactiveError } = await supabase
+        const { error: inactiveError } = await db
           .from("raw_material_unit_conversions")
           .update({ is_active: false, updated_at: new Date().toISOString() })
           .in("id", inactiveIds);
 
-        if (inactiveError) throw inactiveError;
+        if (inactiveError) throwIfDbError(inactiveError);
       }
 
       if (uniqueConversions.length > 0) {
-        const { error: conversionError } = await supabase
+        const { error: conversionError } = await db
           .from("raw_material_unit_conversions")
           .upsert(
             uniqueConversions.map((conversion) => ({
@@ -240,7 +238,7 @@ export async function PUT(
             { onConflict: "raw_material_id,satuan_id" }
           );
 
-        if (conversionError) throw conversionError;
+        if (conversionError) throwIfDbError(conversionError);
       }
     }
 
@@ -285,11 +283,11 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params;
-    const supabase = await createClient();
-    const { data: authData } = await supabase.auth.getUser();
+    const db = await createServerPgClient();
+    const { data: authData } = await db.auth.getUser();
 
     // Cek apakah material ada
-    const { data: material, error: findError } = await supabase
+    const { data: material, error: findError } = await db
       .from("raw_materials")
       .select("*")
       .eq("id", id)
@@ -304,7 +302,7 @@ export async function DELETE(
     }
 
     // Cek apakah ada stok > 0
-    const { data: inventory } = await supabase
+    const { data: inventory } = await db
       .from("inventory")
       .select("qty_onhand")
       .eq("raw_material_id", id)
@@ -321,7 +319,7 @@ export async function DELETE(
     }
 
     // Cek apakah digunakan di BOM
-    const { data: bomItems } = await supabase
+    const { data: bomItems } = await db
       .from("bom_items")
       .select("id")
       .eq("raw_material_id", id)
@@ -339,7 +337,7 @@ export async function DELETE(
     }
 
     // Soft delete
-    const { error } = await supabase
+    const { error } = await db
       .from("raw_materials")
       .update({
         is_active: false,
@@ -350,7 +348,7 @@ export async function DELETE(
       .eq("id", id)
       .is("deleted_at", null);
 
-    if (error) throw error;
+    if (error) throwIfDbError(error);
 
     return Response.json({
       success: true,

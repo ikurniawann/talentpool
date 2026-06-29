@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { createPgClient } from "@/lib/pg/create-client";
 import { z } from "zod";
 
 const behavioralSchema = z.object({
@@ -22,12 +22,12 @@ const behavioralSchema = z.object({
 
 export async function GET(request: NextRequest) {
   try {
-    const supabase = await createAdminClient();
+    const db = await createPgClient();
     const { searchParams } = new URL(request.url);
     const employee_id = searchParams.get("employee_id");
     const review_period = searchParams.get("review_period");
 
-    let query = supabase
+    let query = db
       .from("behavioral_assessments")
       .select("*, employee:employees(id, full_name)")
       .order("created_at", { ascending: false });
@@ -63,9 +63,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const supabase = await createAdminClient();
+    const db = await createPgClient();
 
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from("behavioral_assessments")
       .insert(result.data)
       .select()

@@ -13,11 +13,10 @@ const ACCOUNTING_FEATURES: Record<string, string> = {
 };
 
 type AccountingFeaturePageProps = {
-  params: Promise<{ feature: string }>;
+  feature: string;
 };
 
-export default async function AccountingFeaturePage({ params }: AccountingFeaturePageProps) {
-  const { feature } = await params;
+export function AccountingFeaturePage({ feature }: AccountingFeaturePageProps) {
   const title = ACCOUNTING_FEATURES[feature] ?? "Accounting";
 
   return (

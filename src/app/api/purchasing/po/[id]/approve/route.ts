@@ -3,7 +3,7 @@
 // ============================================
 
 import { NextRequest } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { createServerPgClient } from "@/lib/pg/create-client";
 import { ApiError, requireApiRole } from "@/lib/api/auth";
 
 const APPROVE_ROLES = ["super_admin", "purchasing_admin", "purchasing_manager"] as const;
@@ -16,10 +16,10 @@ export async function POST(
   try {
     await requireApiRole([...APPROVE_ROLES]);
     const { id } = await params;
-    const supabase = await createClient();
+    const db = await createServerPgClient();
 
     // Cek PO ada
-    const { data: po, error: findError } = await supabase
+    const { data: po, error: findError } = await db
       .from("purchase_orders")
       .select("*")
       .eq("id", id)
@@ -41,7 +41,7 @@ export async function POST(
     }
 
     // Cek apakah PO punya items
-    const { data: items } = await supabase
+    const { data: items } = await db
       .from("purchase_order_items")
       .select("id")
       .eq("purchase_order_id", id)
@@ -55,7 +55,7 @@ export async function POST(
     }
 
     // Update status ke approved
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from("purchase_orders")
       .update({
         status: "approved",

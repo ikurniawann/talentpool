@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { createPgClient } from "@/lib/pg/create-client";
 import { z } from "zod";
 
 const performanceReviewSchema = z.object({
@@ -44,7 +44,7 @@ const employeeKpiSchema = z.object({
 
 export async function GET(request: NextRequest) {
   try {
-    const supabase = await createAdminClient();
+    const db = await createPgClient();
     const { searchParams } = new URL(request.url);
     const employee_id = searchParams.get("employee_id");
     const period_label = searchParams.get("period_label");
@@ -52,7 +52,7 @@ export async function GET(request: NextRequest) {
     const limit = Math.min(parseInt(searchParams.get("limit") || "50"), 100);
     const offset = parseInt(searchParams.get("offset") || "0");
 
-    let query = supabase
+    let query = db
       .from("performance_reviews")
       .select(
         `*,
@@ -121,12 +121,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const supabase = await createAdminClient();
+    const db = await createPgClient();
     const rollbackReview = async (reviewId: string) => {
-      await supabase.from("performance_reviews").delete().eq("id", reviewId);
+      await db.from("performance_reviews").delete().eq("id", reviewId);
     };
 
-    const { data: review, error: reviewError } = await supabase
+    const { data: review, error: reviewError } = await db
       .from("performance_reviews")
       .insert(result.data)
       .select()
@@ -184,7 +184,7 @@ export async function POST(request: NextRequest) {
         reviewer_notes: item.reviewer_notes || "",
       }));
 
-      const { error: kpiError } = await supabase
+      const { error: kpiError } = await db
         .from("employee_kpis")
         .insert(kpisToInsert);
 
@@ -215,7 +215,7 @@ export async function POST(request: NextRequest) {
         item_order: index + 1,
       }));
 
-      const { error: behError } = await supabase
+      const { error: behError } = await db
         .from("behavioral_review_items")
         .insert(behavioralRows);
 
@@ -241,7 +241,7 @@ export async function POST(request: NextRequest) {
         notes: dev.notes,
       }));
 
-      const { error: devError } = await supabase
+      const { error: devError } = await db
         .from("development_plans")
         .insert(devToInsert);
 
@@ -275,9 +275,9 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    const supabase = await createAdminClient();
+    const db = await createPgClient();
 
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from("performance_reviews")
       .update(result.data)
       .eq("id", id)
@@ -303,8 +303,8 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: "ID is required" }, { status: 400 });
     }
 
-    const supabase = await createAdminClient();
-    const { error } = await supabase.from("performance_reviews").delete().eq("id", id);
+    const db = await createPgClient();
+    const { error } = await db.from("performance_reviews").delete().eq("id", id);
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });

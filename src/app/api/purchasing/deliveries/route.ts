@@ -1,15 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { createServerPgClient } from "@/lib/pg/create-client";
+import {
+  getApiUserScope,
+  companyScopeOr,
+  branchScopeOr,
+} from "@/lib/api/scope";
 
 export async function GET(request: NextRequest) {
   try {
-    const supabase = await createClient();
+    const db = await createServerPgClient();
     const { searchParams } = new URL(request.url);
 
     const poId = searchParams.get("po_id");
     const status = searchParams.get("status");
 
-    let query = supabase
+    let query = db
       .from("deliveries")
       .select(`
         *,
@@ -18,6 +23,12 @@ export async function GET(request: NextRequest) {
       `, { count: "exact" })
       .eq("is_active", true)
       .order("created_at", { ascending: false });
+
+    const scope = await getApiUserScope();
+    const companyOr = companyScopeOr(scope);
+    if (companyOr) query = query.or(companyOr);
+    const branchOr = branchScopeOr(scope);
+    if (branchOr) query = query.or(branchOr);
 
     if (poId) query = query.eq("po_id", poId);
     if (status) query = query.eq("status", status);
@@ -38,13 +49,13 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createClient();
+    const db = await createServerPgClient();
     const body = await request.json();
 
-    // Get PO details for supplier_id
-    const { data: po } = await supabase
+    // Get PO details for supplier_id + scope (delivery mewarisi branch PO)
+    const { data: po } = await db
       .from("purchase_orders")
-      .select("supplier_id")
+      .select("supplier_id, company_id, branch_id")
       .eq("id", body.po_id)
       .single();
 
@@ -55,11 +66,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from("deliveries")
       .insert({
         ...body,
         supplier_id: po.supplier_id,
+        company_id: po.company_id ?? null,
+        branch_id: po.branch_id ?? null,
         status: "IN_TRANSIT",
       })
       .select(`

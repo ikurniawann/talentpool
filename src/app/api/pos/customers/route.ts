@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createServiceClient } from '@/lib/supabase/service-client';
+import { createPgClient } from "@/lib/pg/create-client";
 import { getPosSession } from '@/lib/api/auth';
 
 function getErrorMessage(error: unknown) {
@@ -18,13 +18,13 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const supabase = createServiceClient();
+    const db = createPgClient();
     const searchParams = request.nextUrl.searchParams;
     const search = searchParams.get('search');
     const phone = searchParams.get('phone');
     const tier = searchParams.get('tier');
 
-    let query = supabase
+    let query = db
       .from('pos_customers')
       .select('id, name, phone, email, membership_tier, ark_coin_balance, total_xp, current_xp, visit_count, is_active')
       .eq('is_active', true)
@@ -65,7 +65,7 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const supabase = createServiceClient();
+    const db = createPgClient();
     const body = await request.json();
     const {
       phone,
@@ -89,7 +89,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if customer exists by phone
-    const { data: existingCustomer } = await supabase
+    const { data: existingCustomer } = await db
       .from('pos_customers')
       .select('*')
       .eq('phone', normalizedPhone)
@@ -98,7 +98,7 @@ export async function POST(request: NextRequest) {
     let savedCustomer;
     if (existingCustomer) {
       // Update existing customer
-      const { data, error } = await supabase
+      const { data, error } = await db
         .from('pos_customers')
         .update({
           name: normalizedName || existingCustomer.name,
@@ -114,7 +114,7 @@ export async function POST(request: NextRequest) {
       savedCustomer = data;
     } else {
       // Create new customer
-      const { data, error } = await supabase
+      const { data, error } = await db
         .from('pos_customers')
         .insert({
           phone: normalizedPhone,
@@ -132,7 +132,7 @@ export async function POST(request: NextRequest) {
 
     if (enroll_member && savedCustomer?.id) {
       try {
-        const { data: tier } = await supabase
+        const { data: tier } = await db
           .from('crm_membership_tiers')
           .select('id')
           .eq('code', tierCode)
@@ -140,7 +140,7 @@ export async function POST(request: NextRequest) {
 
         let tierId = tier?.id || null;
         if (!tierId) {
-          const { data: fallbackTier } = await supabase
+          const { data: fallbackTier } = await db
             .from('crm_membership_tiers')
             .select('id')
             .eq('code', 'bronze')
@@ -149,7 +149,7 @@ export async function POST(request: NextRequest) {
         }
 
         if (tierId) {
-          await supabase
+          await db
             .from('crm_member_profiles')
             .upsert(
               {

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createServiceClient } from '@/lib/supabase/service-client';
+import { createPgClient } from "@/lib/pg/create-client";
 import { getPosSession } from '@/lib/api/auth';
 
 type ReservationUpdateData = {
@@ -26,7 +26,7 @@ export async function PATCH(
   }
 
   try {
-    const supabase = createServiceClient();
+    const db = createPgClient();
     const { id: reservationId } = await params;
     const body = await request.json();
     const { status, notes, special_requests } = body;
@@ -45,7 +45,7 @@ export async function PATCH(
       updateData.cancelled_at = new Date().toISOString();
     }
 
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from('pos_reservations')
       .update(updateData)
       .eq('id', reservationId)
@@ -56,7 +56,7 @@ export async function PATCH(
 
     // If seated, update table status
     if (status === 'seated' && data.table_id) {
-      await supabase
+      await db
         .from('pos_tables')
         .update({ status: 'occupied', current_order_id: null })
         .eq('id', data.table_id);
@@ -64,7 +64,7 @@ export async function PATCH(
 
     // If completed or cancelled, free up the table
     if ((status === 'completed' || status === 'no_show' || status === 'cancelled') && data.table_id) {
-      await supabase
+      await db
         .from('pos_tables')
         .update({ status: 'available', current_order_id: null })
         .eq('id', data.table_id);

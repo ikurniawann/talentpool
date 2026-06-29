@@ -1,16 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { createPgClient } from "@/lib/pg/create-client";
 
 export async function GET(request: NextRequest) {
   try {
-    const supabase = await createAdminClient();
+    const db = await createPgClient();
     const { searchParams } = new URL(request.url);
     const employee_id = searchParams.get("employee_id");
     const period_label = searchParams.get("period_label");
     const limit = Math.min(parseInt(searchParams.get("limit") || "50"), 100);
     const offset = parseInt(searchParams.get("offset") || "0");
 
-    let query = supabase
+    let query = db
       .from("employee_kpis")
       .select("*, employee:employees(id, full_name, job_title)", { count: "exact" })
       .order("created_at", { ascending: true });
@@ -45,9 +45,9 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const supabase = await createAdminClient();
+    const db = await createPgClient();
 
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from("employee_kpis")
       .insert(body)
       .select()
@@ -72,9 +72,9 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: "ID is required" }, { status: 400 });
     }
 
-    const supabase = await createAdminClient();
+    const db = await createPgClient();
 
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from("employee_kpis")
       .update(updateData)
       .eq("id", id)
@@ -100,8 +100,8 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: "ID is required" }, { status: 400 });
     }
 
-    const supabase = await createAdminClient();
-    const { error } = await supabase.from("employee_kpis").delete().eq("id", id);
+    const db = await createPgClient();
+    const { error } = await db.from("employee_kpis").delete().eq("id", id);
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });

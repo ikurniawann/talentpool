@@ -3,7 +3,7 @@
 // ============================================
 
 import { NextRequest } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { createServerPgClient } from "@/lib/pg/create-client";
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -15,7 +15,7 @@ export async function GET(
   { params }: RouteParams
 ) {
   try {
-    const supabase = await createClient();
+    const db = await createServerPgClient();
     const { id: supplierId } = await params;
     const { searchParams } = new URL(request.url);
 
@@ -23,7 +23,7 @@ export async function GET(
     const materialId = searchParams.get("material_id");
 
     // Build query
-    let query = supabase
+    let query = db
       .from("v_supplier_price_stats")
       .select("*")
       .eq("supplier_id", supplierId);

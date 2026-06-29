@@ -1,17 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createAdminClient } from '@/lib/supabase/admin';
-import { createClient } from '@/lib/supabase/server';
+import { createPgClient } from "@/lib/pg/create-client";
+import { createServerPgClient } from "@/lib/pg/create-client";
 
 export async function GET(request: NextRequest) {
   try {
-    const supabase = createAdminClient();
+    const db = createPgClient();
     const searchParams = request.nextUrl.searchParams;
     const status = searchParams.get('status');
     const periodLabel = searchParams.get('period_label');
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '20');
 
-    let query = supabase
+    let query = db
       .from('feedback_cycles')
       .select(`
         *,
@@ -42,11 +42,11 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const authClient = await createClient();
+    const authClient = await createServerPgClient();
     const { data: { user } } = await authClient.auth.getUser();
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const supabase = createAdminClient();
+    const db = createPgClient();
     const body = await request.json();
 
     // Try to find employee matching the authenticated user's email or full_name
@@ -54,7 +54,7 @@ export async function POST(request: NextRequest) {
     
     // First try to match by email (if users table has it)
     if (user.email) {
-      const { data: employeeByEmail } = await supabase
+      const { data: employeeByEmail } = await db
         .from('employees')
         .select('id')
         .eq('email', user.email)
@@ -67,7 +67,7 @@ export async function POST(request: NextRequest) {
     
     // If not found by email, try to match by full_name from users table
     if (!createdByEmployeeId && user.user_metadata?.full_name) {
-      const { data: employeeByName } = await supabase
+      const { data: employeeByName } = await db
         .from('employees')
         .select('id')
         .ilike('full_name', user.user_metadata.full_name)
@@ -80,7 +80,7 @@ export async function POST(request: NextRequest) {
     
     // Fallback: use first employee (e.g., EMP001/Admin) as default
     if (!createdByEmployeeId) {
-      const { data: firstEmployee } = await supabase
+      const { data: firstEmployee } = await db
         .from('employees')
         .select('id')
         .order('nip')
@@ -96,7 +96,7 @@ export async function POST(request: NextRequest) {
       }, { status: 500 });
     }
 
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from('feedback_cycles')
       .insert({ ...body, created_by: createdByEmployeeId })
       .select()

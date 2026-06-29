@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server";
+import { createServerPgClient } from "@/lib/pg/create-client";
 import { NextResponse } from "next/server";
 
 type TemplateItemInput = {
@@ -13,21 +13,21 @@ function errorResponse(message: string, status = 400) {
 }
 
 export async function GET(request: Request) {
-  const supabase = await createClient();
+  const db = await createServerPgClient();
   const { searchParams } = new URL(request.url);
   const resource = searchParams.get("resource") || "entries";
 
   if (resource === "me") {
-    const { data: userData } = await supabase.auth.getUser();
+    const { data: userData } = await db.auth.getUser();
     if (!userData.user) return errorResponse("Unauthorized", 401);
 
-    const { data: profile } = await supabase
+    const { data: profile } = await db
       .from("users")
       .select("id, full_name, role, brand_id")
       .eq("id", userData.user.id)
       .single();
 
-    const { data: employee } = await supabase
+    const { data: employee } = await db
       .from("employees")
       .select("id, department_id, department:departments(id,name,code)")
       .eq("user_id", userData.user.id)
@@ -37,7 +37,7 @@ export async function GET(request: Request) {
   }
 
   if (resource === "departments") {
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from("departments")
       .select("id, name, code, is_active")
       .eq("is_active", true)
@@ -48,7 +48,7 @@ export async function GET(request: Request) {
   }
 
   if (resource === "templates") {
-    let query = supabase
+    let query = db
       .from("hris_logbook_templates")
       .select("*, department:departments(id,name,code), items:hris_logbook_template_items(*)")
       .order("created_at", { ascending: false });
@@ -65,7 +65,7 @@ export async function GET(request: Request) {
     const from = searchParams.get("from");
     const to = searchParams.get("to");
 
-    let query = supabase
+    let query = db
       .from("hris_logbook_entries")
       .select("id, department_id, entry_date, status, completion_percentage, kpi_score, department:departments(id,name,code)")
       .order("entry_date", { ascending: false });
@@ -105,7 +105,7 @@ export async function GET(request: Request) {
     return NextResponse.json({ data: rows });
   }
 
-  let query = supabase
+  let query = db
     .from("hris_logbook_entries")
     .select("*, department:departments(id,name,code), template:hris_logbook_templates(id,name,frequency), items:hris_logbook_entry_items(*)")
     .order("entry_date", { ascending: false })
@@ -128,15 +128,15 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const supabase = await createClient();
+  const db = await createServerPgClient();
   const body = await request.json();
   const action = body.action;
 
   if (action === "create-template") {
     if (!body.department_id || !body.name) return errorResponse("department_id and name are required");
 
-    const { data: userData } = await supabase.auth.getUser();
-    const { data: template, error } = await supabase
+    const { data: userData } = await db.auth.getUser();
+    const { data: template, error } = await db
       .from("hris_logbook_templates")
       .insert({
         department_id: body.department_id,
@@ -153,7 +153,7 @@ export async function POST(request: Request) {
 
     const items = (body.items || []).filter((item: TemplateItemInput) => item.title?.trim());
     if (items.length) {
-      const { error: itemError } = await supabase.from("hris_logbook_template_items").insert(
+      const { error: itemError } = await db.from("hris_logbook_template_items").insert(
         items.map((item: TemplateItemInput, index: number) => ({
           template_id: template.id,
           title: item.title.trim(),
@@ -172,7 +172,7 @@ export async function POST(request: Request) {
   if (action === "create-entry") {
     if (!body.template_id || !body.entry_date) return errorResponse("template_id and entry_date are required");
 
-    const { data: template, error: templateError } = await supabase
+    const { data: template, error: templateError } = await db
       .from("hris_logbook_templates")
       .select("*, items:hris_logbook_template_items(*)")
       .eq("id", body.template_id)
@@ -180,7 +180,7 @@ export async function POST(request: Request) {
 
     if (templateError) return errorResponse(templateError.message);
 
-    const { data: entry, error } = await supabase
+    const { data: entry, error } = await db
       .from("hris_logbook_entries")
       .insert({
         template_id: template.id,
@@ -196,7 +196,7 @@ export async function POST(request: Request) {
 
     const items = (template.items || []).sort((a: any, b: any) => a.sort_order - b.sort_order);
     if (items.length) {
-      const { error: itemError } = await supabase.from("hris_logbook_entry_items").insert(
+      const { error: itemError } = await db.from("hris_logbook_entry_items").insert(
         items.map((item: any) => ({
           entry_id: entry.id,
           template_item_id: item.id,
@@ -217,13 +217,13 @@ export async function POST(request: Request) {
 }
 
 export async function PATCH(request: Request) {
-  const supabase = await createClient();
+  const db = await createServerPgClient();
   const body = await request.json();
 
   if (body.action === "update-item") {
     if (!body.item_id) return errorResponse("item_id is required");
 
-    const { data: userData } = await supabase.auth.getUser();
+    const { data: userData } = await db.auth.getUser();
     const patch: Record<string, unknown> = {
       updated_at: new Date().toISOString(),
     };
@@ -238,7 +238,7 @@ export async function PATCH(request: Request) {
       patch.notes = body.notes || null;
     }
 
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from("hris_logbook_entry_items")
       .update(patch)
       .eq("id", body.item_id)
@@ -251,8 +251,8 @@ export async function PATCH(request: Request) {
 
   if (body.action === "submit-entry") {
     if (!body.entry_id) return errorResponse("entry_id is required");
-    const { data: userData } = await supabase.auth.getUser();
-    const { data, error } = await supabase
+    const { data: userData } = await db.auth.getUser();
+    const { data, error } = await db
       .from("hris_logbook_entries")
       .update({
         status: "submitted",
@@ -271,9 +271,9 @@ export async function PATCH(request: Request) {
 
   if (body.action === "review-entry") {
     if (!body.entry_id) return errorResponse("entry_id is required");
-    const { data: userData } = await supabase.auth.getUser();
+    const { data: userData } = await db.auth.getUser();
     const status = body.status === "rejected" ? "rejected" : "reviewed";
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from("hris_logbook_entries")
       .update({
         status,

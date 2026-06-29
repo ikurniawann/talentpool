@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { createPgClient } from "@/lib/pg/create-client";
 
 // GET /api/hris/kpi-templates/[id] - Get template by ID
 export async function GET(
@@ -8,9 +8,9 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
-    const supabase = await createAdminClient();
+    const db = await createPgClient();
 
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from("kpi_templates")
       .select(`
         *,
@@ -44,7 +44,7 @@ export async function PUT(
   try {
     const { id } = await params;
     const body = await request.json();
-    const supabase = await createAdminClient();
+    const db = await createPgClient();
 
     const { items, behavioral_items, ...templateData } = body;
     const sanitizedTemplateData = {
@@ -55,7 +55,7 @@ export async function PUT(
     };
 
     // Update template header
-    const { error: updateError } = await supabase
+    const { error: updateError } = await db
       .from("kpi_templates")
       .update(sanitizedTemplateData)
       .eq("id", id);
@@ -67,7 +67,7 @@ export async function PUT(
     // Handle items update if provided
     if (items && Array.isArray(items)) {
       // Delete existing items
-      await supabase.from("kpi_template_items").delete().eq("template_id", id);
+      await db.from("kpi_template_items").delete().eq("template_id", id);
 
       // Insert new items
       if (items.length > 0) {
@@ -92,7 +92,7 @@ export async function PUT(
           item_order: item.item_order || index,
         }));
 
-        const { error: itemsError } = await supabase
+        const { error: itemsError } = await db
           .from("kpi_template_items")
           .insert(itemsWithTemplateId);
 
@@ -105,7 +105,7 @@ export async function PUT(
     // Handle behavioral items update if provided
     if (behavioral_items && Array.isArray(behavioral_items)) {
       // Delete existing behavioral items
-      await supabase.from("kpi_template_behavioral").delete().eq("template_id", id);
+      await db.from("kpi_template_behavioral").delete().eq("template_id", id);
 
       // Insert new behavioral items
       if (behavioral_items.length > 0) {
@@ -122,7 +122,7 @@ export async function PUT(
           score_1_description: item.score_1_description || "",
         }));
 
-        const { error: behError } = await supabase
+        const { error: behError } = await db
           .from("kpi_template_behavioral")
           .insert(behavioralItemsWithTemplateId);
 
@@ -133,7 +133,7 @@ export async function PUT(
     }
 
     // Fetch updated template
-    const { data: updatedTemplate, error: fetchError } = await supabase
+    const { data: updatedTemplate, error: fetchError } = await db
       .from("kpi_templates")
       .select(`
         *,
@@ -162,9 +162,9 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params;
-    const supabase = await createAdminClient();
+    const db = await createPgClient();
 
-    const { error } = await supabase.from("kpi_templates").delete().eq("id", id);
+    const { error } = await db.from("kpi_templates").delete().eq("id", id);
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });

@@ -1,0 +1,74 @@
+export type PosProductVariant = {
+  id: string;
+  name: string;
+  sku: string;
+  priceAdj: number;
+  active: boolean;
+};
+
+export type PosProductModifier = {
+  id: string;
+  name: string;
+  priceAdj: number;
+  active: boolean;
+};
+
+export type PosProductModifierGroup = {
+  id: string;
+  name: string;
+  required: boolean;
+  maxSelect: number;
+  active: boolean;
+  modifiers: PosProductModifier[];
+};
+
+export type PosCatalogProduct = {
+  id: string;
+  name: string;
+  category: string;
+  price: number;
+  cost: number;
+  margin: number;
+  status: "active" | "inactive";
+  station: string;
+  hasVariants: boolean;
+  hasModifiers: boolean;
+  variants: PosProductVariant[];
+  modifierGroups: PosProductModifierGroup[];
+};
+
+export type ApiPosProduct = {
+  id: string;
+  sku?: string | null;
+  name?: string | null;
+  category?: { name?: string | null } | { name?: string | null }[] | string | null;
+  base_price?: number | string | null;
+  cost_price?: number | string | null;
+  station?: string | null;
+  is_active?: boolean | null;
+  variants?: Array<{
+    id?: string;
+    name?: string | null;
+    sku?: string | null;
+    price_adjustment?: number | string | null;
+    is_active?: boolean | null;
+  }> | null;
+  modifiers?: Array<{
+    modifier_group?: {
+      name?: string | null;
+      min_selection?: number | string | null;
+      max_selection?: number | string | null;
+      modifiers?: Array<{
+        id?: string;
+        name?: string | null;
+        price_adjustment?: number | string | null;
+        is_active?: boolean | null;
+      }> | null;
+    } | null;
+  }> | null;
+};
+
+export interface PatchPosProductPayload {
+  is_active?: boolean;
+  station?: string;
+}

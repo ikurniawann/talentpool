@@ -4,7 +4,7 @@
  * Helper functions for XP calculations, level progression, and gamification
  */
 
-import { createClient } from "./supabase/client";
+import { createBrowserClient } from "@/lib/pg/browser-client";
 
 /**
  * XP Rules for TalentPool activities
@@ -85,10 +85,10 @@ export function calculateLevelProgress(currentXP: number, xpToNext: number): num
  * XP Service Class
  */
 export class XPService {
-  private supabase;
+  private db;
 
   constructor() {
-    this.supabase = createClient();
+    this.db = createBrowserClient();
   }
 
   /**
@@ -105,7 +105,7 @@ export class XPService {
     const xpAmount = XP_RULES[activityType];
 
     try {
-      const { data, error } = await this.supabase.rpc('add_xp_to_user', {
+      const { data, error } = await this.db.rpc('add_xp_to_user', {
         p_user_id: userId,
         p_xp_amount: xpAmount,
         p_activity_type: activityType,
@@ -144,7 +144,7 @@ export class XPService {
    */
   async getUserStats(userId: string) {
     try {
-      const { data, error } = await this.supabase
+      const { data, error } = await this.db
         .from('user_xp_stats')
         .select('*')
         .eq('user_id', userId)
@@ -171,7 +171,7 @@ export class XPService {
    */
   async getUserActivities(userId: string, limit: number = 20) {
     try {
-      const { data, error } = await this.supabase
+      const { data, error } = await this.db
         .from('xp_activities')
         .select('*')
         .eq('user_id', userId)
@@ -195,7 +195,7 @@ export class XPService {
    */
   async getUserBadges(userId: string) {
     try {
-      const { data, error } = await this.supabase
+      const { data, error } = await this.db
         .from('user_badges')
         .select(`
           *,
@@ -228,7 +228,7 @@ export class XPService {
    */
   async checkAndUnlockBadges(userId: string) {
     try {
-      const { data: badgesToUnlock, error } = await this.supabase.rpc(
+      const { data: badgesToUnlock, error } = await this.db.rpc(
         'check_badge_unlocks',
         { p_user_id: userId }
       );
@@ -241,7 +241,7 @@ export class XPService {
       // Unlock each badge
       const unlocked = [];
       for (const badge of badgesToUnlock || []) {
-        const { success } = await this.supabase.rpc('unlock_badge', {
+        const { success } = await this.db.rpc('unlock_badge', {
           p_user_id: userId,
           p_badge_id: badge.badge_id,
         });
@@ -263,7 +263,7 @@ export class XPService {
    */
   async getActiveChallenges(userId: string) {
     try {
-      const { data, error } = await this.supabase
+      const { data, error } = await this.db
         .from('xp_challenges')
         .select(`
           *,
@@ -298,7 +298,7 @@ export class XPService {
    */
   async claimChallengeReward(userId: string, challengeId: string) {
     try {
-      const { data, error } = await this.supabase.rpc('claim_challenge_reward', {
+      const { data, error } = await this.db.rpc('claim_challenge_reward', {
         p_user_id: userId,
         p_challenge_id: challengeId,
       });
@@ -325,7 +325,7 @@ export class XPService {
    */
   async getLeaderboard(limit: number = 10) {
     try {
-      const { data, error } = await this.supabase
+      const { data, error } = await this.db
         .from('user_xp_stats')
         .select(`
           *,
@@ -354,7 +354,7 @@ export class XPService {
    */
   async getUserRank(userId: string) {
     try {
-      const { data, error } = await this.supabase.rpc('get_user_rank', {
+      const { data, error } = await this.db.rpc('get_user_rank', {
         p_user_id: userId,
       });
 
@@ -375,7 +375,7 @@ export class XPService {
    */
   async getAvailableRewards() {
     try {
-      const { data, error } = await this.supabase
+      const { data, error } = await this.db
         .from('xp_rewards')
         .select('*')
         .eq('is_active', true)
@@ -398,7 +398,7 @@ export class XPService {
    */
   async redeemReward(userId: string, rewardId: string) {
     try {
-      const { data, error } = await this.supabase.rpc('redeem_reward', {
+      const { data, error } = await this.db.rpc('redeem_reward', {
         p_user_id: userId,
         p_reward_id: rewardId,
       });
@@ -425,7 +425,7 @@ export class XPService {
    */
   async getRedemptionHistory(userId: string) {
     try {
-      const { data, error } = await this.supabase
+      const { data, error } = await this.db
         .from('xp_redemptions')
         .select(`
           *,

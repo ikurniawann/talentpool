@@ -1,15 +1,15 @@
-import { createClient } from "@/lib/supabase/server";
+import { createServerPgClient } from "@/lib/pg/create-client";
 import { NextResponse } from "next/server";
 
 // GET /api/staff-sections
 export async function GET(request: Request) {
-  const supabase = await createClient();
+  const db = await createServerPgClient();
   const { searchParams } = new URL(request.url);
 
   const staff_id = searchParams.get("staff_id");
   const section_id = searchParams.get("section_id");
 
-  let query = supabase
+  let query = db
     .from("staff_sections")
     .select("*, staff(full_name, employee_code), sections(name, code, color)", { count: "exact" })
     .order("created_at", { ascending: false });
@@ -28,12 +28,12 @@ export async function GET(request: Request) {
 
 // POST /api/staff-sections - Assign staff to section
 export async function POST(request: Request) {
-  const supabase = await createClient();
+  const db = await createServerPgClient();
   const body = await request.json();
 
   // Bulk assign
   if (Array.isArray(body.assignments)) {
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from("staff_sections")
       .upsert(body.assignments, { onConflict: "staff_id,section_id" })
       .select();
@@ -45,7 +45,7 @@ export async function POST(request: Request) {
   }
 
   // Single assign
-  const { data, error } = await supabase
+  const { data, error } = await db
     .from("staff_sections")
     .upsert({
       staff_id: body.staff_id,
@@ -64,7 +64,7 @@ export async function POST(request: Request) {
 
 // DELETE /api/staff-sections?staff_id=xxx&section_id=yyy
 export async function DELETE(request: Request) {
-  const supabase = await createClient();
+  const db = await createServerPgClient();
   const { searchParams } = new URL(request.url);
   const staff_id = searchParams.get("staff_id");
   const section_id = searchParams.get("section_id");
@@ -73,7 +73,7 @@ export async function DELETE(request: Request) {
     return NextResponse.json({ error: "staff_id and section_id required" }, { status: 400 });
   }
 
-  const { error } = await supabase
+  const { error } = await db
     .from("staff_sections")
     .delete()
     .eq("staff_id", staff_id)

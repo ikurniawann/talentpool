@@ -3,22 +3,36 @@
 // ============================================
 
 import { NextRequest } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { createServerPgClient } from "@/lib/pg/create-client";
 import { z } from "zod";
+import {
+  getErrorMessage,
+  throwIfDbError,
+  UNIT_CONVERSION_SELECT,
+  prepareMaterialBody,
+} from "./_helpers";
+import {
+  getApiUserScope,
+  companyScopeOr,
+  branchScopeOr,
+  effectiveCompanyId,
+  effectiveBranchId,
+} from "@/lib/api/scope";
 
 // Validation schema
 const materialSchema = z.object({
   kode: z.string().max(20).optional().nullable(),
   nama: z.string().min(1, "Nama bahan wajib diisi").max(100),
-  kategori: z.enum(["BAHAN_PANGAN", "BAHAN_NON_PANGAN", "KEMASAN", "BAHAN_BAKAR", "LAINNYA"]),
+  kategori: z.string().min(1, "Kategori wajib dipilih").max(30),
   deskripsi: z.string().optional().nullable(),
   satuan_besar_id: z.string().uuid("Satuan besar wajib dipilih"),
   satuan_kecil_id: z.string().uuid().optional().nullable(),
+  harga_beli: z.number().min(0).default(0),
   konversi_factor: z.number().min(0).default(1),
   stok_minimum: z.number().min(0).default(0),
   stok_maximum: z.number().min(0).default(0),
   shelf_life_days: z.number().min(0).optional().nullable(),
-  storage_condition: z.enum(["SUHU_RUANG", "DINGIN", "BEKU", "KHUSUS"]).optional().nullable(),
+  storage_condition: z.string().max(20).optional().nullable(),
   coa: z.enum(["PRODUCTION", "RND", "ASSET"]).optional().nullable(),
   unit_conversions: z.array(z.object({
     satuan_id: z.string().uuid(),
@@ -27,14 +41,11 @@ const materialSchema = z.object({
   })).optional().default([]),
 });
 
-function getErrorMessage(error: unknown, fallback: string) {
-  return error instanceof Error ? error.message : fallback;
-}
-
 // GET /api/purchasing/raw-materials
 export async function GET(request: NextRequest) {
   try {
-    const supabase = await createClient();
+    const db = await createServerPgClient();
+    const scope = await getApiUserScope();
     const { searchParams } = new URL(request.url);
 
     // Query params
@@ -49,10 +60,16 @@ export async function GET(request: NextRequest) {
     const sortDir = searchParams.get("sort_dir")?.toUpperCase() === "DESC" ? "DESC" : "ASC";
 
     // Build query
-    let query = supabase
+    let query = db
       .from("v_raw_materials_stock")
       .select("*", { count: "exact" })
       .is("deleted_at", null);
+
+    // Business scope: company + branch (bahan baku level branch)
+    const companyOr = companyScopeOr(scope);
+    if (companyOr) query = query.or(companyOr);
+    const branchOr = branchScopeOr(scope);
+    if (branchOr) query = query.or(branchOr);
 
     // Filters
     if (search) {
@@ -81,26 +98,23 @@ export async function GET(request: NextRequest) {
       .range(from, to);
 
     if (error) {
-      console.error("Supabase error fetching raw materials:", error);
-      throw error;
+      console.error("Database error fetching raw materials:", error);
+      throwIfDbError(error);
     }
 
     let materialsWithConversions = data || [];
     const materialIds = materialsWithConversions.map((material) => material.id).filter(Boolean);
 
     if (materialIds.length > 0) {
-      const { data: conversions, error: conversionsError } = await supabase
+      const { data: conversions, error: conversionsError } = await db
         .from("raw_material_unit_conversions")
-        .select(`
-          *,
-          satuan:satuan_id (*)
-        `)
+        .select(UNIT_CONVERSION_SELECT)
         .in("raw_material_id", materialIds)
         .eq("is_active", true)
         .order("is_base", { ascending: false })
         .order("qty_in_base_unit", { ascending: true });
 
-      if (conversionsError) throw conversionsError;
+      if (conversionsError) throwIfDbError(conversionsError);
 
       const conversionsByMaterial = new Map<string, typeof conversions>();
       for (const conversion of conversions || []) {
@@ -136,10 +150,11 @@ export async function GET(request: NextRequest) {
 // POST /api/purchasing/raw-materials
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createClient();
-    const body = await request.json();
-
-    // Validasi input
+    const db = await createServerPgClient();
+    const scope = await getApiUserScope();
+    const companyId = effectiveCompanyId(scope);
+    const branchId = effectiveBranchId(scope);
+    const body = prepareMaterialBody(await request.json());
     const validated = materialSchema.parse(body);
 
     // Generate kode otomatis jika tidak disediakan
@@ -147,7 +162,7 @@ export async function POST(request: NextRequest) {
     if (!finalKode) {
       const year = new Date().getFullYear();
       // Get last code
-      const { data: lastCode } = await supabase
+      const { data: lastCode } = await db
         .from("raw_materials")
  .select("kode")
         .ilike("kode", `BHN-${year}-%`)
@@ -166,13 +181,19 @@ export async function POST(request: NextRequest) {
       finalKode = `BHN-${year}-${String(nextNum).padStart(4, "0")}`;
     }
 
-    // Cek kode unik
-    const { data: existing } = await supabase
+    // Cek kode unik dalam scope (company + branch)
+    let existingQuery = db
       .from("raw_materials")
       .select("id")
       .eq("kode", finalKode)
-      .is("deleted_at", null)
-      .single();
+      .is("deleted_at", null);
+    existingQuery = companyId
+      ? existingQuery.eq("company_id", companyId)
+      : existingQuery.is("company_id", null);
+    existingQuery = branchId
+      ? existingQuery.eq("branch_id", branchId)
+      : existingQuery.is("branch_id", null);
+    const { data: existing } = await existingQuery.maybeSingle();
 
     if (existing) {
       return Response.json(
@@ -184,17 +205,19 @@ export async function POST(request: NextRequest) {
     const { unit_conversions, ...materialPayload } = validated;
 
     // Insert data
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from("raw_materials")
       .insert({
         ...materialPayload,
         kode: finalKode,
+        company_id: companyId,
+        branch_id: branchId,
         is_active: true,
       })
       .select()
       .single();
 
-    if (error) throw error;
+    if (error) throwIfDbError(error);
 
     const conversions = [
       ...(data.satuan_kecil_id
@@ -212,7 +235,7 @@ export async function POST(request: NextRequest) {
         }
       }
       const uniqueConversions = Array.from(conversionsByUnit.values());
-      const { error: conversionError } = await supabase
+      const { error: conversionError } = await db
         .from("raw_material_unit_conversions")
         .upsert(
           uniqueConversions.map((conversion) => ({
@@ -225,7 +248,7 @@ export async function POST(request: NextRequest) {
           { onConflict: "raw_material_id,satuan_id" }
         );
 
-      if (conversionError) throw conversionError;
+      if (conversionError) throwIfDbError(conversionError);
     }
 
     return Response.json(

@@ -1,7 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { createServiceClient } from "@/lib/supabase/service-client";
+import { createPgClient } from "@/lib/pg/create-client";
 import { requireApiRole, ApiError } from "@/lib/api/auth";
+import {
+  getApiUserScope,
+  companyScopeOr,
+  branchScopeOr,
+  effectiveCompanyId,
+  effectiveBranchId,
+} from "@/lib/api/scope";
 
 const createProductionSchema = z.object({
   product_id: z.string().uuid("Produk wajib dipilih"),
@@ -23,11 +30,11 @@ function getErrorMessage(error: unknown, fallback: string) {
   return error instanceof Error ? error.message : fallback;
 }
 
-async function generateProductionNumber(supabase: ReturnType<typeof createServiceClient>) {
+async function generateProductionNumber(db: import("@/lib/pg/types").DbClient) {
   const now = new Date();
   const prefix = `PROD-${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}`;
 
-  const { data, error } = await supabase
+  const { data, error } = await db
     .from("production_orders")
     .select("nomor_produksi")
     .ilike("nomor_produksi", `${prefix}-%`)
@@ -44,17 +51,23 @@ async function generateProductionNumber(supabase: ReturnType<typeof createServic
 export async function GET(request: NextRequest) {
   try {
     await requireApiRole(["admin", "purchasing_admin", "purchasing_manager", "warehouse_admin"]);
-    const supabase = createServiceClient();
+    const db = createPgClient();
     const { searchParams } = new URL(request.url);
     const status = searchParams.get("status");
     const search = searchParams.get("search");
     const limit = Math.min(Number(searchParams.get("limit") || 25), 100);
 
-    let query = supabase
+    let query = db
       .from("v_production_orders")
       .select("*")
       .order("created_at", { ascending: false })
       .limit(limit);
+
+    const scope = await getApiUserScope();
+    const companyOr = companyScopeOr(scope);
+    if (companyOr) query = query.or(companyOr);
+    const branchOr = branchScopeOr(scope);
+    if (branchOr) query = query.or(branchOr);
 
     if (status) query = query.eq("status", status);
     if (search) {
@@ -78,13 +91,13 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const user = await requireApiRole(["admin", "purchasing_admin", "purchasing_manager", "warehouse_admin"]);
-    const supabase = createServiceClient();
+    const db = createPgClient();
     const body = await request.json();
     const validated = createProductionSchema.parse(body);
 
-    const { data: product, error: productError } = await supabase
+    const { data: product, error: productError } = await db
       .from("products")
-      .select("id, kode, nama")
+      .select("id, kode, nama, company_id, branch_id")
       .eq("id", validated.product_id)
       .eq("is_active", true)
       .single();
@@ -96,7 +109,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { data: bomItems, error: bomError } = await supabase
+    const { data: bomItems, error: bomError } = await db
       .from("bom_items")
       .select("raw_material_id, satuan_id, qty_required, waste_factor")
       .eq("product_id", validated.product_id)
@@ -111,7 +124,7 @@ export async function POST(request: NextRequest) {
     }
 
     const materialIds = bomItems.map((item) => item.raw_material_id).filter(Boolean);
-    const { data: stocks, error: stockError } = await supabase
+    const { data: stocks, error: stockError } = await db
       .from("v_raw_materials_stock")
       .select("id, avg_cost")
       .in("id", materialIds);
@@ -141,13 +154,19 @@ export async function POST(request: NextRequest) {
       validated.packaging_cost +
       validated.waste_cost;
     const hppPerUnit = totalPlannedCost / validated.planned_qty;
-    const nomorProduksi = await generateProductionNumber(supabase);
+    const nomorProduksi = await generateProductionNumber(db);
 
-    const { data: order, error: orderError } = await supabase
+    const scope = await getApiUserScope();
+    const companyId = (product as any).company_id ?? effectiveCompanyId(scope);
+    const branchId = (product as any).branch_id ?? effectiveBranchId(scope);
+
+    const { data: order, error: orderError } = await db
       .from("production_orders")
       .insert({
         nomor_produksi: nomorProduksi,
         product_id: validated.product_id,
+        company_id: companyId,
+        branch_id: branchId,
         output_type: validated.output_type,
         planned_qty: validated.planned_qty,
         actual_qty: 0,
@@ -166,7 +185,7 @@ export async function POST(request: NextRequest) {
 
     if (orderError) throw orderError;
 
-    const { error: materialError } = await supabase
+    const { error: materialError } = await db
       .from("production_order_materials")
       .insert(materials.map((item) => ({ ...item, production_order_id: order.id })));
 

@@ -1,8 +1,8 @@
-import { createClient } from "@/lib/supabase/server";
+import { createServerPgClient } from "@/lib/pg/create-client";
 import { NextResponse } from "next/server";
 
 export async function GET(request: Request) {
-  const supabase = await createClient();
+  const db = await createServerPgClient();
   const { searchParams } = new URL(request.url);
   const brand_id = searchParams.get("brand_id");
 
@@ -12,13 +12,13 @@ export async function GET(request: Request) {
   const startOfMonthISO = startOfMonth.toISOString();
 
   const base = () => {
-    let q = supabase.from("candidates").select("id", { count: "exact", head: true });
+    let q = db.from("candidates").select("id", { count: "exact", head: true });
     if (brand_id) q = q.eq("brand_id", brand_id);
     return q;
   };
 
   const posBase = () => {
-    let q = supabase.from("positions").select("id", { count: "exact", head: true });
+    let q = db.from("positions").select("id", { count: "exact", head: true });
     if (brand_id) q = q.eq("brand_id", brand_id);
     return q;
   };

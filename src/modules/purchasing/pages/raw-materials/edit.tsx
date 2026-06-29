@@ -111,7 +111,7 @@ export default function RawMaterialsEditPage({ params }: { params: { id: string 
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || "Gagal menyimpan");
-      router.push(`/dashboard/purchasing/raw-materials/${params.id}`);
+      router.push(`/dashboard/items/raw-materials/${params.id}`);
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -125,8 +125,8 @@ export default function RawMaterialsEditPage({ params }: { params: { id: string 
         <BreadcrumbNav items={[
           { label: "Dashboard", href: "/dashboard" },
           { label: "Purchasing", href: "/dashboard/purchasing" },
-          { label: "Bahan Baku", href: "/dashboard/purchasing/raw-materials" },
-          { label: params.id, href: `/dashboard/purchasing/raw-materials/${params.id}` },
+          { label: "Bahan Baku", href: "/dashboard/items/raw-materials" },
+          { label: params.id, href: `/dashboard/items/raw-materials/${params.id}` },
           { label: "Edit" },
         ]} />
 
@@ -135,7 +135,7 @@ export default function RawMaterialsEditPage({ params }: { params: { id: string 
             <h1 className="text-2xl font-bold text-gray-900">Edit Bahan Baku</h1>
             <p className="text-sm text-gray-500 font-mono">{form.kode || params.id}</p>
           </div>
-          <Link href={`/dashboard/purchasing/raw-materials/${params.id}`}>
+          <Link href={`/dashboard/items/raw-materials/${params.id}`}>
             <Button variant="ghost">Batal</Button>
           </Link>
         </div>
@@ -149,7 +149,7 @@ export default function RawMaterialsEditPage({ params }: { params: { id: string 
             <CardContent className="flex flex-col items-center gap-3 py-16">
               <AlertCircle className="w-8 h-8 text-red-400" />
               <p className="text-sm text-red-600">Bahan baku tidak ditemukan</p>
-              <Link href="/dashboard/purchasing/raw-materials">
+              <Link href="/dashboard/items/raw-materials">
                 <Button variant="outline">Kembali ke Daftar</Button>
               </Link>
             </CardContent>
@@ -253,7 +253,7 @@ export default function RawMaterialsEditPage({ params }: { params: { id: string 
             {error && <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</div>}
 
             <div className="flex justify-end gap-3">
-              <Link href={`/dashboard/purchasing/raw-materials/${params.id}`}>
+              <Link href={`/dashboard/items/raw-materials/${params.id}`}>
                 <Button type="button" variant="outline">Batal</Button>
               </Link>
               <Button type="submit" disabled={saving || !form.nama || !form.kategori || !form.satuan_besar_id}>

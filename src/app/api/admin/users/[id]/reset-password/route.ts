@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { createPgClient } from "@/lib/pg/create-client";
 import { ApiError, requireApiRole } from "@/lib/api/auth";
 
 export async function POST(
@@ -9,21 +9,21 @@ export async function POST(
   try {
     const { id } = await params;
     const actor = await requireApiRole(["super_admin"]);
-    const supabase = createAdminClient();
+    const db = createPgClient();
 
-    const { data: authUser, error: authError } = await supabase.auth.admin.getUserById(id);
+    const { data: authUser, error: authError } = await db.auth.admin.getUserById(id);
     if (authError || !authUser.user?.email) {
       throw ApiError.notFound("Email user tidak ditemukan");
     }
 
     const origin = new URL(request.url).origin;
-    const { error } = await supabase.auth.resetPasswordForEmail(authUser.user.email, {
+    const { error } = await db.auth.resetPasswordForEmail(authUser.user.email, {
       redirectTo: `${origin}/login`,
     });
 
     if (error) throw ApiError.badRequest(error.message);
 
-    await supabase.from("admin_user_audit_logs").insert({
+    await db.from("admin_user_audit_logs").insert({
       actor_id: actor.id,
       target_user_id: id,
       action: "reset_password",

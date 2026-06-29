@@ -1,0 +1,29 @@
+"use client";
+
+import { useQuery } from "@tanstack/react-query";
+import { getCashierOrder, listCashierTables, listCustomerFavoriteProducts } from "./api";
+import { cashierQueryKeys } from "./query-keys";
+import type { Product } from "./api";
+
+export const useCashierTables = () =>
+  useQuery({
+    queryKey: cashierQueryKeys.tables(),
+    queryFn: listCashierTables,
+  });
+
+export const useCashierOrder = (orderId: string | null) =>
+  useQuery({
+    queryKey: cashierQueryKeys.order(orderId ?? ""),
+    queryFn: () => getCashierOrder(orderId!),
+    enabled: !!orderId,
+  });
+
+export const useCustomerFavoriteProducts = (
+  customerId: string | null | undefined,
+  products: Product[]
+) =>
+  useQuery({
+    queryKey: cashierQueryKeys.favorites(customerId ?? ""),
+    queryFn: () => listCustomerFavoriteProducts(customerId!, products),
+    enabled: !!customerId && products.length > 0,
+  });

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createServiceClient } from "@/lib/supabase/service-client";
+import { createPgClient } from "@/lib/pg/create-client";
 import { getPosSession } from "@/lib/api/auth";
 
 type PosOrderRow = {
@@ -108,7 +108,7 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const supabase = createServiceClient();
+    const db = createPgClient();
     const searchParams = request.nextUrl.searchParams;
     const now = new Date();
     const defaultStart = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -117,7 +117,7 @@ export async function GET(request: NextRequest) {
     const startDate = new Date(`${from}T00:00:00.000Z`);
     const endDate = new Date(`${to}T23:59:59.999Z`);
 
-    const { data: orders, error: orderError } = await supabase
+    const { data: orders, error: orderError } = await db
       .from("pos_orders")
       .select("id, order_number, ordered_at, cashier_id, total_amount")
       .eq("status", "completed")
@@ -152,7 +152,7 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    const { data: items, error: itemError } = await supabase
+    const { data: items, error: itemError } = await db
       .from("pos_order_items")
       .select("order_id, product_id, product_name, product_sku, quantity, total_amount, cost_price, cost_total, gross_profit, gross_margin_pct, station")
       .in("order_id", orderIds);
@@ -165,7 +165,7 @@ export async function GET(request: NextRequest) {
     );
 
     const { data: products, error: productError } = productIds.length
-      ? await supabase.from("pos_products").select("id, category_id").in("id", productIds)
+      ? await db.from("pos_products").select("id, category_id").in("id", productIds)
       : { data: [], error: null };
     if (productError) throw productError;
 
@@ -176,7 +176,7 @@ export async function GET(request: NextRequest) {
     );
 
     const { data: categories, error: categoryError } = categoryIds.length
-      ? await supabase.from("pos_categories").select("id, name").in("id", categoryIds)
+      ? await db.from("pos_categories").select("id, name").in("id", categoryIds)
       : { data: [], error: null };
     if (categoryError) throw categoryError;
 

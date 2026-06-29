@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,8 +15,8 @@ import {
   CheckCircleIcon,
   XCircleIcon,
 } from "@heroicons/react/24/outline";
-
-type StockStatus = "normal" | "low_stock" | "out_of_stock" | "overstock";
+import { useInventoryList, useInventorySummary } from "../queries";
+import type { StockStatus } from "../types";
 
 const STATUS_CONFIG: Record<StockStatus, { label: string; cls: string; icon: any }> = {
   normal: { label: "Normal", cls: "bg-green-100 text-green-700 border-green-200", icon: CheckCircleIcon },
@@ -25,63 +25,30 @@ const STATUS_CONFIG: Record<StockStatus, { label: string; cls: string; icon: any
   overstock: { label: "Berlebih", cls: "bg-blue-100 text-blue-700 border-blue-200", icon: ChartBarIcon },
 };
 
-interface InventoryItem {
-  id: string;
-  raw_material_id: string;
-  material_kode: string;
-  material_nama: string;
-  material_kategori: string;
-  qty_available: number;
-  qty_minimum: number;
-  qty_maximum?: number;
-  unit_cost: number;
-  total_value: number;
-  stock_status: StockStatus;
-  last_movement_at?: string;
-  lokasi_rak?: string;
-  satuan?: string; // Add satuan field
-}
-
-export default function InventoryPage() {
-  const [items, setItems] = useState<InventoryItem[]>([]);
-  const [loading, setLoading] = useState(true);
+export function InventoryPage() {
   const [search, setSearch] = useState("");
+  const [appliedSearch, setAppliedSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-  const [summary, setSummary] = useState({ total: 0, low: 0, out: 0, totalValue: 0 });
   const limit = 20;
 
-  useEffect(() => { fetchInventory(); }, [page, statusFilter]);
+  const listQuery = useInventoryList({
+    page,
+    limit,
+    status: statusFilter,
+    search: appliedSearch || undefined,
+  });
+  const items = listQuery.data?.items ?? [];
+  const loading = listQuery.isLoading;
+  const totalPages = Math.max(1, Math.ceil((listQuery.data?.total ?? 0) / limit));
 
-  async function fetchInventory() {
-    setLoading(true);
-    try {
-      const params = new URLSearchParams({
-        page: page.toString(),
-        limit: limit.toString(),
-        ...(statusFilter !== "all" && { status: statusFilter }),
-        ...(search && { search }),
-      });
-      const res = await fetch(`/api/inventory?${params}`);
-      const data = await res.json();
-      const list: InventoryItem[] = data.data?.data || data.data || [];
-      setItems(list);
-      setTotalPages(Math.ceil((data.pagination?.total || 0) / limit));
+  const summaryQuery = useInventorySummary();
+  const summary = summaryQuery.data ?? { total: 0, low: 0, out: 0, totalValue: 0 };
 
-      // Hitung summary
-      const allRes = await fetch(`/api/inventory?limit=1000`);
-      const allData = await allRes.json();
-      const all: InventoryItem[] = allData.data?.data || allData.data || [];
-      setSummary({
-        total: all.length,
-        low: all.filter(i => i.stock_status === "low_stock").length,
-        out: all.filter(i => i.stock_status === "out_of_stock").length,
-        totalValue: all.reduce((s, i) => s + (i.total_value || 0), 0),
-      });
-    } catch (e) { console.error(e); }
-    finally { setLoading(false); }
-  }
+  const applySearch = () => {
+    setPage(1);
+    setAppliedSearch(search.trim());
+  };
 
   return (
     <div className="space-y-6">
@@ -150,7 +117,7 @@ export default function InventoryPage() {
               placeholder="Cari kode atau nama bahan..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && fetchInventory()}
+              onKeyDown={(e) => e.key === "Enter" && applySearch()}
               className="pl-9"
             />
           </div>
@@ -166,7 +133,7 @@ export default function InventoryPage() {
               <SelectItem value="overstock">Berlebih</SelectItem>
             </SelectContent>
           </Select>
-          <Button onClick={fetchInventory} variant="outline">Cari</Button>
+          <Button onClick={applySearch} variant="outline">Cari</Button>
         </CardContent>
       </Card>
 

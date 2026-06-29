@@ -3,7 +3,7 @@
 // ============================================
 
 import { NextRequest } from "next/server";
-import { createServiceClient } from "@/lib/supabase/service-client";
+import { createPgClient } from "@/lib/pg/create-client";
 import { adjustInventoryOnOrder } from "@/lib/inventory";
 import { ApiError, requireApiRole } from "@/lib/api/auth";
 import { z } from "zod";
@@ -31,14 +31,14 @@ export async function POST(
   try {
     await requireApiRole([...SEND_ROLES]);
     const { id } = await params;
-    const supabase = createServiceClient();
+    const db = createPgClient();
     const body = await request.json();
 
     // Validasi input
     const { sent_via } = sendSchema.parse(body);
 
     // Cek PO ada
-    const { data: po, error: findError } = await supabase
+    const { data: po, error: findError } = await db
       .from("purchase_orders")
       .select("*")
       .eq("id", id)
@@ -59,7 +59,7 @@ export async function POST(
       );
     }
 
-    const { data: items, error: itemsError } = await supabase
+    const { data: items, error: itemsError } = await db
       .from("purchase_order_items")
       .select("raw_material_id, qty_ordered, qty_received")
       .eq("purchase_order_id", id)
@@ -74,7 +74,7 @@ export async function POST(
     }
 
     // Update status ke sent
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from("purchase_orders")
       .update({
         status: "sent",
@@ -91,7 +91,7 @@ export async function POST(
     for (const item of items) {
       const remainingQty = Math.max(0, Number(item.qty_ordered || 0) - Number(item.qty_received || 0));
       if (item.raw_material_id && remainingQty > 0) {
-        await adjustInventoryOnOrder(supabase, item.raw_material_id, remainingQty);
+        await adjustInventoryOnOrder(db, item.raw_material_id, remainingQty);
       }
     }
 

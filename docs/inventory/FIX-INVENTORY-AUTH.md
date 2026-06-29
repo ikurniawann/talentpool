@@ -69,19 +69,19 @@ const res = await fetch(`/api/inventory?${params}`, {
 });
 ```
 
-**Or using Supabase client directly:**
+**Or using pg pool / REST API directly:**
 ```typescript
-const supabase = createBrowserClient();
-const { data } = await supabase
+const db = createBrowserClient();
+const { data } = await db
   .from('v_raw_materials_stock')
   .select('*');
 ```
 
 ---
 
-### **Option C: Use Supabase View Directly** (Recommended Long-term)
+### **Option C: Use PostgreSQL view directly** (Recommended Long-term)
 
-Instead of calling `/api/inventory` (which needs auth), query the view directly with Supabase client:
+Instead of calling `/api/inventory` (which needs auth), query the view directly with pg pool / REST API:
 
 **Modify:** `src/app/(dashboard)/dashboard/inventory/page.tsx`
 
@@ -92,10 +92,10 @@ const res = await fetch(`/api/inventory?${params}`);
 
 **To:**
 ```typescript
-import { createBrowserClient } from '@/lib/supabase/client';
+import { createBrowserClient } from '@/lib/pg/browser-client';
 
-const supabase = createBrowserClient();
-const { data, error } = await supabase
+const db = createBrowserClient();
+const { data, error } = await db
   .from('v_raw_materials_stock')
   .select('*')
   .eq('is_active', true)
@@ -114,7 +114,7 @@ const { data, error } = await supabase
 
 ### **Step 1: Verify Database Has Correct Stock**
 
-Run in Supabase SQL Editor:
+Run in psql atau SQL client:
 ```sql
 SELECT 
   rm.kode,
@@ -170,14 +170,14 @@ LIMIT 5;
 
 ## 💡 **Long-term Recommendation**
 
-**Remove dependency on `/api/inventory` route** and use Supabase client directly in frontend components. This avoids:
+**Remove dependency on `/api/inventory` route** and use pg pool / REST API directly in frontend components. This avoids:
 - Extra API layer
 - Auth token issues
 - Performance overhead
 
 **Migration Plan:**
 1. Identify all pages using `/api/inventory`
-2. Replace with direct Supabase queries
+2. Replace with direct REST / pg queries
 3. Add proper RLS policies
 4. Test thoroughly
 5. Remove unused API routes
@@ -196,7 +196,7 @@ LIMIT 5;
 
 **Fix Priority:**
 1. High: Fix auth issue in `/api/inventory` route OR bypass it
-2. Medium: Migrate to direct Supabase queries
+2. Medium: Migrate to direct REST / pg queries
 3. Low: Add better error handling in frontend
 
 ---

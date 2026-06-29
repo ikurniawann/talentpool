@@ -27,7 +27,7 @@ export default function POListPage() {
             <Link href="/dashboard/purchasing/purchase-orders/approval">
               <Button variant="outline">Approval</Button>
             </Link>
-            <Link href="/dashboard/purchasing/purchase-orders/new">
+            <Link href="/dashboard/purchasing/purchase-orders/insert">
               <Button>+ Buat PO</Button>
             </Link>
           </div>

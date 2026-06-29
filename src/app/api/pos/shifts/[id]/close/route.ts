@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createServiceClient } from '@/lib/supabase/service-client';
+import { createPgClient } from "@/lib/pg/create-client";
 import { getPosSession } from '@/lib/api/auth';
 
 /** PATCH /api/pos/shifts/{id}/close
@@ -26,10 +26,10 @@ export async function PATCH(
     return NextResponse.json({ success: false, error: 'closing_cash required' }, { status: 400 });
   }
 
-  const supabase = createServiceClient();
+  const db = createPgClient();
 
   // Verify shift exists and is active
-  const { data: shift, error: fetchError } = await supabase
+  const { data: shift, error: fetchError } = await db
     .from('pos_shifts')
     .select('id, status, opening_cash')
     .eq('id', shiftId)
@@ -44,7 +44,7 @@ export async function PATCH(
   }
 
   // Recalculate expected cash from all orders in this shift
-  const { data: agg, error: aggError } = await supabase
+  const { data: agg, error: aggError } = await db
     .from('pos_orders')
     .select('total_amount, amount_paid, ark_coins_used, payment_method')
     .eq('shift_id', shiftId)
@@ -79,7 +79,7 @@ export async function PATCH(
   const totalSales = totalCash + totalQris + totalDebit + totalCredit + totalArk;
   const variance = Number(closing_cash) - expectedCash;
 
-  const { data: updated, error: updateError } = await supabase
+  const { data: updated, error: updateError } = await db
     .from('pos_shifts')
     .update({
       status: 'closed',

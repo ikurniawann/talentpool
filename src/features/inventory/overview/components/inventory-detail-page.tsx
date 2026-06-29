@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -14,59 +14,23 @@ import {
   ArrowDownIcon,
   ArrowPathIcon,
 } from "@heroicons/react/24/outline";
+import { useInventoryItem, useInventoryMovements } from "../queries";
 
-interface Movement {
-  id: string;
-  tipe: string;
-  jumlah: number;
-  qty_before: number;
-  qty_after: number;
-  unit_cost: number;
-  total_cost: number;
-  reference_type: string;
-  reference_number: string;
-  alasan: string;
-  catatan?: string;
-  created_at: string;
-}
-
-export default function InventoryDetailPage() {
+export function InventoryDetailPage() {
   const params = useParams();
   const id = params.id as string;
 
-  const [inventory, setInventory] = useState<any>(null);
-  const [movements, setMovements] = useState<Movement[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [movLoading, setMovLoading] = useState(false);
   const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
   const limit = 25;
 
-  useEffect(() => { loadInventory(); }, [id]);
-  useEffect(() => { loadMovements(); }, [id, page]);
+  const inventoryQuery = useInventoryItem(id);
+  const inventory = inventoryQuery.data ?? null;
+  const loading = inventoryQuery.isLoading;
 
-  async function loadInventory() {
-    setLoading(true);
-    try {
-      const res = await fetch(`/api/inventory?limit=1000`);
-      const data = await res.json();
-      const list = data.data?.data || data.data || [];
-      const found = list.find((i: any) => i.id === id);
-      setInventory(found || null);
-    } catch (e) { console.error(e); }
-    finally { setLoading(false); }
-  }
-
-  async function loadMovements() {
-    setMovLoading(true);
-    try {
-      const res = await fetch(`/api/inventory/${id}/movements?page=${page}&limit=${limit}`);
-      const data = await res.json();
-      setMovements(data.data?.data || data.data || []);
-      setTotalPages(Math.ceil((data.pagination?.total || 0) / limit));
-    } catch (e) { console.error(e); }
-    finally { setMovLoading(false); }
-  }
+  const movementsQuery = useInventoryMovements(id, page, limit);
+  const movements = movementsQuery.data?.data ?? [];
+  const movLoading = movementsQuery.isLoading || movementsQuery.isFetching;
+  const totalPages = Math.max(1, Math.ceil((movementsQuery.data?.total ?? 0) / limit));
 
   const movIcon = (tipe: string) => {
     if (tipe === "in" || tipe === "return") return <ArrowUpIcon className="w-3.5 h-3.5" />;
